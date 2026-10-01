@@ -40,6 +40,7 @@ Cada módulo mantém seus próprios contextos e migrations. Todos usam o mesmo b
 
 - .NET SDK 10.0.
 - SQL Server para aplicar e executar migrations localmente.
+- Um arquivo `.env` na raiz do repositório com a connection string local. Use `.env.example` como referência e mantenha credenciais reais fora do Git.
 - `dotnet-ef` 10.0.9 para criar, inspecionar ou aplicar migrations. Caso ainda não esteja instalado:
 
 ```sh
@@ -61,7 +62,7 @@ O host oferece `GET /health` e o documento OpenAPI em ambiente de desenvolviment
 
 ## Banco de dados e migrations
 
-A API lê a connection string `ConnectionStrings:CarWashSaaS`. Para execução local, ela pode ser configurada pela variável de ambiente `ConnectionStrings__CarWashSaaS`. O arquivo `appsettings.Development.json` contém um exemplo com autenticação integrada; ajuste a configuração ao seu SQL Server e não versione credenciais.
+A API e as factories do EF carregam `.env` da raiz da solution. A variável `ConnectionStrings__CarWashSaaS` também pode ser fornecida diretamente pelo shell ou ambiente de execução; variáveis já definidas têm precedência sobre `.env`. Em produção, injete a connection string pelo ambiente/secret store e não use arquivo `.env`.
 
 Com a connection string configurada, aplique as migrations na ordem abaixo:
 

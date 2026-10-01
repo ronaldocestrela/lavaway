@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CarWashSaaS.Tenants.Domain\CarWashSaaS.Tenants.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\Shared\CarWashSaaS.Shared.Configuration\CarWashSaaS.Shared.Configuration.csproj" />
   </ItemGroup>
 
   <ItemGroup>

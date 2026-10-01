@@ -55,6 +55,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ArchitectureTests", "Archit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarWashSaaS.ArchitectureTests", "tests\Backend\ArchitectureTests\CarWashSaaS.ArchitectureTests\CarWashSaaS.ArchitectureTests.csproj", "{D4FAE356-E31F-427F-BC42-CCC1108E3662}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarWashSaaS.Shared.Configuration", "src\Shared\CarWashSaaS.Shared.Configuration\CarWashSaaS.Shared.Configuration.csproj", "{F7AB4876-6F9E-4B96-9721-32516593BD52}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -233,6 +235,18 @@ Global
 		{D4FAE356-E31F-427F-BC42-CCC1108E3662}.Release|x64.Build.0 = Release|Any CPU
 		{D4FAE356-E31F-427F-BC42-CCC1108E3662}.Release|x86.ActiveCfg = Release|Any CPU
 		{D4FAE356-E31F-427F-BC42-CCC1108E3662}.Release|x86.Build.0 = Release|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Debug|x64.Build.0 = Debug|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Debug|x86.Build.0 = Debug|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Release|x64.ActiveCfg = Release|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Release|x64.Build.0 = Release|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Release|x86.ActiveCfg = Release|Any CPU
+		{F7AB4876-6F9E-4B96-9721-32516593BD52}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -262,5 +276,6 @@ Global
 		{2BF248AF-B9B6-446A-A3B3-ED24DF2698F4} = {35C5C2C8-E50E-750F-2C85-4B4D2A21115F}
 		{AB7F2BA9-A44C-ECEA-EACF-7CB237EA5C74} = {C62EED4C-2AC9-F50F-E0BC-649CFEA98BDB}
 		{D4FAE356-E31F-427F-BC42-CCC1108E3662} = {AB7F2BA9-A44C-ECEA-EACF-7CB237EA5C74}
+		{F7AB4876-6F9E-4B96-9721-32516593BD52} = {C8E42992-5E42-0C2B-DBFE-AA848D06431C}
 	EndGlobalSection
 EndGlobal

@@ -1,13 +1,16 @@
 using CarWashSaaS.Identity.Infrastructure;
+using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Tenants.Infrastructure;
 using CarWashSaaS.YardOperations.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+DotEnvConfiguration.LoadFromRepository();
+
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("CarWashSaaS")
-    ?? throw new InvalidOperationException("Connection string 'CarWashSaaS' is required.");
+    ?? DotEnvConfiguration.GetRequiredConnectionString();
 
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));

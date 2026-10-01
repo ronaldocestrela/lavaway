@@ -1,3 +1,4 @@
+using CarWashSaaS.Shared.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -7,8 +8,8 @@ public sealed class YardOperationsDesignTimeDbContextFactory : IDesignTimeDbCont
 {
     public YardOperationsDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__CarWashSaaS")
-            ?? "Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True;Encrypt=True";
+        DotEnvConfiguration.LoadFromRepository();
+        var connectionString = DotEnvConfiguration.GetRequiredConnectionString();
 
         var options = new DbContextOptionsBuilder<YardOperationsDbContext>()
             .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "yard"))
