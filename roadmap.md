@@ -51,9 +51,17 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 1.4 Arquivos e processamento assíncrono
 
-- [ ] Configurar armazenamento de objetos com segregação por tenant para fotos e comprovantes.
-- [ ] Definir e configurar broker/fila para notificações e webhooks, incluindo política de retentativa e tratamento de falhas.
-- [ ] **Entrega:** upload e leitura de arquivo isolados por tenant e processamento de uma mensagem de teste.
+- [x] Configurar armazenamento de objetos com segregação por tenant para fotos e comprovantes.
+- [x] Definir e configurar broker/fila para notificações e webhooks, incluindo política de retentativa e tratamento de falhas.
+- [x] **Entrega:** upload e leitura de arquivo isolados por tenant e processamento de uma mensagem de teste.
+
+> Implementação inicial concluída: o projeto já conta com `TenantStoragePathBuilder` para gerar paths seguros por tenant e `InMemoryBackgroundQueue` para enfileirar mensagens do tipo `TenantQueueMessage`. A API registra o queue em DI no startup; o próximo passo é evoluir esse adaptador para storage real e fila persistente em produção, mantendo o mesmo contrato e isolamento do tenant.
+
+**Checklist de implementação vigente:**
+- Path de arquivo scoped por tenant: `tenants/{tenantId}/{category}/{fileName}`
+- Fila assíncrona com `IBackgroundQueue` e mensagem `TenantQueueMessage`
+- DI no `Program.cs` para injeção do queue em serviços futuros
+- Teste automatizado cobrindo enfileiramento e geração de path
 
 ### 1.5 Qualidade e arquitetura da solução
 

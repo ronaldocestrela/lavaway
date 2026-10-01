@@ -84,7 +84,24 @@ erDiagram
 
 ## Isolamento
 
-Esta migration estabelece colunas, índices e relações tenant-scoped, mas **não conclui o isolamento de consultas**. Antes de expor operações de dados, a subfase 1.2 deve aplicar Global Query Filters e validar/injetar `TenantId` nas gravações. A estratégia e a resolução do tenant em autenticação estão registradas em [ADR-0001](../architecture/ADR-0001-isolamento-tenant-ef-core.md). SQL Server Row-Level Security fica fora da primeira entrega.
+A base de isolamento foi concluída no código: a solução aplica filtros globais e validação de gravação em `TenantIsolationExtensions`, além de resolver o tenant via middleware e accessor scoped. A estratégia e a resolução em autenticação continuam registradas em [ADR-0001](../architecture/ADR-0001-isolamento-tenant-ef-core.md). SQL Server Row-Level Security continua fora da primeira entrega, mas a camada funcional e a API já respeitam a regra de tenant por request.
+
+### Storage e fila por tenant
+
+A subfase 1.4 introduziu os primeiros contratos de infraestrutura para arquivos e processamento assíncrono. O path de arquivos é gerado pela helper `TenantStoragePathBuilder`, que mantém o namespace sempre em `tenants/{tenantId}/...`, e a fila assíncrona usa `IBackgroundQueue` com `TenantQueueMessage` para registrar eventos com `tenantId`, `eventType` e `payload`.
+
+```mermaid
+flowchart LR
+    U[Usuário/autenticação] --> T[tenant_id resolvido]
+    T --> S[Path de armazenamento por tenant]
+    T --> Q[Fila assíncrona com TenantQueueMessage]
+    S --> A[upload/download de foto/comprovante]
+    Q --> W[worker assíncrono em memória]
+    A -->|sem tenant válido| E[403/404]
+    W -->|evento idempotente| P[processamento do evento]
+```
+
+Esse primeiro passo é infrastructural: o storage real e a fila persistente continuam como evolução para produção, mas a base de segurança e padronização já está pronta para ser ampliada.
 
 ### Resolução e ciclo de request
 

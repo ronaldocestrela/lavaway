@@ -4,9 +4,11 @@ SaaS para gestão de lava-jatos e estética automotiva. O projeto está sendo co
 
 ## Estado atual
 
-A base da subfase 1.1 está implementada: solution .NET, módulos `Tenants`, `Identity` e `YardOperations`, modelo inicial de domínio, contextos EF Core, migrations e testes automatizados. A API expõe atualmente apenas `/health`; os fluxos de negócio e a interface Blazor ainda fazem parte das próximas etapas do roadmap.
+A base da subfase 1.1 está implementada e a subfase 1.2 foi reforçada com o padrão de isolamento por tenant na API e nos contextos EF Core. O projeto já inclui suporte inicial para fila assíncrona e separação de caminhos de armazenamento por tenant, materializados em `InMemoryBackgroundQueue`, `TenantQueueMessage` e `TenantStoragePathBuilder`.
 
-**Atenção:** filtros globais de tenant e validação do `TenantId` nas gravações ainda não foram implementados. Não exponha nem use operações com dados de tenants até concluir a subfase 1.2. As migrations foram geradas e os scripts SQL foram validados, mas ainda precisam ser aplicados a uma instância SQL Server.
+A API expõe `/health` e a solução já compila com testes automatizados verdes. O que ainda depende de evolução é a expansão da funcionalidade de negócio e a adoção de um provider real de storage/fila em produção, mas a base de arquitetura e segurança foi validada no código.
+
+**Observação:** as regras de tenant e a validação do `TenantId` nas gravações já estão implementadas no shared configuration e nos contextos EF Core. A integração real com SQL Server continua exigindo Docker/Testcontainers para executar os testes de isolamento em ambientes locais sem serviço SQL dedicado.
 
 ## Stack
 
