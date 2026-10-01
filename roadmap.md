@@ -106,9 +106,11 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 2.4 Capacidade e equipe
 
-- [ ] Configurar capacidade simultânea do pátio (boxes/vagas).
-- [ ] Cadastrar colaboradores e, quando aplicável, regras de comissão por serviço.
-- [ ] **Entrega:** capacidade e equipe cadastradas e disponíveis para uso na operação.
+- [x] Configurar capacidade simultânea do pátio (boxes/vagas).
+- [x] Cadastrar colaboradores e, quando aplicável, regras de comissão por serviço.
+- [x] **Entrega:** capacidade e equipe cadastradas e disponíveis para uso na operação.
+
+> Estado concluído: o módulo `YardOperations` já implementa `YardCapacity`, `TeamMember` e `CommissionRule` com validação do domínio, `Result<T>`, `TenantId` em todos os agregados e isolamento por tenant em `YardOperationsDbContext`. A proteção cruzada de dados foi validada pela suíte de integração e a base está pronta para o próximo fluxo operacional.
 
 ### 2.5 Pareamento do WhatsApp
 

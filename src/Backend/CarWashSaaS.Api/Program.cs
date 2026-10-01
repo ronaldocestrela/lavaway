@@ -35,6 +35,10 @@ builder.Services.AddScoped<IStoreProfileRepository, StoreProfileRepository>();
 builder.Services.AddScoped<StoreProfileApplicationService>();
 builder.Services.AddScoped<IServiceRepository, ServiceRepository>();
 builder.Services.AddScoped<ServiceCatalogApplicationService>();
+builder.Services.AddScoped<IYardCapacityRepository, YardCapacityRepository>();
+builder.Services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
+builder.Services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
+builder.Services.AddScoped<YardSetupApplicationService>();
 builder.Services.AddSingleton(new TenantBrandingStorageService(Path.Combine(builder.Environment.ContentRootPath, "Storage")));
 builder.Services.AddSingleton<IBackgroundQueue, InMemoryBackgroundQueue>();
 builder.Services.AddDbContext<TenantsDbContext>(options =>
@@ -132,6 +136,100 @@ app.MapGet("/services", async (ICurrentTenantAccessor currentTenantAccessor, Ser
         _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
     };
 }).RequireAuthorization();
+
+app.MapGet("/yard/capacity", async (ICurrentTenantAccessor currentTenantAccessor, YardSetupApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.GetCapacityAsync(tenantId);
+    return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+    {
+        ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization();
+
+app.MapPost("/yard/capacity", async (CreateYardCapacityCommand command, ICurrentTenantAccessor currentTenantAccessor, YardSetupApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.CreateCapacityAsync(tenantId, command);
+    return result.IsSuccess ? Results.Created($"/yard/capacity", result.Value) : result.Error!.Type switch
+    {
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+app.MapGet("/team-members", async (ICurrentTenantAccessor currentTenantAccessor, YardSetupApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.ListTeamMembersAsync(tenantId);
+    return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+    {
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization();
+
+app.MapPost("/team-members", async (CreateTeamMemberCommand command, ICurrentTenantAccessor currentTenantAccessor, YardSetupApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.CreateTeamMemberAsync(tenantId, command);
+    return result.IsSuccess ? Results.Created($"/team-members/{result.Value!.Id}", result.Value) : result.Error!.Type switch
+    {
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+app.MapGet("/commission-rules", async (ICurrentTenantAccessor currentTenantAccessor, YardSetupApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.ListCommissionRulesAsync(tenantId);
+    return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+    {
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization();
+
+app.MapPost("/commission-rules", async (CreateCommissionRuleCommand command, ICurrentTenantAccessor currentTenantAccessor, YardSetupApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.CreateCommissionRuleAsync(tenantId, command);
+    return result.IsSuccess ? Results.Created($"/commission-rules/{result.Value!.Id}", result.Value) : result.Error!.Type switch
+    {
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
 app.MapGet("/services/{id:guid}", async (Guid id, ICurrentTenantAccessor currentTenantAccessor, ServiceCatalogApplicationService service) =>
 {
