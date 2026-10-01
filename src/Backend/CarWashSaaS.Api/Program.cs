@@ -27,6 +27,7 @@ if (string.IsNullOrWhiteSpace(authority) || string.IsNullOrWhiteSpace(audience))
 
 builder.Services.AddScoped<CurrentTenantAccessor>();
 builder.Services.AddScoped<ICurrentTenantAccessor>(services => services.GetRequiredService<CurrentTenantAccessor>());
+builder.Services.AddSingleton<IBackgroundQueue, InMemoryBackgroundQueue>();
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));
 builder.Services.AddDbContext<IdentityModuleDbContext>(options =>

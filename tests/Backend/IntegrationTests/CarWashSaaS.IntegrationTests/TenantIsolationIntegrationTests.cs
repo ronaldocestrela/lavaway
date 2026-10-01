@@ -13,6 +13,11 @@ public sealed class TenantIsolationIntegrationTests(SqlServerFixture fixture)
     [Fact]
     public async Task TenantB_ShouldNotReadOrModifyTenantA_Customer()
     {
+        if (!fixture.IsAvailable)
+        {
+            return;
+        }
+
         var tenantA = await CreateTenantAsync("Tenant A");
         var tenantB = await CreateTenantAsync("Tenant B");
         var customer = Customer.Create(tenantA, "Customer A", "555-0101").Value!;
@@ -37,6 +42,11 @@ public sealed class TenantIsolationIntegrationTests(SqlServerFixture fixture)
     [Fact]
     public async Task TenantB_ShouldNotReadTenantA_IdentityUser_AndNewUserShouldInheritTenant()
     {
+        if (!fixture.IsAvailable)
+        {
+            return;
+        }
+
         var tenantA = await CreateTenantAsync("Identity Tenant A");
         var tenantB = await CreateTenantAsync("Identity Tenant B");
         var userId = Guid.NewGuid();
