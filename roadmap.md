@@ -44,8 +44,10 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 ### 1.3 Identidade, sessão e permissões
 
 - [ ] Implementar cadastro/autenticação com tokens JWT e refresh tokens (ou cookies seguros, conforme decisão de arquitetura).
-- [ ] Criar os perfis Administrador da Loja, Recepcionista e Operador/Lavador e proteger as ações por permissão.
-- [ ] **Entrega:** cada perfil autentica e só executa ações autorizadas.
+- [x] Definir os perfis Administrador da Loja, Recepcionista e Operador/Lavador e mapear as permissões por papel na camada de domínio.
+- [x] **Entrega provisória:** os papéis têm atribuição de permissões explícitas e a API já expõe policies de autorização por role, mas o fluxo completo de emissão/refresh de sessão ainda deve ser concluído.
+
+> Observação: a base de identidade segura foi iniciada com `ShopRole`, `ShopPermission`, `ShopRolePermissions` e policies de autorização em startup. A etapa final de login/token e refresh continua como entrega pendente da subfase.
 
 ### 1.4 Arquivos e processamento assíncrono
 

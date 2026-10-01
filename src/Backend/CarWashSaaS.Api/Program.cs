@@ -1,3 +1,4 @@
+using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Identity.Infrastructure;
 using CarWashSaaS.Api.Middleware;
 using CarWashSaaS.Shared.Configuration;
@@ -54,9 +55,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicyNames.Administrator,
+        policy => policy.RequireRole(ShopRole.Administrator.ToString()));
+    options.AddPolicy(AuthorizationPolicyNames.Receptionist,
+        policy => policy.RequireRole(ShopRole.Receptionist.ToString(), ShopRole.Administrator.ToString()));
+    options.AddPolicy(AuthorizationPolicyNames.Operator,
+        policy => policy.RequireRole(ShopRole.Operator.ToString(), ShopRole.Administrator.ToString()));
+
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .Build());
+        .Build();
+});
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

@@ -76,6 +76,7 @@ erDiagram
 - `Tenant` é um agregado global da plataforma; não recebe `TenantId`.
 - Clientes, veículos, serviços, preços, ordens e itens de OS carregam `TenantId`.
 - Identity usa chaves `Guid`; usuários têm vínculo com um único tenant. Os papéis Administrator, Receptionist e Operator são globais e usam as tabelas padrão do ASP.NET Core Identity.
+- A subfase 1.3 acrescenta um modelo explícito de permissões por papel: `ShopPermission` expressa ações como configurar loja, gerenciar usuários, criar OS, atualizar status e visualizar relatórios; `ShopRolePermissions.GetPermissions()` centraliza o mapeamento por role.
 - Placas são normalizadas para sete caracteres alfanuméricos em maiúsculas e únicas por tenant.
 - Chaves alternativas compostas por `(TenantId, Id)` e FKs compostas impedem que veículo ou OS aponte para cliente/veículo de outro tenant.
 - Preços e itens da OS são dependentes dos agregados; itens da OS preservam nome, preço e duração como snapshots.
@@ -102,6 +103,29 @@ flowchart LR
 `Authentication:Authority` e `Authentication:Audience` devem ser configurados por ambiente; a API falha na inicialização se estiverem ausentes. Entidades novas recebem o tenant corrente quando o identificador estiver vazio. Entidades alteradas ou removidas com tenant divergente são rejeitadas. `Tenants` e roles globais do Identity permanecem fora dos filtros; owned types são protegidos pelo filtro do agregado proprietário.
 
 Os testes de integração aplicam as migrations em um SQL Server efêmero e verificam que Tenant B não consulta nem altera registros de Tenant A, inclusive usuários do Identity. Nenhuma migration adicional é necessária para essa camada de isolamento.
+
+### Autorização por perfil
+
+A base da identidade passou a incluir permissões e policies de acesso por papel, com o domínio definindo a matriz de autorização e a API registrando as policies a partir dos roles do ASP.NET Identity.
+
+```mermaid
+flowchart LR
+    U[Usuário autenticado] --> T[JWT com tenant_id e role]
+    T --> A[Middleware valida tenant e autenticação]
+    A --> P[Policy por papel]
+    P -->|Administrator| D[Configurar loja, usuários, relatórios e OS]
+    P -->|Receptionist| R[Criar/consultar OS e clientes]
+    P -->|Operator| O[Atualizar status da ordem e visualizar operação]
+    A -->|tenant ausente ou inválido| F[403 Forbidden]
+```
+
+A matriz de permissão segue a estrutura:
+
+- `Administrator`: `ConfigureStore`, `ManageUsers`, `ManageWorkOrders`, `CreateWorkOrders`, `UpdateWorkOrderStatus`, `ViewCustomers`, `ViewReports`
+- `Receptionist`: `CreateWorkOrders`, `UpdateWorkOrderStatus`, `ViewCustomers`, `ViewReports`
+- `Operator`: `UpdateWorkOrderStatus`, `ViewCustomers`, `ViewReports`
+
+O fluxo completo de login e refresh token continua como etapa seguinte da subfase 1.3, mas a base de autorização por perfil já está definida em domínio e na API.
 
 ## Aplicação local
 
