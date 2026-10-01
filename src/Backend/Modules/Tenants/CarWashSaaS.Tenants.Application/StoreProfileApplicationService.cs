@@ -43,7 +43,10 @@ public sealed class StoreProfileApplicationService(IStoreProfileRepository repos
             command.Street,
             command.City,
             command.State,
-            command.PostalCode);
+            command.PostalCode,
+            command.LogoUrl,
+            command.BrandPrimaryColor,
+            command.BrandSecondaryColor);
 
         if (!result.IsSuccess)
         {
@@ -75,7 +78,10 @@ public sealed class StoreProfileApplicationService(IStoreProfileRepository repos
             command.Street,
             command.City,
             command.State,
-            command.PostalCode);
+            command.PostalCode,
+            command.LogoUrl,
+            command.BrandPrimaryColor,
+            command.BrandSecondaryColor);
 
         if (!result.IsSuccess)
         {

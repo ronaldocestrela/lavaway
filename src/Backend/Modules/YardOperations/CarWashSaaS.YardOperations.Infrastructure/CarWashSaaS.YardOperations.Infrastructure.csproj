@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\CarWashSaaS.YardOperations.Application\CarWashSaaS.YardOperations.Application.csproj" />
     <ProjectReference Include="..\CarWashSaaS.YardOperations.Domain\CarWashSaaS.YardOperations.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\Shared\CarWashSaaS.Shared.Configuration\CarWashSaaS.Shared.Configuration.csproj" />
   </ItemGroup>

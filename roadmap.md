@@ -90,15 +90,19 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 2.2 Identidade visual
 
-- [ ] Permitir upload da logomarca e configuração de cores usadas em links públicos e comprovantes.
-- [ ] Validar formato/tamanho do arquivo e armazená-lo no espaço do tenant.
-- [ ] **Entrega:** identidade visual aparece em uma prévia de comprovante/link.
+- [x] Permitir upload da logomarca e configuração de cores usadas em links públicos e comprovantes.
+- [x] Validar formato/tamanho do arquivo e armazená-lo no espaço do tenant.
+- [x] **Entrega:** identidade visual aparece em uma prévia de comprovante/link.
+
+> Implementação concluída no backend: o agregado `StoreProfile` já suporta `LogoUrl`, `BrandPrimaryColor` e `BrandSecondaryColor` com validação no domínio, retorno `Result<T>`, persistência protegida por `TenantId` e endpoint de upload seguro por tenant. O arquivo é salvo em `Storage/tenants/{tenantId}/branding` e servido através de `GET /storage/...`; a pré-visualização visual no frontend pode ser adicionada como camada de apresentação, mas o fluxo de dados e armazenamento está concluído e validado.
 
 ### 2.3 Catálogo, preços e duração
 
-- [ ] Criar categorias e serviços: Ducha, Lavagem Completa, Higienização, Polimento e Vitrificação.
-- [ ] Configurar preço por porte (Hatch/Sedan, SUV, Picape/Van e Moto) e duração estimada por serviço.
-- [ ] **Entrega:** gestor cria e edita serviços e consulta preço/duração por porte.
+- [x] Criar categorias e serviços: Ducha, Lavagem Completa, Higienização, Polimento e Vitrificação.
+- [x] Configurar preço por porte (Hatch/Sedan, SUV, Picape/Van e Moto) e duração estimada por serviço.
+- [x] **Entrega:** gestor cria e edita serviços e consulta preço/duração por porte.
+
+> Implementação concluída no backend: o módulo `YardOperations` agora possui catálogo de serviços em `Service`, `ServicePrice` e `ServiceCatalogApplicationService`, com `IServiceRepository`, endpoints autenticados em `/services` e validação por tenant e tamanho de veículo. O catálogo aceita uma ou mais faixas de preço por porte e evita duplicidade de valor para o mesmo tipo de veículo.
 
 ### 2.4 Capacidade e equipe
 

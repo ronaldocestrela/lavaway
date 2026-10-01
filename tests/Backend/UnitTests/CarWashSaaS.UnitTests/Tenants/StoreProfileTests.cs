@@ -60,6 +60,58 @@ public sealed class StoreProfileTests
     }
 
     [Fact]
+    public void Create_Should_Succeed_With_Valid_Branding_Data()
+    {
+        var tenantId = Guid.CreateVersion7();
+
+        var result = StoreProfile.Create(
+            tenantId,
+            "LavaWay Auto Center Ltda",
+            "LavaWay Centro",
+            "11222333000181",
+            "+5511999999999",
+            "Rua das Flores, 123",
+            "São Paulo",
+            "SP",
+            "01000-000",
+            "https://cdn.example.com/tenants/logo.png",
+            "#FF6600",
+            "#0D1B2A");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("https://cdn.example.com/tenants/logo.png", result.Value!.LogoUrl);
+        Assert.Equal("#FF6600", result.Value.BrandPrimaryColor);
+        Assert.Equal("#0D1B2A", result.Value.BrandSecondaryColor);
+    }
+
+    [Theory]
+    [InlineData("https://cdn.example.com/tenants/logo.png", "#GGGGGG", "#0D1B2A")]
+    [InlineData("https://cdn.example.com/tenants/logo.png", "#FF6600", "#ZZZZZZ")]
+    [InlineData("not-a-url", "#FF6600", "#0D1B2A")]
+    public void Create_Should_Reject_Invalid_Branding_Data(
+        string logoUrl,
+        string primaryColor,
+        string secondaryColor)
+    {
+        var result = StoreProfile.Create(
+            Guid.CreateVersion7(),
+            "LavaWay Auto Center Ltda",
+            "LavaWay Centro",
+            "11222333000181",
+            "+5511999999999",
+            "Rua das Flores, 123",
+            "São Paulo",
+            "SP",
+            "01000-000",
+            logoUrl,
+            primaryColor,
+            secondaryColor);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Validation, result.Error!.Type);
+    }
+
+    [Fact]
     public void Update_Should_Succeed_With_Valid_Profile_Data()
     {
         var tenantId = Guid.CreateVersion7();

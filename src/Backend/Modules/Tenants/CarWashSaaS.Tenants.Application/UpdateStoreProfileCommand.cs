@@ -8,4 +8,7 @@ public sealed record UpdateStoreProfileCommand(
     string Street,
     string City,
     string State,
-    string PostalCode);
+    string PostalCode,
+    string? LogoUrl = null,
+    string? BrandPrimaryColor = null,
+    string? BrandSecondaryColor = null);

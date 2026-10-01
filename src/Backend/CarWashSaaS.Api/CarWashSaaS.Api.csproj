@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Modules\Tenants\CarWashSaaS.Tenants.Application\CarWashSaaS.Tenants.Application.csproj" />
     <ProjectReference Include="..\Modules\Tenants\CarWashSaaS.Tenants.Infrastructure\CarWashSaaS.Tenants.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Identity\CarWashSaaS.Identity.Infrastructure\CarWashSaaS.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\YardOperations\CarWashSaaS.YardOperations.Application\CarWashSaaS.YardOperations.Application.csproj" />
     <ProjectReference Include="..\Modules\YardOperations\CarWashSaaS.YardOperations.Infrastructure\CarWashSaaS.YardOperations.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared\CarWashSaaS.Shared.Configuration\CarWashSaaS.Shared.Configuration.csproj" />
   </ItemGroup>

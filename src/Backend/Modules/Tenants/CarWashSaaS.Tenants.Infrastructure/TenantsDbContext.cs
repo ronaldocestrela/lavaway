@@ -36,6 +36,9 @@ public sealed class TenantsDbContext(
         storeProfile.Property(value => value.City).HasMaxLength(150).IsRequired();
         storeProfile.Property(value => value.State).HasMaxLength(2).IsRequired();
         storeProfile.Property(value => value.PostalCode).HasMaxLength(20).IsRequired();
+        storeProfile.Property(value => value.LogoUrl).HasMaxLength(500);
+        storeProfile.Property(value => value.BrandPrimaryColor).HasMaxLength(7);
+        storeProfile.Property(value => value.BrandSecondaryColor).HasMaxLength(7);
 
         modelBuilder.ApplyTenantQueryFilters(this);
     }
