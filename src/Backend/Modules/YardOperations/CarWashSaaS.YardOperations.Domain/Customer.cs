@@ -8,12 +8,13 @@ public sealed class Customer : IMustHaveTenant
     {
     }
 
-    private Customer(Guid id, Guid tenantId, string name, string phone)
+    private Customer(Guid id, Guid tenantId, string name, string phone, string normalizedPhone)
     {
         Id = id;
         TenantId = tenantId;
         Name = name;
         Phone = phone;
+        NormalizedPhone = normalizedPhone;
     }
 
     public Guid Id { get; private set; }
@@ -26,6 +27,18 @@ public sealed class Customer : IMustHaveTenant
 
     public string Name { get; private set; } = string.Empty;
     public string Phone { get; private set; } = string.Empty;
+    public string NormalizedPhone { get; private set; } = string.Empty;
+
+    public static string NormalizePhone(string? phone)
+    {
+        var digits = new string((phone ?? string.Empty)
+            .Where(char.IsAsciiDigit)
+            .ToArray());
+
+        return digits.StartsWith("55", StringComparison.Ordinal) && digits.Length is 12 or 13
+            ? digits[2..]
+            : digits;
+    }
 
     public static Result<Customer> Create(Guid tenantId, string name, string phone)
     {
@@ -39,11 +52,12 @@ public sealed class Customer : IMustHaveTenant
             return Result<Customer>.Failure(new Error("customer.name.invalid", "A customer name of up to 200 characters is required.", ErrorType.Validation));
         }
 
-        if (string.IsNullOrWhiteSpace(phone) || phone.Trim().Length > 32)
+        var normalizedPhone = NormalizePhone(phone);
+        if (string.IsNullOrWhiteSpace(phone) || phone.Trim().Length > 32 || normalizedPhone.Length == 0)
         {
             return Result<Customer>.Failure(new Error("customer.phone.invalid", "A customer phone number of up to 32 characters is required.", ErrorType.Validation));
         }
 
-        return Result<Customer>.Success(new Customer(Guid.CreateVersion7(), tenantId, name.Trim(), phone.Trim()));
+        return Result<Customer>.Success(new Customer(Guid.CreateVersion7(), tenantId, name.Trim(), phone.Trim(), normalizedPhone));
     }
 }

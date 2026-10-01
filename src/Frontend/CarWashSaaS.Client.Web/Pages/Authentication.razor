@@ -1,0 +1,21 @@
+@page "/authentication/{action}"
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IConfiguration Configuration
+
+@if (!string.IsNullOrWhiteSpace(Configuration["Authentication:Authority"]))
+{
+    <RemoteAuthenticatorView Action="@Action" />
+}
+else
+{
+    <section class="auth-config-message" role="status">
+        <h1>Acesso não configurado</h1>
+        <p>Configure o provedor OIDC deste ambiente para iniciar uma sessão.</p>
+        <a href="">Voltar à recepção</a>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public string? Action { get; set; }
+}

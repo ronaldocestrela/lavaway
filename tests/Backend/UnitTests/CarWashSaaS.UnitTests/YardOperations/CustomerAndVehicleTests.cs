@@ -15,6 +15,41 @@ public sealed class CustomerAndVehicleTests
     }
 
     [Fact]
+    public void Customer_ShouldNormalizePhoneForSearchAndPreserveDisplayValue()
+    {
+        var result = Customer.Create(Guid.CreateVersion7(), " Maria Silva ", "+55 (11) 99999-9999");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("+55 (11) 99999-9999", result.Value!.Phone);
+        Assert.Equal("11999999999", result.Value.NormalizedPhone);
+        Assert.Equal("Maria Silva", result.Value.Name);
+    }
+
+    [Fact]
+    public void Customer_ShouldAllowDifferentCustomersToSharePhoneNumber()
+    {
+        var tenantId = Guid.CreateVersion7();
+
+        var first = Customer.Create(tenantId, "Maria Silva", "+55 (11) 99999-9999");
+        var second = Customer.Create(tenantId, "Joao Silva", "11 99999-9999");
+
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(first.Value!.NormalizedPhone, second.Value!.NormalizedPhone);
+    }
+
+    [Theory]
+    [InlineData("++--()")]
+    [InlineData("   ")]
+    public void Customer_ShouldRejectPhoneWithoutDigits(string phone)
+    {
+        var result = Customer.Create(Guid.CreateVersion7(), "Maria Silva", phone);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Validation, result.Error!.Type);
+    }
+
+    [Fact]
     public void Vehicle_ShouldNormalizePlateAndKeepTenantOwnership()
     {
         var tenantId = Guid.CreateVersion7();

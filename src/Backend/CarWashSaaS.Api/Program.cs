@@ -9,6 +9,7 @@ using CarWashSaaS.Tenants.Infrastructure;
 using CarWashSaaS.WhatsApp.Application;
 using CarWashSaaS.WhatsApp.Infrastructure;
 using CarWashSaaS.YardOperations.Application;
+using CarWashSaaS.YardOperations.Domain;
 using CarWashSaaS.YardOperations.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -21,6 +22,7 @@ DotEnvConfiguration.LoadFromRepository();
 
 var builder = WebApplication.CreateBuilder(args);
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 var connectionString = builder.Configuration.GetConnectionString("CarWashSaaS")
     ?? DotEnvConfiguration.GetRequiredConnectionString();
 var authority = builder.Configuration["Authentication:Authority"];
@@ -37,6 +39,11 @@ builder.Services.AddScoped<IStoreProfileRepository, StoreProfileRepository>();
 builder.Services.AddScoped<StoreProfileApplicationService>();
 builder.Services.AddScoped<IServiceRepository, ServiceRepository>();
 builder.Services.AddScoped<ServiceCatalogApplicationService>();
+builder.Services.AddScoped<ICustomerVehicleSearchRepository, CustomerVehicleSearchRepository>();
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
+builder.Services.AddScoped<IUnitOfWork, YardOperationsUnitOfWork>();
+builder.Services.AddScoped<CustomerVehicleApplicationService>();
 builder.Services.AddScoped<IYardCapacityRepository, YardCapacityRepository>();
 builder.Services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
 builder.Services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
@@ -89,11 +96,22 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireRole(ShopRole.Receptionist.ToString(), ShopRole.Administrator.ToString()));
     options.AddPolicy(AuthorizationPolicyNames.Operator,
         policy => policy.RequireRole(ShopRole.Operator.ToString(), ShopRole.Administrator.ToString()));
+    options.AddPolicy(AuthorizationPolicyNames.CreateWorkOrders,
+        policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString()));
+    options.AddPolicy(AuthorizationPolicyNames.ViewCustomers,
+        policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString(), ShopRole.Operator.ToString()));
 
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
 });
+builder.Services.AddCors(options => options.AddPolicy("Client", policy =>
+{
+    if (allowedOrigins.Length > 0)
+    {
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+    }
+}));
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -113,6 +131,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseHttpsRedirection();
+app.UseCors("Client");
 app.UseAuthentication();
 app.UseMiddleware<TenantResolverMiddleware>();
 app.UseAuthorization();
@@ -269,6 +288,96 @@ app.MapGet("/services", async (ICurrentTenantAccessor currentTenantAccessor, Ser
     };
 }).RequireAuthorization();
 
+app.MapGet("/customers/search", async (
+    string? plate,
+    string? phone,
+    int? limit,
+    ICurrentTenantAccessor currentTenantAccessor,
+    CustomerVehicleApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.SearchAsync(tenantId, new SearchCustomerVehiclesQuery(plate, phone, limit ?? 20));
+    return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+    {
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+app.MapGet("/customers/{customerId:guid}", async (
+    Guid customerId,
+    ICurrentTenantAccessor currentTenantAccessor,
+    CustomerVehicleApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.GetAsync(tenantId, customerId);
+    return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+    {
+        ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+app.MapPost("/customers", async (
+    CreateCustomerWithVehicleRequest request,
+    ICurrentTenantAccessor currentTenantAccessor,
+    CustomerVehicleApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    if (!Enum.TryParse<VehicleSize>(request.Size, true, out var size) || !Enum.IsDefined(size))
+    {
+        return Results.BadRequest(new { Code = "vehicle.size.invalid", Description = "Vehicle size is invalid." });
+    }
+
+    var command = new CreateCustomerWithVehicleCommand(request.Name, request.Phone, request.Plate, size);
+    var result = await service.CreateAsync(tenantId, command);
+    return result.IsSuccess ? Results.Created($"/customers/{result.Value!.CustomerId}", result.Value) : result.Error!.Type switch
+    {
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.CreateWorkOrders);
+
+app.MapPost("/customers/{customerId:guid}/vehicles", async (
+    Guid customerId,
+    AddVehicleToCustomerRequest request,
+    ICurrentTenantAccessor currentTenantAccessor,
+    CustomerVehicleApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    if (!Enum.TryParse<VehicleSize>(request.Size, true, out var size) || !Enum.IsDefined(size))
+    {
+        return Results.BadRequest(new { Code = "vehicle.size.invalid", Description = "Vehicle size is invalid." });
+    }
+
+    var result = await service.AddVehicleAsync(tenantId, customerId, new AddVehicleToCustomerCommand(request.Plate, size));
+    return result.IsSuccess ? Results.Created($"/customers/{customerId}", result.Value) : result.Error!.Type switch
+    {
+        ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.CreateWorkOrders);
+
 app.MapGet("/yard/capacity", async (ICurrentTenantAccessor currentTenantAccessor, YardSetupApplicationService service) =>
 {
     if (currentTenantAccessor.TenantId is not Guid tenantId)
@@ -293,7 +402,7 @@ app.MapPost("/yard/capacity", async (CreateYardCapacityCommand command, ICurrent
     }
 
     var result = await service.CreateCapacityAsync(tenantId, command);
-    return result.IsSuccess ? Results.Created($"/yard/capacity", result.Value) : result.Error!.Type switch
+    return result.IsSuccess ? Results.Created("/yard/capacity", result.Value) : result.Error!.Type switch
     {
         ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
         ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
@@ -387,7 +496,7 @@ app.MapPost("/tenants/profile", async (CreateStoreProfileCommand command, ICurre
     }
 
     var result = await service.CreateAsync(tenantId, command);
-    return result.IsSuccess ? Results.Created($"/tenants/profile", result.Value) : result.Error!.Type switch
+    return result.IsSuccess ? Results.Created("/tenants/profile", result.Value) : result.Error!.Type switch
     {
         ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
         ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),

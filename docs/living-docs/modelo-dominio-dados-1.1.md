@@ -45,6 +45,7 @@ erDiagram
         guid TenantId
         string Name
         string Phone
+        string NormalizedPhone
     }
     Vehicle {
         guid Id PK
@@ -91,6 +92,7 @@ erDiagram
 - Identity usa chaves `Guid`; usuários têm vínculo com um único tenant. Os papéis Administrator, Receptionist e Operator são globais e usam as tabelas padrão do ASP.NET Core Identity.
 - A subfase 1.3 acrescenta um modelo explícito de permissões por papel: `ShopPermission` expressa ações como configurar loja, gerenciar usuários, criar OS, atualizar status e visualizar relatórios; `ShopRolePermissions.GetPermissions()` centraliza o mapeamento por role.
 - Placas são normalizadas para sete caracteres alfanuméricos em maiúsculas e únicas por tenant.
+- Telefones de clientes preservam o valor de exibição e usam `NormalizedPhone` indexado por tenant para busca exata; telefones podem ser compartilhados. O DDI brasileiro `55` é removido quando o número contém 12 ou 13 dígitos totais.
 - Chaves alternativas compostas por `(TenantId, Id)` e FKs compostas impedem que veículo ou OS aponte para cliente/veículo de outro tenant.
 - Preços e itens da OS são dependentes dos agregados; itens da OS preservam nome, preço e duração como snapshots.
 - O esquema separa os módulos nos schemas SQL `tenants`, `identity` e `yard`. Cada context mantém sua própria tabela de histórico de migrations.

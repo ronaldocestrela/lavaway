@@ -1,0 +1,29 @@
+﻿@inherits LayoutComponentBase
+<div class="app-shell">
+    <aside class="sidebar">
+        <a class="brand" href="" aria-label="Lavaway, início">
+            <span class="brand-mark">L</span>
+            <span class="brand-name">lavaway</span>
+        </a>
+        <div class="sidebar-caption">OPERAÇÃO</div>
+        <NavMenu />
+        <div class="sidebar-bottom">
+            <span class="connection-dot"></span>
+            <span>Ambiente de loja</span>
+        </div>
+    </aside>
+    <div class="workspace">
+        <header class="topbar">
+            <div class="breadcrumb"><span>Operação</span><span class="breadcrumb-slash">/</span><strong>Recepção</strong></div>
+            <AuthorizeView>
+                <Authorized Context="authState">
+                    <div class="account-chip"><span class="account-indicator"></span>@(authState.User.Identity?.Name ?? "Sessão ativa")</div>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="account-link" href="authentication/login">Entrar</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </header>
+        <main class="page-content">@Body</main>
+    </div>
+</div>

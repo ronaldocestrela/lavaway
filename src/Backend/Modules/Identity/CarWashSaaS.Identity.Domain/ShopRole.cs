@@ -23,6 +23,8 @@ public static class AuthorizationPolicyNames
     public const string Administrator = "AdministratorPolicy";
     public const string Receptionist = "ReceptionistPolicy";
     public const string Operator = "OperatorPolicy";
+    public const string CreateWorkOrders = "CreateWorkOrdersPolicy";
+    public const string ViewCustomers = "ViewCustomersPolicy";
 }
 
 public static class ShopRolePermissions

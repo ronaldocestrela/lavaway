@@ -32,6 +32,7 @@ public sealed class ShopRolePermissionsTests
         var permissions = ShopRolePermissions.GetPermissions(ShopRole.Operator);
 
         Assert.Contains(ShopPermission.UpdateWorkOrderStatus, permissions);
+        Assert.Contains(ShopPermission.ViewCustomers, permissions);
         Assert.DoesNotContain(ShopPermission.ManageUsers, permissions);
         Assert.DoesNotContain(ShopPermission.ConfigureStore, permissions);
     }

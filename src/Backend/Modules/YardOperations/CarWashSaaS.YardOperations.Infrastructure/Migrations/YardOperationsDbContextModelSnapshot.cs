@@ -22,6 +22,36 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("CarWashSaaS.YardOperations.Domain.CommissionRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Percentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("ServiceName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "ServiceName", "RoleName")
+                        .IsUnique();
+
+                    b.ToTable("CommissionRules", "yard");
+                });
+
             modelBuilder.Entity("CarWashSaaS.YardOperations.Domain.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -31,6 +61,11 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NormalizedPhone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<string>("Phone")
                         .IsRequired()
@@ -42,7 +77,7 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Phone");
+                    b.HasIndex("TenantId", "NormalizedPhone");
 
                     b.ToTable("Customers", "yard");
                 });
@@ -70,6 +105,40 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                     b.HasAlternateKey("TenantId", "Id");
 
                     b.ToTable("Services", "yard");
+                });
+
+            modelBuilder.Entity("CarWashSaaS.YardOperations.Domain.TeamMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Email")
+                        .IsUnique();
+
+                    b.ToTable("TeamMembers", "yard");
                 });
 
             modelBuilder.Entity("CarWashSaaS.YardOperations.Domain.Vehicle", b =>
@@ -137,6 +206,29 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                     b.HasIndex("TenantId", "VehicleId");
 
                     b.ToTable("WorkOrders", "yard");
+                });
+
+            modelBuilder.Entity("CarWashSaaS.YardOperations.Domain.YardCapacity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("TotalBoxes")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    b.ToTable("YardCapacities", "yard");
                 });
 
             modelBuilder.Entity("CarWashSaaS.YardOperations.Domain.Service", b =>

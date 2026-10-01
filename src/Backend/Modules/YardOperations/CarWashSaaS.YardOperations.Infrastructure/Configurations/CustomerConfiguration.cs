@@ -14,7 +14,8 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(customer => customer.TenantId).IsRequired();
         builder.Property(customer => customer.Name).HasMaxLength(200).IsRequired();
         builder.Property(customer => customer.Phone).HasMaxLength(32).IsRequired();
+        builder.Property(customer => customer.NormalizedPhone).HasMaxLength(32).IsRequired();
         builder.HasAlternateKey(customer => new { customer.TenantId, customer.Id });
-        builder.HasIndex(customer => new { customer.TenantId, customer.Phone });
+        builder.HasIndex(customer => new { customer.TenantId, customer.NormalizedPhone });
     }
 }

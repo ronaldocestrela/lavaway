@@ -132,6 +132,8 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 - [ ] Reutilizar dados encontrados no fluxo de recepção sem duplicar cadastros.
 - [ ] **Entrega:** recepção localiza rapidamente um cliente/veículo existente ou inicia um cadastro.
 
+> Implementação disponível em backend e Blazor WebAssembly: busca tenant-scoped por placa/telefone, cadastro atômico cliente+veículo, inclusão de veículo e seleção para OS futura. Os testes unitários, os testes SQL Server/Testcontainers específicos de 3.1 e o build da solution passaram. A suite completa executou 76 testes: 74 passaram e 2 falharam em fluxos preexistentes de WhatsApp e StoreProfile; o smoke test autenticado ainda depende da configuração do gateway OIDC/JWT. Foram geradas migrations para completar o modelo atual de StoreProfile e persistência de equipe/capacidade. A subfase permanece aberta até o smoke autenticado e os gates globais serem resolvidos. Detalhes em `docs/living-docs/cadastro-clientes-veiculos-3.1.md`.
+
 ### 3.2 Abertura da ordem de serviço
 
 - [ ] Selecionar serviços e porte do veículo durante o check-in.

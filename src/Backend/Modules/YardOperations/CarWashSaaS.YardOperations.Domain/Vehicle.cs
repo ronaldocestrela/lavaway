@@ -29,6 +29,11 @@ public sealed class Vehicle : IMustHaveTenant
     public string Plate { get; private set; } = string.Empty;
     public VehicleSize Size { get; private set; }
 
+    public static string NormalizePlate(string? plate) => new((plate ?? string.Empty)
+        .Where(char.IsAsciiLetterOrDigit)
+        .Select(char.ToUpperInvariant)
+        .ToArray());
+
     public static Result<Vehicle> Create(Guid tenantId, Guid customerId, string plate, VehicleSize size)
     {
         if (tenantId == Guid.Empty || customerId == Guid.Empty)
@@ -41,10 +46,7 @@ public sealed class Vehicle : IMustHaveTenant
             return Result<Vehicle>.Failure(new Error("vehicle.size.invalid", "Vehicle size is invalid.", ErrorType.Validation));
         }
 
-        var normalizedPlate = new string((plate ?? string.Empty)
-            .Where(char.IsAsciiLetterOrDigit)
-            .Select(char.ToUpperInvariant)
-            .ToArray());
+        var normalizedPlate = NormalizePlate(plate);
 
         if (normalizedPlate.Length != 7)
         {

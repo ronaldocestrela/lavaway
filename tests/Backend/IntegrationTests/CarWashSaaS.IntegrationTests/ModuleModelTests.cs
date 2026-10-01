@@ -129,6 +129,7 @@ public sealed class ModuleModelTests
 
         using var context = new YardOperationsDbContext(options, new CurrentTenantAccessor());
         var vehicle = context.Model.FindEntityType(typeof(Vehicle))!;
+        var customer = context.Model.FindEntityType(typeof(Customer))!;
         var workOrder = context.Model.FindEntityType(typeof(WorkOrder))!;
 
         Assert.Equal("yard", vehicle.GetSchema());
@@ -136,6 +137,8 @@ public sealed class ModuleModelTests
             index.Properties.Select(property => property.Name).SequenceEqual([nameof(Vehicle.TenantId), nameof(Vehicle.Plate)]));
         Assert.Contains(vehicle.GetForeignKeys(), foreignKey =>
             foreignKey.Properties.Select(property => property.Name).SequenceEqual([nameof(Vehicle.TenantId), nameof(Vehicle.CustomerId)]));
+        Assert.Contains(customer.GetIndexes(), index => !index.IsUnique &&
+            index.Properties.Select(property => property.Name).SequenceEqual([nameof(Customer.TenantId), nameof(Customer.NormalizedPhone)]));
         Assert.Contains(workOrder.GetForeignKeys(), foreignKey =>
             foreignKey.Properties.Select(property => property.Name).SequenceEqual([nameof(WorkOrder.TenantId), nameof(WorkOrder.VehicleId)]));
         Assert.Contains(context.Model.GetEntityTypes(), entityType => entityType.ClrType == typeof(ServicePrice));

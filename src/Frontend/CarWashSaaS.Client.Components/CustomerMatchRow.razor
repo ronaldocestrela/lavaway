@@ -1,0 +1,29 @@
+<button type="button"
+        class="customer-match @(SelectedCustomerId == Match.CustomerId ? "selected" : string.Empty)"
+        @onclick="() => OnSelect.InvokeAsync(Match.CustomerId)">
+    <span class="customer-initial">@Initial</span>
+    <span class="customer-copy">
+        <strong>@Match.CustomerName</strong>
+        <span>@Match.Phone</span>
+    </span>
+    <span class="vehicle-summary">
+        <strong>@Match.Vehicles.Count.ToString("00")</strong>
+        <span>@(Match.Vehicles.Count == 1 ? "veículo" : "veículos")</span>
+    </span>
+    <span class="row-chevron" aria-hidden="true">›</span>
+</button>
+
+@code {
+    [Parameter, EditorRequired]
+    public CustomerVehicleMatchDto Match { get; set; } = default!;
+
+    [Parameter]
+    public Guid? SelectedCustomerId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnSelect { get; set; }
+
+    private string Initial => string.IsNullOrWhiteSpace(Match.CustomerName)
+        ? "?"
+        : Match.CustomerName.Trim()[0].ToString().ToUpperInvariant();
+}
