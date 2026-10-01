@@ -1,6 +1,7 @@
 using CarWashSaaS.Identity.Infrastructure;
 using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Tenants.Infrastructure;
+using CarWashSaaS.WhatsApp.Infrastructure;
 using CarWashSaaS.YardOperations.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.MsSql;
@@ -40,6 +41,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
         await using var yardOperations = new YardOperationsDbContext(CreateYardOperationsOptions(), new CurrentTenantAccessor());
         await yardOperations.Database.MigrateAsync();
+
+        await using var whatsApp = new WhatsAppDbContext(CreateWhatsAppOptions(), new CurrentTenantAccessor());
+        await whatsApp.Database.EnsureCreatedAsync();
     }
 
     public DbContextOptions<TenantsDbContext> CreateTenantsOptions() =>
@@ -55,6 +59,11 @@ public sealed class SqlServerFixture : IAsyncLifetime
     public DbContextOptions<YardOperationsDbContext> CreateYardOperationsOptions() =>
         new DbContextOptionsBuilder<YardOperationsDbContext>()
             .UseSqlServer(_container!.GetConnectionString(), sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "yard"))
+            .Options;
+
+    public DbContextOptions<WhatsAppDbContext> CreateWhatsAppOptions() =>
+        new DbContextOptionsBuilder<WhatsAppDbContext>()
+            .UseSqlServer(_container!.GetConnectionString(), sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "whatsapp"))
             .Options;
 
     public Task DisposeAsync() => _container is null ? Task.CompletedTask : _container.DisposeAsync().AsTask();

@@ -1,0 +1,37 @@
+# ADR-0003: Integração do WhatsApp via Evolution API
+
+- **Status:** Aceita para a entrega de pareamento do WhatsApp
+- **Data:** 2026-10-01
+
+## Contexto
+
+A subfase 2.5 define o pareamento do WhatsApp para cada tenant, com geração de QR Code e criação de sessão por estabelecimento. O sistema precisa manter a separação de regras de negócio, o contrato de provider e o isolamento de tenant já estabelecidos na arquitetura.
+
+A solução inicial usava um provedor estático para manter a API funcional. Isso validou o fluxo do domínio e da aplicação, mas não atendia ao requisito de integração real com um provedor de WhatsApp em produção.
+
+## Decisão
+
+- O pareamento do WhatsApp será orquestrado pela camada de aplicação através da interface `IWhatsAppPairingProvider`.
+- A implementação concreta ficará em infraestrutura, isolando a dependência de um provedor externo do domínio.
+- O provedor adotado será a Evolution API, com a configuração centralizada em `WhatsApp:EvolutionApi`.
+- Para cada tenant, o provedor usa um identificador de sessão no formato `prefixo-tenantId` para manter a sessão única e rastreável.
+- O QR Code e o estado da sessão são obtidos em tempo de execução pelo cliente HTTP do provedor, sem acoplamento às entidades de domínio.
+- A API do backend continua configurando a implementação via DI, mantendo a injeção de dependência e o contrato do módulo.
+- Atualizações de conexão chegam pelo endpoint anônimo `POST /whatsapp/webhooks/evolution`, protegido por segredo compartilhado em `X-Webhook-Secret`.
+- O tenant do callback é resolvido do nome da instância, nunca de um campo de tenant enviado no payload. O caso de uso valida que o evento pertence à sessão atual antes de atualizar o estado.
+
+## Consequências e controles
+
+- O domínio permanece livre de dependências com HTTP, vendor SDK e detalhes do provedor de WhatsApp.
+- O fluxo de aplicação continua retornando `Result<T>` e preserva a regra de multi-tenant.
+- Eventos atrasados de uma sessão anterior são reconhecidos e confirmados sem modificar a conexão atual, evitando retentativas desnecessárias do provider.
+- O segredo do webhook é uma configuração obrigatória para ativar o endpoint e deve ser fornecido pelo ambiente, nunca com valor padrão compartilhado.
+- O provedor externo pode evoluir independentemente, desde que continue respeitando o contrato de `GeneratePairingAsync`.
+- Qualquer falha de comunicação com a Evolution API deve produzir comportamento controlado e não quebrar a pipeline de negócio.
+- Os testes automatizados devem continuar cobrindo o contrato do provedor, a lógica da aplicação e a proteção de tenant.
+
+## Alternativas consideradas
+
+- **Manter o provider estático em produção:** rejeitado porque não atende ao requisito real de pareamento do WhatsApp e deixa o sistema sem integração externa.
+- **Acoplar a chamada Evolution API diretamente no serviço de aplicação:** rejeitado porque viola a separação de camadas e dificulta testes e troca de provedor.
+- **Usar uma SDK de terceiros diretamente na API:** rejeitado por aumentar o acoplamento e impedir a troca de provedor sem mexer no domínio.

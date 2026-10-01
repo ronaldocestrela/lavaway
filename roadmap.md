@@ -114,9 +114,11 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 2.5 Pareamento do WhatsApp
 
-- [ ] Integrar a geração/exibição de QR Code dinâmico da instância do estabelecimento.
-- [ ] Exibir e atualizar os estados `connected`, `connecting` e `disconnected`.
-- [ ] **Entrega:** gestor consegue parear a instância e identificar seu estado atual.
+- [x] Integrar a geração/exibição de QR Code dinâmico da instância do estabelecimento.
+- [x] Exibir e atualizar os estados `connected`, `connecting` e `disconnected`.
+- [x] **Entrega:** gestor consegue parear a instância e identificar seu estado atual.
+
+> Estado concluído: o módulo WhatsApp já conta com pareamento via Evolution API, persistência segura por tenant, endpoints de status/pareamento e webhook `CONNECTION_UPDATE` autenticado por segredo compartilhado. Eventos da sessão atual atualizam o estado; eventos atrasados ou de outra sessão não alteram os dados. A configuração do callback na Evolution API é por ambiente e está descrita em `docs/living-docs/pareamento-whatsapp-2.5.md`.
 
 ---
 
