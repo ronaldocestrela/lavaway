@@ -85,6 +85,24 @@ erDiagram
 
 Esta migration estabelece colunas, índices e relações tenant-scoped, mas **não conclui o isolamento de consultas**. Antes de expor operações de dados, a subfase 1.2 deve aplicar Global Query Filters e validar/injetar `TenantId` nas gravações. A estratégia e a resolução do tenant em autenticação estão registradas em [ADR-0001](../architecture/ADR-0001-isolamento-tenant-ef-core.md). SQL Server Row-Level Security fica fora da primeira entrega.
 
+### Resolução e ciclo de request
+
+O gateway de autenticação emite um JWT assinado com exatamente um claim `tenant_id` contendo um UUID não vazio. A API valida assinatura, emissor, audience e expiração antes de disponibilizar o tenant no accessor scoped. Headers e valores enviados pelo cliente não podem substituir esse claim.
+
+```mermaid
+flowchart LR
+    G[Gateway de autenticação] -->|JWT assinado com tenant_id| A[API valida issuer, audience, assinatura e validade]
+    A -->|claim ausente, inválida ou ambígua| D[403 Forbidden]
+    A -->|tenant válido| C[ICurrentTenantAccessor scoped]
+    C --> Q[Filtros globais de leitura]
+    C --> W[Validação/injeção em SaveChanges]
+    W -->|sem tenant ou tenant incompatível| R[Gravação rejeitada]
+```
+
+`Authentication:Authority` e `Authentication:Audience` devem ser configurados por ambiente; a API falha na inicialização se estiverem ausentes. Entidades novas recebem o tenant corrente quando o identificador estiver vazio. Entidades alteradas ou removidas com tenant divergente são rejeitadas. `Tenants` e roles globais do Identity permanecem fora dos filtros; owned types são protegidos pelo filtro do agregado proprietário.
+
+Os testes de integração aplicam as migrations em um SQL Server efêmero e verificam que Tenant B não consulta nem altera registros de Tenant A, inclusive usuários do Identity. Nenhuma migration adicional é necessária para essa camada de isolamento.
+
 ## Aplicação local
 
 Defina a variável `ConnectionStrings__CarWashSaaS` com a connection string do SQL Server local e aplique cada contexto:

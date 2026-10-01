@@ -15,6 +15,6 @@ public sealed class IdentityDesignTimeDbContextFactory : IDesignTimeDbContextFac
             .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "identity"))
             .Options;
 
-        return new IdentityModuleDbContext(options);
+        return new IdentityModuleDbContext(options, new CurrentTenantAccessor());
     }
 }

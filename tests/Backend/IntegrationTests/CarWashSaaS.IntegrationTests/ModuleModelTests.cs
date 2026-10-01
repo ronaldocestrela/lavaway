@@ -1,4 +1,6 @@
 using CarWashSaaS.Identity.Infrastructure;
+using CarWashSaaS.Shared.Configuration;
+using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Tenants.Domain;
 using CarWashSaaS.Tenants.Infrastructure;
 using CarWashSaaS.YardOperations.Domain;
@@ -9,6 +11,84 @@ namespace CarWashSaaS.IntegrationTests;
 
 public sealed class ModuleModelTests
 {
+    [Fact]
+    public void TenantOwnedEntities_ShouldHaveGlobalQueryFilters()
+    {
+        var options = new DbContextOptionsBuilder<YardOperationsDbContext>()
+            .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
+            .Options;
+
+        using var context = new YardOperationsDbContext(options, new CurrentTenantAccessor());
+        var tenantOwnedEntities = context.Model.GetEntityTypes()
+            .Where(entityType => !entityType.IsOwned() && typeof(IMustHaveTenant).IsAssignableFrom(entityType.ClrType));
+
+        Assert.NotEmpty(tenantOwnedEntities);
+        Assert.All(tenantOwnedEntities, entityType => Assert.NotEmpty(entityType.GetDeclaredQueryFilters()));
+    }
+
+    [Fact]
+    public void IdentityContext_ShouldFilterUsersButKeepRolesGlobal()
+    {
+        var options = new DbContextOptionsBuilder<IdentityModuleDbContext>()
+            .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
+            .Options;
+
+        using var context = new IdentityModuleDbContext(options, new CurrentTenantAccessor());
+        var user = context.Model.FindEntityType(typeof(ApplicationUser))!;
+        var role = context.Model.FindEntityType(typeof(Microsoft.AspNetCore.Identity.IdentityRole<Guid>))!;
+
+        Assert.NotEmpty(user.GetDeclaredQueryFilters());
+        Assert.Empty(role.GetDeclaredQueryFilters());
+    }
+
+    [Fact]
+    public void SaveChanges_ShouldRejectTenantMismatchBeforeDatabaseAccess()
+    {
+        var currentTenantId = Guid.NewGuid();
+        var accessor = new CurrentTenantAccessor();
+        accessor.SetTenant(currentTenantId);
+        var options = new DbContextOptionsBuilder<YardOperationsDbContext>()
+            .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
+            .Options;
+
+        using var context = new YardOperationsDbContext(options, accessor);
+        context.Customers.Add(Customer.Create(Guid.NewGuid(), "Cross tenant", "555-0100").Value!);
+
+        Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
+    }
+
+    [Fact]
+    public void SaveChanges_ShouldRejectTenantOwnedWritesWhenTenantIsUnresolved()
+    {
+        var options = new DbContextOptionsBuilder<YardOperationsDbContext>()
+            .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
+            .Options;
+
+        using var context = new YardOperationsDbContext(options, new CurrentTenantAccessor());
+        context.Customers.Add(Customer.Create(Guid.NewGuid(), "Unresolved tenant", "555-0102").Value!);
+
+        Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
+    }
+
+    [Fact]
+    public void AddedTenantOwnedEntity_ShouldInheritCurrentTenantWhenTenantIsUnset()
+    {
+        var currentTenantId = Guid.NewGuid();
+        var accessor = new CurrentTenantAccessor();
+        accessor.SetTenant(currentTenantId);
+        var options = new DbContextOptionsBuilder<IdentityModuleDbContext>()
+            .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
+            .Options;
+
+        using var context = new IdentityModuleDbContext(options, accessor);
+        var user = new ApplicationUser { UserName = "new-user", TenantId = Guid.Empty };
+        context.Users.Add(user);
+
+        context.ChangeTracker.ValidateTenantWrites(accessor);
+
+        Assert.Equal(currentTenantId, user.TenantId);
+    }
+
     [Fact]
     public void TenantsContext_ShouldMapTenantToTenantsSchema()
     {
@@ -31,7 +111,7 @@ public sealed class ModuleModelTests
             .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
             .Options;
 
-        using var context = new IdentityModuleDbContext(options);
+        using var context = new IdentityModuleDbContext(options, new CurrentTenantAccessor());
         var user = context.Model.FindEntityType(typeof(ApplicationUser))!;
 
         Assert.Equal("identity", context.Model.GetDefaultSchema());
@@ -47,7 +127,7 @@ public sealed class ModuleModelTests
             .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
             .Options;
 
-        using var context = new YardOperationsDbContext(options);
+        using var context = new YardOperationsDbContext(options, new CurrentTenantAccessor());
         var vehicle = context.Model.FindEntityType(typeof(Vehicle))!;
         var workOrder = context.Model.FindEntityType(typeof(WorkOrder))!;
 

@@ -15,6 +15,6 @@ public sealed class YardOperationsDesignTimeDbContextFactory : IDesignTimeDbCont
             .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "yard"))
             .Options;
 
-        return new YardOperationsDbContext(options);
+        return new YardOperationsDbContext(options, new CurrentTenantAccessor());
     }
 }

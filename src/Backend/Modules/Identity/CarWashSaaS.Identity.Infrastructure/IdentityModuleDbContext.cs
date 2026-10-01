@@ -2,12 +2,18 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using CarWashSaaS.Identity.Domain;
+using CarWashSaaS.Shared.Configuration;
+using CarWashSaaS.Shared.Contracts;
 
 namespace CarWashSaaS.Identity.Infrastructure;
 
-public sealed class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbContext> options)
+public sealed class IdentityModuleDbContext(
+    DbContextOptions<IdentityModuleDbContext> options,
+    ICurrentTenantAccessor currentTenantAccessor)
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
+    public Guid? TenantId => currentTenantAccessor.TenantId;
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.HasDefaultSchema("identity");
@@ -41,5 +47,19 @@ public sealed class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbCon
                 NormalizedName = ShopRole.Operator.ToString().ToUpperInvariant(),
                 ConcurrencyStamp = "b4f6a998-8bf9-4f27-9ed0-a3e82c62b503"
             });
+
+        builder.ApplyTenantQueryFilters(this);
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ChangeTracker.ValidateTenantWrites(currentTenantAccessor);
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ChangeTracker.ValidateTenantWrites(currentTenantAccessor);
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 }

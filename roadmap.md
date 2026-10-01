@@ -34,10 +34,12 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 1.2 Isolamento multi-tenant
 
-- [ ] Implementar resolução do tenant no pipeline e disponibilizar o contexto atual à aplicação.
-- [ ] Aplicar filtros globais de consulta e atribuição/validação obrigatória do tenant na gravação.
-- [ ] Cobrir leitura e gravação cruzada com testes: dados do Tenant A não podem ser consultados nem alterados pelo Tenant B.
-- [ ] **Entrega:** testes de isolamento aprovados para consultas e comandos.
+- [x] Implementar resolução do tenant no pipeline e disponibilizar o contexto atual à aplicação por claim `tenant_id` validada no JWT do gateway.
+- [x] Aplicar filtros globais de consulta e atribuição/validação obrigatória do tenant na gravação.
+- [x] Cobrir leitura e gravação cruzada com testes em SQL Server: dados do Tenant A não podem ser consultados nem alterados pelo Tenant B.
+- [x] **Entrega:** testes de isolamento aprovados para consultas e comandos.
+
+`Authentication:Authority` e `Authentication:Audience` são obrigatórios na configuração da API. Headers e outros identificadores enviados pelo cliente não definem o tenant; sem claim válida a request é negada. Os testes usam SQL Server efêmero via Testcontainers.
 
 ### 1.3 Identidade, sessão e permissões
 
