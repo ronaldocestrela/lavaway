@@ -96,7 +96,7 @@ public sealed class ModuleModelTests
             .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
             .Options;
 
-        using var context = new TenantsDbContext(options);
+        using var context = new TenantsDbContext(options, new CurrentTenantAccessor());
         var tenant = context.Model.FindEntityType(typeof(Tenant))!;
 
         Assert.Equal("Tenants", tenant.GetTableName());

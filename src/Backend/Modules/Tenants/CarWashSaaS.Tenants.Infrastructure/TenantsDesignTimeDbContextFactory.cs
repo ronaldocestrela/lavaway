@@ -15,6 +15,6 @@ public sealed class TenantsDesignTimeDbContextFactory : IDesignTimeDbContextFact
             .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants"))
             .Options;
 
-        return new TenantsDbContext(options);
+        return new TenantsDbContext(options, new CurrentTenantAccessor());
     }
 }

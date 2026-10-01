@@ -82,9 +82,11 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 2.1 Cadastro e perfil do estabelecimento
 
-- [ ] Implementar o fluxo guiado para Razão Social, Nome Fantasia, CNPJ, telefone e endereço.
-- [ ] Validar campos obrigatórios e permitir salvar/retomar o cadastro.
-- [ ] **Entrega:** estabelecimento pode concluir e consultar seus dados cadastrais.
+- [x] Implementar o fluxo guiado para Razão Social, Nome Fantasia, CNPJ, telefone e endereço.
+- [x] Validar campos obrigatórios e permitir salvar/retomar o cadastro.
+- [x] **Entrega:** estabelecimento pode concluir, consultar e atualizar seus dados cadastrais.
+
+> Implementação concluída no backend: o módulo de tenants inclui o agregado `StoreProfile` com validação de negócio, `TenantId`, isolamento multi-tenant, mapeamento no `TenantsDbContext`, repositório persistente, endpoints autenticados e política de administrador. O fluxo foi coberto por testes unitários e de integração, incluindo proteção de Tenant B contra leitura do perfil de Tenant A.
 
 ### 2.2 Identidade visual
 

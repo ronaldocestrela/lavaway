@@ -71,7 +71,7 @@ public sealed class TenantIsolationIntegrationTests(SqlServerFixture fixture)
 
     private async Task<Guid> CreateTenantAsync(string name)
     {
-        await using var context = new CarWashSaaS.Tenants.Infrastructure.TenantsDbContext(fixture.CreateTenantsOptions());
+        await using var context = new CarWashSaaS.Tenants.Infrastructure.TenantsDbContext(fixture.CreateTenantsOptions(), new CurrentTenantAccessor());
         var tenant = Tenant.Create(name).Value!;
         context.Tenants.Add(tenant);
         await context.SaveChangesAsync();

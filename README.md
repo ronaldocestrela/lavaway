@@ -89,4 +89,5 @@ Os testes de integração atuais validam os metadados dos modelos EF sem exigir 
 - [Roadmap de implementação](roadmap.md)
 - [Diretrizes de arquitetura e desenvolvimento](agents.md)
 - [Modelo de domínio e dados da fase 1.1](docs/living-docs/modelo-dominio-dados-1.1.md)
+- [Cadastro e perfil do estabelecimento — fase 2.1](docs/living-docs/cadastro-perfil-estabelecimento-2.1.md)
 - [ADR-0001: isolamento de tenant com EF Core](docs/architecture/ADR-0001-isolamento-tenant-ef-core.md)

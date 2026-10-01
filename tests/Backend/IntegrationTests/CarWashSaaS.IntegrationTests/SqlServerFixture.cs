@@ -32,7 +32,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
             return;
         }
 
-        await using var tenants = new TenantsDbContext(CreateTenantsOptions());
+        await using var tenants = new TenantsDbContext(CreateTenantsOptions(), new CurrentTenantAccessor());
         await tenants.Database.MigrateAsync();
 
         await using var identity = new IdentityModuleDbContext(CreateIdentityOptions(), new CurrentTenantAccessor());

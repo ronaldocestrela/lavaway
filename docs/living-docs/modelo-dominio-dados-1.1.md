@@ -5,6 +5,7 @@ Este documento descreve o esquema inicial criado para Tenants, Identity e YardOp
 ```mermaid
 erDiagram
     Tenant ||..o{ ApplicationUser : "TenantId lógico"
+    Tenant ||..o{ StoreProfile : "perfil do estabelecimento"
     ApplicationUser }o--o{ IdentityRole : "Identity user-role"
     Customer ||--o{ Vehicle : "TenantId + CustomerId"
     Service ||--|{ ServicePrice : "preços por porte"
@@ -16,6 +17,18 @@ erDiagram
         guid Id PK
         string Name
         datetimeoffset CreatedAtUtc
+    }
+    StoreProfile {
+        guid Id PK
+        guid TenantId
+        string LegalName
+        string TradeName
+        string Cnpj
+        string Phone
+        string Street
+        string City
+        string State
+        string PostalCode
     }
     ApplicationUser {
         guid Id PK

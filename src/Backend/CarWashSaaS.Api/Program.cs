@@ -3,6 +3,7 @@ using CarWashSaaS.Identity.Infrastructure;
 using CarWashSaaS.Api.Middleware;
 using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Shared.Contracts;
+using CarWashSaaS.Tenants.Application;
 using CarWashSaaS.Tenants.Infrastructure;
 using CarWashSaaS.YardOperations.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -27,6 +28,8 @@ if (string.IsNullOrWhiteSpace(authority) || string.IsNullOrWhiteSpace(audience))
 
 builder.Services.AddScoped<CurrentTenantAccessor>();
 builder.Services.AddScoped<ICurrentTenantAccessor>(services => services.GetRequiredService<CurrentTenantAccessor>());
+builder.Services.AddScoped<IStoreProfileRepository, StoreProfileRepository>();
+builder.Services.AddScoped<StoreProfileApplicationService>();
 builder.Services.AddSingleton<IBackgroundQueue, InMemoryBackgroundQueue>();
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));
@@ -81,6 +84,55 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseMiddleware<TenantResolverMiddleware>();
 app.UseAuthorization();
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+
+app.MapGet("/tenants/profile", async (ICurrentTenantAccessor currentTenantAccessor, StoreProfileApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.GetAsync(tenantId);
+    return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+    {
+        ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization();
+
+app.MapPost("/tenants/profile", async (CreateStoreProfileCommand command, ICurrentTenantAccessor currentTenantAccessor, StoreProfileApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.CreateAsync(tenantId, command);
+    return result.IsSuccess ? Results.Created($"/tenants/profile", result.Value) : result.Error!.Type switch
+    {
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+app.MapPut("/tenants/profile", async (UpdateStoreProfileCommand command, ICurrentTenantAccessor currentTenantAccessor, StoreProfileApplicationService service) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var result = await service.UpdateAsync(tenantId, command);
+    return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+    {
+        ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
 app.Run();
