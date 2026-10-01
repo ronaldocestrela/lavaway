@@ -82,7 +82,32 @@ erDiagram
 - Preços e itens da OS são dependentes dos agregados; itens da OS preservam nome, preço e duração como snapshots.
 - O esquema separa os módulos nos schemas SQL `tenants`, `identity` e `yard`. Cada context mantém sua própria tabela de histórico de migrations.
 
-## Isolamento
+## Qualidade e arquitetura da solução (subfase 1.5)
+
+A subfase 1.5 formaliza a governança da base já validada. O objetivo é garantir que a arquitetura permaneça estável mesmo após o crescimento dos módulos e das integrações.
+
+```mermaid
+flowchart TD
+    API[API / Program.cs] --> TENANT[TenantResolverMiddleware + ICurrentTenantAccessor]
+    TENANT --> FILTERS[Filtros globais e validação de escrita]
+    FILTERS --> DOMAIN[Domain / Application]
+    DOMAIN --> CONTRACTS[Shared.Contracts / Result<T>]
+    DOMAIN --> INFRA[Infrastructure / EF Core / Storage / Queue]
+    INFRA --> TESTS[Testes de integração + arquitetura]
+    TESTS --> DOCS[ADR + documentação viva]
+    DOCS --> GATE[Gate de qualidade para próximo incremento]
+```
+
+### Guardas da subfase
+
+- `Domain` e `Application` continuam livres de dependência direta com `DbContext`, HTTP, front-end e infraestrutura externa.
+- `Infrastructure` implementa as interfaces de repositórios, fila e persitência usando os contratos da shared layer.
+- `Result<T>` e `Error` permanecem como forma obrigatória de retorno para validações e regras de negócio.
+- `TenantId` é obrigatório para entidades operacionais; a gravação é invalidada quando a entidade não possui tenant ou o tenant diverge do escopo atual.
+- Autenticação e autorização continuam sendo tratadas no pipeline, com `Authentication:Authority` e `Authentication:Audience` obrigatórios na inicialização.
+- Testes de integração devem confirmar que Tenant B não lê nem altera dados de Tenant A; documentação e código devem refletir esse comportamento.
+
+### Isolamento
 
 A base de isolamento foi concluída no código: a solução aplica filtros globais e validação de gravação em `TenantIsolationExtensions`, além de resolver o tenant via middleware e accessor scoped. A estratégia e a resolução em autenticação continuam registradas em [ADR-0001](../architecture/ADR-0001-isolamento-tenant-ef-core.md). SQL Server Row-Level Security continua fora da primeira entrega, mas a camada funcional e a API já respeitam a regra de tenant por request.
 

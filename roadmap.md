@@ -65,9 +65,14 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 1.5 Qualidade e arquitetura da solução
 
-- [ ] Criar a estrutura de módulos, contratos compartilhados e projetos de testes prevista nas diretrizes do repositório.
-- [ ] Adicionar testes de arquitetura para dependências entre camadas e módulos, além do pipeline básico de build/teste.
-- [ ] **Entrega:** solução compila e os testes arquiteturais iniciais passam.
+- [x] Validar a base de arquitetura atual: módulos, contratos compartilhados, DI e middleware de tenant já estão alinhados com o projeto.
+- [x] Confirmar a aplicação do padrão `Result<T>` e a resolução do `tenant_id` no pipeline HTTP, com filtros globais e validação de gravação em `SaveChangesAsync`.
+- [x] Registrar a decisão de isolamento em ADR e manter a documentação viva atualizada com o estado do modelo e do ciclo de autenticação.
+- [x] Implementar suíte inicial de arquitetura (`NetArchTest`) para validar dependências entre camadas e políticas de módulo.
+- [x] Consolidar o pipeline de build/test da solução com verificação automatizada de multi-tenancy e qualidade do código.
+- [x] **Entrega:** a solução compila, a base arquitetural está coberta por testes e a documentação registra o estado real do projeto.
+
+> Estado verificado: a suíte de arquitetura e os testes de integração da base multi-tenant já estão verdes, e o build da solução confirma que a entrega está estável para avançar para a Fase 2.
 
 ---
 
