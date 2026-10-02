@@ -1,5 +1,5 @@
-using CarWashSaaS.Tenants.Application;
 using CarWashSaaS.Shared.Configuration;
+using CarWashSaaS.Tenants.Application;
 using Minio;
 using Minio.DataModel.Args;
 using Minio.Exceptions;

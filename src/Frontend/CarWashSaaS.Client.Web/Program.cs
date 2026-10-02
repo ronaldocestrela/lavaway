@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using CarWashSaaS.Client.Core;
 using CarWashSaaS.Client.Web;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -23,25 +23,25 @@ builder.Services.AddScoped<JwtAuthorizationMessageHandler>();
 
 builder.Services.AddScoped(sp =>
 {
-	var handler = sp.GetRequiredService<JwtAuthorizationMessageHandler>();
-	handler.InnerHandler = new HttpClientHandler();
-	return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+    var handler = sp.GetRequiredService<JwtAuthorizationMessageHandler>();
+    handler.InnerHandler = new HttpClientHandler();
+    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
 });
 
 builder.Services.AddScoped<AuthApiClient>();
 
 if (!string.IsNullOrWhiteSpace(authority) && builder.Configuration.GetValue<bool>("Authentication:UseOidc"))
 {
-	builder.Services.AddOidcAuthentication(options =>
-	{
-		builder.Configuration.Bind("Authentication", options.ProviderOptions);
-		options.ProviderOptions.ResponseType = "code";
-		var apiScope = builder.Configuration["Authentication:ApiScope"];
-		if (!string.IsNullOrWhiteSpace(apiScope))
-		{
-			options.ProviderOptions.DefaultScopes.Add(apiScope);
-		}
-	});
+    builder.Services.AddOidcAuthentication(options =>
+    {
+        builder.Configuration.Bind("Authentication", options.ProviderOptions);
+        options.ProviderOptions.ResponseType = "code";
+        var apiScope = builder.Configuration["Authentication:ApiScope"];
+        if (!string.IsNullOrWhiteSpace(apiScope))
+        {
+            options.ProviderOptions.DefaultScopes.Add(apiScope);
+        }
+    });
 }
 
 await builder.Build().RunAsync();

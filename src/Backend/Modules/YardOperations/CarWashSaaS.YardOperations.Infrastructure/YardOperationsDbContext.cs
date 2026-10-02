@@ -1,6 +1,6 @@
-using CarWashSaaS.YardOperations.Domain;
 using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Shared.Contracts;
+using CarWashSaaS.YardOperations.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarWashSaaS.YardOperations.Infrastructure;

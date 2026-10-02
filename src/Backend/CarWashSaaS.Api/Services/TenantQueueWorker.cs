@@ -1,5 +1,5 @@
-using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Shared.Configuration;
+using CarWashSaaS.Shared.Contracts;
 
 namespace CarWashSaaS.Api.Services;
 

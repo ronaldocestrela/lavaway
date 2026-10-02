@@ -1,4 +1,4 @@
-﻿namespace CarWashSaaS.Client.Core;
+namespace CarWashSaaS.Client.Core;
 
 public class Class1
 {

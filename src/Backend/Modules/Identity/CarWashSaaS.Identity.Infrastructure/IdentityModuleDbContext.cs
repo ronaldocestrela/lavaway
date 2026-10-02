@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Shared.Contracts;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace CarWashSaaS.Identity.Infrastructure;
 

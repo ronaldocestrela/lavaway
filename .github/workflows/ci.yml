@@ -1,0 +1,36 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Build, Format Check & Quality Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore CarWashSaaS.sln
+
+      - name: Verify code formatting
+        run: dotnet format --verify-no-changes --verbosity normal
+
+      - name: Build solution
+        run: dotnet build CarWashSaaS.sln -c Release --no-restore
+
+      - name: Run Architecture Tests (NetArchTest)
+        run: dotnet test tests/Backend/ArchitectureTests/CarWashSaaS.ArchitectureTests/CarWashSaaS.ArchitectureTests.csproj -c Release --no-build --logger "trx;LogFileName=arch-tests.trx"
+
+      - name: Run Unit Tests (TDD Domain & Application)
+        run: dotnet test tests/Backend/UnitTests/CarWashSaaS.UnitTests/CarWashSaaS.UnitTests.csproj -c Release --no-build --logger "trx;LogFileName=unit-tests.trx"
