@@ -12,11 +12,6 @@ public sealed class WhatsAppConnectionTenantIntegrationTests(SqlServerFixture fi
     [Fact]
     public async Task CreateAndRead_ShouldBeIsolated_PerTenant()
     {
-        if (!fixture.IsAvailable)
-        {
-            return;
-        }
-
         var tenantA = Guid.NewGuid();
         var tenantB = Guid.NewGuid();
 

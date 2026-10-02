@@ -128,20 +128,23 @@ A base de isolamento foi concluída no código: a solução aplica filtros globa
 
 ### Storage e fila por tenant
 
-A subfase 1.4 introduziu os primeiros contratos de infraestrutura para arquivos e processamento assíncrono. O path de arquivos é gerado pela helper `TenantStoragePathBuilder`, que mantém o namespace sempre em `tenants/{tenantId}/...`, e a fila assíncrona usa `IBackgroundQueue` com `TenantQueueMessage` para registrar eventos com `tenantId`, `eventType` e `payload`.
+A subfase 1.4 possui um adapter MinIO para objetos privados e um adapter RabbitMQ para entregas persistentes. `TenantStoragePathBuilder` mantém o namespace de objetos em `tenants/{tenantId}/{category}/{fileName}`. A API resolve o tenant autenticado antes de gravar ou ler a logo do estabelecimento; o cliente não escolhe o prefixo do objeto.
+
+`TenantQueueMessage` contém `MessageId`, `TenantId`, `EventType` e `Payload`. A publicação usa mensagem persistente. A fila principal é quorum; o worker confirma somente após o handler terminar, aplica retentativa com backoff exponencial e envia falhas definitivas para a dead-letter queue. Cada entrega roda em um escopo próprio e define o tenant no accessor antes de localizar o handler. Handlers devem ser idempotentes porque a garantia de entrega é pelo menos uma vez. Ainda não há handlers de negócio registrados.
 
 ```mermaid
 flowchart LR
     U[Usuário/autenticação] --> T[tenant_id resolvido]
-    T --> S[Path de armazenamento por tenant]
-    T --> Q[Fila assíncrona com TenantQueueMessage]
-    S --> A[upload/download de foto/comprovante]
-    Q --> W[worker assíncrono em memória]
+    T --> S[MinIO privado por tenant]
+    T --> Q[RabbitMQ com TenantQueueMessage]
+    S --> A[upload/download via API autenticada]
+    Q --> W[worker e handler por EventType]
     A -->|sem tenant válido| E[403/404]
-    W -->|evento idempotente| P[processamento do evento]
+    W -->|ack após sucesso| P[processamento idempotente]
+    W -->|falha definitiva| D[dead-letter queue]
 ```
 
-Esse primeiro passo é infrastructural: o storage real e a fila persistente continuam como evolução para produção, mas a base de segurança e padronização já está pronta para ser ampliada.
+Os adapters estão registrados na composição da API e as configurações são fornecidas pelo ambiente. Os testes unitários e builds focados passaram. Os testes RabbitMQ/SQL Server usam Testcontainers, mas não foram executados nesta validação porque o daemon Docker não estava acessível; o fluxo real de MinIO e o consumo de um handler de negócio também seguem como gates pendentes.
 
 ### Resolução e ciclo de request
 

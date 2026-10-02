@@ -13,11 +13,6 @@ public sealed class StoreProfileTenantIntegrationTests(SqlServerFixture fixture)
     [Fact]
     public async Task CreateAndUpdate_ShouldPersistProfile_PerTenant()
     {
-        if (!fixture.IsAvailable)
-        {
-            return;
-        }
-
         var tenantA = await CreateTenantAsync("Tenant A Store");
         var tenantB = await CreateTenantAsync("Tenant B Store");
 
@@ -58,7 +53,11 @@ public sealed class StoreProfileTenantIntegrationTests(SqlServerFixture fixture)
 
         Assert.NotNull(freshProfile);
 
-        var updateResult = await tenantAService.UpdateAsync(tenantA, new UpdateStoreProfileCommand(
+        var updateTenantAAccessor = new CurrentTenantAccessor();
+        updateTenantAAccessor.SetTenant(tenantA);
+        await using var updateTenantAContext = new TenantsDbContext(fixture.CreateTenantsOptions(), updateTenantAAccessor);
+        var updateTenantAService = new StoreProfileApplicationService(new StoreProfileRepository(updateTenantAContext));
+        var updateResult = await updateTenantAService.UpdateAsync(tenantA, new UpdateStoreProfileCommand(
             "LavaWay Auto Center Atualizada Ltda",
             "LavaWay Centro Atualizado",
             "11222333000181",

@@ -14,11 +14,6 @@ public sealed class CustomerVehicleIntegrationTests(SqlServerFixture fixture)
     [Fact]
     public async Task SearchAsync_ShouldReturnSharedPhoneMatchesAndApplyPlateFilter()
     {
-        if (!fixture.IsAvailable)
-        {
-            return;
-        }
-
         var tenantId = await CreateTenantAsync("Customer search tenant");
         await using var context = CreateYardContext(tenantId);
         var service = CreateService(context);
@@ -45,11 +40,6 @@ public sealed class CustomerVehicleIntegrationTests(SqlServerFixture fixture)
     [Fact]
     public async Task TenantB_ShouldNotSearchOrAttachVehiclesToTenantACustomer()
     {
-        if (!fixture.IsAvailable)
-        {
-            return;
-        }
-
         var tenantA = await CreateTenantAsync("Customer tenant A");
         var tenantB = await CreateTenantAsync("Customer tenant B");
 

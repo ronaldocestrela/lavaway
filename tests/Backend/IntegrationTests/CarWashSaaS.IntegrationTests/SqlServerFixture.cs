@@ -11,27 +11,16 @@ namespace CarWashSaaS.IntegrationTests;
 public sealed class SqlServerFixture : IAsyncLifetime
 {
     public const string CollectionName = "SQL Server tenant isolation";
-    public bool IsAvailable { get; private set; }
 
     private MsSqlContainer? _container;
 
     public async Task InitializeAsync()
     {
-        try
-        {
-            _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
-                .WithPassword("CarWash_Test_only_123!")
-                .Build();
+        _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
+            .WithPassword("CarWash_Test_only_123!")
+            .Build();
 
-            await _container.StartAsync();
-            IsAvailable = true;
-        }
-        catch
-        {
-            IsAvailable = false;
-            _container = null;
-            return;
-        }
+        await _container.StartAsync();
 
         await using var tenants = new TenantsDbContext(CreateTenantsOptions(), new CurrentTenantAccessor());
         await tenants.Database.MigrateAsync();
@@ -43,7 +32,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
         await yardOperations.Database.MigrateAsync();
 
         await using var whatsApp = new WhatsAppDbContext(CreateWhatsAppOptions(), new CurrentTenantAccessor());
-        await whatsApp.Database.EnsureCreatedAsync();
+        await whatsApp.Database.MigrateAsync();
     }
 
     public DbContextOptions<TenantsDbContext> CreateTenantsOptions() =>

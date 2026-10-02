@@ -4,9 +4,9 @@ SaaS para gestão de lava-jatos e estética automotiva. O projeto está sendo co
 
 ## Estado atual
 
-A base da subfase 1.1 está implementada e a subfase 1.2 foi reforçada com o padrão de isolamento por tenant na API e nos contextos EF Core. O projeto já inclui suporte inicial para fila assíncrona e separação de caminhos de armazenamento por tenant, materializados em `InMemoryBackgroundQueue`, `TenantQueueMessage` e `TenantStoragePathBuilder`.
+A base das subfases 1.1 e 1.2 está implementada. A subfase 1.4 já possui storage privado MinIO com namespace por tenant, fila persistente RabbitMQ e um worker genérico; ainda faltam execução dos testes com os serviços reais e handlers de negócio.
 
-A API expõe `/health` e a solução já compila com testes automatizados verdes. O que ainda depende de evolução é a expansão da funcionalidade de negócio e a adoção de um provider real de storage/fila em produção, mas a base de arquitetura e segurança foi validada no código.
+A API expõe `/health`. O build da API e os testes unitários focados em storage/fila passaram. Os testes de integração RabbitMQ e SQL Server usam Testcontainers e precisam de Docker acessível; a integração com storage MinIO ainda precisa de validação ponta a ponta.
 
 **Observação:** as regras de tenant e a validação do `TenantId` nas gravações já estão implementadas no shared configuration e nos contextos EF Core. A integração real com SQL Server continua exigindo Docker/Testcontainers para executar os testes de isolamento em ambientes locais sem serviço SQL dedicado.
 
@@ -42,12 +42,27 @@ Cada módulo mantém seus próprios contextos e migrations. Todos usam o mesmo b
 
 - .NET SDK 10.0.
 - SQL Server para aplicar e executar migrations localmente.
+- MinIO e RabbitMQ para executar a API. Configure endpoint, bucket e credenciais do MinIO e a URI AMQP(S) do RabbitMQ por variáveis de ambiente; `.env.example` contém os nomes esperados.
+- Docker acessível para executar os testes de integração baseados em Testcontainers.
 - Um arquivo `.env` na raiz do repositório com a connection string local. Use `.env.example` como referência e mantenha credenciais reais fora do Git.
 - `dotnet-ef` 10.0.9 para criar, inspecionar ou aplicar migrations. Caso ainda não esteja instalado:
 
 ```sh
 dotnet tool install --global dotnet-ef --version 10.0.9
 ```
+
+## Dependências locais
+
+O `compose.yaml` inicia SQL Server 2022, MinIO e RabbitMQ com volumes persistentes. Copie `.env.example` para `.env` em um checkout novo e mantenha a senha do SQL Server igual na variável `MSSQL_SA_PASSWORD` e na connection string. Os valores de exemplo são apenas para desenvolvimento local.
+
+```sh
+docker compose up -d
+docker compose ps
+```
+
+As portas são publicadas somente em `127.0.0.1`. O console do MinIO fica em `http://localhost:9001` e o painel do RabbitMQ em `http://localhost:15672`; use as credenciais de desenvolvimento do `.env`. O bucket privado é criado pelo adapter no primeiro acesso.
+
+Execute a API no host com `dotnet run --project src/Backend/CarWashSaaS.Api`. O gateway OIDC não está no Compose: configure `Authentication__Authority` e `Authentication__Audience` para um issuer de desenvolvimento. Evolution API também permanece externa e só é necessária para testar o pareamento do WhatsApp. `docker compose down` preserva os dados; `docker compose down -v` remove os volumes.
 
 ## Build e execução
 
@@ -60,7 +75,7 @@ dotnet test CarWashSaaS.sln
 dotnet run --project src/Backend/CarWashSaaS.Api
 ```
 
-O host oferece `GET /health` e o documento OpenAPI em ambiente de desenvolvimento. Use a URL exibida pelo `dotnet run` para acessar esses endpoints.
+O host exige `Authentication:Authority`, `Authentication:Audience`, configuração do MinIO e URI válida do RabbitMQ. Ele oferece `GET /health` e o documento OpenAPI em ambiente de desenvolvimento. Use a URL exibida pelo `dotnet run` para acessar esses endpoints.
 
 ## Banco de dados e migrations
 
@@ -82,12 +97,17 @@ Cada módulo mantém sua própria tabela de histórico de migrations. As migrati
 dotnet test CarWashSaaS.sln
 ```
 
-Os testes de integração atuais validam os metadados dos modelos EF sem exigir uma conexão SQL Server. A verificação real de isolamento entre Tenant A e Tenant B depende da implementação dos filtros e da resolução do tenant na subfase 1.2.
+Os testes unitários podem ser executados sem serviços externos. Os testes de integração de isolamento aplicam migrations em SQL Server via Testcontainers; os testes da fila iniciam RabbitMQ via Testcontainers. Ambos exigem Docker acessível. Para executar apenas os testes da fila:
+
+```sh
+dotnet test tests/Backend/IntegrationTests/CarWashSaaS.IntegrationTests/CarWashSaaS.IntegrationTests.csproj --filter FullyQualifiedName~RabbitMqBackgroundQueueIntegrationTests
+```
 
 ## Documentação
 
 - [Roadmap de implementação](roadmap.md)
 - [Diretrizes de arquitetura e desenvolvimento](agents.md)
 - [Modelo de domínio e dados da fase 1.1](docs/living-docs/modelo-dominio-dados-1.1.md)
+- [ADR-0004: storage e fila self-hosted](docs/architecture/ADR-0004-storage-fila-self-hosted.md)
 - [Cadastro e perfil do estabelecimento — fase 2.1](docs/living-docs/cadastro-perfil-estabelecimento-2.1.md)
 - [ADR-0001: isolamento de tenant com EF Core](docs/architecture/ADR-0001-isolamento-tenant-ef-core.md)

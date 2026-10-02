@@ -51,17 +51,20 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 1.4 Arquivos e processamento assíncrono
 
-- [x] Configurar armazenamento de objetos com segregação por tenant para fotos e comprovantes.
-- [x] Definir e configurar broker/fila para notificações e webhooks, incluindo política de retentativa e tratamento de falhas.
-- [x] **Entrega:** upload e leitura de arquivo isolados por tenant e processamento de uma mensagem de teste.
+- [x] Implementar armazenamento de objetos MinIO com namespace por tenant para arquivos privados.
+- [x] Implementar fila RabbitMQ durável com confirmação explícita, retentativa e dead-letter queue.
+- [ ] **Entrega:** validar upload/leitura isolados por tenant e processamento de mensagem em execução com os serviços reais.
 
-> Implementação inicial concluída: o projeto já conta com `TenantStoragePathBuilder` para gerar paths seguros por tenant e `InMemoryBackgroundQueue` para enfileirar mensagens do tipo `TenantQueueMessage`. A API registra o queue em DI no startup; o próximo passo é evoluir esse adaptador para storage real e fila persistente em produção, mantendo o mesmo contrato e isolamento do tenant.
+> Os adapters de MinIO e RabbitMQ, o worker e os testes de integração com Testcontainers estão implementados. A API exige endpoint/credenciais/bucket do MinIO e URI AMQP(S) por configuração. O build da API, o build dos testes de integração e os testes unitários de storage/fila passaram; os testes contra RabbitMQ não puderam ser executados neste ambiente porque o Docker não está acessível. Não há handlers de negócio registrados ainda, então a entrega funcional da fila permanece pendente.
 
 **Checklist de implementação vigente:**
+
 - Path de arquivo scoped por tenant: `tenants/{tenantId}/{category}/{fileName}`
-- Fila assíncrona com `IBackgroundQueue` e mensagem `TenantQueueMessage`
-- DI no `Program.cs` para injeção do queue em serviços futuros
-- Teste automatizado cobrindo enfileiramento e geração de path
+- Storage privado MinIO registrado por `ITenantObjectStorage`; o endpoint de logo usa o tenant autenticado
+- Fila RabbitMQ quorum com mensagem persistente, `MessageId`, ack/nack explícito, retry exponencial e DLQ
+- `TenantQueueWorker` cria escopo por entrega e estabelece o tenant antes de invocar o handler
+- Integrações RabbitMQ e SQL Server usam Testcontainers e requerem Docker para execução
+- Falta validar upload/download real e entrega processada por um handler registrado
 
 ### 1.5 Qualidade e arquitetura da solução
 

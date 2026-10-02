@@ -15,8 +15,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
+using Minio;
+using RabbitMQ.Client;
 
 DotEnvConfiguration.LoadFromRepository();
 
@@ -31,6 +32,24 @@ var audience = builder.Configuration["Authentication:Audience"];
 if (string.IsNullOrWhiteSpace(authority) || string.IsNullOrWhiteSpace(audience))
 {
     throw new InvalidOperationException("Authentication:Authority and Authentication:Audience must be configured.");
+}
+
+var minioEndpoint = builder.Configuration["Storage:Minio:Endpoint"];
+var minioAccessKey = builder.Configuration["Storage:Minio:AccessKey"];
+var minioSecretKey = builder.Configuration["Storage:Minio:SecretKey"];
+var minioBucket = builder.Configuration["Storage:Minio:Bucket"];
+var rabbitMqUri = builder.Configuration["Messaging:RabbitMq:Uri"];
+if (string.IsNullOrWhiteSpace(minioEndpoint) ||
+    string.IsNullOrWhiteSpace(minioAccessKey) ||
+    string.IsNullOrWhiteSpace(minioSecretKey) ||
+    string.IsNullOrWhiteSpace(minioBucket))
+{
+    throw new InvalidOperationException("Storage:Minio endpoint, credentials, and bucket must be configured.");
+}
+if (!Uri.TryCreate(rabbitMqUri, UriKind.Absolute, out var rabbitMqConnectionUri) ||
+    rabbitMqConnectionUri.Scheme is not ("amqp" or "amqps"))
+{
+    throw new InvalidOperationException("Messaging:RabbitMq:Uri must be a valid AMQP or AMQPS URI.");
 }
 
 builder.Services.AddScoped<CurrentTenantAccessor>();
@@ -49,6 +68,21 @@ builder.Services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
 builder.Services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
 builder.Services.AddScoped<YardSetupApplicationService>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
+builder.Services.AddSingleton<IMinioClient>(_ => new MinioClient()
+    .WithEndpoint(minioEndpoint)
+    .WithCredentials(minioAccessKey, minioSecretKey)
+    .WithSSL(builder.Configuration.GetValue<bool>("Storage:Minio:UseSSL"))
+    .Build());
+builder.Services.AddSingleton<ITenantObjectStorage>(services => new MinioTenantObjectStorage(
+    services.GetRequiredService<IMinioClient>(), minioBucket));
+builder.Services.AddScoped<TenantBrandingStorageService>();
+builder.Services.AddSingleton<IConnectionFactory>(_ => new ConnectionFactory
+{
+    Uri = rabbitMqConnectionUri,
+    AutomaticRecoveryEnabled = true
+});
+builder.Services.AddSingleton<IBackgroundQueue, RabbitMqBackgroundQueue>();
+builder.Services.AddHostedService<TenantQueueWorker>();
 builder.Services.AddHttpClient<IWhatsAppPairingProvider, EvolutionApiWhatsAppPairingProvider>((serviceProvider, client) =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -57,8 +91,6 @@ builder.Services.AddHttpClient<IWhatsAppPairingProvider, EvolutionApiWhatsAppPai
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 builder.Services.AddScoped<WhatsAppConnectionApplicationService>();
-builder.Services.AddSingleton(new TenantBrandingStorageService(Path.Combine(builder.Environment.ContentRootPath, "Storage")));
-builder.Services.AddSingleton<IBackgroundQueue, InMemoryBackgroundQueue>();
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));
 builder.Services.AddDbContext<IdentityModuleDbContext>(options =>
@@ -120,15 +152,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
-var storageRoot = Path.Combine(app.Environment.ContentRootPath, "Storage");
-Directory.CreateDirectory(storageRoot);
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(storageRoot),
-    RequestPath = "/storage"
-});
 
 app.UseHttpsRedirection();
 app.UseCors("Client");
@@ -559,7 +582,8 @@ app.MapPost("/tenants/profile/logo", async (
     string? brandSecondaryColor,
     ICurrentTenantAccessor currentTenantAccessor,
     StoreProfileApplicationService service,
-    TenantBrandingStorageService storageService) =>
+    TenantBrandingStorageService storageService,
+    CancellationToken ct) =>
 {
     if (currentTenantAccessor.TenantId is not Guid tenantId)
     {
@@ -583,7 +607,8 @@ app.MapPost("/tenants/profile/logo", async (
     }
 
     var existingProfile = profileResult.Value!;
-    var savedLogoResult = storageService.SaveLogo(tenantId, logoFile);
+    await using var logoStream = logoFile.OpenReadStream();
+    var savedLogoResult = await storageService.SaveLogoAsync(tenantId, logoFile.FileName, logoFile.Length, logoStream, ct);
     if (!savedLogoResult.IsSuccess)
     {
         return Results.BadRequest(new { savedLogoResult.Error!.Code, savedLogoResult.Error.Description });
@@ -610,6 +635,30 @@ app.MapPost("/tenants/profile/logo", async (
         _ => Results.Problem(updateResult.Error.Description, statusCode: StatusCodes.Status400BadRequest)
     };
 }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+app.MapGet("/tenants/profile/logo/{fileName}", async (
+    string fileName,
+    ICurrentTenantAccessor currentTenantAccessor,
+    StoreProfileApplicationService service,
+    TenantBrandingStorageService storageService,
+    CancellationToken ct) =>
+{
+    if (currentTenantAccessor.TenantId is not Guid tenantId)
+    {
+        return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var profileResult = await service.GetAsync(tenantId, ct);
+    if (!profileResult.IsSuccess || !string.Equals(profileResult.Value!.LogoUrl, $"/tenants/profile/logo/{fileName}", StringComparison.Ordinal))
+    {
+        return Results.NotFound();
+    }
+
+    var logo = await storageService.GetLogoAsync(tenantId, fileName, ct);
+    return logo is null
+        ? Results.NotFound()
+        : Results.File(logo.Content, logo.ContentType);
+}).RequireAuthorization();
 
 app.Run();
 
