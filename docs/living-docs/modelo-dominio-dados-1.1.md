@@ -103,13 +103,14 @@ A subfase 1.5 formaliza a governança da base já validada. O objetivo é garant
 
 ```mermaid
 flowchart TD
-    API[API / Program.cs] --> TENANT[TenantResolverMiddleware + ICurrentTenantAccessor]
+    API[Program.cs / Composition Root] --> ENDPOINTS[Endpoints Modulares / Identity, Tenants, WhatsApp, Yard]
+    ENDPOINTS --> TENANT[TenantResolverMiddleware + ICurrentTenantAccessor]
     TENANT --> FILTERS[Filtros globais e validação de escrita]
     FILTERS --> DOMAIN[Domain / Application]
     DOMAIN --> CONTRACTS[Shared.Contracts / Result<T>]
     DOMAIN --> INFRA[Infrastructure / EF Core / Storage / Queue]
     INFRA --> TESTS[Testes de integração + arquitetura]
-    TESTS --> DOCS[ADR + documentação viva]
+    TESTS --> DOCS[ADRs + documentação viva]
     DOCS --> GATE[Gate de qualidade para próximo incremento]
 ```
 

@@ -17,6 +17,7 @@ A regra 1.5 exige que a solução não apenas compile, mas também prove que a a
 - `TenantId` continuará obrigatório para entidades operacionais, com filtros globais em `DbContext` e validação de gravação em `SaveChangesAsync`.
 - A API continuará validando `Authentication:Authority` e `Authentication:Audience` em startup; sem esses valores a aplicação não inicia.
 - O middleware de tenant continuará resolvendo o contexto a partir do JWT validado e nunca a partir de header ou query string.
+- A camada de apresentação HTTP adota Minimal APIs modulares organizadas em classes de extensão por domínio (`src/Backend/CarWashSaaS.Api/Endpoints/`), mantendo `Program.cs` exclusivamente como Composition Root (ver [ADR-0006](ADR-0006-organizacao-minimal-apis-modulares.md)).
 - A suíte de qualidade deve incluir testes de integração e testes de arquitetura para impedir regressões de acoplamento, cross-tenant e validações incompletas.
 
 ## Consequências e controles

@@ -75,7 +75,7 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 - [x] Consolidar o pipeline de build/test da solução com verificação automatizada de multi-tenancy e qualidade do código.
 - [x] **Entrega:** a solução compila, a base arquitetural está coberta por testes e a documentação registra o estado real do projeto.
 
-> Estado verificado: a suíte de arquitetura e os testes de integração da base multi-tenant já estão verdes, e o build da solução confirma que a entrega está estável para avançar para a Fase 2.
+> Estado verificado: a suíte de arquitetura e os testes de integração da base multi-tenant já estão verdes, e o build da solução confirma que a entrega está estável para avançar para a Fase 2. A camada HTTP foi padronizada com Minimal APIs modulares organizadas em classes de extensão por domínio (`Endpoints/*.cs`), mantendo `Program.cs` como Composition Root (formalizado na [ADR-0006](docs/architecture/ADR-0006-organizacao-minimal-apis-modulares.md)).
 
 ---
 

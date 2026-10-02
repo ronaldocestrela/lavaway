@@ -13,7 +13,7 @@ A API expõe `/health`. O build da API e os testes unitários focados em storage
 ## Stack
 
 - .NET 10 e C# com nullable reference types.
-- ASP.NET Core Web API.
+- ASP.NET Core Web API (Minimal APIs modulares organizadas por métodos de extensão).
 - Entity Framework Core 10 e SQL Server.
 - ASP.NET Core Identity com chaves `Guid`.
 - xUnit para testes unitários, de modelo e de arquitetura.
@@ -23,20 +23,25 @@ A API expõe `/health`. O build da API e os testes unitários focados em storage
 ```text
 src/
   Shared/CarWashSaaS.Shared.Contracts/       Contratos compartilhados e Result
-  Backend/CarWashSaaS.Api/                   Host e composição dos módulos
-  Backend/Modules/Tenants/                   Agregado Tenant e persistência
-  Backend/Modules/Identity/                  Identity, usuários e papéis
-  Backend/Modules/YardOperations/             Clientes, veículos, serviços e OS
+  Backend/CarWashSaaS.Api/                   Host, pipeline e composição dos módulos
+    Endpoints/                               Minimal APIs agrupadas por módulo (Identity, Tenants, WhatsApp, YardOperations)
+    Middleware/                              Middlewares HTTP (ex: TenantResolverMiddleware)
+    Services/                                Serviços de suporte à API (ex: JWT, Worker)
+  Backend/Modules/Tenants/                   Agregado Tenant, perfil da loja e persistência
+  Backend/Modules/Identity/                  Identity, autenticação, usuários e papéis
+  Backend/Modules/WhatsApp/                  Conexão, pareamento e webhooks WhatsApp
+  Backend/Modules/YardOperations/             Clientes, veículos, catálogo de serviços e pátio
 tests/Backend/
   UnitTests/                                  Invariantes do domínio
-  IntegrationTests/                           Modelo relacional dos contextos
+  IntegrationTests/                           Modelo relacional dos contextos e endpoints
   ArchitectureTests/                          Fronteiras entre camadas e módulos
 docs/
-  architecture/                               ADRs
+  architecture/                               ADRs (decisões arquiteturais)
   living-docs/                                Modelo e documentação viva
 ```
 
-Cada módulo mantém seus próprios contextos e migrations. Todos usam o mesmo banco SQL Server, em schemas separados: `tenants`, `identity` e `yard`.
+Cada módulo mantém seus próprios contextos e migrations. Todos usam o mesmo banco SQL Server, em schemas separados: `tenants`, `identity`, `whatsapp` e `yard`.
+Os endpoints HTTP são expostos como **Minimal APIs modulares** em `src/Backend/CarWashSaaS.Api/Endpoints/`, desacoplando o `Program.cs` e agrupando as rotas diretamente com seus módulos de negócio (conforme registrado no [ADR-0006](docs/architecture/ADR-0006-organizacao-minimal-apis-modulares.md)).
 
 ## Pré-requisitos
 
