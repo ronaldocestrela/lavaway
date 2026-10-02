@@ -66,6 +66,7 @@ public static class TenantEndpoints
             ICurrentTenantAccessor currentTenantAccessor,
             StoreProfileApplicationService service,
             TenantBrandingStorageService storageService,
+            IBackgroundQueue backgroundQueue,
             CancellationToken ct) =>
         {
             if (currentTenantAccessor.TenantId is not Guid tenantId)
@@ -111,12 +112,20 @@ public static class TenantEndpoints
                 string.IsNullOrWhiteSpace(brandSecondaryColor) ? existingProfile.BrandSecondaryColor : brandSecondaryColor);
 
             var updateResult = await service.UpdateAsync(tenantId, updatedCommand);
-            return updateResult.IsSuccess ? Results.Ok(updateResult.Value) : updateResult.Error!.Type switch
+            if (!updateResult.IsSuccess)
             {
-                ErrorType.NotFound => Results.NotFound(new { updateResult.Error.Code, updateResult.Error.Description }),
-                ErrorType.Validation => Results.BadRequest(new { updateResult.Error.Code, updateResult.Error.Description }),
-                _ => Results.Problem(updateResult.Error.Description, statusCode: StatusCodes.Status400BadRequest)
-            };
+                return updateResult.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { updateResult.Error.Code, updateResult.Error.Description }),
+                    ErrorType.Validation => Results.BadRequest(new { updateResult.Error.Code, updateResult.Error.Description }),
+                    _ => Results.Problem(updateResult.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+            }
+
+            await backgroundQueue.EnqueueAsync(
+                new TenantQueueMessage(tenantId, TenantBrandingAuditQueueHandler.EventName, savedLogoResult.Value!), ct);
+
+            return Results.Ok(updateResult.Value);
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
         group.MapGet("/profile/logo/{fileName}", async (

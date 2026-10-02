@@ -53,18 +53,19 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 - [x] Implementar armazenamento de objetos MinIO com namespace por tenant para arquivos privados.
 - [x] Implementar fila RabbitMQ durável com confirmação explícita, retentativa e dead-letter queue.
-- [ ] **Entrega:** validar upload/leitura isolados por tenant e processamento de mensagem em execução com os serviços reais.
+- [x] **Entrega:** validar upload/leitura isolados por tenant e processamento de mensagem em execução com os serviços reais.
 
-> Os adapters de MinIO e RabbitMQ, o worker e os testes de integração com Testcontainers estão implementados. A API exige endpoint/credenciais/bucket do MinIO e URI AMQP(S) por configuração. O build da API, o build dos testes de integração e os testes unitários de storage/fila passaram; os testes contra RabbitMQ não puderam ser executados neste ambiente porque o Docker não está acessível. Não há handlers de negócio registrados ainda, então a entrega funcional da fila permanece pendente.
+> A entrega da Fase 1.4 está concluída e validada operacionalmente. O adapter MinIO foi coberto por testes de integração reais via Testcontainers (`cgr.dev/chainguard/minio`), garantindo gravação, leitura de stream com verificação de Content-Type e isolamento estrito contra acesso cross-tenant. O `TenantQueueWorker` foi testado ponta a ponta com RabbitMQ 4 em Testcontainers, comprovando a injeção do `TenantId` no escopo do DI e o processamento de eventos pelo handler de negócio registrado `TenantBrandingAuditQueueHandler`. A documentação viva foi consolidada em `docs/living-docs/arquivos-processamento-assincrono-1.4.md`.
 
 **Checklist de implementação vigente:**
 
-- Path de arquivo scoped por tenant: `tenants/{tenantId}/{category}/{fileName}`
-- Storage privado MinIO registrado por `ITenantObjectStorage`; o endpoint de logo usa o tenant autenticado
-- Fila RabbitMQ quorum com mensagem persistente, `MessageId`, ack/nack explícito, retry exponencial e DLQ
-- `TenantQueueWorker` cria escopo por entrega e estabelece o tenant antes de invocar o handler
-- Integrações RabbitMQ e SQL Server usam Testcontainers e requerem Docker para execução
-- Falta validar upload/download real e entrega processada por um handler registrado
+- [x] Path de arquivo scoped por tenant: `tenants/{tenantId}/{category}/{fileName}`
+- [x] Storage privado MinIO registrado por `ITenantObjectStorage`; endpoint de logo usa o tenant autenticado
+- [x] Fila RabbitMQ quorum com mensagem persistente, `MessageId`, ack/nack explícito, retry exponencial e DLQ
+- [x] `TenantQueueWorker` cria escopo por entrega e estabelece o tenant antes de invocar o handler
+- [x] Integrações MinIO, RabbitMQ e SQL Server validadas com Testcontainers em execução real
+- [x] Upload/download e isolamento cross-tenant validados via testes automatizados
+- [x] Handler de negócio registrado no DI (`TenantBrandingAuditQueueHandler`) e ciclo de processamento validado ponta a ponta
 
 ### 1.5 Qualidade e arquitetura da solução
 

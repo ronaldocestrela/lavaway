@@ -89,6 +89,7 @@ builder.Services.AddSingleton<IConnectionFactory>(_ => new ConnectionFactory
     AutomaticRecoveryEnabled = true
 });
 builder.Services.AddSingleton<IBackgroundQueue, RabbitMqBackgroundQueue>();
+builder.Services.AddScoped<ITenantQueueMessageHandler, TenantBrandingAuditQueueHandler>();
 builder.Services.AddHostedService<TenantQueueWorker>();
 builder.Services.AddHttpClient<IWhatsAppPairingProvider, EvolutionApiWhatsAppPairingProvider>((serviceProvider, client) =>
 {

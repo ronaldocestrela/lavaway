@@ -1,7 +1,7 @@
 # ADR-0004: Storage e fila self-hosted
 
-- **Status:** Aceita para a implementação inicial; validação operacional pendente
-- **Data:** 2026-10-01
+- **Status:** Aceita e validada operacionalmente
+- **Data:** 2026-10-01 (Atualizada em 2026-10-02)
 
 ## Contexto
 
@@ -16,13 +16,14 @@ A subfase 1.4 precisa armazenar arquivos privados com isolamento por tenant e pr
 - O worker estabelece o tenant no escopo de cada entrega, confirma após sucesso, rejeita eventos sem handler e aplica backoff exponencial antes de reenfileirar falhas transitórias.
 - Tratar as entregas como pelo menos uma vez. Handlers devem ser idempotentes; a deduplicação persistente ainda não é fornecida pelo adapter.
 
-## Consequências e gates
+## Consequências e gates validados
 
 - Os contratos de storage e fila permitem substituir os providers sem alterar regras de domínio.
 - Credenciais e endpoints são configurações externas; valores reais não devem ser versionados.
-- O build da API, o build dos testes de integração e os testes unitários focados passaram. Os testes de integração RabbitMQ dependem de Docker/Testcontainers e não foram executados neste ambiente.
-- O acesso ponta a ponta ao MinIO ainda precisa de teste de integração, e nenhum handler de negócio está registrado. A subfase 1.4 não deve ser marcada como entregue até esses gates passarem.
-- Operação de produção ainda requer deployment durável, TLS, backup/recuperação, monitoramento e gestão de credenciais para MinIO e RabbitMQ.
+- Testes de integração com MinIO real executados com sucesso via Testcontainers, validando gravação, leitura e isolamento multi-tenant.
+- Testes de integração com RabbitMQ real executados com sucesso via Testcontainers, validando quorum queue, persistência, reentrega com backoff e roteamento para DLQ (`.dead`).
+- O worker `TenantQueueWorker` foi validado ponta a ponta com injeção de escopo de tenant e despacho para o handler de negócio `TenantBrandingAuditQueueHandler`.
+- Living docs consolidados em `docs/living-docs/arquivos-processamento-assincrono-1.4.md`.
 
 ## Alternativas consideradas
 

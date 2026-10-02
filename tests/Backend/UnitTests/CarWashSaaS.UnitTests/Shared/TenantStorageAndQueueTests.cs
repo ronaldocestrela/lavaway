@@ -85,6 +85,33 @@ public sealed class TenantStorageAndQueueTests
         Assert.Equal($"tenants/{tenantId}/branding/logo.png", storage.ReadObjectKey);
     }
 
+    [Fact]
+    public async Task TenantBrandingAuditQueueHandler_Should_Succeed_WhenTenantMatchesScope()
+    {
+        var tenantId = Guid.NewGuid();
+        var accessor = new CurrentTenantAccessor();
+        accessor.SetTenant(tenantId);
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<TenantBrandingAuditQueueHandler>.Instance;
+        var handler = new TenantBrandingAuditQueueHandler(accessor, logger);
+        var message = new TenantQueueMessage(tenantId, TenantBrandingAuditQueueHandler.EventName, "/tenants/profile/logo/logo.png");
+
+        await handler.HandleAsync(message, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task TenantBrandingAuditQueueHandler_Should_Throw_WhenTenantScopeMismatches()
+    {
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        var accessor = new CurrentTenantAccessor();
+        accessor.SetTenant(tenantA);
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<TenantBrandingAuditQueueHandler>.Instance;
+        var handler = new TenantBrandingAuditQueueHandler(accessor, logger);
+        var message = new TenantQueueMessage(tenantB, TenantBrandingAuditQueueHandler.EventName, "/tenants/profile/logo/logo.png");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.HandleAsync(message, CancellationToken.None));
+    }
+
     private sealed class RecordingTenantObjectStorage : ITenantObjectStorage
     {
         public string? ObjectKey { get; private set; }
