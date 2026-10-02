@@ -77,6 +77,39 @@ public sealed class StoreProfileTenantIntegrationTests(SqlServerFixture fixture)
         Assert.Equal("RJ", persisted.State);
     }
 
+    [Fact]
+    public async Task StoreProfile_ShouldPersist_BrandingColorsAndLogoUrl_PerTenant()
+    {
+        var tenant = await CreateTenantAsync("Tenant Branding Test");
+        var accessor = new CurrentTenantAccessor();
+        accessor.SetTenant(tenant);
+
+        await using var context = new TenantsDbContext(fixture.CreateTenantsOptions(), accessor);
+        var repository = new StoreProfileRepository(context);
+        var service = new StoreProfileApplicationService(repository);
+
+        var createResult = await service.CreateAsync(tenant, new CreateStoreProfileCommand(
+            "Auto Spa Premium Ltda",
+            "Auto Spa Premium",
+            "11222333000181",
+            "+5511999999999",
+            "Rua Oscar Freire, 500",
+            "São Paulo",
+            "SP",
+            "01426-000",
+            "/tenants/profile/logo/logo-brand.png",
+            "#1E40AF",
+            "#F59E0B"));
+
+        Assert.True(createResult.IsSuccess);
+
+        var loadedProfile = await service.GetAsync(tenant);
+        Assert.True(loadedProfile.IsSuccess);
+        Assert.Equal("/tenants/profile/logo/logo-brand.png", loadedProfile.Value!.LogoUrl);
+        Assert.Equal("#1E40AF", loadedProfile.Value.BrandPrimaryColor);
+        Assert.Equal("#F59E0B", loadedProfile.Value.BrandSecondaryColor);
+    }
+
     private async Task<Guid> CreateTenantAsync(string name)
     {
         await using var context = new TenantsDbContext(fixture.CreateTenantsOptions(), new CurrentTenantAccessor());

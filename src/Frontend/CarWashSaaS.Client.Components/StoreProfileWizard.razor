@@ -1,5 +1,6 @@
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Components.Forms
 
 <div class="wizard-container" role="region" aria-label="Fluxo guiado de perfil do estabelecimento">
     <!-- Stepper Header -->
@@ -42,12 +43,31 @@
 
         <div class="step-divider @(CurrentStep > 2 ? "divider-active" : "")"></div>
 
-        <div class="step-item @(CurrentStep == 3 ? "step-active" : "")" @onclick="() => TryGoToStep(3)">
+        <div class="step-item @(CurrentStep == 3 ? "step-active" : CurrentStep > 3 ? "step-completed" : "")" @onclick="() => TryGoToStep(3)">
             <div class="step-badge">
-                <span>03</span>
+                @if (CurrentStep > 3)
+                {
+                    <span class="step-check" aria-hidden="true">✓</span>
+                }
+                else
+                {
+                    <span>03</span>
+                }
             </div>
             <div class="step-info">
                 <span class="step-caption">ETAPA 03</span>
+                <span class="step-title">Identidade Visual</span>
+            </div>
+        </div>
+
+        <div class="step-divider @(CurrentStep > 3 ? "divider-active" : "")"></div>
+
+        <div class="step-item @(CurrentStep == 4 ? "step-active" : "")" @onclick="() => TryGoToStep(4)">
+            <div class="step-badge">
+                <span>04</span>
+            </div>
+            <div class="step-info">
+                <span class="step-caption">ETAPA 04</span>
                 <span class="step-title">Revisão & Salvar</span>
             </div>
         </div>
@@ -194,6 +214,153 @@
                 </div>
                 <div class="actions-right">
                     <button type="button" class="button button-primary" @onclick="NextStep">
+                        <span>Avançar para Identidade Visual</span>
+                        <span class="button-arrow" aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Step 3: Identidade Visual & Prévia ao Vivo -->
+    @if (CurrentStep == 3)
+    {
+        <div class="step-panel" data-testid="step-3-panel">
+            <div class="panel-intro">
+                <h3>Identidade Visual & Cores da Marca</h3>
+                <p>Personalize a logomarca e as cores que aparecerão nos comprovantes térmicos, ordens de serviço e no link de acompanhamento enviado aos clientes via WhatsApp.</p>
+            </div>
+
+            <div class="branding-layout">
+                <!-- Branding Inputs Column -->
+                <div class="branding-controls">
+                    <!-- Logo Upload Section -->
+                    <div class="branding-section">
+                        <label class="control-label">Logomarca do Estabelecimento</label>
+                        <p class="control-desc">Envie uma imagem PNG, JPG, WEBP ou SVG (máx. 2 MB) em alta definição.</p>
+
+                        <div class="upload-dropzone">
+                            <InputFile id="logoUploadInput"
+                                       class="file-input-hidden"
+                                       accept=".png,.jpg,.jpeg,.webp,.svg"
+                                       OnChange="HandleLogoFileSelectedAsync" />
+
+                            <label for="logoUploadInput" class="upload-dropzone-label">
+                                <span class="upload-icon">📁</span>
+                                <div>
+                                    <strong>Clique para selecionar ou arraste o arquivo da logomarca</strong>
+                                    <span class="upload-formats">Formatos aceitos: PNG, JPG, JPEG, WEBP ou SVG (até 2MB)</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_selectedFileName))
+                        {
+                            <div class="selected-file-badge">
+                                <span class="badge-icon">✓</span>
+                                <span class="badge-filename">@_selectedFileName</span>
+                                <button type="button" class="badge-clear" @onclick="ClearSelectedLogo">Remover</button>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Colors Selection Section -->
+                    <div class="branding-section">
+                        <label class="control-label">Paleta de Cores</label>
+                        <p class="control-desc">Selecione as cores que refletem a identidade do seu lava-jato ou estética automotiva.</p>
+
+                        <div class="color-pickers-row">
+                            <div class="color-picker-box">
+                                <span class="picker-label">Cor Primária</span>
+                                <div class="picker-input-group">
+                                    <input type="color"
+                                           class="color-input"
+                                           value="@GetEffectivePrimaryColor()"
+                                           @onchange="e => Model.BrandPrimaryColor = e.Value?.ToString()" />
+                                    <input type="text"
+                                           class="hex-input mono"
+                                           maxlength="7"
+                                           placeholder="#2563EB"
+                                           @bind="Model.BrandPrimaryColor"
+                                           @bind:event="oninput" />
+                                </div>
+                                <span class="picker-hint">Botões, cabeçalhos de destaque e títulos.</span>
+                            </div>
+
+                            <div class="color-picker-box">
+                                <span class="picker-label">Cor Secundária</span>
+                                <div class="picker-input-group">
+                                    <input type="color"
+                                           class="color-input"
+                                           value="@GetEffectiveSecondaryColor()"
+                                           @onchange="e => Model.BrandSecondaryColor = e.Value?.ToString()" />
+                                    <input type="text"
+                                           class="hex-input mono"
+                                           maxlength="7"
+                                           placeholder="#0EA5E9"
+                                           @bind="Model.BrandSecondaryColor"
+                                           @bind:event="oninput" />
+                                </div>
+                                <span class="picker-hint">Badges, links e elementos de suporte.</span>
+                            </div>
+                        </div>
+
+                        <!-- Presets rápidos -->
+                        <div class="presets-section">
+                            <span class="presets-label">Paletas Recomendadas para Lava-Jato:</span>
+                            <div class="presets-grid">
+                                <button type="button" class="preset-btn" @onclick='() => ApplyPreset("#2563EB", "#0EA5E9")'>
+                                    <span class="preset-swatch" style="background: linear-gradient(135deg, #2563EB, #0EA5E9);"></span>
+                                    <span>Azul Royal</span>
+                                </button>
+                                <button type="button" class="preset-btn" @onclick='() => ApplyPreset("#EA580C", "#F59E0B")'>
+                                    <span class="preset-swatch" style="background: linear-gradient(135deg, #EA580C, #F59E0B);"></span>
+                                    <span>Sunset Sport</span>
+                                </button>
+                                <button type="button" class="preset-btn" @onclick='() => ApplyPreset("#DC2626", "#EF4444")'>
+                                    <span class="preset-swatch" style="background: linear-gradient(135deg, #DC2626, #EF4444);"></span>
+                                    <span>Racing Red</span>
+                                </button>
+                                <button type="button" class="preset-btn" @onclick='() => ApplyPreset("#059669", "#10B981")'>
+                                    <span class="preset-swatch" style="background: linear-gradient(135deg, #059669, #10B981);"></span>
+                                    <span>Eco Green</span>
+                                </button>
+                                <button type="button" class="preset-btn" @onclick='() => ApplyPreset("#475569", "#06B6D4")'>
+                                    <span class="preset-swatch" style="background: linear-gradient(135deg, #475569, #06B6D4);"></span>
+                                    <span>Titanium Dark</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Preview Column -->
+                <div class="branding-preview-column">
+                    <div class="preview-sticky-wrap">
+                        <div class="preview-header-bar">
+                            <span class="preview-title">PRÉVIA EM TEMPO REAL</span>
+                            <span class="preview-tag">Atualização Instantânea</span>
+                        </div>
+
+                        <BrandReceiptPreview TradeName="@Model.TradeName"
+                                             Phone="@Model.Phone"
+                                             Address="@GetFormattedAddress()"
+                                             LogoUrl="@(_previewLogoDataUrl ?? Model.LogoUrl)"
+                                             PrimaryColor="@GetEffectivePrimaryColor()"
+                                             SecondaryColor="@GetEffectiveSecondaryColor()" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <div class="actions-left">
+                    <button type="button" class="button button-secondary" @onclick="PrevStep">
+                        <span class="button-arrow" aria-hidden="true">←</span>
+                        <span>Voltar</span>
+                    </button>
+                </div>
+                <div class="actions-right">
+                    <button type="button" class="button button-primary" @onclick="NextStep">
                         <span>Revisar Dados</span>
                         <span class="button-arrow" aria-hidden="true">→</span>
                     </button>
@@ -202,13 +369,13 @@
         </div>
     }
 
-    <!-- Step 3: Revisão & Salvar -->
-    @if (CurrentStep == 3)
+    <!-- Step 4: Revisão & Salvar -->
+    @if (CurrentStep == 4)
     {
-        <div class="step-panel" data-testid="step-3-panel">
+        <div class="step-panel" data-testid="step-4-panel">
             <div class="panel-intro">
-                <h3>Confirmação dos Dados Cadastrais</h3>
-                <p>Revise as informações antes de salvar o perfil do estabelecimento.</p>
+                <h3>Confirmação dos Dados Cadastrais & Identidade</h3>
+                <p>Revise todas as informações antes de salvar o perfil do estabelecimento.</p>
             </div>
 
             <div class="review-grid">
@@ -259,6 +426,40 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="review-card review-card-full">
+                    <div class="review-card-header">
+                        <span class="card-icon">🎨</span>
+                        <h4>Identidade Visual Configurada</h4>
+                        <button type="button" class="text-link" @onclick="() => CurrentStep = 3">Editar</button>
+                    </div>
+                    <div class="branding-review-row">
+                        <div class="branding-review-logo">
+                            @if (!string.IsNullOrWhiteSpace(_previewLogoDataUrl ?? Model.LogoUrl))
+                            {
+                                <img src="@(_previewLogoDataUrl ?? Model.LogoUrl)" alt="Logomarca" class="review-logo-preview" />
+                            }
+                            else
+                            {
+                                <div class="review-logo-fallback" style="background: @GetEffectivePrimaryColor();">
+                                    @(string.IsNullOrWhiteSpace(Model.TradeName) ? "L" : Model.TradeName.Trim()[..1].ToUpperInvariant())
+                                </div>
+                            }
+                            <span class="review-logo-name">@(SelectedLogoFile?.Name ?? (string.IsNullOrWhiteSpace(Model.LogoUrl) ? "Sem logomarca (usará iniciais)" : "Logomarca cadastrada"))</span>
+                        </div>
+
+                        <div class="branding-review-colors">
+                            <div class="color-sample">
+                                <span class="color-chip" style="background: @GetEffectivePrimaryColor();"></span>
+                                <span class="color-code mono">@GetEffectivePrimaryColor() (Primária)</span>
+                            </div>
+                            <div class="color-sample">
+                                <span class="color-chip" style="background: @GetEffectiveSecondaryColor();"></span>
+                                <span class="color-code mono">@GetEffectiveSecondaryColor() (Secundária)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="wizard-actions">
@@ -300,8 +501,20 @@
     [Parameter]
     public EventCallback<StoreProfileFormModel> OnSave { get; set; }
 
+    [Parameter]
+    public EventCallback<IBrowserFile> OnLogoSelected { get; set; }
+
     public int CurrentStep { get; set; } = 1;
     public string? ErrorMessage { get; set; }
+
+    public IBrowserFile? SelectedLogoFile { get; private set; }
+    private string? _selectedFileName;
+    private string? _previewLogoDataUrl;
+
+    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".webp", ".svg"
+    };
 
     private void HandleCnpjInput(ChangeEventArgs e)
     {
@@ -313,6 +526,85 @@
     {
         var raw = e.Value?.ToString() ?? string.Empty;
         Model.PostalCode = StoreProfileFormModel.FormatCep(raw);
+    }
+
+    private async Task HandleLogoFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        ErrorMessage = null;
+        var file = e.File;
+        if (file is null) return;
+
+        var ext = Path.GetExtension(file.Name);
+        if (!AllowedExtensions.Contains(ext))
+        {
+            ErrorMessage = "Formato de imagem inválido. Escolha um arquivo PNG, JPG, JPEG, WEBP ou SVG.";
+            return;
+        }
+
+        if (file.Size > 2 * 1024 * 1024)
+        {
+            ErrorMessage = "O arquivo de logomarca deve ter no máximo 2 MB.";
+            return;
+        }
+
+        try
+        {
+            SelectedLogoFile = file;
+            _selectedFileName = $"{file.Name} ({(file.Size / 1024):N0} KB)";
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            var mime = file.ContentType;
+            if (string.IsNullOrWhiteSpace(mime))
+            {
+                mime = ext.ToLowerInvariant() switch
+                {
+                    ".png" => "image/png",
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".webp" => "image/webp",
+                    ".svg" => "image/svg+xml",
+                    _ => "application/octet-stream"
+                };
+            }
+            _previewLogoDataUrl = $"data:{mime};base64,{base64}";
+
+            await OnLogoSelected.InvokeAsync(file);
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Erro ao carregar o arquivo da logomarca. Tente novamente.";
+        }
+    }
+
+    private void ClearSelectedLogo()
+    {
+        SelectedLogoFile = null;
+        _selectedFileName = null;
+        _previewLogoDataUrl = null;
+        Model.LogoUrl = null;
+    }
+
+    private void ApplyPreset(string primary, string secondary)
+    {
+        Model.BrandPrimaryColor = primary;
+        Model.BrandSecondaryColor = secondary;
+    }
+
+    private string GetEffectivePrimaryColor() =>
+        string.IsNullOrWhiteSpace(Model.BrandPrimaryColor) ? "#2563EB" : Model.BrandPrimaryColor;
+
+    private string GetEffectiveSecondaryColor() =>
+        string.IsNullOrWhiteSpace(Model.BrandSecondaryColor) ? "#0EA5E9" : Model.BrandSecondaryColor;
+
+    private string GetFormattedAddress()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Model.Street)) parts.Add(Model.Street);
+        if (!string.IsNullOrWhiteSpace(Model.City)) parts.Add(Model.City);
+        if (!string.IsNullOrWhiteSpace(Model.State)) parts.Add(Model.State.ToUpperInvariant());
+        return string.Join(" • ", parts);
     }
 
     private void NextStep()
@@ -337,6 +629,16 @@
                 return;
             }
             CurrentStep = 3;
+        }
+        else if (CurrentStep == 3)
+        {
+            var (isValid, error) = Model.ValidateStep3Branding();
+            if (!isValid)
+            {
+                ErrorMessage = error;
+                return;
+            }
+            CurrentStep = 4;
         }
     }
 
@@ -367,18 +669,20 @@
         else if (targetStep == 3)
         {
             var (s1Valid, s1Error) = Model.ValidateStep1();
-            if (!s1Valid)
-            {
-                ErrorMessage = s1Error;
-                return;
-            }
+            if (!s1Valid) { ErrorMessage = s1Error; return; }
             var (s2Valid, s2Error) = Model.ValidateStep2();
-            if (!s2Valid)
-            {
-                ErrorMessage = s2Error;
-                return;
-            }
+            if (!s2Valid) { ErrorMessage = s2Error; return; }
             CurrentStep = 3;
+        }
+        else if (targetStep == 4)
+        {
+            var (s1Valid, s1Error) = Model.ValidateStep1();
+            if (!s1Valid) { ErrorMessage = s1Error; return; }
+            var (s2Valid, s2Error) = Model.ValidateStep2();
+            if (!s2Valid) { ErrorMessage = s2Error; return; }
+            var (s3Valid, s3Error) = Model.ValidateStep3Branding();
+            if (!s3Valid) { ErrorMessage = s3Error; return; }
+            CurrentStep = 4;
         }
     }
 
@@ -398,6 +702,14 @@
         {
             ErrorMessage = s2Error;
             CurrentStep = 2;
+            return;
+        }
+
+        var (s3Valid, s3Error) = Model.ValidateStep3Branding();
+        if (!s3Valid)
+        {
+            ErrorMessage = s3Error;
+            CurrentStep = 3;
             return;
         }
 

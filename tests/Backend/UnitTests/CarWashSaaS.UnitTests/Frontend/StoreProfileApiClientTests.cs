@@ -143,6 +143,48 @@ public sealed class StoreProfileApiClientTests
         Assert.Equal("A legal name is required.", ex.Message);
     }
 
+    [Fact]
+    public async Task UploadLogoAsync_ShouldSendMultipart_AndReturnUpdatedProfile()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var profileId = Guid.CreateVersion7();
+        var expected = new StoreProfileDto(
+            profileId,
+            tenantId,
+            "LavaJato Alpha Ltda",
+            "Alpha Car Wash",
+            "11222333000181",
+            "+5511999999999",
+            "Rua Augusta, 100",
+            "São Paulo",
+            "SP",
+            "01305-000",
+            "/tenants/profile/logo/abc.png",
+            "#2563EB",
+            "#0EA5E9");
+
+        var handler = new StubHttpMessageHandler(async (request, _) =>
+        {
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal("/tenants/profile/logo", request.RequestUri!.AbsolutePath);
+            Assert.IsType<MultipartFormDataContent>(request.Content);
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(expected), Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        var result = await client.UploadLogoAsync(stream, "logo.png", "#2563EB", "#0EA5E9");
+
+        Assert.NotNull(result);
+        Assert.Equal("/tenants/profile/logo/abc.png", result.LogoUrl);
+        Assert.Equal("#2563EB", result.BrandPrimaryColor);
+        Assert.Equal("#0EA5E9", result.BrandSecondaryColor);
+    }
+
     private static StoreProfileApiClient CreateClient(HttpMessageHandler handler) =>
         new(new HttpClient(handler) { BaseAddress = new Uri("https://api.example.test/") });
 

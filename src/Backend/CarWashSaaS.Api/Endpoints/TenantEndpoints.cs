@@ -179,6 +179,38 @@ public static class TenantEndpoints
                 : Results.File(logo.Content, logo.ContentType);
         }).RequireAuthorization();
 
+        group.MapGet("/{tenantId:guid}/public/logo", async (
+            Guid tenantId,
+            CarWashSaaS.Shared.Configuration.CurrentTenantAccessor currentTenantAccessor,
+            StoreProfileApplicationService service,
+            TenantBrandingStorageService storageService,
+            CancellationToken ct) =>
+        {
+            if (tenantId == Guid.Empty)
+            {
+                return Results.NotFound();
+            }
+
+            currentTenantAccessor.SetTenant(tenantId);
+            var profileResult = await service.GetAsync(tenantId, ct);
+            if (!profileResult.IsSuccess || string.IsNullOrWhiteSpace(profileResult.Value!.LogoUrl))
+            {
+                return Results.NotFound();
+            }
+
+            var logoUrl = profileResult.Value.LogoUrl;
+            if (!logoUrl.StartsWith("/tenants/profile/logo/", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.Redirect(logoUrl);
+            }
+
+            var fileName = Path.GetFileName(logoUrl);
+            var logo = await storageService.GetLogoAsync(tenantId, fileName, ct);
+            return logo is null
+                ? Results.NotFound()
+                : Results.File(logo.Content, logo.ContentType);
+        }).AllowAnonymous();
+
         return app;
     }
 

@@ -332,6 +332,17 @@ h1 {
     transition: all 0.16s ease;
 }
 
+.button-primary {
+    background: #c6f277;
+    color: #182c2b;
+    border-color: #b5e466;
+}
+
+.button-primary:hover {
+    background: #b6e760;
+    transform: translateY(-1px);
+}
+
 .button-secondary {
     background: #ffffff;
     color: #375046;
@@ -354,6 +365,101 @@ h1 {
 
 .button-text:hover {
     text-decoration: underline;
+}
+
+/* Store Logo and Branding Badge */
+.store-profile-logo-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid #d5e4d8;
+}
+
+.store-badge-initials {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.brand-preview-row {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed #e1e9e3;
+}
+
+.brand-chips-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.color-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: #f8faf8;
+    border: 1px solid #e1e9e3;
+}
+
+.dot-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.color-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: #20352f;
+}
+
+/* Receipt Preview Drawer */
+.receipt-preview-drawer {
+    margin-top: 24px;
+    background: #090e17;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #1e293b;
+}
+
+.drawer-header h3 {
+    margin: 0 0 4px;
+    color: #f1f5f9;
+    font: 750 18px 'Manrope', sans-serif;
+}
+
+.drawer-header p {
+    margin: 0;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.drawer-content {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0;
 }
 
 @media (max-width: 820px) {

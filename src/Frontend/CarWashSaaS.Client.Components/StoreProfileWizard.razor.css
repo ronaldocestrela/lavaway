@@ -272,6 +272,299 @@
     gap: 20px;
 }
 
+.review-card-full {
+    grid-column: span 2;
+}
+
+/* Branding Layout (Step 3) */
+.branding-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+}
+
+.branding-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.branding-section {
+    background: #f8faf8;
+    border: 1px solid #e1e9e3;
+    border-radius: 8px;
+    padding: 18px 20px;
+}
+
+.control-label {
+    display: block;
+    font: 700 13px 'Manrope', sans-serif;
+    color: #1f342d;
+    margin-bottom: 4px;
+}
+
+.control-desc {
+    margin: 0 0 14px;
+    font-size: 11px;
+    color: #7b8c83;
+    line-height: 1.4;
+}
+
+.file-input-hidden {
+    display: none;
+}
+
+.upload-dropzone-label {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: #ffffff;
+    border: 2px dashed #ccd9cf;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-dropzone-label:hover {
+    border-color: #182c2b;
+    background: #fbfdfb;
+}
+
+.upload-icon {
+    font-size: 24px;
+}
+
+.upload-dropzone-label strong {
+    display: block;
+    font-size: 12px;
+    color: #1f342d;
+}
+
+.upload-formats {
+    display: block;
+    font-size: 10px;
+    color: #8c9c93;
+    margin-top: 2px;
+}
+
+.selected-file-badge {
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: #eef7ee;
+    border: 1px solid #cce8cc;
+    font-size: 11px;
+    color: #276727;
+}
+
+.badge-clear {
+    border: none;
+    background: none;
+    color: #de755f;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-left: 6px;
+}
+
+.color-pickers-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.color-picker-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.picker-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #384e45;
+}
+
+.picker-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.color-input {
+    width: 42px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid #dbe4dd;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+}
+
+.hex-input {
+    flex: 1;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid #dbe4dd;
+    border-radius: 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.picker-hint {
+    font-size: 10px;
+    color: #92a298;
+}
+
+.presets-section {
+    padding-top: 12px;
+    border-top: 1px dashed #e1e9e3;
+}
+
+.presets-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #7b8c83;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.presets-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.preset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid #dbe4dd;
+    border-radius: 20px;
+    background: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    color: #20352f;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.preset-btn:hover {
+    border-color: #182c2b;
+    transform: translateY(-1px);
+}
+
+.preset-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.branding-preview-column {
+    position: relative;
+}
+
+.preview-sticky-wrap {
+    position: sticky;
+    top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.preview-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px;
+}
+
+.preview-title {
+    font: 700 10px/1 'IBM Plex Mono', monospace;
+    letter-spacing: 0.5px;
+    color: #64748b;
+}
+
+.preview-tag {
+    font-size: 10px;
+    font-weight: 700;
+    color: #059669;
+    background: #d1fae5;
+    padding: 2px 8px;
+    border-radius: 9999px;
+}
+
+.branding-review-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.branding-review-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.review-logo-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #e1e9e3;
+}
+
+.review-logo-fallback {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.review-logo-name {
+    font-size: 12px;
+    color: #1f342d;
+    font-weight: 600;
+}
+
+.branding-review-colors {
+    display: flex;
+    gap: 14px;
+}
+
+.color-sample {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.color-chip {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.color-code {
+    font-size: 11px;
+    color: #4b6357;
+}
+
 .review-card {
     background: #f8faf8;
     border: 1px solid #e1e9e3;
@@ -383,5 +676,15 @@
     }
     .review-grid {
         grid-template-columns: 1fr;
+    }
+    .branding-layout {
+        grid-template-columns: 1fr;
+    }
+    .color-pickers-row {
+        grid-template-columns: 1fr;
+    }
+    .branding-review-row {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

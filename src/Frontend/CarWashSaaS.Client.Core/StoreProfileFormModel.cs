@@ -151,4 +151,21 @@ public sealed class StoreProfileFormModel
 
         return (true, null);
     }
+
+    public (bool IsValid, string? ErrorMessage) ValidateStep3Branding()
+    {
+        if (!string.IsNullOrWhiteSpace(BrandPrimaryColor))
+        {
+            if (!Regex.IsMatch(BrandPrimaryColor.Trim(), "^#[0-9A-Fa-f]{6}$"))
+                return (false, "Cor primária inválida. Use o formato hexadecimal #RRGGBB.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(BrandSecondaryColor))
+        {
+            if (!Regex.IsMatch(BrandSecondaryColor.Trim(), "^#[0-9A-Fa-f]{6}$"))
+                return (false, "Cor secundária inválida. Use o formato hexadecimal #RRGGBB.");
+        }
+
+        return (true, null);
+    }
 }

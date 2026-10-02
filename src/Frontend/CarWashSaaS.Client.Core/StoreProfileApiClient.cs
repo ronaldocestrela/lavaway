@@ -35,6 +35,46 @@ public sealed class StoreProfileApiClient(HttpClient httpClient)
         return await ReadResponseAsync<StoreProfileDto>(response, ct);
     }
 
+    public async Task<StoreProfileDto> UploadLogoAsync(
+        Stream logoStream,
+        string fileName,
+        string? brandPrimaryColor = null,
+        string? brandSecondaryColor = null,
+        CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        using var streamContent = new StreamContent(logoStream);
+        var mediaType = GetMediaType(fileName);
+        streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mediaType);
+        content.Add(streamContent, "logoFile", fileName);
+
+        if (!string.IsNullOrWhiteSpace(brandPrimaryColor))
+        {
+            content.Add(new StringContent(brandPrimaryColor), "brandPrimaryColor");
+        }
+
+        if (!string.IsNullOrWhiteSpace(brandSecondaryColor))
+        {
+            content.Add(new StringContent(brandSecondaryColor), "brandSecondaryColor");
+        }
+
+        using var response = await httpClient.PostAsync("tenants/profile/logo", content, ct);
+        return await ReadResponseAsync<StoreProfileDto>(response, ct);
+    }
+
+    private static string GetMediaType(string fileName)
+    {
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".svg" => "image/svg+xml",
+            _ => "application/octet-stream"
+        };
+    }
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (!response.IsSuccessStatusCode)

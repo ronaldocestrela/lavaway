@@ -108,4 +108,24 @@ public sealed class StoreProfileFormModelTests
         Assert.Equal("11.222.333/0001-81", model.Cnpj);
         Assert.Equal("01000-000", model.PostalCode);
     }
+
+    [Theory]
+    [InlineData(null, null, true)]
+    [InlineData("#2563EB", "#0EA5E9", true)]
+    [InlineData("#ffffff", "#000000", true)]
+    [InlineData("invalid", "#0EA5E9", false)]
+    [InlineData("#2563EB", "123456", false)]
+    [InlineData("#GGG000", "#000000", false)]
+    public void ValidateStep3Branding_ShouldValidateHexColors(string? primary, string? secondary, bool expectedValid)
+    {
+        var model = new StoreProfileFormModel
+        {
+            BrandPrimaryColor = primary,
+            BrandSecondaryColor = secondary
+        };
+
+        var (isValid, _) = model.ValidateStep3Branding();
+
+        Assert.Equal(expectedValid, isValid);
+    }
 }

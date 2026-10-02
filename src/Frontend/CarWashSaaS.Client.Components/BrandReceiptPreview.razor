@@ -1,0 +1,219 @@
+<div class="brand-receipt-preview-container" style="--brand-primary: @(SanitizeColor(PrimaryColor, "#2563EB")); --brand-secondary: @(SanitizeColor(SecondaryColor, "#0EA5E9"));">
+    <!-- View Switcher Tabs -->
+    <div class="preview-mode-bar">
+        <button type="button"
+                class="mode-pill @(_activeMode == "receipt" ? "mode-pill-active" : "")"
+                data-testid="tab-receipt"
+                @onclick="@(() => _activeMode = "receipt")">
+            <span class="mode-icon">🧾</span>
+            <span>Comprovante Digital (OS)</span>
+        </button>
+        <button type="button"
+                class="mode-pill @(_activeMode == "tracking" ? "mode-pill-active" : "")"
+                data-testid="tab-tracking"
+                @onclick="@(() => _activeMode = "tracking")">
+            <span class="mode-icon">📱</span>
+            <span>Link do Cliente (WhatsApp)</span>
+        </button>
+    </div>
+
+    <!-- Preview Container Frame -->
+    <div class="preview-viewport">
+        @if (_activeMode == "receipt")
+        {
+            <!-- Receipt View Mockup -->
+            <div class="receipt-card-mockup" data-testid="receipt-mockup">
+                <!-- Receipt Header (Branded) -->
+                <div class="receipt-header">
+                    <div class="receipt-logo-container">
+                        @if (!string.IsNullOrWhiteSpace(LogoUrl))
+                        {
+                            <img src="@LogoUrl" alt="Logo @TradeName" class="brand-logo-img" />
+                        }
+                        else
+                        {
+                            <div class="brand-logo-fallback">
+                                @(string.IsNullOrWhiteSpace(TradeName) ? "L" : TradeName.Trim()[..1].ToUpperInvariant())
+                            </div>
+                        }
+                    </div>
+
+                    <div class="receipt-brand-text">
+                        <h4 class="receipt-trade-name">@(string.IsNullOrWhiteSpace(TradeName) ? "Seu Estabelecimento" : TradeName)</h4>
+                        @if (!string.IsNullOrWhiteSpace(Phone))
+                        {
+                            <p class="receipt-phone">📞 @Phone</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Address))
+                        {
+                            <p class="receipt-address">📍 @Address</p>
+                        }
+                    </div>
+                </div>
+
+                <div class="receipt-divider"></div>
+
+                <!-- Order Title -->
+                <div class="receipt-badge-row">
+                    <span class="receipt-type-pill">Comprovante de Atendimento</span>
+                    <span class="receipt-code">OS #0104</span>
+                </div>
+
+                <!-- Receipt Body Content -->
+                <div class="receipt-body">
+                    <div class="receipt-info-row">
+                        <span class="info-label">Veículo</span>
+                        <span class="info-value">Honda Civic • Placa BRA2E19</span>
+                    </div>
+                    <div class="receipt-info-row">
+                        <span class="info-label">Porte</span>
+                        <span class="info-value">Sedan Médio</span>
+                    </div>
+                    <div class="receipt-info-row">
+                        <span class="info-label">Entrada</span>
+                        <span class="info-value">Hoje às 14:15</span>
+                    </div>
+                    <div class="receipt-info-row">
+                        <span class="info-label">Previsão</span>
+                        <span class="info-value">Hoje às 15:45</span>
+                    </div>
+
+                    <div class="receipt-subdivider"></div>
+
+                    <!-- Services Table -->
+                    <div class="receipt-services-list">
+                        <div class="service-item">
+                            <span class="service-name">Lavagem Completa + Cera</span>
+                            <span class="service-price">R$ 80,00</span>
+                        </div>
+                        <div class="service-item">
+                            <span class="service-name">Higienização de Ar (Oxi-sanitização)</span>
+                            <span class="service-price">R$ 45,00</span>
+                        </div>
+                    </div>
+
+                    <div class="receipt-subdivider"></div>
+
+                    <!-- Total Row -->
+                    <div class="receipt-total-row">
+                        <span class="total-label">VALOR TOTAL</span>
+                        <span class="total-value">R$ 125,00</span>
+                    </div>
+                </div>
+
+                <!-- Receipt Footer with Brand Accents -->
+                <div class="receipt-footer">
+                    <div class="qr-mockup">
+                        <div class="qr-box">
+                            <span class="qr-dots">:::</span>
+                        </div>
+                        <div class="qr-text">
+                            <strong>Acompanhe em tempo real</strong>
+                            <span>Aponte a câmera ou abra o link enviado via WhatsApp</span>
+                        </div>
+                    </div>
+                    <div class="receipt-powered-by">
+                        <span>Tecnologia Lavaway SaaS</span>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Tracking Link (Mobile View) Mockup -->
+            <div class="tracking-card-mockup" data-testid="tracking-mockup">
+                <!-- Mobile Screen Header -->
+                <div class="tracking-header">
+                    <div class="tracking-logo-box">
+                        @if (!string.IsNullOrWhiteSpace(LogoUrl))
+                        {
+                            <img src="@LogoUrl" alt="Logo @TradeName" class="brand-logo-img" />
+                        }
+                        else
+                        {
+                            <div class="brand-logo-fallback">
+                                @(string.IsNullOrWhiteSpace(TradeName) ? "L" : TradeName.Trim()[..1].ToUpperInvariant())
+                            </div>
+                        }
+                    </div>
+                    <div class="tracking-store-info">
+                        <h4>@(string.IsNullOrWhiteSpace(TradeName) ? "Seu Estabelecimento" : TradeName)</h4>
+                        <span class="tracking-badge-live">Link Público Seguro</span>
+                    </div>
+                </div>
+
+                <!-- Tracking Status Banner -->
+                <div class="tracking-status-banner">
+                    <div class="status-indicator">
+                        <span class="pulse-dot"></span>
+                        <span class="status-title">Acompanhamento do Veículo</span>
+                    </div>
+                    <h3 class="status-highlight">Em Lavagem e Secagem</h3>
+                    <p class="status-time">Previsão estimada: <strong>15:45 (Faltam 30 min)</strong></p>
+
+                    <!-- Progress Bar with Brand Colors -->
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width: 65%;"></div>
+                    </div>
+                </div>
+
+                <!-- Vehicle Details Summary -->
+                <div class="tracking-vehicle-card">
+                    <div class="vehicle-title-row">
+                        <div>
+                            <span class="vehicle-tag">HONDA CIVIC</span>
+                            <span class="vehicle-plate">BRA2E19</span>
+                        </div>
+                        <span class="os-tag">OS #0104</span>
+                    </div>
+                    <div class="services-chips">
+                        <span class="chip">Lavagem Completa</span>
+                        <span class="chip">Oxi-sanitização</span>
+                    </div>
+                </div>
+
+                <!-- Action Button styled with Brand Secondary -->
+                <div class="tracking-actions">
+                    <button type="button" class="btn-tracking-primary">
+                        <span>Falar com o Lava-Jato no WhatsApp</span>
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? TradeName { get; set; }
+
+    [Parameter]
+    public string? Phone { get; set; }
+
+    [Parameter]
+    public string? Address { get; set; }
+
+    [Parameter]
+    public string? LogoUrl { get; set; }
+
+    [Parameter]
+    public string? PrimaryColor { get; set; } = "#2563EB";
+
+    [Parameter]
+    public string? SecondaryColor { get; set; } = "#0EA5E9";
+
+    private string _activeMode = "receipt";
+
+    private static string SanitizeColor(string? color, string defaultColor)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+        {
+            return defaultColor;
+        }
+
+        var trimmed = color.Trim();
+        return System.Text.RegularExpressions.Regex.IsMatch(trimmed, "^#[0-9A-Fa-f]{6}$")
+            ? trimmed
+            : defaultColor;
+    }
+}
