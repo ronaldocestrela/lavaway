@@ -43,11 +43,11 @@ Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Serv
 
 ### 1.3 Identidade, sessão e permissões
 
-- [ ] Implementar cadastro/autenticação com tokens JWT e refresh tokens (ou cookies seguros, conforme decisão de arquitetura).
+- [x] Implementar cadastro/autenticação com tokens JWT e refresh tokens (ou cookies seguros, conforme decisão de arquitetura).
 - [x] Definir os perfis Administrador da Loja, Recepcionista e Operador/Lavador e mapear as permissões por papel na camada de domínio.
-- [x] **Entrega provisória:** os papéis têm atribuição de permissões explícitas e a API já expõe policies de autorização por role, mas o fluxo completo de emissão/refresh de sessão ainda deve ser concluído.
+- [x] **Entrega:** fluxo completo de emissão de Access Token (JWT), gestão de sessão com Refresh Token criptográfico e rotação automática, detecção de reutilização, endpoints de login/refresh/revoke/usuários na API e provedor de autenticação no frontend Blazor.
 
-> Observação: a base de identidade segura foi iniciada com `ShopRole`, `ShopPermission`, `ShopRolePermissions` e policies de autorização em startup. A etapa final de login/token e refresh continua como entrega pendente da subfase.
+> Decisão de arquitetura formalizada na ADR-0005. O módulo `CarWashSaaS.Identity` gerencia de ponta a ponta as credenciais, emissão com chave configurada, persistência de `RefreshToken` com isolamento multi-tenant no schema `identity`, e o frontend consome via `AuthApiClient` e `JwtAuthenticationStateProvider`. Documentação completa em `docs/living-docs/identidade-sessao-permissoes-1.3.md`.
 
 ### 1.4 Arquivos e processamento assíncrono
 

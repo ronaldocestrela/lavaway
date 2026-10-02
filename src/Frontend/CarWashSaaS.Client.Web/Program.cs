@@ -15,7 +15,22 @@ builder.Services.AddScoped<CustomerVehicleApiClient>();
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
 var authority = builder.Configuration["Authentication:Authority"];
-if (!string.IsNullOrWhiteSpace(authority))
+
+builder.Services.AddScoped<ITokenStorage, InMemoryTokenStorage>();
+builder.Services.AddScoped<JwtAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
+builder.Services.AddScoped<JwtAuthorizationMessageHandler>();
+
+builder.Services.AddScoped(sp =>
+{
+	var handler = sp.GetRequiredService<JwtAuthorizationMessageHandler>();
+	handler.InnerHandler = new HttpClientHandler();
+	return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+});
+
+builder.Services.AddScoped<AuthApiClient>();
+
+if (!string.IsNullOrWhiteSpace(authority) && builder.Configuration.GetValue<bool>("Authentication:UseOidc"))
 {
 	builder.Services.AddOidcAuthentication(options =>
 	{
@@ -27,17 +42,6 @@ if (!string.IsNullOrWhiteSpace(authority))
 			options.ProviderOptions.DefaultScopes.Add(apiScope);
 		}
 	});
-	builder.Services.AddScoped<ApiAuthorizationMessageHandler>();
-	builder.Services.AddScoped(sp => new HttpClient(
-		sp.GetRequiredService<ApiAuthorizationMessageHandler>().ConfigureApi())
-	{
-		BaseAddress = new Uri(apiBaseUrl)
-	});
-}
-else
-{
-	builder.Services.AddScoped<AuthenticationStateProvider, UnauthenticatedAuthenticationStateProvider>();
-	builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 }
 
 await builder.Build().RunAsync();

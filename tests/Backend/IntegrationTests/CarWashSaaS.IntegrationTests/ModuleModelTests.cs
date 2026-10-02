@@ -27,7 +27,7 @@ public sealed class ModuleModelTests
     }
 
     [Fact]
-    public void IdentityContext_ShouldFilterUsersButKeepRolesGlobal()
+    public void IdentityContext_ShouldFilterUsersAndRefreshTokensButKeepRolesGlobal()
     {
         var options = new DbContextOptionsBuilder<IdentityModuleDbContext>()
             .UseSqlServer("Server=localhost;Database=CarWashSaaS;Integrated Security=True;TrustServerCertificate=True")
@@ -35,9 +35,11 @@ public sealed class ModuleModelTests
 
         using var context = new IdentityModuleDbContext(options, new CurrentTenantAccessor());
         var user = context.Model.FindEntityType(typeof(ApplicationUser))!;
+        var refreshToken = context.Model.FindEntityType(typeof(CarWashSaaS.Identity.Domain.RefreshToken))!;
         var role = context.Model.FindEntityType(typeof(Microsoft.AspNetCore.Identity.IdentityRole<Guid>))!;
 
         Assert.NotEmpty(user.GetDeclaredQueryFilters());
+        Assert.NotEmpty(refreshToken.GetDeclaredQueryFilters());
         Assert.Empty(role.GetDeclaredQueryFilters());
     }
 

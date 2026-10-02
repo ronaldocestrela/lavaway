@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\..\..\src\Backend\Modules\Tenants\CarWashSaaS.Tenants.Domain\CarWashSaaS.Tenants.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\src\Backend\Modules\Tenants\CarWashSaaS.Tenants.Application\CarWashSaaS.Tenants.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\Backend\Modules\Identity\CarWashSaaS.Identity.Domain\CarWashSaaS.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Backend\Modules\Identity\CarWashSaaS.Identity.Application\CarWashSaaS.Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\Backend\Modules\YardOperations\CarWashSaaS.YardOperations.Application\CarWashSaaS.YardOperations.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\Backend\Modules\YardOperations\CarWashSaaS.YardOperations.Domain\CarWashSaaS.YardOperations.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\src\Frontend\CarWashSaaS.Client.Core\CarWashSaaS.Client.Core.csproj" />

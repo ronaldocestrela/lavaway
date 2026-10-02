@@ -60,6 +60,34 @@ public sealed class TenantIsolationIntegrationTests(SqlServerFixture fixture)
     }
 
     [Fact]
+    public async Task TenantB_ShouldNotReadOrModifyTenantA_RefreshToken()
+    {
+        var tenantA = await CreateTenantAsync("Token Tenant A");
+        var tenantB = await CreateTenantAsync("Token Tenant B");
+        var userId = Guid.NewGuid();
+        var token = CarWashSaaS.Identity.Domain.RefreshToken.Create(
+            tenantA,
+            userId,
+            "hash_tenant_a_123",
+            DateTimeOffset.UtcNow.AddDays(7)).Value!;
+
+        await using (var context = CreateIdentityContext(tenantA))
+        {
+            context.RefreshTokens.Add(token);
+            await context.SaveChangesAsync();
+        }
+
+        await using var tenantBContext = CreateIdentityContext(tenantB);
+        Assert.Null(await tenantBContext.RefreshTokens.SingleOrDefaultAsync(value => value.Id == token.Id));
+
+        tenantBContext.RefreshTokens.Attach(token);
+        token.Revoke(DateTimeOffset.UtcNow);
+        tenantBContext.Entry(token).Property(value => value.RevokedAtUtc).IsModified = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => tenantBContext.SaveChangesAsync());
+    }
+
+    [Fact]
     public async Task TenantB_ShouldNotReadOrModifyTenantA_YardSetupData()
     {
         var tenantA = await CreateTenantAsync("Yard A");

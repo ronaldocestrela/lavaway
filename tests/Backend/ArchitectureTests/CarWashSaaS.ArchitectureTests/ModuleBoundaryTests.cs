@@ -62,6 +62,7 @@ public sealed class ModuleBoundaryTests
         var tenantOwnedTypes = new[]
         {
             typeof(ApplicationUser),
+            typeof(CarWashSaaS.Identity.Domain.RefreshToken),
             typeof(Customer),
             typeof(Vehicle),
             typeof(Service),
@@ -80,6 +81,7 @@ public sealed class ModuleBoundaryTests
         {
             typeof(Tenant),
             typeof(ApplicationUser),
+            typeof(CarWashSaaS.Identity.Domain.RefreshToken),
             typeof(Customer),
             typeof(Vehicle),
             typeof(Service),

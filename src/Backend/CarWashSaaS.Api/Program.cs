@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using System.Text;
+using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Identity.Infrastructure;
 using CarWashSaaS.Api.Middleware;
@@ -54,6 +57,10 @@ if (!Uri.TryCreate(rabbitMqUri, UriKind.Absolute, out var rabbitMqConnectionUri)
 
 builder.Services.AddScoped<CurrentTenantAccessor>();
 builder.Services.AddScoped<ICurrentTenantAccessor>(services => services.GetRequiredService<CurrentTenantAccessor>());
+builder.Services.AddScoped<ITokenService, JwtTokenService>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IIdentityUserRepository, IdentityUserRepository>();
+builder.Services.AddScoped<IdentityApplicationService>();
 builder.Services.AddScoped<IStoreProfileRepository, StoreProfileRepository>();
 builder.Services.AddScoped<StoreProfileApplicationService>();
 builder.Services.AddScoped<IServiceRepository, ServiceRepository>();
@@ -100,24 +107,35 @@ builder.Services.AddDbContext<YardOperationsDbContext>(options =>
 builder.Services.AddDbContext<WhatsAppDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "whatsapp")));
 
+var signingKey = builder.Configuration["Authentication:SigningKey"] ?? JwtTokenService.DefaultSigningKey;
+var issuer = builder.Configuration["Authentication:Issuer"] ?? authority;
+
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.User.RequireUniqueEmail = true)
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<IdentityModuleDbContext>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = authority;
+        if (string.IsNullOrWhiteSpace(signingKey) && !string.IsNullOrWhiteSpace(authority))
+        {
+            options.Authority = authority;
+        }
+
         options.Audience = audience;
-        options.RequireHttpsMetadata = true;
+        options.RequireHttpsMetadata = builder.Environment.IsProduction();
         options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
+            ValidIssuer = issuer,
             ValidateAudience = true,
+            ValidAudience = audience,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
             NameClaimType = "sub",
-            RoleClaimType = "role"
+            RoleClaimType = "role",
+            ClockSkew = TimeSpan.FromSeconds(30)
         };
     });
 builder.Services.AddAuthorization(options =>
@@ -160,6 +178,117 @@ app.UseMiddleware<TenantResolverMiddleware>();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+
+app.MapPost("/auth/login", async (
+    LoginRequest request,
+    IdentityApplicationService identityService,
+    CancellationToken ct) =>
+{
+    var result = await identityService.AuthenticateAsync(request, ct);
+    if (result.IsSuccess)
+    {
+        return Results.Ok(result.Value);
+    }
+
+    return result.Error!.Type switch
+    {
+        ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status401Unauthorized),
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).AllowAnonymous();
+
+app.MapPost("/auth/refresh", async (
+    RefreshTokenRequest request,
+    IdentityApplicationService identityService,
+    CancellationToken ct) =>
+{
+    var result = await identityService.RefreshTokenAsync(request, ct);
+    if (result.IsSuccess)
+    {
+        return Results.Ok(result.Value);
+    }
+
+    return result.Error!.Type switch
+    {
+        ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status401Unauthorized),
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).AllowAnonymous();
+
+app.MapPost("/auth/revoke", async (
+    RevokeTokenRequest request,
+    IdentityApplicationService identityService,
+    CancellationToken ct) =>
+{
+    var result = await identityService.RevokeTokenAsync(request, ct);
+    return result.IsSuccess
+        ? Results.Ok(new { message = "Token revoked successfully." })
+        : Results.BadRequest(new { result.Error!.Code, result.Error.Description });
+}).AllowAnonymous();
+
+app.MapGet("/auth/me", (
+    ClaimsPrincipal user,
+    ICurrentTenantAccessor currentTenantAccessor) =>
+{
+    var userId = user.FindFirst("sub")?.Value;
+    var email = user.FindFirst("email")?.Value;
+    var role = user.FindFirst("role")?.Value;
+    var permissions = user.FindAll("permission").Select(c => c.Value).ToArray();
+
+    return Results.Ok(new
+    {
+        userId,
+        email,
+        tenantId = currentTenantAccessor.TenantId,
+        role,
+        permissions
+    });
+}).RequireAuthorization();
+
+app.MapPost("/identity/users", async (
+    CreateUserRequest request,
+    ICurrentTenantAccessor currentTenantAccessor,
+    IdentityApplicationService identityService,
+    CancellationToken ct) =>
+{
+    var tenantId = currentTenantAccessor.TenantId;
+    if (!tenantId.HasValue)
+    {
+        return Results.Forbid();
+    }
+
+    var result = await identityService.CreateUserAsync(tenantId.Value, request, ct);
+    if (result.IsSuccess)
+    {
+        return Results.Created($"/identity/users/{result.Value!.Id}", result.Value);
+    }
+
+    return result.Error!.Type switch
+    {
+        ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+        ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+    };
+}).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+app.MapGet("/identity/users", async (
+    ICurrentTenantAccessor currentTenantAccessor,
+    IdentityApplicationService identityService,
+    CancellationToken ct) =>
+{
+    var tenantId = currentTenantAccessor.TenantId;
+    if (!tenantId.HasValue)
+    {
+        return Results.Forbid();
+    }
+
+    var result = await identityService.ListUsersAsync(tenantId.Value, ct);
+    return result.IsSuccess
+        ? Results.Ok(result.Value)
+        : Results.BadRequest(new { result.Error!.Code, result.Error.Description });
+}).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
 app.MapPost("/whatsapp/webhooks/evolution", async (
     HttpRequest request,

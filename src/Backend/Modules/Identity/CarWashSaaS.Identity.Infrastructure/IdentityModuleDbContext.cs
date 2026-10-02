@@ -14,6 +14,8 @@ public sealed class IdentityModuleDbContext(
 {
     public Guid? TenantId => currentTenantAccessor.TenantId;
 
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.HasDefaultSchema("identity");
@@ -23,6 +25,21 @@ public sealed class IdentityModuleDbContext(
         {
             user.Property(value => value.TenantId).IsRequired();
             user.HasIndex(value => value.TenantId);
+        });
+
+        builder.Entity<RefreshToken>(token =>
+        {
+            token.ToTable("RefreshTokens");
+            token.HasKey(value => value.Id);
+            token.Property(value => value.TenantId).IsRequired();
+            token.Property(value => value.UserId).IsRequired();
+            token.Property(value => value.TokenHash).HasMaxLength(256).IsRequired();
+            token.Property(value => value.ReplacedByTokenHash).HasMaxLength(256);
+            token.Property(value => value.ExpiresAtUtc).IsRequired();
+            token.Property(value => value.CreatedAtUtc).IsRequired();
+            token.HasIndex(value => value.TenantId);
+            token.HasIndex(value => value.UserId);
+            token.HasIndex(value => value.TokenHash).IsUnique();
         });
 
         builder.Entity<IdentityRole<Guid>>().HasData(
