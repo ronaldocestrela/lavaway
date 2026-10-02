@@ -28,9 +28,9 @@ flowchart TD
 
 - [x] Definir entidades e relações iniciais para `tenants`, `users`, `roles_permissions`, `customers`, `vehicles`, `services` e `work_orders`.
 - [x] Definir identificadores, regras de propriedade por tenant e estratégia de isolamento (filtro por linha e/ou *Row-Level Security*).
-- [ ] **Entrega:** modelo revisado e migrations iniciais aplicáveis em ambiente local.
+- [x] **Entrega:** modelo revisado e migrations iniciais aplicáveis em ambiente local.
 
-Migrations e scripts idempotentes foram gerados e validados; aplicar ao SQL Server local ainda está pendente.
+Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados com sucesso ao SQL Server local via `scripts/apply-migrations.sh`. Schemas `tenants`, `identity` e `yard` validados com isolamento de `__EFMigrationsHistory` por contexto.
 
 ### 1.2 Isolamento multi-tenant
 

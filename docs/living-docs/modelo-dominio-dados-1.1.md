@@ -190,10 +190,22 @@ O fluxo completo de login e refresh token continua como etapa seguinte da subfas
 
 ## Aplicação local
 
-Defina a variável `ConnectionStrings__CarWashSaaS` com a connection string do SQL Server local e aplique cada contexto:
+Defina a variável `ConnectionStrings__CarWashSaaS` no `.env` com a connection string do SQL Server local e aplique cada contexto via script automatizado:
+
+```sh
+./scripts/apply-migrations.sh
+```
+
+Ou execute manualmente para cada contexto:
 
 ```sh
 dotnet ef database update --project src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Infrastructure --startup-project src/Backend/CarWashSaaS.Api --context TenantsDbContext
 dotnet ef database update --project src/Backend/Modules/Identity/CarWashSaaS.Identity.Infrastructure --startup-project src/Backend/CarWashSaaS.Api --context IdentityModuleDbContext
 dotnet ef database update --project src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Infrastructure --startup-project src/Backend/CarWashSaaS.Api --context YardOperationsDbContext
 ```
+
+Scripts SQL idempotentes gerados e versionados também estão disponíveis para execução direta via ferramentas de banco de dados (ex.: CI/CD, DBA):
+- `scripts/sql/01_tenants_idempotent.sql` (schema `tenants`)
+- `scripts/sql/02_identity_idempotent.sql` (schema `identity`)
+- `scripts/sql/03_yard_operations_idempotent.sql` (schema `yard`)
+
