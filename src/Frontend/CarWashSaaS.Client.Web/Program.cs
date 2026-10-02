@@ -12,6 +12,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<CustomerVehicleApiClient>();
+builder.Services.AddScoped<StoreProfileApiClient>();
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
 var authority = builder.Configuration["Authentication:Authority"];

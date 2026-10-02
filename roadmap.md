@@ -90,7 +90,7 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 - [x] Validar campos obrigatórios e permitir salvar/retomar o cadastro.
 - [x] **Entrega:** estabelecimento pode concluir, consultar e atualizar seus dados cadastrais.
 
-> Implementação concluída no backend: o módulo de tenants inclui o agregado `StoreProfile` com validação de negócio, `TenantId`, isolamento multi-tenant, mapeamento no `TenantsDbContext`, repositório persistente, endpoints autenticados e política de administrador. O fluxo foi coberto por testes unitários e de integração, incluindo proteção de Tenant B contra leitura do perfil de Tenant A.
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor): o módulo de tenants inclui o agregado `StoreProfile` com validação de negócio, `TenantId`, isolamento multi-tenant, mapeamento no `TenantsDbContext`, repositório persistente, endpoints autenticados e política de administrador. Contratos compartilhados (`StoreProfileDto`, `CreateStoreProfileRequest`, `UpdateStoreProfileRequest`) conectam a API ao cliente `StoreProfileApiClient`. O frontend Blazor dispõe de fluxo guiado de 3 etapas (`StoreProfileWizard`), tela de visualização e edição (`StoreProfilePage`), validação e formatação automática de CNPJ/CEP e item no menu restrito a administradores. A entrega está 100% coberta por testes unitários, testes de arquitetura, testes de integração SQL Server e testes de componentes bUnit. Detalhes em `docs/living-docs/cadastro-perfil-estabelecimento-2.1.md`.
 
 ### 2.2 Identidade visual
 

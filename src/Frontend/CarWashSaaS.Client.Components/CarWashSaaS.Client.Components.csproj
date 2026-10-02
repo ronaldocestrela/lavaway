@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\CarWashSaaS.Shared.Contracts\CarWashSaaS.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\CarWashSaaS.Client.Core\CarWashSaaS.Client.Core.csproj" />
   </ItemGroup>
 
 </Project>

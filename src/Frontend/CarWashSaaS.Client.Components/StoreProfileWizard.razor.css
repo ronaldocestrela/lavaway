@@ -1,0 +1,387 @@
+.wizard-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Stepper Bar */
+.stepper-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #e1e9e3;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(30, 53, 43, 0.03);
+}
+
+.step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s ease;
+}
+
+.step-item:not(.step-active):not(.step-completed) {
+    opacity: 0.55;
+}
+
+.step-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font: 700 11px/1 'IBM Plex Mono', monospace;
+    background: #eef3ee;
+    color: #4b6357;
+    border: 1px solid #d4e0d7;
+    transition: all 0.2s ease;
+}
+
+.step-active .step-badge {
+    background: #182c2b;
+    color: #c6f277;
+    border-color: #182c2b;
+    box-shadow: 0 0 0 3px rgba(198, 242, 119, 0.35);
+}
+
+.step-completed .step-badge {
+    background: #c6f277;
+    color: #182c2b;
+    border-color: #b4e662;
+}
+
+.step-check {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.step-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.step-caption {
+    font: 600 9px/1 'IBM Plex Mono', monospace;
+    color: #83978d;
+    letter-spacing: 0.5px;
+}
+
+.step-title {
+    font: 700 13px/1.2 'Manrope', sans-serif;
+    color: #20352f;
+}
+
+.step-divider {
+    flex: 1;
+    height: 2px;
+    margin: 0 16px;
+    background: #e1e9e3;
+    transition: background 0.25s ease;
+}
+
+.divider-active {
+    background: #c6f277;
+}
+
+/* Step Panel */
+.step-panel {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #e1e9e3;
+    border-radius: 8px;
+    padding: 28px 32px;
+    box-shadow: 0 8px 30px rgba(30, 53, 43, 0.035);
+    animation: fadeIn 0.3s ease-out both;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-intro {
+    margin-bottom: 24px;
+    border-bottom: 1px solid #ecf1ed;
+    padding-bottom: 16px;
+}
+
+.panel-intro h3 {
+    margin: 0 0 6px;
+    color: #1f342d;
+    font: 750 18px/1.25 'Manrope', sans-serif;
+}
+
+.panel-intro p {
+    margin: 0;
+    color: #7b8c83;
+    font-size: 12px;
+}
+
+/* Form Grid */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px 20px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field-full {
+    grid-column: span 2;
+}
+
+.field-half {
+    grid-column: span 1;
+}
+
+.field label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #384e45;
+}
+
+.required {
+    color: #de755f;
+    font-weight: 700;
+}
+
+.field input {
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid #dbe4dd;
+    border-radius: 5px;
+    background: #fbfdfb;
+    color: #1a2c26;
+    font-size: 13px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input:focus {
+    outline: none;
+    border-color: #182c2b;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(24, 44, 43, 0.08);
+}
+
+.field-hint {
+    font-size: 10px;
+    color: #92a298;
+}
+
+/* Actions */
+.wizard-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ecf1ed;
+}
+
+.mandatory-notice {
+    font-size: 11px;
+    color: #8c9c93;
+}
+
+.button {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.16s ease;
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.button-primary {
+    background: #c6f277;
+    color: #182c2b;
+    border-color: #b5e466;
+}
+
+.button-primary:hover:not(:disabled) {
+    background: #b6e760;
+    transform: translateY(-1px);
+}
+
+.button-secondary {
+    background: #ffffff;
+    color: #375046;
+    border-color: #dbe4dd;
+}
+
+.button-secondary:hover:not(:disabled) {
+    background: #f4f8f5;
+    border-color: #c4d4c8;
+}
+
+.button-save {
+    background: #182c2b;
+    color: #c6f277;
+    border-color: #182c2b;
+}
+
+.button-save:hover:not(:disabled) {
+    background: #243f3d;
+}
+
+.button-arrow {
+    font-size: 15px;
+}
+
+.button-check {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.button-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(198, 242, 119, 0.3);
+    border-top-color: #c6f277;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Review Step */
+.review-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.review-card {
+    background: #f8faf8;
+    border: 1px solid #e1e9e3;
+    border-radius: 6px;
+    padding: 18px 20px;
+}
+
+.review-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e6ece7;
+}
+
+.review-card-header h4 {
+    margin: 0;
+    flex: 1;
+    font: 700 13px 'Manrope', sans-serif;
+    color: #20352f;
+}
+
+.card-icon {
+    font-size: 16px;
+}
+
+.text-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.review-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.review-label {
+    color: #7b8c83;
+    font-weight: 600;
+}
+
+.review-value {
+    color: #1f342d;
+    font-weight: 700;
+    text-align: right;
+}
+
+.mono {
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Feedback Alert */
+.feedback {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    border: 1px solid;
+}
+
+.feedback-error {
+    background: #fff6f4;
+    color: #9c3328;
+    border-color: #f7d0c8;
+}
+
+.feedback-symbol {
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(156, 51, 40, 0.12);
+    font-weight: 800;
+}
+
+@media (max-width: 760px) {
+    .stepper-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .step-divider {
+        display: none;
+    }
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    .field-half {
+        grid-column: span 2;
+    }
+    .review-grid {
+        grid-template-columns: 1fr;
+    }
+}

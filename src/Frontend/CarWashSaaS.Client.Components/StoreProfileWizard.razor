@@ -1,0 +1,406 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+
+<div class="wizard-container" role="region" aria-label="Fluxo guiado de perfil do estabelecimento">
+    <!-- Stepper Header -->
+    <div class="stepper-bar">
+        <div class="step-item @(CurrentStep == 1 ? "step-active" : CurrentStep > 1 ? "step-completed" : "")" @onclick="() => TryGoToStep(1)">
+            <div class="step-badge">
+                @if (CurrentStep > 1)
+                {
+                    <span class="step-check" aria-hidden="true">✓</span>
+                }
+                else
+                {
+                    <span>01</span>
+                }
+            </div>
+            <div class="step-info">
+                <span class="step-caption">ETAPA 01</span>
+                <span class="step-title">Identificação</span>
+            </div>
+        </div>
+
+        <div class="step-divider @(CurrentStep > 1 ? "divider-active" : "")"></div>
+
+        <div class="step-item @(CurrentStep == 2 ? "step-active" : CurrentStep > 2 ? "step-completed" : "")" @onclick="() => TryGoToStep(2)">
+            <div class="step-badge">
+                @if (CurrentStep > 2)
+                {
+                    <span class="step-check" aria-hidden="true">✓</span>
+                }
+                else
+                {
+                    <span>02</span>
+                }
+            </div>
+            <div class="step-info">
+                <span class="step-caption">ETAPA 02</span>
+                <span class="step-title">Contato & Endereço</span>
+            </div>
+        </div>
+
+        <div class="step-divider @(CurrentStep > 2 ? "divider-active" : "")"></div>
+
+        <div class="step-item @(CurrentStep == 3 ? "step-active" : "")" @onclick="() => TryGoToStep(3)">
+            <div class="step-badge">
+                <span>03</span>
+            </div>
+            <div class="step-info">
+                <span class="step-caption">ETAPA 03</span>
+                <span class="step-title">Revisão & Salvar</span>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="feedback feedback-error" role="alert">
+            <span class="feedback-symbol">!</span>
+            <div class="feedback-text">@ErrorMessage</div>
+        </div>
+    }
+
+    <!-- Step 1: Identificação -->
+    @if (CurrentStep == 1)
+    {
+        <div class="step-panel" data-testid="step-1-panel">
+            <div class="panel-intro">
+                <h3>Dados de Identificação Jurídica</h3>
+                <p>Informe a razão social, o nome de fachada e o CNPJ registrado da sua unidade.</p>
+            </div>
+
+            <div class="form-grid">
+                <div class="field field-full">
+                    <label for="legalName">Razão Social <span class="required">*</span></label>
+                    <input id="legalName"
+                           type="text"
+                           maxlength="200"
+                           placeholder="Ex: Lava Rápido e Estética Automotiva Ltda"
+                           @bind="Model.LegalName"
+                           @bind:event="oninput" />
+                    <span class="field-hint">Nome oficial registrado na Receita Federal.</span>
+                </div>
+
+                <div class="field field-half">
+                    <label for="tradeName">Nome Fantasia <span class="required">*</span></label>
+                    <input id="tradeName"
+                           type="text"
+                           maxlength="200"
+                           placeholder="Ex: Lavaway Express Centro"
+                           @bind="Model.TradeName"
+                           @bind:event="oninput" />
+                    <span class="field-hint">Nome exibido nos comprovantes e no pátio.</span>
+                </div>
+
+                <div class="field field-half">
+                    <label for="cnpj">CNPJ <span class="required">*</span></label>
+                    <input id="cnpj"
+                           type="text"
+                           maxlength="18"
+                           placeholder="00.000.000/0000-00"
+                           value="@Model.Cnpj"
+                           @oninput="HandleCnpjInput" />
+                    <span class="field-hint">Apenas números ou formato com pontuação.</span>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <div class="actions-left">
+                    <span class="mandatory-notice"><span class="required">*</span> Campos de preenchimento obrigatório</span>
+                </div>
+                <div class="actions-right">
+                    <button type="button" class="button button-primary" @onclick="NextStep">
+                        <span>Avançar para Contato</span>
+                        <span class="button-arrow" aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Step 2: Contato & Endereço -->
+    @if (CurrentStep == 2)
+    {
+        <div class="step-panel" data-testid="step-2-panel">
+            <div class="panel-intro">
+                <h3>Contato e Localização da Unidade</h3>
+                <p>Estes dados serão utilizados para identificação no sistema e cabeçalhos de ordem de serviço.</p>
+            </div>
+
+            <div class="form-grid">
+                <div class="field field-half">
+                    <label for="phone">Telefone Principal / WhatsApp <span class="required">*</span></label>
+                    <input id="phone"
+                           type="tel"
+                           maxlength="32"
+                           placeholder="(11) 99999-9999"
+                           @bind="Model.Phone"
+                           @bind:event="oninput" />
+                    <span class="field-hint">Telefone de atendimento do estabelecimento.</span>
+                </div>
+
+                <div class="field field-half">
+                    <label for="postalCode">CEP <span class="required">*</span></label>
+                    <input id="postalCode"
+                           type="text"
+                           maxlength="9"
+                           placeholder="00000-000"
+                           value="@Model.PostalCode"
+                           @oninput="HandleCepInput" />
+                    <span class="field-hint">Código de endereçamento postal da unidade.</span>
+                </div>
+
+                <div class="field field-full">
+                    <label for="street">Endereço / Logradouro <span class="required">*</span></label>
+                    <input id="street"
+                           type="text"
+                           maxlength="200"
+                           placeholder="Ex: Av. das Américas, 1500 - Bloco B"
+                           @bind="Model.Street"
+                           @bind:event="oninput" />
+                    <span class="field-hint">Rua, avenida, número e complemento.</span>
+                </div>
+
+                <div class="field field-half">
+                    <label for="city">Cidade <span class="required">*</span></label>
+                    <input id="city"
+                           type="text"
+                           maxlength="150"
+                           placeholder="Ex: São Paulo"
+                           @bind="Model.City"
+                           @bind:event="oninput" />
+                </div>
+
+                <div class="field field-half">
+                    <label for="state">UF (Estado) <span class="required">*</span></label>
+                    <input id="state"
+                           type="text"
+                           maxlength="2"
+                           placeholder="SP"
+                           style="text-transform: uppercase;"
+                           @bind="Model.State"
+                           @bind:event="oninput" />
+                    <span class="field-hint">Sigla de 2 letras (ex: SP, RJ, MG).</span>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <div class="actions-left">
+                    <button type="button" class="button button-secondary" @onclick="PrevStep">
+                        <span class="button-arrow" aria-hidden="true">←</span>
+                        <span>Voltar</span>
+                    </button>
+                </div>
+                <div class="actions-right">
+                    <button type="button" class="button button-primary" @onclick="NextStep">
+                        <span>Revisar Dados</span>
+                        <span class="button-arrow" aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Step 3: Revisão & Salvar -->
+    @if (CurrentStep == 3)
+    {
+        <div class="step-panel" data-testid="step-3-panel">
+            <div class="panel-intro">
+                <h3>Confirmação dos Dados Cadastrais</h3>
+                <p>Revise as informações antes de salvar o perfil do estabelecimento.</p>
+            </div>
+
+            <div class="review-grid">
+                <div class="review-card">
+                    <div class="review-card-header">
+                        <span class="card-icon">🏢</span>
+                        <h4>Identificação</h4>
+                        <button type="button" class="text-link" @onclick="() => CurrentStep = 1">Editar</button>
+                    </div>
+                    <div class="review-list">
+                        <div class="review-row">
+                            <span class="review-label">Razão Social:</span>
+                            <span class="review-value">@Model.LegalName</span>
+                        </div>
+                        <div class="review-row">
+                            <span class="review-label">Nome Fantasia:</span>
+                            <span class="review-value">@Model.TradeName</span>
+                        </div>
+                        <div class="review-row">
+                            <span class="review-label">CNPJ:</span>
+                            <span class="review-value mono">@Model.Cnpj</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-card">
+                    <div class="review-card-header">
+                        <span class="card-icon">📍</span>
+                        <h4>Contato e Localização</h4>
+                        <button type="button" class="text-link" @onclick="() => CurrentStep = 2">Editar</button>
+                    </div>
+                    <div class="review-list">
+                        <div class="review-row">
+                            <span class="review-label">Telefone:</span>
+                            <span class="review-value mono">@Model.Phone</span>
+                        </div>
+                        <div class="review-row">
+                            <span class="review-label">Endereço:</span>
+                            <span class="review-value">@Model.Street</span>
+                        </div>
+                        <div class="review-row">
+                            <span class="review-label">Cidade / UF:</span>
+                            <span class="review-value">@Model.City - @Model.State.ToUpperInvariant()</span>
+                        </div>
+                        <div class="review-row">
+                            <span class="review-label">CEP:</span>
+                            <span class="review-value mono">@Model.PostalCode</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <div class="actions-left">
+                    <button type="button" class="button button-secondary" disabled="@IsSubmitting" @onclick="PrevStep">
+                        <span class="button-arrow" aria-hidden="true">←</span>
+                        <span>Voltar</span>
+                    </button>
+                </div>
+                <div class="actions-right">
+                    <button type="button" class="button button-primary button-save" disabled="@IsSubmitting" @onclick="SubmitAsync">
+                        @if (IsSubmitting)
+                        {
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            <span>Salvando cadastro...</span>
+                        }
+                        else
+                        {
+                            <span class="button-check" aria-hidden="true">✓</span>
+                            <span>@(IsEditMode ? "Atualizar Perfil" : "Concluir Cadastro")</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public StoreProfileFormModel Model { get; set; } = new();
+
+    [Parameter]
+    public bool IsEditMode { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public EventCallback<StoreProfileFormModel> OnSave { get; set; }
+
+    public int CurrentStep { get; set; } = 1;
+    public string? ErrorMessage { get; set; }
+
+    private void HandleCnpjInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? string.Empty;
+        Model.Cnpj = StoreProfileFormModel.FormatCnpj(raw);
+    }
+
+    private void HandleCepInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? string.Empty;
+        Model.PostalCode = StoreProfileFormModel.FormatCep(raw);
+    }
+
+    private void NextStep()
+    {
+        ErrorMessage = null;
+        if (CurrentStep == 1)
+        {
+            var (isValid, error) = Model.ValidateStep1();
+            if (!isValid)
+            {
+                ErrorMessage = error;
+                return;
+            }
+            CurrentStep = 2;
+        }
+        else if (CurrentStep == 2)
+        {
+            var (isValid, error) = Model.ValidateStep2();
+            if (!isValid)
+            {
+                ErrorMessage = error;
+                return;
+            }
+            CurrentStep = 3;
+        }
+    }
+
+    private void PrevStep()
+    {
+        ErrorMessage = null;
+        if (CurrentStep > 1)
+        {
+            CurrentStep--;
+        }
+    }
+
+    private void TryGoToStep(int targetStep)
+    {
+        ErrorMessage = null;
+        if (targetStep < CurrentStep)
+        {
+            CurrentStep = targetStep;
+            return;
+        }
+
+        if (targetStep == 2)
+        {
+            var (isValid, error) = Model.ValidateStep1();
+            if (isValid) CurrentStep = 2;
+            else ErrorMessage = error;
+        }
+        else if (targetStep == 3)
+        {
+            var (s1Valid, s1Error) = Model.ValidateStep1();
+            if (!s1Valid)
+            {
+                ErrorMessage = s1Error;
+                return;
+            }
+            var (s2Valid, s2Error) = Model.ValidateStep2();
+            if (!s2Valid)
+            {
+                ErrorMessage = s2Error;
+                return;
+            }
+            CurrentStep = 3;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        ErrorMessage = null;
+        var (s1Valid, s1Error) = Model.ValidateStep1();
+        if (!s1Valid)
+        {
+            ErrorMessage = s1Error;
+            CurrentStep = 1;
+            return;
+        }
+
+        var (s2Valid, s2Error) = Model.ValidateStep2();
+        if (!s2Valid)
+        {
+            ErrorMessage = s2Error;
+            CurrentStep = 2;
+            return;
+        }
+
+        await OnSave.InvokeAsync(Model);
+    }
+}

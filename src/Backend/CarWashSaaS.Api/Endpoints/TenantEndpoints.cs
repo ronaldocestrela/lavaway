@@ -2,6 +2,7 @@ using CarWashSaaS.Api.Services;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Tenants.Application;
+using CarWashSaaS.Tenants.Domain;
 
 namespace CarWashSaaS.Api.Endpoints;
 
@@ -19,7 +20,7 @@ public static class TenantEndpoints
             }
 
             var result = await service.GetAsync(tenantId);
-            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            return result.IsSuccess ? Results.Ok(ToDto(result.Value!)) : result.Error!.Type switch
             {
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
@@ -27,15 +28,28 @@ public static class TenantEndpoints
             };
         }).RequireAuthorization();
 
-        group.MapPost("/profile", async (CreateStoreProfileCommand command, ICurrentTenantAccessor currentTenantAccessor, StoreProfileApplicationService service) =>
+        group.MapPost("/profile", async (CreateStoreProfileRequest request, ICurrentTenantAccessor currentTenantAccessor, StoreProfileApplicationService service) =>
         {
             if (currentTenantAccessor.TenantId is not Guid tenantId)
             {
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
+            var command = new CreateStoreProfileCommand(
+                request.LegalName,
+                request.TradeName,
+                request.Cnpj,
+                request.Phone,
+                request.Street,
+                request.City,
+                request.State,
+                request.PostalCode,
+                request.LogoUrl,
+                request.BrandPrimaryColor,
+                request.BrandSecondaryColor);
+
             var result = await service.CreateAsync(tenantId, command);
-            return result.IsSuccess ? Results.Created("/tenants/profile", result.Value) : result.Error!.Type switch
+            return result.IsSuccess ? Results.Created("/tenants/profile", ToDto(result.Value!)) : result.Error!.Type switch
             {
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
@@ -43,15 +57,28 @@ public static class TenantEndpoints
             };
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
-        group.MapPut("/profile", async (UpdateStoreProfileCommand command, ICurrentTenantAccessor currentTenantAccessor, StoreProfileApplicationService service) =>
+        group.MapPut("/profile", async (UpdateStoreProfileRequest request, ICurrentTenantAccessor currentTenantAccessor, StoreProfileApplicationService service) =>
         {
             if (currentTenantAccessor.TenantId is not Guid tenantId)
             {
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
+            var command = new UpdateStoreProfileCommand(
+                request.LegalName,
+                request.TradeName,
+                request.Cnpj,
+                request.Phone,
+                request.Street,
+                request.City,
+                request.State,
+                request.PostalCode,
+                request.LogoUrl,
+                request.BrandPrimaryColor,
+                request.BrandSecondaryColor);
+
             var result = await service.UpdateAsync(tenantId, command);
-            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            return result.IsSuccess ? Results.Ok(ToDto(result.Value!)) : result.Error!.Type switch
             {
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
@@ -125,7 +152,7 @@ public static class TenantEndpoints
             await backgroundQueue.EnqueueAsync(
                 new TenantQueueMessage(tenantId, TenantBrandingAuditQueueHandler.EventName, savedLogoResult.Value!), ct);
 
-            return Results.Ok(updateResult.Value);
+            return Results.Ok(ToDto(updateResult.Value!));
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
         group.MapGet("/profile/logo/{fileName}", async (
@@ -154,4 +181,20 @@ public static class TenantEndpoints
 
         return app;
     }
+
+    private static StoreProfileDto ToDto(StoreProfile profile) => new(
+        profile.Id,
+        profile.TenantId,
+        profile.LegalName,
+        profile.TradeName,
+        profile.Cnpj,
+        profile.Phone,
+        profile.Street,
+        profile.City,
+        profile.State,
+        profile.PostalCode,
+        profile.LogoUrl,
+        profile.BrandPrimaryColor,
+        profile.BrandSecondaryColor);
 }
+

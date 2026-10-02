@@ -1,0 +1,237 @@
+@page "/settings/profile"
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrator")]
+@inject StoreProfileApiClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>Perfil do Estabelecimento | Lavaway</PageTitle>
+
+<section class="profile-page">
+    <div class="page-heading">
+        <div>
+            <div class="eyebrow">
+                <span class="eyebrow-mark"></span>
+                <span>CONFIGURAÇÕES GERAIS</span>
+            </div>
+            <h1>Perfil do Estabelecimento</h1>
+            <p class="page-subtitle">Gerencie os dados cadastrais, CNPJ e endereço da sua unidade.</p>
+        </div>
+        @if (_currentProfile is not null && !_isEditing)
+        {
+            <div class="heading-actions">
+                <button type="button" class="button button-secondary" @onclick="() => _isEditing = true">
+                    <span>Editar Dados</span>
+                </button>
+            </div>
+        }
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="loading-state" role="status">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <span>Carregando dados do estabelecimento...</span>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_pageErrorMessage))
+    {
+        <div class="feedback feedback-error" role="alert">
+            <span class="feedback-symbol">!</span>
+            <div class="feedback-text">@_pageErrorMessage</div>
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_successMessage))
+        {
+            <div class="feedback feedback-success" role="status">
+                <span class="feedback-symbol">✓</span>
+                <div class="feedback-text">@_successMessage</div>
+            </div>
+        }
+
+        @if (_currentProfile is not null && !_isEditing)
+        {
+            <!-- Profile Details Card View -->
+            <div class="profile-summary-grid">
+                <div class="profile-card main-info-card">
+                    <div class="card-header">
+                        <div class="store-badge">
+                            <span class="badge-icon">🏪</span>
+                        </div>
+                        <div class="store-identity">
+                            <h2>@_currentProfile.TradeName</h2>
+                            <span class="store-legal">@_currentProfile.LegalName</span>
+                        </div>
+                        <div class="status-pill status-active">
+                            <span class="status-dot"></span>
+                            <span>Ativo & Configurado</span>
+                        </div>
+                    </div>
+
+                    <div class="data-segments">
+                        <div class="segment">
+                            <span class="segment-label">CNPJ</span>
+                            <span class="segment-value mono">@StoreProfileFormModel.FormatCnpj(_currentProfile.Cnpj)</span>
+                        </div>
+                        <div class="segment">
+                            <span class="segment-label">TELEFONE</span>
+                            <span class="segment-value mono">@_currentProfile.Phone</span>
+                        </div>
+                        <div class="segment">
+                            <span class="segment-label">CIDADE / UF</span>
+                            <span class="segment-value">@_currentProfile.City - @_currentProfile.State</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-card location-card">
+                    <div class="card-title-row">
+                        <span class="card-caption">LOCALIZAÇÃO</span>
+                        <h3>Endereço Comercial</h3>
+                    </div>
+                    <div class="address-details">
+                        <p class="address-street">@_currentProfile.Street</p>
+                        <p class="address-city">@_currentProfile.City - @_currentProfile.State</p>
+                        <p class="address-cep mono">CEP: @StoreProfileFormModel.FormatCep(_currentProfile.PostalCode)</p>
+                    </div>
+
+                    <div class="card-footer">
+                        <span class="footer-hint">Utilizado no cabeçalho das ordens de serviço e comprovantes.</span>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Onboarding or Editing Wizard -->
+            <div class="wizard-wrapper">
+                @if (_currentProfile is null)
+                {
+                    <div class="onboarding-banner">
+                        <div class="banner-icon">🚀</div>
+                        <div class="banner-body">
+                            <h3>Bem-vindo ao Lavaway! Vamos configurar sua unidade</h3>
+                            <p>Complete as etapas abaixo para habilitar a emissão de ordens de serviço e personalização dos comprovantes.</p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="edit-banner">
+                        <div>
+                            <h3>Editando Perfil do Estabelecimento</h3>
+                            <p>Atualize as informações cadastrais e clique em "Atualizar Perfil" ao final.</p>
+                        </div>
+                        <button type="button" class="button button-text" @onclick="CancelEditing">
+                            Cancelar Edição
+                        </button>
+                    </div>
+                }
+
+                <StoreProfileWizard Model="@_formModel"
+                                    IsEditMode="@(_currentProfile is not null)"
+                                    IsSubmitting="@_isSaving"
+                                    OnSave="HandleSaveAsync" />
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private bool _isEditing = false;
+    private string? _pageErrorMessage;
+    private string? _successMessage;
+    private StoreProfileDto? _currentProfile;
+    private StoreProfileFormModel _formModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfileAsync();
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        _isLoading = true;
+        _pageErrorMessage = null;
+        try
+        {
+            _currentProfile = await Api.GetProfileAsync();
+            if (_currentProfile is not null)
+            {
+                _formModel = StoreProfileFormModel.FromDto(_currentProfile);
+                _isEditing = false;
+            }
+            else
+            {
+                _formModel = new StoreProfileFormModel();
+                _isEditing = true;
+            }
+        }
+        catch (StoreProfileApiException ex)
+        {
+            _pageErrorMessage = ex.Message;
+        }
+        catch (Exception)
+        {
+            _pageErrorMessage = "Falha ao carregar os dados cadastrais da loja. Verifique sua conexão e tente novamente.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void CancelEditing()
+    {
+        if (_currentProfile is not null)
+        {
+            _formModel = StoreProfileFormModel.FromDto(_currentProfile);
+            _isEditing = false;
+            _pageErrorMessage = null;
+        }
+    }
+
+    private async Task HandleSaveAsync(StoreProfileFormModel model)
+    {
+        _isSaving = true;
+        _pageErrorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            if (_currentProfile is null)
+            {
+                var request = model.ToCreateRequest();
+                _currentProfile = await Api.CreateProfileAsync(request);
+                _successMessage = "Perfil do estabelecimento cadastrado com sucesso!";
+            }
+            else
+            {
+                var request = model.ToUpdateRequest();
+                _currentProfile = await Api.UpdateProfileAsync(request);
+                _successMessage = "Dados cadastrais atualizados com sucesso!";
+            }
+
+            _formModel = StoreProfileFormModel.FromDto(_currentProfile);
+            _isEditing = false;
+        }
+        catch (StoreProfileApiException ex)
+        {
+            _pageErrorMessage = ex.Message;
+        }
+        catch (Exception)
+        {
+            _pageErrorMessage = "Ocorreu um erro ao salvar o perfil. Tente novamente.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

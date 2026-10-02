@@ -1,7 +1,16 @@
-﻿<nav class="primary-nav" aria-label="Navegação principal">
+<nav class="primary-nav" aria-label="Navegação principal">
     <NavLink class="primary-nav-link" href="" Match="NavLinkMatch.All">
         <span class="nav-index">01</span>
         <span>Recepção</span>
         <span class="nav-arrow" aria-hidden="true">›</span>
     </NavLink>
+    <AuthorizeView Roles="Administrator">
+        <Authorized>
+            <NavLink class="primary-nav-link" href="settings/profile">
+                <span class="nav-index">02</span>
+                <span>Perfil da Loja</span>
+                <span class="nav-arrow" aria-hidden="true">›</span>
+            </NavLink>
+        </Authorized>
+    </AuthorizeView>
 </nav>
