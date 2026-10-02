@@ -26,7 +26,7 @@ public static class YardOperationsEndpoints
             }
 
             var result = await service.ListAsync(tenantId);
-            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            return result.IsSuccess ? Results.Ok(result.Value!.Select(ToDto).ToList()) : result.Error!.Type switch
             {
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
@@ -41,7 +41,7 @@ public static class YardOperationsEndpoints
             }
 
             var result = await service.GetAsync(tenantId, id);
-            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            return result.IsSuccess ? Results.Ok(ToDto(result.Value!)) : result.Error!.Type switch
             {
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
@@ -49,15 +49,22 @@ public static class YardOperationsEndpoints
             };
         }).RequireAuthorization();
 
-        app.MapPost("/services", async (CreateServiceCommand command, ICurrentTenantAccessor currentTenantAccessor, ServiceCatalogApplicationService service) =>
+        app.MapPost("/services", async (CreateServiceRequest request, ICurrentTenantAccessor currentTenantAccessor, ServiceCatalogApplicationService service) =>
         {
             if (currentTenantAccessor.TenantId is not Guid tenantId)
             {
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
+            var parsedPrices = ParsePrices(request.Prices);
+            if (!parsedPrices.IsSuccess)
+            {
+                return Results.BadRequest(new { parsedPrices.Error!.Code, parsedPrices.Error.Description });
+            }
+
+            var command = new CreateServiceCommand(request.Name, request.Category, parsedPrices.Value!);
             var result = await service.CreateAsync(tenantId, command);
-            return result.IsSuccess ? Results.Created($"/services/{result.Value!.Id}", result.Value) : result.Error!.Type switch
+            return result.IsSuccess ? Results.Created($"/services/{result.Value!.Id}", ToDto(result.Value!)) : result.Error!.Type switch
             {
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
@@ -65,15 +72,22 @@ public static class YardOperationsEndpoints
             };
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
-        app.MapPut("/services/{id:guid}", async (Guid id, UpdateServiceCommand command, ICurrentTenantAccessor currentTenantAccessor, ServiceCatalogApplicationService service) =>
+        app.MapPut("/services/{id:guid}", async (Guid id, UpdateServiceRequest request, ICurrentTenantAccessor currentTenantAccessor, ServiceCatalogApplicationService service) =>
         {
             if (currentTenantAccessor.TenantId is not Guid tenantId)
             {
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
+            var parsedPrices = ParsePrices(request.Prices);
+            if (!parsedPrices.IsSuccess)
+            {
+                return Results.BadRequest(new { parsedPrices.Error!.Code, parsedPrices.Error.Description });
+            }
+
+            var command = new UpdateServiceCommand(request.Name, request.Category, parsedPrices.Value!);
             var result = await service.UpdateAsync(tenantId, id, command);
-            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            return result.IsSuccess ? Results.Ok(ToDto(result.Value!)) : result.Error!.Type switch
             {
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
@@ -271,5 +285,32 @@ public static class YardOperationsEndpoints
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+    }
+
+    private static ServiceDto ToDto(Service service) => new(
+        service.Id,
+        service.Name,
+        service.Category,
+        service.Prices.Select(p => new ServicePriceDto(p.VehicleSize.ToString(), p.Amount, p.EstimatedDurationMinutes)).ToList());
+
+    private static Result<List<ServicePriceInput>> ParsePrices(IReadOnlyCollection<ServicePriceDto>? prices)
+    {
+        if (prices is null || prices.Count == 0)
+        {
+            return Result<List<ServicePriceInput>>.Failure(new Error("service.prices.required", "Pelo menos um preço por porte de veículo é obrigatório.", ErrorType.Validation));
+        }
+
+        var list = new List<ServicePriceInput>();
+        foreach (var price in prices)
+        {
+            if (!Enum.TryParse<VehicleSize>(price.VehicleSize, true, out var size) || !Enum.IsDefined(size))
+            {
+                return Result<List<ServicePriceInput>>.Failure(new Error("service_price.size.invalid", $"Porte de veículo '{price.VehicleSize}' é inválido.", ErrorType.Validation));
+            }
+
+            list.Add(new ServicePriceInput(size, price.Amount, price.EstimatedDurationMinutes));
+        }
+
+        return Result<List<ServicePriceInput>>.Success(list);
     }
 }

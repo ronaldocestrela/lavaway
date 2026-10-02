@@ -1,0 +1,162 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="modal-title" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">CATÁLOGO OPERACIONAL</span>
+                    <h2 id="modal-title">@(Model.Id.HasValue ? "Editar Serviço" : "Novo Serviço")</h2>
+                </div>
+                <button type="button" class="close-btn" @onclick="HandleCancel" aria-label="Fechar">×</button>
+            </header>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="feedback feedback-error" role="alert">
+                        <span class="feedback-symbol">!</span>
+                        <div class="feedback-text">@ErrorMessage</div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="service-name" class="form-label">Nome do Serviço *</label>
+                    <input id="service-name"
+                           type="text"
+                           class="form-control"
+                           placeholder="Ex.: Lavagem Completa Especial"
+                           maxlength="200"
+                           @bind="Model.Name" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Categoria *</label>
+                    <div class="category-chips">
+                        @foreach (var cat in ServiceCategoryConstants.DefaultCategories)
+                        {
+                            var isSelected = string.Equals(Model.Category, cat, StringComparison.OrdinalIgnoreCase);
+                            <button type="button"
+                                    class="category-chip @(isSelected ? "is-selected" : "")"
+                                    @onclick="() => Model.Category = cat">
+                                <span>@cat</span>
+                            </button>
+                        }
+                    </div>
+                    <input id="service-category"
+                           type="text"
+                           class="form-control mt-2"
+                           placeholder="Ou digite outra categoria personalizada"
+                           maxlength="100"
+                           @bind="Model.Category" />
+                </div>
+
+                <div class="prices-section">
+                    <div class="prices-header">
+                        <h3>Preços e Duração por Porte de Veículo</h3>
+                        <p>Configure o valor cobrado e o tempo estimado de execução para cada tamanho de veículo.</p>
+                    </div>
+
+                    <div class="sizes-grid">
+                        @foreach (var price in Model.Prices)
+                        {
+                            var displayName = VehicleSizeConstants.GetDisplayName(price.VehicleSize);
+                            <div class="size-card @(price.IsEnabled ? "is-active" : "is-disabled")">
+                                <div class="size-card-header">
+                                    <label class="size-card-title">
+                                        <input type="checkbox" @bind="price.IsEnabled" />
+                                        <span class="size-name">@displayName</span>
+                                    </label>
+                                    <span class="size-badge">@price.VehicleSize</span>
+                                </div>
+
+                                @if (price.IsEnabled)
+                                {
+                                    <div class="size-fields">
+                                        <div class="field-item">
+                                            <label class="field-label">Preço (R$)</label>
+                                            <input type="number"
+                                                   step="0.50"
+                                                   min="0"
+                                                   class="form-control price-input"
+                                                   placeholder="0,00"
+                                                   @bind="price.Amount" />
+                                        </div>
+                                        <div class="field-item">
+                                            <label class="field-label">Duração (min)</label>
+                                            <input type="number"
+                                                   step="5"
+                                                   min="1"
+                                                   class="form-control duration-input"
+                                                   placeholder="45"
+                                                   @bind="price.EstimatedDurationMinutes" />
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="size-disabled-hint">
+                                        Serviço não oferecido para este porte
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HandleCancel" disabled="@IsSaving">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@IsSaving">
+                    @if (IsSaving)
+                    {
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span>Salvando...</span>
+                    }
+                    else
+                    {
+                        <span>@(Model.Id.HasValue ? "Salvar Alterações" : "Cadastrar Serviço")</span>
+                    }
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public ServiceFormModel Model { get; set; } = ServiceFormModel.CreateDefault();
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback<ServiceFormModel> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleCancel()
+    {
+        if (!IsSaving && OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        if (IsSaving) return;
+
+        var validation = Model.Validate();
+        if (!validation.IsValid)
+        {
+            ErrorMessage = validation.ErrorMessage;
+            return;
+        }
+
+        if (OnSave.HasDelegate)
+        {
+            await OnSave.InvokeAsync(Model);
+        }
+    }
+}

@@ -1,0 +1,259 @@
+@page "/settings/services"
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrator")]
+@inject ServiceCatalogApiClient Api
+
+<PageTitle>Catálogo de Serviços | Lavaway</PageTitle>
+
+<section class="services-page">
+    <div class="page-heading">
+        <div>
+            <div class="eyebrow">
+                <span class="eyebrow-mark"></span>
+                <span>OPERAÇÃO &amp; CATÁLOGO</span>
+            </div>
+            <h1>Catálogo de Serviços</h1>
+            <p class="page-subtitle">Configure os serviços oferecidos, preços específicos por porte de veículo e durações estimadas de execução.</p>
+        </div>
+        <div class="heading-actions">
+            <button type="button" class="btn btn-primary" @onclick="OpenCreateModal">
+                <span class="btn-icon">+</span>
+                <span>Novo Serviço</span>
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_successMessage))
+    {
+        <div class="feedback feedback-success" role="status">
+            <span class="feedback-symbol">✓</span>
+            <div class="feedback-text">@_successMessage</div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="feedback feedback-error" role="alert">
+            <span class="feedback-symbol">!</span>
+            <div class="feedback-text">@_errorMessage</div>
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="loading-state" role="status">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <span>Carregando catálogo de serviços...</span>
+        </div>
+    }
+    else
+    {
+        <div class="catalog-toolbar">
+            <div class="category-filters">
+                <button type="button"
+                        class="filter-chip @(string.IsNullOrEmpty(_selectedCategory) ? "is-active" : "")"
+                        @onclick="() => _selectedCategory = null">
+                    Todos (@_services.Count)
+                </button>
+                @foreach (var cat in DistinctCategories)
+                {
+                    var isCatActive = string.Equals(_selectedCategory, cat, StringComparison.OrdinalIgnoreCase);
+                    var count = _services.Count(s => string.Equals(s.Category, cat, StringComparison.OrdinalIgnoreCase));
+                    <button type="button"
+                            class="filter-chip @(isCatActive ? "is-active" : "")"
+                            @onclick="() => _selectedCategory = cat">
+                        @cat (@count)
+                    </button>
+                }
+            </div>
+
+            <div class="search-box">
+                <input type="text"
+                       class="search-input"
+                       placeholder="Buscar por nome do serviço..."
+                       @bind="_searchTerm"
+                       @bind:event="oninput" />
+            </div>
+        </div>
+
+        @if (FilteredServices.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-icon">🚿</div>
+                <h3>Nenhum serviço encontrado</h3>
+                <p>Você pode cadastrar seu primeiro serviço definindo valores e durações por porte de veículo.</p>
+                <button type="button" class="btn btn-secondary mt-3" @onclick="OpenCreateModal">
+                    Cadastrar Serviço Agora
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="services-grid">
+                @foreach (var service in FilteredServices)
+                {
+                    <article class="service-card">
+                        <header class="service-card-header">
+                            <div>
+                                <span class="category-tag">@service.Category</span>
+                                <h3 class="service-name">@service.Name</h3>
+                            </div>
+                            <button type="button"
+                                    class="edit-action-btn"
+                                    title="Editar serviço"
+                                    @onclick="() => OpenEditModal(service)">
+                                Editar
+                            </button>
+                        </header>
+
+                        <div class="prices-table">
+                            <div class="table-header">
+                                <span>Porte</span>
+                                <span>Preço</span>
+                                <span>Duração</span>
+                            </div>
+                            @foreach (var size in VehicleSizeConstants.All)
+                            {
+                                var price = service.Prices.FirstOrDefault(p => string.Equals(p.VehicleSize, size, StringComparison.OrdinalIgnoreCase));
+                                <div class="table-row @(price is null ? "row-unavailable" : "")">
+                                    <span class="porte-label">@VehicleSizeConstants.GetDisplayName(size)</span>
+                                    @if (price is not null)
+                                    {
+                                        <span class="price-value">R$ @price.Amount.ToString("N2")</span>
+                                        <span class="duration-value">@price.EstimatedDurationMinutes min</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="unavailable-value" colspan="2">—</span>
+                                        <span class="unavailable-value">Indisponível</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    }
+
+    <ServiceEditorModal IsVisible="_isModalVisible"
+                        Model="_modalModel"
+                        IsSaving="_isSaving"
+                        ErrorMessage="_modalErrorMessage"
+                        OnCancel="CloseModal"
+                        OnSave="HandleSaveService" />
+</section>
+
+@code {
+    private List<ServiceDto> _services = [];
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    private string? _selectedCategory;
+    private string _searchTerm = string.Empty;
+
+    private bool _isModalVisible = false;
+    private ServiceFormModel _modalModel = ServiceFormModel.CreateDefault();
+    private string? _modalErrorMessage;
+
+    private IEnumerable<string> DistinctCategories => _services
+        .Select(s => s.Category)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(c => c);
+
+    private List<ServiceDto> FilteredServices => _services
+        .Where(s => string.IsNullOrWhiteSpace(_selectedCategory) || string.Equals(s.Category, _selectedCategory, StringComparison.OrdinalIgnoreCase))
+        .Where(s => string.IsNullOrWhiteSpace(_searchTerm) || s.Name.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(s => s.Category)
+        .ThenBy(s => s.Name)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServicesAsync();
+    }
+
+    private async Task LoadServicesAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await Api.GetServicesAsync();
+            _services = result.ToList();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Não foi possível carregar os serviços: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenCreateModal()
+    {
+        _modalModel = ServiceFormModel.CreateDefault();
+        _modalErrorMessage = null;
+        _isModalVisible = true;
+    }
+
+    private void OpenEditModal(ServiceDto service)
+    {
+        _modalModel = ServiceFormModel.FromDto(service);
+        _modalErrorMessage = null;
+        _isModalVisible = true;
+    }
+
+    private void CloseModal()
+    {
+        _isModalVisible = false;
+        _modalErrorMessage = null;
+    }
+
+    private async Task HandleSaveService(ServiceFormModel model)
+    {
+        _isSaving = true;
+        _modalErrorMessage = null;
+
+        try
+        {
+            if (model.Id.HasValue)
+            {
+                var request = model.ToUpdateRequest();
+                var updated = await Api.UpdateServiceAsync(model.Id.Value, request);
+
+                var index = _services.FindIndex(s => s.Id == updated.Id);
+                if (index >= 0)
+                {
+                    _services[index] = updated;
+                }
+                _successMessage = $"Serviço '{updated.Name}' atualizado com sucesso!";
+            }
+            else
+            {
+                var request = model.ToCreateRequest();
+                var created = await Api.CreateServiceAsync(request);
+                _services.Add(created);
+                _successMessage = $"Serviço '{created.Name}' cadastrado com sucesso!";
+            }
+
+            _isModalVisible = false;
+        }
+        catch (Exception ex)
+        {
+            _modalErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}
