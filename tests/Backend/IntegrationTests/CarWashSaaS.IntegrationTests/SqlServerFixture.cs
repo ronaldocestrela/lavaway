@@ -6,6 +6,8 @@ using CarWashSaaS.YardOperations.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.MsSql;
 
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace CarWashSaaS.IntegrationTests;
 
 public sealed class SqlServerFixture : IAsyncLifetime
@@ -18,6 +20,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
     {
         _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
             .WithPassword("CarWash_Test_only_123!")
+            .WithEnvironment("MSSQL_MEMORY_LIMIT_MB", "1536")
             .Build();
 
         await _container.StartAsync();
