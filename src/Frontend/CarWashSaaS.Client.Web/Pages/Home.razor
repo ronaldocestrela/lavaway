@@ -1,465 +1,1097 @@
 @page "/"
-@using CarWashSaaS.Client.Core
-@using CarWashSaaS.Shared.Contracts
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
-@inject CustomerVehicleApiClient Api
-@inject IConfiguration Configuration
+@layout LandingLayout
 @inject NavigationManager Navigation
 
-<PageTitle>Recepção | Lavaway</PageTitle>
+<PageTitle>Lavaway | O Sistema Operacional para Lava-Jatos e Estética Automotiva</PageTitle>
 
-<AuthorizeView>
-    <Authorized>
-        <section class="reception-page">
-            <div class="page-heading">
-                <div>
-                    <div class="eyebrow"><span class="eyebrow-mark"></span> ATENDIMENTO DO DIA</div>
-                    <h1>Recepção</h1>
-                    <p class="page-subtitle">Localize o cliente e o veículo para começar.</p>
-                </div>
-                <AuthorizeView Roles="Administrator,Receptionist">
-                    <Authorized Context="createAuthState">
-                        <button class="button button-secondary new-customer-button" type="button" @onclick="OpenCreateForm">
-                            <span class="button-plus" aria-hidden="true">+</span> Novo cliente
-                        </button>
+<div class="landing-page">
+    <!-- TOP NOTIFICATION BANNER -->
+    <div class="top-banner">
+        <div class="banner-inner">
+            <span class="banner-pill">NOVIDADE</span>
+            <span class="banner-text">Automação de WhatsApp nativa sem cobrança por mensagem disparada.</span>
+            <button class="banner-link" type="button" @onclick='() => OpenContractModal("Pro")'>Experimente 14 dias grátis &rarr;</button>
+        </div>
+    </div>
+
+    <!-- STICKY HEADER NAVBAR -->
+    <header class="navbar" id="top">
+        <div class="navbar-container">
+            <a class="brand" href="/" aria-label="Lavaway início">
+                <span class="brand-badge">L</span>
+                <span class="brand-text">lavaway</span>
+                <span class="brand-tag">SaaS</span>
+            </a>
+
+            <button class="mobile-menu-btn" type="button" @onclick="ToggleMobileMenu" aria-label="Abrir menu de navegação">
+                <span class="menu-bar"></span>
+                <span class="menu-bar"></span>
+                <span class="menu-bar"></span>
+            </button>
+
+            <nav class="nav-links @(_isMobileMenuOpen ? "open" : "")" aria-label="Navegação institucional">
+                <a href="#recursos" @onclick="CloseMobileMenu">Recursos</a>
+                <a href="#demonstracao" @onclick="CloseMobileMenu">Como Funciona</a>
+                <a href="#whatsapp" @onclick="CloseMobileMenu">WhatsApp</a>
+                <a href="#roi" @onclick="CloseMobileMenu">Calculadora ROI</a>
+                <a href="#planos" @onclick="CloseMobileMenu">Planos</a>
+                <a href="#faq" @onclick="CloseMobileMenu">Dúvidas</a>
+            </nav>
+
+            <div class="nav-actions">
+                <AuthorizeView>
+                    <Authorized Context="userState">
+                        <a class="btn-ghost panel-link" href="reception" id="nav-btn-reception">
+                            <span class="status-indicator-dot"></span>
+                            <span>Acessar Recepção</span>
+                            <span class="arrow">&rarr;</span>
+                        </a>
                     </Authorized>
+                    <NotAuthorized>
+                        <a class="btn-ghost" href="authentication/login" id="nav-btn-login">Entrar</a>
+                        <button class="btn-primary glow" type="button" @onclick='() => OpenContractModal("Pro")' id="nav-btn-trial">
+                            Testar Grátis
+                        </button>
+                    </NotAuthorized>
                 </AuthorizeView>
             </div>
+        </div>
+    </header>
 
-            <div class="reception-grid">
-                <section class="search-column" aria-label="Busca de clientes e veículos">
-                    <form class="search-panel" @onsubmit="SearchAsync" @onsubmit:preventDefault>
-                        <div class="panel-heading">
-                            <div class="panel-step">01</div>
-                            <div>
-                                <h2>Encontrar cadastro</h2>
-                                <p>Busque pela placa ou telefone do proprietário.</p>
+    <main>
+        <!-- HERO SECTION -->
+        <section class="hero-section">
+            <div class="hero-glow hero-glow-1"></div>
+            <div class="hero-glow hero-glow-2"></div>
+
+            <div class="section-container hero-content">
+                <div class="hero-badge">
+                    <span class="badge-dot"></span>
+                    <span>O SISTEMA OPERACIONAL DA ESTÉTICA AUTOMOTIVA</span>
+                </div>
+
+                <h1 class="hero-title">
+                    Transforme o seu lava-jato em uma <span class="gradient-text">máquina de faturar e fidelizar</span>.
+                </h1>
+
+                <p class="hero-description">
+                    Abandone a prancheta de papel. Tenha <strong>check-in em 35 segundos</strong>, vistoria digital com fotos
+                    contra acusações de danos, <strong>notificações automáticas no WhatsApp</strong> do cliente e controle
+                    rigoroso de boxes e comissões.
+                </p>
+
+                <div class="hero-cta-group">
+                    <button class="btn-cta-hero glow" type="button" @onclick='() => OpenContractModal("Pro")' id="hero-cta-start">
+                        <span>Iniciar Teste Grátis de 14 Dias</span>
+                        <span class="cta-arrow">&rarr;</span>
+                    </button>
+                    <a class="btn-secondary-hero" href="#demonstracao" id="hero-cta-demo">
+                        <span class="play-icon">&#9658;</span>
+                        <span>Ver Como Funciona</span>
+                    </a>
+                </div>
+
+                <div class="hero-guarantees">
+                    <div class="guarantee-item">
+                        <span class="check-icon">&#10003;</span> Sem necessidade de cartão de crédito
+                    </div>
+                    <div class="guarantee-item">
+                        <span class="check-icon">&#10003;</span> Implantação e uso em 5 minutos
+                    </div>
+                    <div class="guarantee-item">
+                        <span class="check-icon">&#10003;</span> Suporte direto via WhatsApp
+                    </div>
+                </div>
+
+                <!-- TRUST METRICS -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-val">+350</div>
+                        <div class="metric-label">Lava-jatos e estéticas ativos</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-val">&lt; 40s</div>
+                        <div class="metric-label">Tempo médio de check-in</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-val">+28%</div>
+                        <div class="metric-label">Aumento na recorrência via WhatsApp</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-val">100%</div>
+                        <div class="metric-label">Blindagem contra falsas avarias</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- INTERACTIVE LIVE DEMO SHOWCASE -->
+        <section class="demo-section" id="demonstracao">
+            <div class="section-container">
+                <div class="section-header center">
+                    <div class="section-tag">DEMONSTRAÇÃO INTERATIVA</div>
+                    <h2 class="section-title">Sinta na prática o poder do Lavaway</h2>
+                    <p class="section-subtitle">
+                        Navegue pelas telas principais e veja por que donos de centros automotivos aposentaram pranchetas e planilhas.
+                    </p>
+                </div>
+
+                <div class="demo-tabs">
+                    <button class="demo-tab @(_activeDemoTab == "whatsapp" ? "active" : "")" type="button" @onclick='() => SetDemoTab("whatsapp")'>
+                        <span class="tab-icon">💬</span>
+                        <span>01. Experiência WhatsApp</span>
+                    </button>
+                    <button class="demo-tab @(_activeDemoTab == "reception" ? "active" : "")" type="button" @onclick='() => SetDemoTab("reception")'>
+                        <span class="tab-icon">⚡</span>
+                        <span>02. Check-in &amp; Preços</span>
+                    </button>
+                    <button class="demo-tab @(_activeDemoTab == "yard" ? "active" : "")" type="button" @onclick='() => SetDemoTab("yard")'>
+                        <span class="tab-icon">📊</span>
+                        <span>03. Gestão do Pátio &amp; Boxes</span>
+                    </button>
+                </div>
+
+                <div class="demo-window">
+                    <div class="window-bar">
+                        <div class="window-dots">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <div class="window-address">
+                            <span>https://app.lavaway.com.br/@_activeDemoTab</span>
+                        </div>
+                        <div class="window-status">
+                            <span class="live-badge">SISTEMA ATIVO</span>
+                        </div>
+                    </div>
+
+                    <div class="demo-canvas">
+                        @if (_activeDemoTab == "whatsapp")
+                        {
+                            <!-- WHATSAPP VIEW SIMULATION -->
+                            <div class="wa-simulation">
+                                <div class="wa-phone-frame">
+                                    <div class="wa-header">
+                                        <div class="wa-avatar">LW</div>
+                                        <div class="wa-contact">
+                                            <strong>Lavaway Garage &amp; Detail</strong>
+                                            <span>online agora</span>
+                                        </div>
+                                        <div class="wa-verified">&#10003;</div>
+                                    </div>
+                                    <div class="wa-chat-body">
+                                        <div class="wa-message received">
+                                            <p>👋 <strong>Olá, Bruno!</strong> Seu <em>Jeep Compass (BRA-2E19)</em> deu entrada para <strong>Lavagem Detalhada + Vitrificação</strong>.</p>
+                                            <div class="wa-card-preview">
+                                                <div class="wa-card-title">🚗 Ordem de Serviço #1048</div>
+                                                <div class="wa-card-detail">Previsão: Hoje às 16:30 • Box 03</div>
+                                                <a class="wa-card-btn" href="#demonstracao" @onclick:preventDefault>Ver comprovante com fotos &rarr;</a>
+                                            </div>
+                                            <span class="wa-time">10:14</span>
+                                        </div>
+
+                                        <div class="wa-message received">
+                                            <p>🧼 <strong>Atualização de status:</strong> A lavagem técnica de chassi e rodas foi concluída! Seu carro seguiu para a cabine de secagem e selamento cerâmico.</p>
+                                            <span class="wa-time">13:40</span>
+                                        </div>
+
+                                        <div class="wa-message received highlight">
+                                            <p>✨ <strong>SEU CARRO ESTÁ PRONTO!</strong> Pode vir retirar. Ficou impecável!</p>
+                                            <div class="wa-payment-box">
+                                                <span>Total: <strong>R$ 280,00</strong></span>
+                                                <span class="pix-tag">Pague via Pix na retirada</span>
+                                            </div>
+                                            <span class="wa-time">15:58</span>
+                                        </div>
+                                    </div>
+                                    <div class="wa-footer-bar">
+                                        <span>Mensagem automática enviada pelo Lavaway</span>
+                                    </div>
+                                </div>
+
+                                <div class="wa-features-list">
+                                    <h3>O cliente não precisa ligar para perguntar se ficou pronto.</h3>
+                                    <p>O próprio sistema avisa cada avanço de etapa e manda o comprovante digital com a <strong>sua logomarca</strong> e <strong>suas cores</strong>.</p>
+                                    <ul class="benefit-bullets">
+                                        <li><span>&#10003;</span> <strong>Sem custo de disparos:</strong> Conecte seu número de WhatsApp via QR Code em 30 segundos.</li>
+                                        <li><span>&#10003;</span> <strong>Link público interativo:</strong> O cliente acompanha o progresso e as fotos da vistoria em tempo real.</li>
+                                        <li><span>&#10003;</span> <strong>Fim das filas de entrega:</strong> O cliente chega com o Pix pronto e retira o carro com rapidez total.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        }
+                        else if (_activeDemoTab == "reception")
+                        {
+                            <!-- FAST CHECK-IN SIMULATION -->
+                            <div class="checkin-simulation">
+                                <div class="checkin-card">
+                                    <div class="sim-header">
+                                        <span class="step-num">01</span>
+                                        <div>
+                                            <h4>Check-in Expresso</h4>
+                                            <p>Digite a placa ou o celular para autopreenchimento instantâneo</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="sim-form">
+                                        <div class="sim-input-row">
+                                            <div class="sim-field">
+                                                <label>PLACA DO VEÍCULO</label>
+                                                <input value="BRA-2E19" readonly />
+                                            </div>
+                                            <div class="sim-field">
+                                                <label>TELEFONE (WHATSAPP)</label>
+                                                <input value="(11) 98765-4321" readonly />
+                                            </div>
+                                        </div>
+
+                                        <div class="sim-field">
+                                            <label>PORTE DO VEÍCULO</label>
+                                            <div class="size-selector">
+                                                <button class="size-pill @(_selectedDemoSize == "Hatch" ? "active" : "")" type="button" @onclick='() => _selectedDemoSize = "Hatch"'>Hatch/Sedan</button>
+                                                <button class="size-pill @(_selectedDemoSize == "SUV" ? "active" : "")" type="button" @onclick='() => _selectedDemoSize = "SUV"'>SUV</button>
+                                                <button class="size-pill @(_selectedDemoSize == "Pickup" ? "active" : "")" type="button" @onclick='() => _selectedDemoSize = "Pickup"'>Picape/Van</button>
+                                                <button class="size-pill @(_selectedDemoSize == "Moto" ? "active" : "")" type="button" @onclick='() => _selectedDemoSize = "Moto"'>Moto</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="sim-service-summary">
+                                            <div class="summary-line">
+                                                <span>Serviço Selecionado:</span>
+                                                <strong>Lavagem Completa + Cera Pro</strong>
+                                            </div>
+                                            <div class="summary-line">
+                                                <span>Preço pelo porte (@_selectedDemoSize):</span>
+                                                <span class="price-badge">@GetDemoPrice(_selectedDemoSize)</span>
+                                            </div>
+                                            <div class="summary-line">
+                                                <span>Previsão de Execução:</span>
+                                                <strong>1h 15min</strong>
+                                            </div>
+                                        </div>
+
+                                        <div class="sim-btn-mock">
+                                            &#10003; Abrir Ordem de Serviço &amp; Notificar WhatsApp
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="checkin-explanation">
+                                    <h3>Seu atendente não erra o preço nunca mais.</h3>
+                                    <p>Configure faixas de preços exclusivas por porte (Hatch, SUV, Picape e Moto). O Lavaway aplica os valores corretos e estima a entrega sem confusões.</p>
+                                    <div class="feature-tags-grid">
+                                        <span class="ftag">Placa Mercosul</span>
+                                        <span class="ftag">Histórico do Cliente</span>
+                                        <span class="ftag">Vistoria com Fotos</span>
+                                        <span class="ftag">Impressão Térmica</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- YARD & CAPACITY SIMULATION -->
+                            <div class="yard-simulation">
+                                <div class="yard-stats-bar">
+                                    <div class="ystat">
+                                        <span class="ystat-title">CAPACIDADE DO PÁTIO</span>
+                                        <strong>04 de 06 Boxes Ocupados (67%)</strong>
+                                        <div class="progress-track"><div class="progress-fill" style="width: 67%;"></div></div>
+                                    </div>
+                                    <div class="ystat">
+                                        <span class="ystat-title">FATURAMENTO DO DIA</span>
+                                        <strong class="green-text">R$ 2.450,00</strong>
+                                        <span class="ystat-sub">18 veículos atendidos hoje</span>
+                                    </div>
+                                </div>
+
+                                <div class="boxes-grid">
+                                    <div class="box-card active">
+                                        <div class="box-header">
+                                            <span class="box-tag">BOX 01</span>
+                                            <span class="box-status washing">LAVAGEM</span>
+                                        </div>
+                                        <div class="box-vehicle">Toyota Corolla • <strong>BRA-1A22</strong></div>
+                                        <div class="box-service">Ducha + Aspiração</div>
+                                        <div class="box-operator">Operador: Rafael (Comissão: R$ 18,00)</div>
+                                    </div>
+
+                                    <div class="box-card active">
+                                        <div class="box-header">
+                                            <span class="box-tag">BOX 02</span>
+                                            <span class="box-status detail">POLIMENTO</span>
+                                        </div>
+                                        <div class="box-vehicle">BMW 320i • <strong>FKW-9811</strong></div>
+                                        <div class="box-service">Polimento Técnico 3 Etapas</div>
+                                        <div class="box-operator">Operador: Carlos (Comissão: R$ 120,00)</div>
+                                    </div>
+
+                                    <div class="box-card ready">
+                                        <div class="box-header">
+                                            <span class="box-tag">BOX 03</span>
+                                            <span class="box-status ready-status">PRONTO</span>
+                                        </div>
+                                        <div class="box-vehicle">Jeep Compass • <strong>ABC-1D23</strong></div>
+                                        <div class="box-service">Higienização Completa</div>
+                                        <div class="box-operator">Aguardando retirada pelo cliente</div>
+                                    </div>
+
+                                    <div class="box-card available">
+                                        <div class="box-header">
+                                            <span class="box-tag">BOX 04</span>
+                                            <span class="box-status free">LIVRE</span>
+                                        </div>
+                                        <div class="box-empty-prompt">
+                                            + Pronto para receber próximo veículo
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROBLEM VS SOLUTION SECTION -->
+        <section class="comparison-section">
+            <div class="section-container">
+                <div class="section-header center">
+                    <div class="section-tag">COMPARAÇÃO REAL</div>
+                    <h2 class="section-title">O fim do estresse na sua operação</h2>
+                    <p class="section-subtitle">Veja a diferença entre gerenciar com papel ou planilhas versus a eficiência do Lavaway.</p>
+                </div>
+
+                <div class="comparison-grid">
+                    <div class="comp-col negative">
+                        <div class="comp-col-header">
+                            <span class="col-icon">&#10060;</span>
+                            <h3>Como a maioria opera hoje</h3>
+                            <p>Caos, prejuízos invisíveis e clientes desconfiados</p>
+                        </div>
+                        <ul class="comp-list">
+                            <li>
+                                <strong>Prancheta de papel molhada:</strong> Cadastros ilegíveis, fichas perdidas e histórico zero dos carros.
+                            </li>
+                            <li>
+                                <strong>Golpes de avaria prévia:</strong> Cliente jura que aquele arranhão no para-choque foi feito na sua loja. Você acaba pagando o conserto.
+                            </li>
+                            <li>
+                                <strong>WhatsApp sobrecarregado:</strong> Atendente gasta 2 horas por dia só respondendo "meu carro já tá pronto?".
+                            </li>
+                            <li>
+                                <strong>Confusão nas comissões:</strong> Caderninho de anotação que gera brigas e desconfiança entre os lavadores todo final de semana.
+                            </li>
+                            <li>
+                                <strong>Cobranças erradas:</strong> Cobrar preço de sedan em SUV grande porque o recepcionista se confundiu.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="comp-col positive">
+                        <div class="comp-col-header">
+                            <span class="col-icon">&#10004;</span>
+                            <h3>Com o Lavaway no seu pátio</h3>
+                            <p>Controle cirúrgico, credibilidade máxima e lucro consistente</p>
+                        </div>
+                        <ul class="comp-list">
+                            <li>
+                                <strong>Check-in em 35 segundos:</strong> Digite a placa, o histórico abre na hora e a OS é gerada com 2 toques.
+                            </li>
+                            <li>
+                                <strong>Vistoria fotográfica blindada:</strong> Registre fotos e marcas na tela do celular antes de molhar o carro. Fim das contestações.
+                            </li>
+                            <li>
+                                <strong>Notificações no piloto automático:</strong> O WhatsApp do cliente apita sozinho em cada troca de etapa no pátio.
+                            </li>
+                            <li>
+                                <strong>Comissões calculadas na hora:</strong> Regras por serviço ou porte. Cada lavador sabe exatamente o que produziu.
+                            </li>
+                            <li>
+                                <strong>Tabela travada por porte:</strong> Sem erros humanos. Preços calculados com precisão matemática.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6 CORE PLATFORM PILLARS -->
+        <section class="features-section" id="recursos">
+            <div class="section-container">
+                <div class="section-header">
+                    <div class="section-tag">RECURSOS COMPLETOS</div>
+                    <h2 class="section-title">Tudo o que sua estética precisa em um só lugar</h2>
+                    <p class="section-subtitle">
+                        Construído exclusivamente para o fluxo de trabalho automotivo, sem adaptações ou módulos genéricos.
+                    </p>
+                </div>
+
+                <div class="features-grid">
+                    <article class="feature-box">
+                        <div class="f-num">01</div>
+                        <div class="f-icon-wrap">⚡</div>
+                        <h3>Check-in Relâmpago</h3>
+                        <p>Busca instantânea por placa Mercosul ou telefone. Cadastre cliente e veículo juntos sem travar a recepção em horários de pico.</p>
+                        <ul class="f-micro-list">
+                            <li>Autocompletar de clientes frequentes</li>
+                            <li>Vínculo de múltiplos veículos por dono</li>
+                        </ul>
+                    </article>
+
+                    <article class="feature-box">
+                        <div class="f-num">02</div>
+                        <div class="f-icon-wrap">📸</div>
+                        <h3>Vistoria Digital Anti-Avaria</h3>
+                        <p>Marque arranhões, mossas e trincas no diagrama interativo da carroceria e anexe fotos obrigatórias na entrada do veículo.</p>
+                        <ul class="f-micro-list">
+                            <li>Armazenamento seguro em nuvem</li>
+                            <li>Comprovante com termo de aceite</li>
+                        </ul>
+                    </article>
+
+                    <article class="feature-box">
+                        <div class="f-num">03</div>
+                        <div class="f-icon-wrap">💬</div>
+                        <h3>Automação de WhatsApp</h3>
+                        <p>Envie comprovantes digitais, atualizações de status e avisos de carro pronto direto no WhatsApp sem pagar taxa por mensagem.</p>
+                        <ul class="f-micro-list">
+                            <li>Pareamento via QR Code em 30s</li>
+                            <li>Link público com sua logomarca</li>
+                        </ul>
+                    </article>
+
+                    <article class="feature-box">
+                        <div class="f-num">04</div>
+                        <div class="f-icon-wrap">🏷️</div>
+                        <h3>Tabela de Preços por Porte</h3>
+                        <p>Defina preços e durações distintas para Hatch/Sedan, SUV, Picape/Van e Moto em serviços como Ducha, Higienização e Polimento.</p>
+                        <ul class="f-micro-list">
+                            <li>Previsão de entrega precisa</li>
+                            <li>Elimina cobranças divergentes</li>
+                        </ul>
+                    </article>
+
+                    <article class="feature-box">
+                        <div class="f-num">05</div>
+                        <div class="f-icon-wrap">🅿️</div>
+                        <h3>Gestão de Pátio e Boxes</h3>
+                        <p>Acompanhe em tempo real a ocupação de cada box de lavagem, secagem e detalhamento para não formar gargalos.</p>
+                        <ul class="f-micro-list">
+                            <li>Alertas de tempo excedido</li>
+                            <li>Visualização clara por status</li>
+                        </ul>
+                    </article>
+
+                    <article class="feature-box">
+                        <div class="f-num">06</div>
+                        <div class="f-icon-wrap">👥</div>
+                        <h3>Equipe e Comissões</h3>
+                        <p>Cadastre lavadores, polidores e recepcionistas com regras automáticas de comissão por serviço (percentual ou valor fixo).</p>
+                        <ul class="f-micro-list">
+                            <li>Extrato de comissão individual</li>
+                            <li>Fechamento com 1 clique</li>
+                        </ul>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- INTERACTIVE ROI CALCULATOR -->
+        <section class="roi-section" id="roi">
+            <div class="section-container">
+                <div class="section-header center">
+                    <div class="section-tag">CALCULADORA DE RETORNO</div>
+                    <h2 class="section-title">Veja quanto dinheiro você está deixando na mesa</h2>
+                    <p class="section-subtitle">
+                        Simule o impacto financeiro do Lavaway no faturamento mensal do seu estabelecimento.
+                    </p>
+                </div>
+
+                <div class="roi-calculator-card">
+                    <div class="roi-controls">
+                        <div class="roi-control-group">
+                            <div class="slider-header">
+                                <label for="daily-cars-slider">Quantos carros você atende por dia?</label>
+                                <span class="slider-value">@_calcDailyCars veículos/dia</span>
+                            </div>
+                            <input id="daily-cars-slider" type="range" min="5" max="100" step="5" @bind="_calcDailyCars" @bind:event="oninput" />
+                        </div>
+
+                        <div class="roi-control-group">
+                            <div class="slider-header">
+                                <label for="avg-ticket-slider">Ticket médio por serviço (R$)</label>
+                                <span class="slider-value">R$ @_calcAvgTicket,00</span>
+                            </div>
+                            <input id="avg-ticket-slider" type="range" min="30" max="350" step="5" @bind="_calcAvgTicket" @bind:event="oninput" />
+                        </div>
+
+                        <div class="roi-helper-note">
+                            * Consideramos 26 dias úteis/mês e uma taxa de retenção média de 18% obtida com lembretes automáticos no WhatsApp.
+                        </div>
+                    </div>
+
+                    <div class="roi-results-board">
+                        <div class="roi-result-metric primary">
+                            <span class="rm-label">POTENCIAL DE FATURAMENTO EXTRA MENSAL</span>
+                            <div class="rm-val">R$ @GetExtraRevenueMonthly().ToString("N2")</div>
+                            <span class="rm-sub">Recuperando clientes antigos pelo WhatsApp automático</span>
+                        </div>
+
+                        <div class="roi-secondary-metrics">
+                            <div class="roi-mini-metric">
+                                <span class="mini-label">HORAS ECONOMIZADAS NA RECEPÇÃO</span>
+                                <strong>@GetHoursSavedMonthly() horas/mês</strong>
+                            </div>
+                            <div class="roi-mini-metric">
+                                <span class="mini-label">RETORNO SOBRE O INVESTIMENTO</span>
+                                <strong class="green-text">+@GetRoiMultiplier()x o valor do plano</strong>
                             </div>
                         </div>
 
-                        <div class="search-fields">
-                            <label class="field field-plate">
-                                <span>Placa</span>
-                                <input @bind="_plateQuery" @bind:event="oninput" maxlength="10" placeholder="ABC-1D23" autocomplete="off" />
+                        <button class="btn-primary full glow" type="button" @onclick='() => OpenContractModal("Pro")' id="roi-cta-hire">
+                            Quero Esse Retorno no Meu Lava-Jato
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BRANDING / WHITE LABEL SECTION -->
+        <section class="branding-section">
+            <div class="section-container">
+                <div class="branding-grid">
+                    <div class="branding-copy">
+                        <div class="section-tag">SUA MARCA EM PRIMEIRO LUGAR</div>
+                        <h2 class="section-title">Personalização total com a identidade do seu espaço</h2>
+                        <p>
+                            Seus clientes não precisam saber que você usa um SaaS de terceiros. Todos os comprovantes impressos,
+                            comprovantes térmicos de 80mm/58mm e links de rastreamento exibem a sua <strong>logomarca oficial</strong>
+                            e suas <strong>cores institucionais</strong>.
+                        </p>
+                        <div class="branding-pills">
+                            <span class="bpill">&#10003; Upload de Logotipo</span>
+                            <span class="bpill">&#10003; Cores Primária e Secundária</span>
+                            <span class="bpill">&#10003; Comprovantes Térmicos Customizados</span>
+                        </div>
+                    </div>
+
+                    <div class="branding-visual">
+                        <div class="receipt-mockup">
+                            <div class="receipt-header">
+                                <div class="mock-logo">PREMIUM AUTO SPA</div>
+                                <div class="mock-sub">Comprovante de Entrada • OS #1049</div>
+                            </div>
+                            <div class="receipt-body">
+                                <div class="rline"><span>Placa:</span><strong>ABC-1D23 (SUV)</strong></div>
+                                <div class="rline"><span>Cliente:</span><strong>Rodrigo Mendes</strong></div>
+                                <div class="rline"><span>Serviço:</span><strong>Lavagem Técnica + Cera</strong></div>
+                                <div class="rline"><span>Valor:</span><strong>R$ 130,00</strong></div>
+                                <div class="rline"><span>Previsão:</span><strong>Hoje às 15:00</strong></div>
+                            </div>
+                            <div class="receipt-footer">
+                                <div class="barcode">|| | | ||| | ||| |||| | |</div>
+                                <span>Acompanhe pelo WhatsApp</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TESTIMONIALS / SOCIAL PROOF -->
+        <section class="testimonials-section">
+            <div class="section-container">
+                <div class="section-header center">
+                    <div class="section-tag">DEPOIMENTOS</div>
+                    <h2 class="section-title">Quem usa, não volta para o papel</h2>
+                    <p class="section-subtitle">Centros automotivos e estéticas de norte a sul do Brasil confiando no Lavaway.</p>
+                </div>
+
+                <div class="testimonials-grid">
+                    <div class="testimonial-card">
+                        <div class="stars">★★★★★</div>
+                        <p class="quote">
+                            "O check-in com vistoria me salvou de pagar R$ 1.200 num retrovisor que o cliente jurava que quebramos aqui. Puxei a foto da entrada na hora pelo WhatsApp e o cliente pediu desculpas."
+                        </p>
+                        <div class="author-meta">
+                            <div class="author-avatar">MS</div>
+                            <div>
+                                <strong>Marcos Silva</strong>
+                                <span>AutoDetailing Prime • São Paulo/SP</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-card featured">
+                        <div class="stars">★★★★★</div>
+                        <p class="quote">
+                            "Dobramos o volume no sábado porque a fila da recepção sumiu. Em 30 segundos o carro entra e o cliente já recebe a mensagem no WhatsApp. Os clientes adoram e elogiam muito."
+                        </p>
+                        <div class="author-meta">
+                            <div class="author-avatar">CD</div>
+                            <div>
+                                <strong>Camila Duarte</strong>
+                                <span>Diamond Wash • Curitiba/PR</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-card">
+                        <div class="stars">★★★★★</div>
+                        <p class="quote">
+                            "A parte de comissão da equipe era meu maior pesadelo no fim do mês. Agora cada lavador confere o que produziu no dia. Acabaram as discussões e aumentou a produtividade de todo mundo."
+                        </p>
+                        <div class="author-meta">
+                            <div class="author-avatar">RA</div>
+                            <div>
+                                <strong>Rodrigo Azevedo</strong>
+                                <span>Estética Speed Clean • Belo Horizonte/MG</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PRICING TIERS SECTION -->
+        <section class="pricing-section" id="planos">
+            <div class="section-container">
+                <div class="section-header center">
+                    <div class="section-tag">PLANOS E PREÇOS</div>
+                    <h2 class="section-title">Investimento claro, sem pegadinhas</h2>
+                    <p class="section-subtitle">Escolha o plano ideal para o tamanho do seu pátio e comece a testar hoje mesmo.</p>
+
+                    <!-- BILLING TOGGLE -->
+                    <div class="billing-switcher">
+                        <span class="@(!_isAnnualBilling ? "active" : "")">Mensal</span>
+                        <button class="toggle-btn @(_isAnnualBilling ? "annual" : "")" type="button" @onclick="ToggleBilling" aria-label="Alternar faturamento anual">
+                            <span class="toggle-knob"></span>
+                        </button>
+                        <span class="@(_isAnnualBilling ? "active" : "")">
+                            Anual <span class="discount-pill">2 MESES GRÁTIS</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="pricing-grid">
+                    <!-- PLAN 1: START -->
+                    <div class="pricing-card">
+                        <div class="p-header">
+                            <span class="p-tier-name">PÁTIO START</span>
+                            <p class="p-desc">Para lava-jatos iniciantes e pequenos pátios individuais.</p>
+                            <div class="p-price">
+                                <span class="currency">R$</span>
+                                <span class="amount">@(_isAnnualBilling ? "79" : "99")</span>
+                                <span class="period">/mês</span>
+                            </div>
+                            @if (_isAnnualBilling)
+                            {
+                                <span class="billing-note">Faturado anualmente (R$ 948/ano)</span>
+                            }
+                        </div>
+                        <button class="btn-outline-card" type="button" @onclick='() => OpenContractModal("Start")' id="btn-plan-start">
+                            Contratar Start
+                        </button>
+                        <ul class="p-features">
+                            <li><span>&#10003;</span> Até 2 boxes de atendimento</li>
+                            <li><span>&#10003;</span> Check-in digital ilimitado</li>
+                            <li><span>&#10003;</span> Cadastro de clientes e veículos</li>
+                            <li><span>&#10003;</span> Tabela de preços por porte</li>
+                            <li><span>&#10003;</span> Comprovantes em PDF / Térmica</li>
+                            <li class="muted"><span>&times;</span> Sem automação de WhatsApp</li>
+                            <li class="muted"><span>&times;</span> Sem vistoria fotográfica</li>
+                        </ul>
+                    </div>
+
+                    <!-- PLAN 2: PRO (HIGHLIGHTED) -->
+                    <div class="pricing-card popular">
+                        <div class="popular-ribbon">MAIS ESCOLHIDO</div>
+                        <div class="p-header">
+                            <span class="p-tier-name">ESTÉTICA PRO</span>
+                            <p class="p-desc">O pacote completo para estéticas automotivas que buscam escala e credibilidade.</p>
+                            <div class="p-price">
+                                <span class="currency">R$</span>
+                                <span class="amount">@(_isAnnualBilling ? "149" : "189")</span>
+                                <span class="period">/mês</span>
+                            </div>
+                            @if (_isAnnualBilling)
+                            {
+                                <span class="billing-note">Faturado anualmente (R$ 1.788/ano)</span>
+                            }
+                        </div>
+                        <button class="btn-primary full glow" type="button" @onclick='() => OpenContractModal("Pro")' id="btn-plan-pro">
+                            Contratar Plano Pro (14 Dias Grátis)
+                        </button>
+                        <ul class="p-features">
+                            <li><span>&#10003;</span> <strong>Boxes e vagas ilimitadas</strong></li>
+                            <li><span>&#10003;</span> <strong>WhatsApp Integrado nativo (disparos ilimitados)</strong></li>
+                            <li><span>&#10003;</span> <strong>Vistoria Digital com fotos e diagrama de avarias</strong></li>
+                            <li><span>&#10003;</span> <strong>Link público de acompanhamento com sua logo</strong></li>
+                            <li><span>&#10003;</span> <strong>Cálculo automático de comissões da equipe</strong></li>
+                            <li><span>&#10003;</span> Gestão de pátio em tempo real</li>
+                            <li><span>&#10003;</span> Suporte prioritário via WhatsApp</li>
+                        </ul>
+                    </div>
+
+                    <!-- PLAN 3: MULTI-LOJAS / REDES -->
+                    <div class="pricing-card">
+                        <div class="p-header">
+                            <span class="p-tier-name">REDES &amp; FRANQUIAS</span>
+                            <p class="p-desc">Para grupos com múltiplas unidades ou alto volume de operações.</p>
+                            <div class="p-price">
+                                <span class="currency">R$</span>
+                                <span class="amount">@(_isAnnualBilling ? "299" : "369")</span>
+                                <span class="period">/mês</span>
+                            </div>
+                            @if (_isAnnualBilling)
+                            {
+                                <span class="billing-note">Faturado anualmente (R$ 3.588/ano)</span>
+                            }
+                        </div>
+                        <button class="btn-outline-card" type="button" @onclick='() => OpenContractModal("Redes")' id="btn-plan-redes">
+                            Falar com Consultor
+                        </button>
+                        <ul class="p-features">
+                            <li><span>&#10003;</span> <strong>Tudo do Plano Pro incluído</strong></li>
+                            <li><span>&#10003;</span> Multi-estabelecimentos integrados</li>
+                            <li><span>&#10003;</span> Relatórios consolidados da rede</li>
+                            <li><span>&#10003;</span> Acesso de múltiplos gerentes e perfis</li>
+                            <li><span>&#10003;</span> Treinamento individual para sua equipe</li>
+                            <li><span>&#10003;</span> SLA de suporte em até 1 hora</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ ACCORDION -->
+        <section class="faq-section" id="faq">
+            <div class="section-container max-w-small">
+                <div class="section-header center">
+                    <div class="section-tag">PERGUNTAS FREQUENTES</div>
+                    <h2 class="section-title">Tire suas dúvidas antes de contratar</h2>
+                </div>
+
+                <div class="faq-accordion">
+                    <div class="faq-item @(_openFaqIndex == 0 ? "open" : "")">
+                        <button class="faq-question" type="button" @onclick="() => ToggleFaq(0)">
+                            <span>Preciso comprar computador ou maquininha especial para usar?</span>
+                            <span class="faq-indicator">+</span>
+                        </button>
+                        @if (_openFaqIndex == 0)
+                        {
+                            <div class="faq-answer">
+                                Não! O Lavaway funciona 100% no navegador de qualquer celular, tablet ou computador. Você pode fazer a vistoria e check-in direto no smartphone do seu recepcionista ou em um tablet no pátio.
+                            </div>
+                        }
+                    </div>
+
+                    <div class="faq-item @(_openFaqIndex == 1 ? "open" : "")">
+                        <button class="faq-question" type="button" @onclick="() => ToggleFaq(1)">
+                            <span>Como funciona o envio de WhatsApp? Pago por cada mensagem enviada?</span>
+                            <span class="faq-indicator">+</span>
+                        </button>
+                        @if (_openFaqIndex == 1)
+                        {
+                            <div class="faq-answer">
+                                Você conecta o WhatsApp do seu próprio estabelecimento através de um QR Code simples, igual ao WhatsApp Web. <strong>Não cobramos nenhuma taxa por mensagem disparada</strong>. Os envios de comprovante, status e aviso de pronto são ilimitados.
+                            </div>
+                        }
+                    </div>
+
+                    <div class="faq-item @(_openFaqIndex == 2 ? "open" : "")">
+                        <button class="faq-question" type="button" @onclick="() => ToggleFaq(2)">
+                            <span>Como funciona o período de teste grátis de 14 dias?</span>
+                            <span class="faq-indicator">+</span>
+                        </button>
+                        @if (_openFaqIndex == 2)
+                        {
+                            <div class="faq-answer">
+                                Você cria sua conta em menos de 2 minutos sem precisar colocar dados de cartão de crédito. Tem acesso total a todas as funcionalidades do plano Pro durante 14 dias. Se gostar, escolhe o plano que preferir para continuar.
+                            </div>
+                        }
+                    </div>
+
+                    <div class="faq-item @(_openFaqIndex == 3 ? "open" : "")">
+                        <button class="faq-question" type="button" @onclick="() => ToggleFaq(3)">
+                            <span>Posso cancelar a assinatura quando eu quiser?</span>
+                            <span class="faq-indicator">+</span>
+                        </button>
+                        @if (_openFaqIndex == 3)
+                        {
+                            <div class="faq-answer">
+                                Sim! Não há fidelidade ou multas de cancelamento em nossos planos mensais. Você tem total liberdade.
+                            </div>
+                        }
+                    </div>
+
+                    <div class="faq-item @(_openFaqIndex == 4 ? "open" : "")">
+                        <button class="faq-question" type="button" @onclick="() => ToggleFaq(4)">
+                            <span>Como os lavadores e colaboradores acessam o sistema?</span>
+                            <span class="faq-indicator">+</span>
+                        </button>
+                        @if (_openFaqIndex == 4)
+                        {
+                            <div class="faq-answer">
+                                Você cadastra os membros da equipe e define o papel de cada um (Administrador, Recepcionista ou Operador/Lavador). Cada membro acessa apenas o que é relevante para sua função, mantendo seus dados financeiros e configurações protegidos.
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BOTTOM CALL TO ACTION BANNER -->
+        <section class="final-cta-section">
+            <div class="section-container">
+                <div class="final-cta-box">
+                    <div class="cta-glow"></div>
+                    <div class="final-cta-text">
+                        <span class="pill-lime">COMECE HOJE MESMO</span>
+                        <h2>Pronto para elevar o nível do seu lava-jato?</h2>
+                        <p>Junte-se a mais de 350 donos de estéticas que já aposentaram a prancheta de papel e estão faturando mais.</p>
+                    </div>
+                    <div class="final-cta-actions">
+                        <button class="btn-primary large glow" type="button" @onclick='() => OpenContractModal("Pro")' id="final-cta-start">
+                            Começar Teste Grátis de 14 Dias &rarr;
+                        </button>
+                        <a class="btn-quiet-white" href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20mais%20sobre%20o%20Lavaway" target="_blank" rel="noopener noreferrer">
+                            Falar com consultor via WhatsApp
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="landing-footer">
+        <div class="section-container footer-container">
+            <div class="footer-main">
+                <div class="footer-brand">
+                    <div class="brand">
+                        <span class="brand-badge">L</span>
+                        <span class="brand-text">lavaway</span>
+                    </div>
+                    <p class="footer-tagline">
+                        O software operacional especializado para lava-jatos, lava-rápidos e centros de estética automotiva.
+                    </p>
+                    <div class="footer-badges">
+                        <span class="fbadge">🔒 Isolamento Multi-Tenant</span>
+                        <span class="fbadge">☁️ Nuvem MinIO S3</span>
+                        <span class="fbadge">🇧🇷 Feito no Brasil</span>
+                    </div>
+                </div>
+
+                <div class="footer-cols">
+                    <div class="fcol">
+                        <h4>PRODUTO</h4>
+                        <a href="#recursos">Check-in Expresso</a>
+                        <a href="#recursos">Vistoria Digital</a>
+                        <a href="#whatsapp">WhatsApp Automático</a>
+                        <a href="#recursos">Tabela por Porte</a>
+                        <a href="#recursos">Controle de Comissões</a>
+                    </div>
+
+                    <div class="fcol">
+                        <h4>ACESSO</h4>
+                        <a href="authentication/login">Login do Estabelecimento</a>
+                        <a href="reception">Recepção de Atendimento</a>
+                        <a href="settings/profile">Configuração da Loja</a>
+                        <a href="settings/whatsapp">Pareamento WhatsApp</a>
+                    </div>
+
+                    <div class="fcol">
+                        <h4>CONTRATAÇÃO</h4>
+                        <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal("Start")'>Plano Start</button>
+                        <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal("Pro")'>Plano Pro</button>
+                        <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal("Redes")'>Redes &amp; Franquias</button>
+                        <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer">Suporte Comercial</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; @DateTime.Now.Year Lavaway. Todos os direitos reservados. CNPJ 00.000.000/0001-00.</p>
+                <div class="footer-legal">
+                    <span>Termos de Uso</span>
+                    <span>•</span>
+                    <span>Privacidade &amp; LGPD</span>
+                    <span>•</span>
+                    <span>Status dos Serviços</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- INTERACTIVE CONTRACT / TRIAL MODAL -->
+    @if (_isContractModalOpen)
+    {
+        <div class="modal-backdrop" @onclick="CloseContractModal">
+            <div class="modal-dialog" @onclick:stopPropagation>
+                <button class="modal-close" type="button" @onclick="CloseContractModal" aria-label="Fechar modal">&times;</button>
+
+                @if (!_hireSubmitted)
+                {
+                    <div class="modal-header">
+                        <div class="modal-pill">14 DIAS GRÁTIS • SEM CARTÃO</div>
+                        <h2>Contratar o Lavaway — Plano @_selectedPlan</h2>
+                        <p>Preencha os dados do seu lava-jato ou estética para liberar seu acesso imediatamente.</p>
+                    </div>
+
+                    <form class="modal-form" @onsubmit="SubmitHireRequest" @onsubmit:preventDefault>
+                        <div class="modal-grid">
+                            <label class="modal-field">
+                                <span>Nome da sua Estética / Lava-Jato *</span>
+                                <input @bind="_hireStoreName" placeholder="Ex: Studio Auto Brilho" required />
                             </label>
-                            <label class="field field-phone">
-                                <span>Telefone</span>
-                                <input @bind="_phoneQuery" @bind:event="oninput" inputmode="tel" maxlength="32" placeholder="(11) 99999-9999" autocomplete="off" />
+
+                            <label class="modal-field">
+                                <span>Seu Nome Completo *</span>
+                                <input @bind="_hireContactName" placeholder="Ex: Carlos Eduardo" required />
+                            </label>
+
+                            <label class="modal-field">
+                                <span>WhatsApp com DDD *</span>
+                                <input @bind="_hirePhone" inputmode="tel" placeholder="(11) 99999-8888" required />
+                            </label>
+
+                            <label class="modal-field">
+                                <span>Cidade e Estado</span>
+                                <input @bind="_hireCity" placeholder="Ex: Curitiba / PR" />
+                            </label>
+
+                            <label class="modal-field">
+                                <span>Média de veículos atendidos/dia</span>
+                                <select @bind="_hireVehiclesPerDay">
+                                    <option value="Ate 15">Até 15 veículos/dia</option>
+                                    <option value="16 a 35">16 a 35 veículos/dia</option>
+                                    <option value="36 a 70">36 a 70 veículos/dia</option>
+                                    <option value="Mais de 70">Mais de 70 veículos/dia</option>
+                                </select>
+                            </label>
+
+                            <label class="modal-field">
+                                <span>Plano Selecionado</span>
+                                <select @bind="_selectedPlan">
+                                    <option value="Start">Plano Pátio Start (R$ 99/mês)</option>
+                                    <option value="Pro">Plano Estética Pro (R$ 189/mês) — Recomendado</option>
+                                    <option value="Redes">Plano Redes &amp; Franquias (R$ 369/mês)</option>
+                                </select>
                             </label>
                         </div>
 
-                        <div class="search-actions">
-                            <span class="search-hint">Informe pelo menos um campo</span>
-                            <button class="button button-primary" type="submit" disabled="@_isSearching">
-                                @if (_isSearching)
-                                {
-                                    <span class="button-spinner" aria-hidden="true"></span>
-                                    <span>Buscando</span>
-                                }
-                                else
-                                {
-                                    <span>Buscar cadastros</span>
-                                    <span class="button-arrow" aria-hidden="true">&#8594;</span>
-                                }
+                        <div class="modal-actions">
+                            <button class="btn-quiet" type="button" @onclick="CloseContractModal">Voltar</button>
+                            <button class="btn-primary glow" type="submit" id="btn-submit-hire">
+                                Liberar Meu Acesso Grátis &rarr;
                             </button>
                         </div>
                     </form>
-
-                    @if (!string.IsNullOrWhiteSpace(_error))
-                    {
-                        <div class="feedback feedback-error" role="alert">
-                            <span class="feedback-symbol" aria-hidden="true">!</span>
-                            <span>@_error</span>
+                }
+                else
+                {
+                    <div class="modal-success-view">
+                        <div class="success-icon">&#10003;</div>
+                        <h2>Solicitação de Acesso Recebida com Sucesso!</h2>
+                        <p>
+                            Excelente, <strong>@_hireContactName</strong>! Registramos os dados do seu estabelecimento
+                            <strong>@_hireStoreName</strong> para o <strong>Plano @_selectedPlan</strong>.
+                        </p>
+                        <div class="success-box">
+                            <p>Nosso time de implantação já preparou o ambiente para o seu WhatsApp <strong>@_hirePhone</strong>.</p>
+                            <a class="btn-whatsapp-direct" href="@GetWhatsAppDirectLink()" target="_blank" rel="noopener noreferrer">
+                                <span class="wa-ico">💬</span>
+                                <span>Ativar Agora via WhatsApp com Consultor &rarr;</span>
+                            </a>
                         </div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(_notice))
-                    {
-                        <div class="feedback feedback-success" role="status">
-                            <span class="feedback-symbol" aria-hidden="true">&#10003;</span>
-                            <span>@_notice</span>
-                        </div>
-                    }
-
-                    @if (_hasSearched && !_isSearching && _matches.Count == 0 && string.IsNullOrWhiteSpace(_error))
-                    {
-                        <div class="empty-results">
-                            <div class="empty-mark" aria-hidden="true">?</div>
-                            <div>
-                                <h3>Nenhum cadastro encontrado</h3>
-                                <p>Confira os dados ou inicie um novo cadastro.</p>
-                            </div>
-                            <AuthorizeView Roles="Administrator,Receptionist">
-                                <Authorized Context="emptyStateAuth">
-                                    <button class="text-button" type="button" @onclick="OpenCreateForm">Cadastrar cliente <span aria-hidden="true">&#8594;</span></button>
-                                </Authorized>
-                            </AuthorizeView>
-                        </div>
-                    }
-                    else if (_matches.Count > 0)
-                    {
-                        <div class="results-panel">
-                            <div class="results-heading">
-                                <div>
-                                    <h2>Resultados</h2>
-                                    <p>@_matches.Count @( _matches.Count == 1 ? "cliente" : "clientes" ) encontrado@(_matches.Count == 1 ? "" : "s")</p>
-                                </div>
-                                @if (_matches.Count > 1)
-                                {
-                                    <span class="multiple-hint">Selecione o proprietario correto</span>
-                                }
-                            </div>
-                            <div class="results-list">
-                                @foreach (var match in _matches)
-                                {
-                                    <CustomerMatchRow @key="match.CustomerId" Match="match" SelectedCustomerId="_selectedCustomerId" OnSelect="SelectCustomer" />
-                                }
-                            </div>
-                        </div>
-                    }
-                </section>
-
-                <aside class="detail-column" aria-label="Cliente selecionado">
-                    @if (SelectedCustomer is not null)
-                    {
-                        <div class="detail-panel">
-                            <div class="detail-kicker"><span class="detail-status"></span> CADASTRO SELECIONADO</div>
-                            <h2>@SelectedCustomer.CustomerName</h2>
-                            <div class="detail-phone">@SelectedCustomer.Phone</div>
-                            <div class="detail-divider"></div>
-                            <div class="vehicle-list-heading">
-                                <span>VEÍCULOS</span>
-                                <span class="vehicle-count">@SelectedCustomer.Vehicles.Count.ToString("00")</span>
-                            </div>
-                            @if (SelectedCustomer.Vehicles.Count > 0)
-                            {
-                                <div class="vehicle-list">
-                                    @foreach (var vehicle in SelectedCustomer.Vehicles)
-                                    {
-                                        <button type="button" class="vehicle-item @(SelectedVehicleId == vehicle.Id ? "active" : string.Empty)" @onclick="() => SelectVehicle(vehicle.Id)">
-                                            <span class="vehicle-glyph" aria-hidden="true">V</span>
-                                            <span class="vehicle-copy">
-                                                <strong>@FormatPlate(vehicle.Plate)</strong>
-                                                <span>@FormatSize(vehicle.Size)</span>
-                                            </span>
-                                            @if (SelectedVehicleId == vehicle.Id)
-                                            {
-                                                <span class="vehicle-selected">SELECIONADO</span>
-                                            }
-                                        </button>
-                                    }
-                                </div>
-                            }
-                            <AuthorizeView Roles="Administrator,Receptionist">
-                                <Authorized Context="vehicleAuthState">
-                                    <button class="button button-outline add-vehicle-button" type="button" @onclick="OpenAddVehicleForm">
-                                        <span class="button-plus" aria-hidden="true">+</span> Adicionar veículo
-                                    </button>
-                                </Authorized>
-                            </AuthorizeView>
-                            @if (SelectedVehicleId.HasValue)
-                            {
-                                <div class="selection-note" role="status">Veículo pronto para vincular à próxima ordem de serviço.</div>
-                            }
-                        </div>
-                    }
-                    else if (_showCreateForm)
-                    {
-                        <div class="detail-panel form-panel">
-                            <div class="detail-kicker"><span class="detail-status"></span> NOVO CADASTRO</div>
-                            <h2>Cliente e veículo</h2>
-                            <p class="form-intro">Os dois registros serão salvos juntos.</p>
-                            <form class="entry-form" @onsubmit="CreateCustomerAsync" @onsubmit:preventDefault>
-                                <label class="field">
-                                    <span>Nome do cliente</span>
-                                    <input @bind="_newCustomerName" maxlength="200" autocomplete="name" required />
-                                </label>
-                                <label class="field">
-                                    <span>Telefone</span>
-                                    <input @bind="_newCustomerPhone" inputmode="tel" maxlength="32" autocomplete="tel" required />
-                                </label>
-                                <label class="field">
-                                    <span>Placa do veículo</span>
-                                    <input @bind="_newVehiclePlate" maxlength="10" placeholder="ABC-1D23" autocomplete="off" required />
-                                </label>
-                                <label class="field">
-                                    <span>Porte</span>
-                                    <select @bind="_newVehicleSize">
-                                        <option value="HatchSedan">Hatch / Sedan</option>
-                                        <option value="Suv">SUV</option>
-                                        <option value="PickupVan">Picape / Van</option>
-                                        <option value="Motorcycle">Moto</option>
-                                    </select>
-                                </label>
-                                <div class="form-actions">
-                                    <button class="button button-quiet" type="button" @onclick="CloseForms">Cancelar</button>
-                                    <button class="button button-primary" type="submit" disabled="@_isSaving">
-                                        @(_isSaving ? "Salvando..." : "Salvar cadastro")
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    }
-                    else if (_showAddVehicleForm && SelectedCustomer is not null)
-                    {
-                        <div class="detail-panel form-panel">
-                            <div class="detail-kicker"><span class="detail-status"></span> NOVO VEÍCULO</div>
-                            <h2>@SelectedCustomer.CustomerName</h2>
-                            <p class="form-intro">Vincular outro veículo a este cliente.</p>
-                            <form class="entry-form" @onsubmit="AddVehicleAsync" @onsubmit:preventDefault>
-                                <label class="field">
-                                    <span>Placa</span>
-                                    <input @bind="_newVehiclePlate" maxlength="10" placeholder="ABC-1D23" autocomplete="off" required />
-                                </label>
-                                <label class="field">
-                                    <span>Porte</span>
-                                    <select @bind="_newVehicleSize">
-                                        <option value="HatchSedan">Hatch / Sedan</option>
-                                        <option value="Suv">SUV</option>
-                                        <option value="PickupVan">Picape / Van</option>
-                                        <option value="Motorcycle">Moto</option>
-                                    </select>
-                                </label>
-                                <div class="form-actions">
-                                    <button class="button button-quiet" type="button" @onclick="CloseForms">Cancelar</button>
-                                    <button class="button button-primary" type="submit" disabled="@_isSaving">
-                                        @(_isSaving ? "Salvando..." : "Adicionar veículo")
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="detail-placeholder">
-                            <div class="placeholder-orbit"><span></span><span></span><span></span></div>
-                            <div class="placeholder-line"></div>
-                            <p>Os dados do cadastro aparecem aqui.</p>
-                        </div>
-                    }
-                </aside>
+                        <button class="btn-quiet mt-16" type="button" @onclick="CloseContractModal">Concluir e Fechar</button>
+                    </div>
+                }
             </div>
-        </section>
-    </Authorized>
-    <NotAuthorized>
-        @if (string.IsNullOrWhiteSpace(Configuration["Authentication:Authority"]))
-        {
-            <section class="auth-state">
-                <div class="auth-stamp">LW</div>
-                <div class="eyebrow"><span class="eyebrow-mark"></span> LAVAWAY / ACESSO</div>
-                <h1>Conecte sua sessão</h1>
-                <p>Configure <code>Authentication:Authority</code> e <code>Authentication:ClientId</code> em <code>wwwroot/appsettings.json</code> para habilitar o acesso do estabelecimento.</p>
-            </section>
-        }
-        else
-        {
-            <section class="auth-state">
-                <div class="auth-stamp">LW</div>
-                <div class="eyebrow"><span class="eyebrow-mark"></span> LAVAWAY / ACESSO</div>
-                <h1>Sessão necessária</h1>
-                <p>Entre com a conta da unidade para acessar os cadastros.</p>
-                <a class="button button-primary auth-button" href="authentication/login">Entrar na conta <span aria-hidden="true">&#8594;</span></a>
-            </section>
-        }
-    </NotAuthorized>
-</AuthorizeView>
+        </div>
+    }
+</div>
 
 @code {
-    private string _plateQuery = string.Empty;
-    private string _phoneQuery = string.Empty;
-    private string _newCustomerName = string.Empty;
-    private string _newCustomerPhone = string.Empty;
-    private string _newVehiclePlate = string.Empty;
-    private string _newVehicleSize = "HatchSedan";
-    private IReadOnlyCollection<CustomerVehicleMatchDto> _matches = [];
-    private Guid? _selectedCustomerId;
-    private Guid? SelectedVehicleId { get; set; }
-    private bool _hasSearched;
-    private bool _isSearching;
-    private bool _isSaving;
-    private bool _showCreateForm;
-    private bool _showAddVehicleForm;
-    private string? _error;
-    private string? _notice;
+    private bool _isMobileMenuOpen;
+    private string _activeDemoTab = "whatsapp";
+    private string _selectedDemoSize = "SUV";
+    private bool _isAnnualBilling = true;
+    private int _calcDailyCars = 25;
+    private int _calcAvgTicket = 85;
+    private int _openFaqIndex = 0;
 
-    private CustomerVehicleMatchDto? SelectedCustomer => _matches.FirstOrDefault(match => match.CustomerId == _selectedCustomerId);
+    // Contract / Lead modal state
+    private bool _isContractModalOpen;
+    private string _selectedPlan = "Pro";
+    private string _hireStoreName = string.Empty;
+    private string _hireContactName = string.Empty;
+    private string _hirePhone = string.Empty;
+    private string _hireCity = string.Empty;
+    private string _hireVehiclesPerDay = "16 a 35";
+    private bool _hireSubmitted;
 
-    private async Task SearchAsync()
+    private void ToggleMobileMenu() => _isMobileMenuOpen = !_isMobileMenuOpen;
+    private void CloseMobileMenu() => _isMobileMenuOpen = false;
+
+    private void SetDemoTab(string tab) => _activeDemoTab = tab;
+
+    private void ToggleBilling() => _isAnnualBilling = !_isAnnualBilling;
+
+    private void ToggleFaq(int index) => _openFaqIndex = _openFaqIndex == index ? -1 : index;
+
+    private string GetDemoPrice(string size) => size switch
     {
-        _error = null;
-        _notice = null;
-        _showCreateForm = false;
-        _showAddVehicleForm = false;
-        SelectedVehicleId = null;
-
-        if (string.IsNullOrWhiteSpace(_plateQuery) && string.IsNullOrWhiteSpace(_phoneQuery))
-        {
-            _error = "Informe a placa ou o telefone para buscar.";
-            return;
-        }
-
-        _isSearching = true;
-        _hasSearched = true;
-        try
-        {
-            _matches = await Api.SearchAsync(_plateQuery, _phoneQuery);
-            _selectedCustomerId = _matches.Count == 1 ? _matches.Single().CustomerId : null;
-            if (_selectedCustomerId.HasValue && SelectedCustomer?.Vehicles.Count == 1)
-            {
-                SelectedVehicleId = SelectedCustomer.Vehicles.Single().Id;
-            }
-        }
-        catch (CustomerVehicleApiException exception)
-        {
-            _matches = [];
-            _selectedCustomerId = null;
-            _error = exception.Message;
-        }
-        catch (AccessTokenNotAvailableException exception)
-        {
-            exception.Redirect();
-        }
-        catch (HttpRequestException)
-        {
-            _matches = [];
-            _selectedCustomerId = null;
-            _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
-        }
-        finally
-        {
-            _isSearching = false;
-        }
-    }
-
-    private Task SelectCustomer(Guid customerId)
-    {
-        _selectedCustomerId = customerId;
-        SelectedVehicleId = null;
-        _showAddVehicleForm = false;
-        _showCreateForm = false;
-        var customer = SelectedCustomer;
-        if (customer?.Vehicles.Count == 1)
-        {
-            SelectedVehicleId = customer.Vehicles.Single().Id;
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private void SelectVehicle(Guid vehicleId) => SelectedVehicleId = vehicleId;
-
-    private void OpenCreateForm()
-    {
-        _error = null;
-        _notice = null;
-        _showCreateForm = true;
-        _showAddVehicleForm = false;
-        _newCustomerName = string.Empty;
-        _newCustomerPhone = _phoneQuery;
-        _newVehiclePlate = _plateQuery;
-        _selectedCustomerId = null;
-        SelectedVehicleId = null;
-    }
-
-    private void OpenAddVehicleForm()
-    {
-        _error = null;
-        _notice = null;
-        _showAddVehicleForm = true;
-        _showCreateForm = false;
-        _newVehiclePlate = string.Empty;
-    }
-
-    private void CloseForms()
-    {
-        _showCreateForm = false;
-        _showAddVehicleForm = false;
-    }
-
-    private async Task CreateCustomerAsync()
-    {
-        _error = null;
-        _notice = null;
-        _isSaving = true;
-        try
-        {
-            var match = await Api.CreateAsync(new CreateCustomerWithVehicleRequest(
-                _newCustomerName, _newCustomerPhone, _newVehiclePlate, _newVehicleSize));
-            ReplaceMatch(match);
-            _selectedCustomerId = match.CustomerId;
-            SelectedVehicleId = match.Vehicles.SingleOrDefault()?.Id;
-            _showCreateForm = false;
-            _hasSearched = true;
-            _notice = "Cadastro criado e pronto para a recepção.";
-        }
-        catch (CustomerVehicleApiException exception)
-        {
-            _error = exception.Message;
-        }
-        catch (AccessTokenNotAvailableException exception)
-        {
-            exception.Redirect();
-        }
-        catch (HttpRequestException)
-        {
-            _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
-        }
-        finally
-        {
-            _isSaving = false;
-        }
-    }
-
-    private async Task AddVehicleAsync()
-    {
-        if (SelectedCustomer is null)
-        {
-            return;
-        }
-
-        _error = null;
-        _notice = null;
-        _isSaving = true;
-        try
-        {
-            var match = await Api.AddVehicleAsync(SelectedCustomer.CustomerId,
-                new AddVehicleToCustomerRequest(_newVehiclePlate, _newVehicleSize));
-            ReplaceMatch(match);
-            _selectedCustomerId = match.CustomerId;
-            SelectedVehicleId = match.Vehicles.LastOrDefault()?.Id;
-            _showAddVehicleForm = false;
-            _notice = "Veículo adicionado ao cadastro.";
-        }
-        catch (CustomerVehicleApiException exception)
-        {
-            _error = exception.Message;
-        }
-        catch (AccessTokenNotAvailableException exception)
-        {
-            exception.Redirect();
-        }
-        catch (HttpRequestException)
-        {
-            _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
-        }
-        finally
-        {
-            _isSaving = false;
-        }
-    }
-
-    private void ReplaceMatch(CustomerVehicleMatchDto match)
-    {
-        _matches = [match, .. _matches.Where(item => item.CustomerId != match.CustomerId)];
-    }
-
-    private static string FormatPlate(string plate) => plate.Length == 7 ? $"{plate[..3]}-{plate[3..]}" : plate;
-
-    private static string FormatSize(string size) => size switch
-    {
-        "HatchSedan" => "Hatch / Sedan",
-        "Suv" => "SUV",
-        "PickupVan" => "Picape / Van",
-        "Motorcycle" => "Moto",
-        _ => size
+        "Hatch" => "R$ 70,00",
+        "SUV" => "R$ 95,00",
+        "Pickup" => "R$ 120,00",
+        "Moto" => "R$ 45,00",
+        _ => "R$ 80,00"
     };
+
+    private decimal GetExtraRevenueMonthly()
+    {
+        // 26 days * dailyCars * 18% retained * avgTicket
+        return _calcDailyCars * 26m * 0.18m * _calcAvgTicket;
+    }
+
+    private int GetHoursSavedMonthly()
+    {
+        // ~2.5 mins saved per check-in * cars/day * 26 days / 60
+        var totalMinutes = _calcDailyCars * 2.5 * 26;
+        return (int)Math.Round(totalMinutes / 60.0);
+    }
+
+    private int GetRoiMultiplier()
+    {
+        var planCost = 149m;
+        var extra = GetExtraRevenueMonthly();
+        return (int)Math.Max(1, Math.Round(extra / planCost));
+    }
+
+    private void OpenContractModal(string plan)
+    {
+        _selectedPlan = plan;
+        _hireSubmitted = false;
+        _isContractModalOpen = true;
+    }
+
+    private void CloseContractModal()
+    {
+        _isContractModalOpen = false;
+    }
+
+    private void SubmitHireRequest()
+    {
+        _hireSubmitted = true;
+    }
+
+    private string GetWhatsAppDirectLink()
+    {
+        var message = $"Olá! Gostaria de ativar meu acesso ao Lavaway para o plano {_selectedPlan}. Meu estabelecimento: {_hireStoreName} ({_hireCity}), responsável: {_hireContactName}.";
+        return $"https://wa.me/5511999999999?text={Uri.EscapeDataString(message)}";
+    }
 }

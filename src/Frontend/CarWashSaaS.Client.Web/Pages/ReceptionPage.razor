@@ -1,0 +1,465 @@
+@page "/reception"
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject CustomerVehicleApiClient Api
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+
+<PageTitle>Recepção | Lavaway</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <section class="reception-page">
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow"><span class="eyebrow-mark"></span> ATENDIMENTO DO DIA</div>
+                    <h1>Recepção</h1>
+                    <p class="page-subtitle">Localize o cliente e o veículo para começar.</p>
+                </div>
+                <AuthorizeView Roles="Administrator,Receptionist">
+                    <Authorized Context="createAuthState">
+                        <button class="button button-secondary new-customer-button" type="button" @onclick="OpenCreateForm">
+                            <span class="button-plus" aria-hidden="true">+</span> Novo cliente
+                        </button>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+
+            <div class="reception-grid">
+                <section class="search-column" aria-label="Busca de clientes e veículos">
+                    <form class="search-panel" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                        <div class="panel-heading">
+                            <div class="panel-step">01</div>
+                            <div>
+                                <h2>Encontrar cadastro</h2>
+                                <p>Busque pela placa ou telefone do proprietário.</p>
+                            </div>
+                        </div>
+
+                        <div class="search-fields">
+                            <label class="field field-plate">
+                                <span>Placa</span>
+                                <input @bind="_plateQuery" @bind:event="oninput" maxlength="10" placeholder="ABC-1D23" autocomplete="off" />
+                            </label>
+                            <label class="field field-phone">
+                                <span>Telefone</span>
+                                <input @bind="_phoneQuery" @bind:event="oninput" inputmode="tel" maxlength="32" placeholder="(11) 99999-9999" autocomplete="off" />
+                            </label>
+                        </div>
+
+                        <div class="search-actions">
+                            <span class="search-hint">Informe pelo menos um campo</span>
+                            <button class="button button-primary" type="submit" disabled="@_isSearching">
+                                @if (_isSearching)
+                                {
+                                    <span class="button-spinner" aria-hidden="true"></span>
+                                    <span>Buscando</span>
+                                }
+                                else
+                                {
+                                    <span>Buscar cadastros</span>
+                                    <span class="button-arrow" aria-hidden="true">&#8594;</span>
+                                }
+                            </button>
+                        </div>
+                    </form>
+
+                    @if (!string.IsNullOrWhiteSpace(_error))
+                    {
+                        <div class="feedback feedback-error" role="alert">
+                            <span class="feedback-symbol" aria-hidden="true">!</span>
+                            <span>@_error</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_notice))
+                    {
+                        <div class="feedback feedback-success" role="status">
+                            <span class="feedback-symbol" aria-hidden="true">&#10003;</span>
+                            <span>@_notice</span>
+                        </div>
+                    }
+
+                    @if (_hasSearched && !_isSearching && _matches.Count == 0 && string.IsNullOrWhiteSpace(_error))
+                    {
+                        <div class="empty-results">
+                            <div class="empty-mark" aria-hidden="true">?</div>
+                            <div>
+                                <h3>Nenhum cadastro encontrado</h3>
+                                <p>Confira os dados ou inicie um novo cadastro.</p>
+                            </div>
+                            <AuthorizeView Roles="Administrator,Receptionist">
+                                <Authorized Context="emptyStateAuth">
+                                    <button class="text-button" type="button" @onclick="OpenCreateForm">Cadastrar cliente <span aria-hidden="true">&#8594;</span></button>
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
+                    }
+                    else if (_matches.Count > 0)
+                    {
+                        <div class="results-panel">
+                            <div class="results-heading">
+                                <div>
+                                    <h2>Resultados</h2>
+                                    <p>@_matches.Count @( _matches.Count == 1 ? "cliente" : "clientes" ) encontrado@(_matches.Count == 1 ? "" : "s")</p>
+                                </div>
+                                @if (_matches.Count > 1)
+                                {
+                                    <span class="multiple-hint">Selecione o proprietario correto</span>
+                                }
+                            </div>
+                            <div class="results-list">
+                                @foreach (var match in _matches)
+                                {
+                                    <CustomerMatchRow @key="match.CustomerId" Match="match" SelectedCustomerId="_selectedCustomerId" OnSelect="SelectCustomer" />
+                                }
+                            </div>
+                        </div>
+                    }
+                </section>
+
+                <aside class="detail-column" aria-label="Cliente selecionado">
+                    @if (SelectedCustomer is not null)
+                    {
+                        <div class="detail-panel">
+                            <div class="detail-kicker"><span class="detail-status"></span> CADASTRO SELECIONADO</div>
+                            <h2>@SelectedCustomer.CustomerName</h2>
+                            <div class="detail-phone">@SelectedCustomer.Phone</div>
+                            <div class="detail-divider"></div>
+                            <div class="vehicle-list-heading">
+                                <span>VEÍCULOS</span>
+                                <span class="vehicle-count">@SelectedCustomer.Vehicles.Count.ToString("00")</span>
+                            </div>
+                            @if (SelectedCustomer.Vehicles.Count > 0)
+                            {
+                                <div class="vehicle-list">
+                                    @foreach (var vehicle in SelectedCustomer.Vehicles)
+                                    {
+                                        <button type="button" class="vehicle-item @(SelectedVehicleId == vehicle.Id ? "active" : string.Empty)" @onclick="() => SelectVehicle(vehicle.Id)">
+                                            <span class="vehicle-glyph" aria-hidden="true">V</span>
+                                            <span class="vehicle-copy">
+                                                <strong>@FormatPlate(vehicle.Plate)</strong>
+                                                <span>@FormatSize(vehicle.Size)</span>
+                                            </span>
+                                            @if (SelectedVehicleId == vehicle.Id)
+                                            {
+                                                <span class="vehicle-selected">SELECIONADO</span>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            <AuthorizeView Roles="Administrator,Receptionist">
+                                <Authorized Context="vehicleAuthState">
+                                    <button class="button button-outline add-vehicle-button" type="button" @onclick="OpenAddVehicleForm">
+                                        <span class="button-plus" aria-hidden="true">+</span> Adicionar veículo
+                                    </button>
+                                </Authorized>
+                            </AuthorizeView>
+                            @if (SelectedVehicleId.HasValue)
+                            {
+                                <div class="selection-note" role="status">Veículo pronto para vincular à próxima ordem de serviço.</div>
+                            }
+                        </div>
+                    }
+                    else if (_showCreateForm)
+                    {
+                        <div class="detail-panel form-panel">
+                            <div class="detail-kicker"><span class="detail-status"></span> NOVO CADASTRO</div>
+                            <h2>Cliente e veículo</h2>
+                            <p class="form-intro">Os dois registros serão salvos juntos.</p>
+                            <form class="entry-form" @onsubmit="CreateCustomerAsync" @onsubmit:preventDefault>
+                                <label class="field">
+                                    <span>Nome do cliente</span>
+                                    <input @bind="_newCustomerName" maxlength="200" autocomplete="name" required />
+                                </label>
+                                <label class="field">
+                                    <span>Telefone</span>
+                                    <input @bind="_newCustomerPhone" inputmode="tel" maxlength="32" autocomplete="tel" required />
+                                </label>
+                                <label class="field">
+                                    <span>Placa do veículo</span>
+                                    <input @bind="_newVehiclePlate" maxlength="10" placeholder="ABC-1D23" autocomplete="off" required />
+                                </label>
+                                <label class="field">
+                                    <span>Porte</span>
+                                    <select @bind="_newVehicleSize">
+                                        <option value="HatchSedan">Hatch / Sedan</option>
+                                        <option value="Suv">SUV</option>
+                                        <option value="PickupVan">Picape / Van</option>
+                                        <option value="Motorcycle">Moto</option>
+                                    </select>
+                                </label>
+                                <div class="form-actions">
+                                    <button class="button button-quiet" type="button" @onclick="CloseForms">Cancelar</button>
+                                    <button class="button button-primary" type="submit" disabled="@_isSaving">
+                                        @(_isSaving ? "Salvando..." : "Salvar cadastro")
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+                    else if (_showAddVehicleForm && SelectedCustomer is not null)
+                    {
+                        <div class="detail-panel form-panel">
+                            <div class="detail-kicker"><span class="detail-status"></span> NOVO VEÍCULO</div>
+                            <h2>@SelectedCustomer.CustomerName</h2>
+                            <p class="form-intro">Vincular outro veículo a este cliente.</p>
+                            <form class="entry-form" @onsubmit="AddVehicleAsync" @onsubmit:preventDefault>
+                                <label class="field">
+                                    <span>Placa</span>
+                                    <input @bind="_newVehiclePlate" maxlength="10" placeholder="ABC-1D23" autocomplete="off" required />
+                                </label>
+                                <label class="field">
+                                    <span>Porte</span>
+                                    <select @bind="_newVehicleSize">
+                                        <option value="HatchSedan">Hatch / Sedan</option>
+                                        <option value="Suv">SUV</option>
+                                        <option value="PickupVan">Picape / Van</option>
+                                        <option value="Motorcycle">Moto</option>
+                                    </select>
+                                </label>
+                                <div class="form-actions">
+                                    <button class="button button-quiet" type="button" @onclick="CloseForms">Cancelar</button>
+                                    <button class="button button-primary" type="submit" disabled="@_isSaving">
+                                        @(_isSaving ? "Salvando..." : "Adicionar veículo")
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="detail-placeholder">
+                            <div class="placeholder-orbit"><span></span><span></span><span></span></div>
+                            <div class="placeholder-line"></div>
+                            <p>Os dados do cadastro aparecem aqui.</p>
+                        </div>
+                    }
+                </aside>
+            </div>
+        </section>
+    </Authorized>
+    <NotAuthorized>
+        @if (string.IsNullOrWhiteSpace(Configuration["Authentication:Authority"]))
+        {
+            <section class="auth-state">
+                <div class="auth-stamp">LW</div>
+                <div class="eyebrow"><span class="eyebrow-mark"></span> LAVAWAY / ACESSO</div>
+                <h1>Conecte sua sessão</h1>
+                <p>Configure <code>Authentication:Authority</code> e <code>Authentication:ClientId</code> em <code>wwwroot/appsettings.json</code> para habilitar o acesso do estabelecimento.</p>
+            </section>
+        }
+        else
+        {
+            <section class="auth-state">
+                <div class="auth-stamp">LW</div>
+                <div class="eyebrow"><span class="eyebrow-mark"></span> LAVAWAY / ACESSO</div>
+                <h1>Sessão necessária</h1>
+                <p>Entre com a conta da unidade para acessar os cadastros.</p>
+                <a class="button button-primary auth-button" href="authentication/login">Entrar na conta <span aria-hidden="true">&#8594;</span></a>
+            </section>
+        }
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private string _plateQuery = string.Empty;
+    private string _phoneQuery = string.Empty;
+    private string _newCustomerName = string.Empty;
+    private string _newCustomerPhone = string.Empty;
+    private string _newVehiclePlate = string.Empty;
+    private string _newVehicleSize = "HatchSedan";
+    private IReadOnlyCollection<CustomerVehicleMatchDto> _matches = [];
+    private Guid? _selectedCustomerId;
+    private Guid? SelectedVehicleId { get; set; }
+    private bool _hasSearched;
+    private bool _isSearching;
+    private bool _isSaving;
+    private bool _showCreateForm;
+    private bool _showAddVehicleForm;
+    private string? _error;
+    private string? _notice;
+
+    private CustomerVehicleMatchDto? SelectedCustomer => _matches.FirstOrDefault(match => match.CustomerId == _selectedCustomerId);
+
+    private async Task SearchAsync()
+    {
+        _error = null;
+        _notice = null;
+        _showCreateForm = false;
+        _showAddVehicleForm = false;
+        SelectedVehicleId = null;
+
+        if (string.IsNullOrWhiteSpace(_plateQuery) && string.IsNullOrWhiteSpace(_phoneQuery))
+        {
+            _error = "Informe a placa ou o telefone para buscar.";
+            return;
+        }
+
+        _isSearching = true;
+        _hasSearched = true;
+        try
+        {
+            _matches = await Api.SearchAsync(_plateQuery, _phoneQuery);
+            _selectedCustomerId = _matches.Count == 1 ? _matches.Single().CustomerId : null;
+            if (_selectedCustomerId.HasValue && SelectedCustomer?.Vehicles.Count == 1)
+            {
+                SelectedVehicleId = SelectedCustomer.Vehicles.Single().Id;
+            }
+        }
+        catch (CustomerVehicleApiException exception)
+        {
+            _matches = [];
+            _selectedCustomerId = null;
+            _error = exception.Message;
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+        }
+        catch (HttpRequestException)
+        {
+            _matches = [];
+            _selectedCustomerId = null;
+            _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+
+    private Task SelectCustomer(Guid customerId)
+    {
+        _selectedCustomerId = customerId;
+        SelectedVehicleId = null;
+        _showAddVehicleForm = false;
+        _showCreateForm = false;
+        var customer = SelectedCustomer;
+        if (customer?.Vehicles.Count == 1)
+        {
+            SelectedVehicleId = customer.Vehicles.Single().Id;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void SelectVehicle(Guid vehicleId) => SelectedVehicleId = vehicleId;
+
+    private void OpenCreateForm()
+    {
+        _error = null;
+        _notice = null;
+        _showCreateForm = true;
+        _showAddVehicleForm = false;
+        _newCustomerName = string.Empty;
+        _newCustomerPhone = _phoneQuery;
+        _newVehiclePlate = _plateQuery;
+        _selectedCustomerId = null;
+        SelectedVehicleId = null;
+    }
+
+    private void OpenAddVehicleForm()
+    {
+        _error = null;
+        _notice = null;
+        _showAddVehicleForm = true;
+        _showCreateForm = false;
+        _newVehiclePlate = string.Empty;
+    }
+
+    private void CloseForms()
+    {
+        _showCreateForm = false;
+        _showAddVehicleForm = false;
+    }
+
+    private async Task CreateCustomerAsync()
+    {
+        _error = null;
+        _notice = null;
+        _isSaving = true;
+        try
+        {
+            var match = await Api.CreateAsync(new CreateCustomerWithVehicleRequest(
+                _newCustomerName, _newCustomerPhone, _newVehiclePlate, _newVehicleSize));
+            ReplaceMatch(match);
+            _selectedCustomerId = match.CustomerId;
+            SelectedVehicleId = match.Vehicles.SingleOrDefault()?.Id;
+            _showCreateForm = false;
+            _hasSearched = true;
+            _notice = "Cadastro criado e pronto para a recepção.";
+        }
+        catch (CustomerVehicleApiException exception)
+        {
+            _error = exception.Message;
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task AddVehicleAsync()
+    {
+        if (SelectedCustomer is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _notice = null;
+        _isSaving = true;
+        try
+        {
+            var match = await Api.AddVehicleAsync(SelectedCustomer.CustomerId,
+                new AddVehicleToCustomerRequest(_newVehiclePlate, _newVehicleSize));
+            ReplaceMatch(match);
+            _selectedCustomerId = match.CustomerId;
+            SelectedVehicleId = match.Vehicles.LastOrDefault()?.Id;
+            _showAddVehicleForm = false;
+            _notice = "Veículo adicionado ao cadastro.";
+        }
+        catch (CustomerVehicleApiException exception)
+        {
+            _error = exception.Message;
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void ReplaceMatch(CustomerVehicleMatchDto match)
+    {
+        _matches = [match, .. _matches.Where(item => item.CustomerId != match.CustomerId)];
+    }
+
+    private static string FormatPlate(string plate) => plate.Length == 7 ? $"{plate[..3]}-{plate[3..]}" : plate;
+
+    private static string FormatSize(string size) => size switch
+    {
+        "HatchSedan" => "Hatch / Sedan",
+        "Suv" => "SUV",
+        "PickupVan" => "Picape / Van",
+        "Motorcycle" => "Moto",
+        _ => size
+    };
+}
