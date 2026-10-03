@@ -8,8 +8,8 @@ public sealed class WhatsAppDesignTimeDbContextFactory : IDesignTimeDbContextFac
 {
     public WhatsAppDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("CarWashSaaS_ConnectionString")
-            ?? "Server=(localdb)\\mssqllocaldb;Database=CarWashSaaS;Trusted_Connection=True;TrustServerCertificate=True;";
+        DotEnvConfiguration.LoadFromRepository();
+        var connectionString = DotEnvConfiguration.GetRequiredConnectionString();
 
         var options = new DbContextOptionsBuilder<WhatsAppDbContext>()
             .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "whatsapp"))
