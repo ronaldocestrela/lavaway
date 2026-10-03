@@ -1,21 +1,274 @@
 @page "/authentication/{action}"
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@page "/login"
+@layout LandingLayout
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject AuthApiClient AuthApi
+@inject ITokenStorage TokenStorage
+@inject JwtAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 @inject IConfiguration Configuration
 
-@if (!string.IsNullOrWhiteSpace(Configuration["Authentication:Authority"]))
-{
-    <RemoteAuthenticatorView Action="@Action" />
-}
-else
-{
-    <section class="auth-config-message" role="status">
-        <h1>Acesso não configurado</h1>
-        <p>Configure o provedor OIDC deste ambiente para iniciar uma sessão.</p>
-        <a href="reception">Voltar à recepção</a>
-    </section>
-}
+<PageTitle>Acessar Conta | Lavaway</PageTitle>
+
+<div class="auth-page-container">
+    <div class="auth-card">
+        <div class="auth-brand-header">
+            <a class="brand-link" href="/" aria-label="Lavaway início">
+                <span class="brand-mark">L</span>
+                <span class="brand-name">lavaway</span>
+            </a>
+            <span class="auth-badge">ACESSO DO ESTABELECIMENTO</span>
+        </div>
+
+        @if (IsLogoutAction)
+        {
+            <div class="auth-logout-panel">
+                @if (_isProcessingLogout)
+                {
+                    <div class="spinner-box">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <p>Encerrando sessão com segurança...</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="logout-success">
+                        <div class="success-icon">&#10003;</div>
+                        <h2>Sessão Encerrada</h2>
+                        <p>Você saiu da conta da sua loja com sucesso.</p>
+                        <div class="logout-actions">
+                            <a class="btn-primary" href="authentication/login">Entrar Novamente</a>
+                            <a class="btn-ghost" href="/">Voltar à Página Inicial</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="auth-login-panel">
+                <div class="auth-heading">
+                    <h1>Entrar na Loja</h1>
+                    <p>Digite seu e-mail e senha cadastrados para acessar o pátio e recepção.</p>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="auth-alert auth-alert-error" role="alert">
+                        <span class="alert-icon">!</span>
+                        <div class="alert-text">
+                            <strong>Falha no acesso</strong>
+                            <span>@_errorMessage</span>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_successMessage))
+                {
+                    <div class="auth-alert auth-alert-success" role="status">
+                        <span class="alert-icon">&#10003;</span>
+                        <div class="alert-text">
+                            <span>@_successMessage</span>
+                        </div>
+                    </div>
+                }
+
+                <form class="auth-form" @onsubmit="HandleLoginAsync" @onsubmit:preventDefault>
+                    <div class="form-group">
+                        <label for="login-email">E-mail de acesso</label>
+                        <input id="login-email"
+                               type="email"
+                               @bind="_email"
+                               placeholder="admin@lavaway.com"
+                               required
+                               autocomplete="email"
+                               disabled="@_isLoading" />
+                    </div>
+
+                    <div class="form-group">
+                        <div class="label-row">
+                            <label for="login-password">Senha</label>
+                            <span class="forgot-hint">Mínimo 6 caracteres</span>
+                        </div>
+                        <div class="password-wrapper">
+                            <input id="login-password"
+                                   type="@(_showPassword ? "text" : "password")"
+                                   @bind="_password"
+                                   placeholder="••••••••"
+                                   required
+                                   autocomplete="current-password"
+                                   disabled="@_isLoading" />
+                            <button type="button"
+                                    class="toggle-pwd-btn"
+                                    @onclick="() => _showPassword = !_showPassword"
+                                    aria-label="Alternar exibição de senha"
+                                    tabindex="-1">
+                                @(_showPassword ? "Ocultar" : "Mostrar")
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="dev-quick-fill">
+                        <span class="quick-title">Credenciais de Teste / Dev:</span>
+                        <div class="quick-tags">
+                            <button type="button" class="quick-btn" @onclick='() => FillCredentials("admin@lavaway.com", "Admin123!")'>
+                                👤 Administrador (admin@lavaway.com)
+                            </button>
+                            <button type="button" class="quick-btn" @onclick='() => FillCredentials("recepcao@lavaway.com", "Recepcao123!")'>
+                                📋 Recepção (recepcao@lavaway.com)
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary full glow" type="submit" disabled="@_isLoading" id="btn-login-submit">
+                        @if (_isLoading)
+                        {
+                            <span class="spinner" aria-hidden="true"></span>
+                            <span>Autenticando...</span>
+                        }
+                        else
+                        {
+                            <span>Entrar no Sistema</span>
+                            <span class="arrow">&rarr;</span>
+                        }
+                    </button>
+                </form>
+
+                <div class="auth-footer-links">
+                    <a class="back-home-link" href="/">
+                        &larr; Voltar à Página Inicial
+                    </a>
+                    <a class="plans-link" href="/#planos">
+                        Ainda não é cliente? <strong>Conheça os planos</strong>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
 
 @code {
     [Parameter]
     public string? Action { get; set; }
+
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private bool _showPassword;
+    private bool _isLoading;
+    private bool _isProcessingLogout;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    private bool IsLogoutAction =>
+        string.Equals(Action, "logout", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Action, "logged-out", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.Equals(Action, "logout", StringComparison.OrdinalIgnoreCase))
+        {
+            await ProcessLogoutAsync();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.Equals(Action, "logout", StringComparison.OrdinalIgnoreCase) && !_isProcessingLogout)
+        {
+            await ProcessLogoutAsync();
+        }
+    }
+
+    private void FillCredentials(string email, string password)
+    {
+        _email = email;
+        _password = password;
+        _errorMessage = null;
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+        {
+            _errorMessage = "Informe o e-mail e a senha para continuar.";
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            var request = new LoginRequest(_email.Trim(), _password);
+            var result = await AuthApi.LoginAsync(request);
+
+            if (result.IsSuccess && result.Value is not null)
+            {
+                await TokenStorage.SetAccessTokenAsync(result.Value.AccessToken);
+                if (!string.IsNullOrWhiteSpace(result.Value.RefreshToken))
+                {
+                    await TokenStorage.SetRefreshTokenAsync(result.Value.RefreshToken);
+                }
+
+                AuthStateProvider.NotifyUserAuthentication(result.Value.AccessToken);
+
+                _successMessage = "Autenticação realizada! Redirecionando para a recepção...";
+                await Task.Delay(300);
+                Navigation.NavigateTo("reception");
+            }
+            else
+            {
+                _errorMessage = TranslateError(result.Error?.Code, result.Error?.Description);
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Não foi possível conectar ao servidor de autenticação. Verifique se o backend está em execução.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ProcessLogoutAsync()
+    {
+        _isProcessingLogout = true;
+        try
+        {
+            var refreshToken = await TokenStorage.GetRefreshTokenAsync();
+            if (!string.IsNullOrWhiteSpace(refreshToken))
+            {
+                await AuthApi.RevokeTokenAsync(new RevokeTokenRequest(refreshToken));
+            }
+
+            await TokenStorage.ClearAsync();
+            AuthStateProvider.NotifyUserLogout();
+        }
+        catch
+        {
+            // Erro silencioso durante logout para não travar a limpeza local
+            await TokenStorage.ClearAsync();
+            AuthStateProvider.NotifyUserLogout();
+        }
+        finally
+        {
+            _isProcessingLogout = false;
+            Action = "logged-out";
+        }
+    }
+
+    private static string TranslateError(string? code, string? description)
+    {
+        return code switch
+        {
+            "auth.invalid_credentials" => "E-mail ou senha incorretos. Confira suas credenciais e tente novamente.",
+            "auth.email.required" => "O e-mail é obrigatório.",
+            "auth.password.required" => "A senha é obrigatória.",
+            "auth.network_error" => "Falha na comunicação com a API. Verifique sua conexão.",
+            _ => !string.IsNullOrWhiteSpace(description) ? description : "Ocorreu um erro ao processar o login. Tente novamente."
+        };
+    }
 }

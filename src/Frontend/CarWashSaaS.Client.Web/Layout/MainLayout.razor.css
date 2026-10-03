@@ -17,6 +17,9 @@
 .breadcrumb strong { color: #243631; font-weight: 650; }
 .breadcrumb-slash { color: #bdc8c2; }
 .account-chip, .account-link { display: flex; align-items: center; gap: 8px; color: #40534b; font-size: 12px; text-decoration: none; }
+.user-session-bar { display: flex; align-items: center; gap: 14px; }
+.logout-link { color: #8a3f36; font-size: 11px; font-weight: 700; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: background 0.15s ease; }
+.logout-link:hover { background: #fbeeed; text-decoration: underline; }
 .page-content { width: min(1280px, 100%); margin: 0 auto; padding: 44px clamp(20px, 4vw, 56px) 64px; }
 
 @media (max-width: 760px) {

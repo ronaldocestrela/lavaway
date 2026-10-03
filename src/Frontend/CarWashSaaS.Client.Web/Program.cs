@@ -20,7 +20,7 @@ builder.Services.AddScoped<WhatsAppApiClient>();
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
 var authority = builder.Configuration["Authentication:Authority"];
 
-builder.Services.AddScoped<ITokenStorage, InMemoryTokenStorage>();
+builder.Services.AddScoped<ITokenStorage, LocalStorageTokenStorage>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddScoped<JwtAuthorizationMessageHandler>();

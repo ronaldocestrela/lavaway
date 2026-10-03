@@ -30,6 +30,12 @@ public static class IdentityEndpoints
             };
         }).AllowAnonymous();
 
+        authGroup.MapPost("/seed", async (IServiceProvider serviceProvider) =>
+        {
+            await CarWashSaaS.Api.Services.DevDatabaseSeeder.SeedAsync(serviceProvider);
+            return Results.Ok(new { message = "Database seeded successfully for development." });
+        }).AllowAnonymous();
+
         authGroup.MapPost("/refresh", async (
             RefreshTokenRequest request,
             IdentityApplicationService identityService,

@@ -34,4 +34,25 @@ public sealed class Tenant
 
         return Result<Tenant>.Success(new Tenant(Guid.CreateVersion7(), normalizedName));
     }
+
+    public static Result<Tenant> Create(Guid id, string name)
+    {
+        if (id == Guid.Empty)
+        {
+            return Result<Tenant>.Failure(new Error("tenant.id.required", "Tenant ID cannot be empty.", ErrorType.Validation));
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Result<Tenant>.Failure(new Error("tenant.name.required", "Tenant name is required.", ErrorType.Validation));
+        }
+
+        var normalizedName = name.Trim();
+        if (normalizedName.Length > 200)
+        {
+            return Result<Tenant>.Failure(new Error("tenant.name.too_long", "Tenant name cannot exceed 200 characters.", ErrorType.Validation));
+        }
+
+        return Result<Tenant>.Success(new Tenant(id, normalizedName));
+    }
 }

@@ -17,7 +17,10 @@
             <div class="breadcrumb"><span>Operação</span><span class="breadcrumb-slash">/</span><strong>Recepção</strong></div>
             <AuthorizeView>
                 <Authorized Context="authState">
-                    <div class="account-chip"><span class="account-indicator"></span>@(authState.User.Identity?.Name ?? "Sessão ativa")</div>
+                    <div class="user-session-bar">
+                        <div class="account-chip"><span class="account-indicator"></span>@(authState.User.Identity?.Name ?? "Sessão ativa")</div>
+                        <a class="logout-link" href="authentication/logout" title="Encerrar sessão">Sair</a>
+                    </div>
                 </Authorized>
                 <NotAuthorized>
                     <a class="account-link" href="authentication/login">Entrar</a>

@@ -170,6 +170,14 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    try
+    {
+        await DevDatabaseSeeder.SeedAsync(app.Services);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Failed to run development database seeder.");
+    }
 }
 
 app.UseHttpsRedirection();
