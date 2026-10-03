@@ -1,118 +1,320 @@
 # Lavaway
 
-SaaS para gestão de lava-jatos e estética automotiva. O projeto está sendo construído como um monólito modular em .NET 10, com módulos independentes e SQL Server.
+SaaS para gestão de lava-jatos e estética automotiva, construído como um monólito modular em **.NET 10**, com módulos independentes, **SQL Server** (schemas isolados por módulo), **MinIO** (Object Storage S3 com isolamento por tenant), **RabbitMQ** (mensageria e filas assíncronas) e frontend em **Blazor WebAssembly**.
 
-## Estado atual
+---
 
-A base das subfases 1.1 e 1.2 está implementada. A subfase 1.4 já possui storage privado MinIO com namespace por tenant, fila persistente RabbitMQ e um worker genérico; ainda faltam execução dos testes com os serviços reais e handlers de negócio.
+## Sumário
 
-A API expõe `/health`. O build da API e os testes unitários focados em storage/fila passaram. Os testes de integração RabbitMQ e SQL Server usam Testcontainers e precisam de Docker acessível; a integração com storage MinIO ainda precisa de validação ponta a ponta.
+- [Visão Geral e Arquitetura](#visão-geral-e-arquitetura)
+- [Stack Tecnológica](#stack-tecnológica)
+- [Estrutura do Repositório](#estrutura-do-repositório)
+- [Pré-requisitos](#pré-requisitos)
+- [Inicialização Completa do Projeto](#inicialização-completa-do-projeto)
+  - [1. Configurar o arquivo de ambiente (.env)](#1-configurar-o-arquivo-de-ambiente-env)
+  - [2. Subir os serviços de infraestrutura (Docker)](#2-subir-os-serviços-de-infraestrutura-docker)
+  - [3. Aplicar as migrações no banco de dados](#3-aplicar-as-migrações-no-banco-de-dados)
+  - [4. Executar a API Backend](#4-executar-a-api-backend)
+  - [5. Executar o Frontend Blazor](#5-executar-o-frontend-blazor)
+- [Painéis e URLs dos Serviços](#painéis-e-urls-dos-serviços)
+- [Testes e Garantia de Qualidade](#testes-e-garantia-de-qualidade)
+- [Comandos Úteis de Desenvolvimento](#comandos-úteis-de-desenvolvimento)
+- [Documentação Adicional](#documentação-adicional)
 
-**Observação:** as regras de tenant e a validação do `TenantId` nas gravações já estão implementadas no shared configuration e nos contextos EF Core. A integração real com SQL Server continua exigindo Docker/Testcontainers para executar os testes de isolamento em ambientes locais sem serviço SQL dedicado.
+---
 
-## Stack
+## Visão Geral e Arquitetura
 
-- .NET 10 e C# com nullable reference types.
-- ASP.NET Core Web API (Minimal APIs modulares organizadas por métodos de extensão).
-- Entity Framework Core 10 e SQL Server.
-- ASP.NET Core Identity com chaves `Guid`.
-- xUnit para testes unitários, de modelo e de arquitetura.
+O Lavaway adota uma arquitetura de **Monólito Modular** orientada a Domain-Driven Design (DDD):
+- Cada módulo possui suas próprias camadas (`Domain`, `Application`, `Infrastructure`) e gerencia seu próprio schema no SQL Server (`tenants`, `identity`, `whatsapp`, `yard`).
+- Isolamento multi-tenant garantido em tempo de execução via `CurrentTenantAccessor`, query filters no EF Core e validação de `TenantId` em gravações ([ADR-0001](docs/architecture/ADR-0001-isolamento-tenant-ef-core.md)).
+- Endpoints HTTP expostos como **Minimal APIs modulares** em `src/Backend/CarWashSaaS.Api/Endpoints/` ([ADR-0006](docs/architecture/ADR-0006-organizacao-minimal-apis-modulares.md)).
+- Armazenamento privado via MinIO com separação lógica por tenant e mensageria distribuída com RabbitMQ ([ADR-0004](docs/architecture/ADR-0004-storage-fila-self-hosted.md)).
 
-## Estrutura
+---
+
+## Stack Tecnológica
+
+- **Backend:** .NET 10, C# 13, ASP.NET Core Minimal APIs, Entity Framework Core 10, ASP.NET Core Identity.
+- **Frontend:** Blazor WebAssembly (.NET 10), Razor Components, autenticação com Bearer Tokens JWT.
+- **Banco de Dados:** Microsoft SQL Server 2022 (Developer Edition).
+- **Object Storage:** MinIO (compatível com AWS S3).
+- **Mensageria:** RabbitMQ 4 com interface de gerenciamento.
+- **Testes:** xUnit, FluentAssertions, Testcontainers (SQL Server e RabbitMQ), NetArchTest, bUnit.
+
+---
+
+## Estrutura do Repositório
 
 ```text
 src/
-  Shared/CarWashSaaS.Shared.Contracts/       Contratos compartilhados e Result
-  Backend/CarWashSaaS.Api/                   Host, pipeline e composição dos módulos
-    Endpoints/                               Minimal APIs agrupadas por módulo (Identity, Tenants, WhatsApp, YardOperations)
-    Middleware/                              Middlewares HTTP (ex: TenantResolverMiddleware)
-    Services/                                Serviços de suporte à API (ex: JWT, Worker)
-  Backend/Modules/Tenants/                   Agregado Tenant, perfil da loja e persistência
-  Backend/Modules/Identity/                  Identity, autenticação, usuários e papéis
-  Backend/Modules/WhatsApp/                  Conexão, pareamento e webhooks WhatsApp
-  Backend/Modules/YardOperations/             Clientes, veículos, catálogo de serviços e pátio
-tests/Backend/
-  UnitTests/                                  Invariantes do domínio
-  IntegrationTests/                           Modelo relacional dos contextos e endpoints
-  ArchitectureTests/                          Fronteiras entre camadas e módulos
+  Shared/
+    CarWashSaaS.Shared.Contracts/        Contratos compartilhados, DTOs e Result pattern
+    CarWashSaaS.Shared.Configuration/    Configurações comuns e resolução de .env
+  Backend/
+    CarWashSaaS.Api/                    Host principal, Minimal APIs, middlewares e workers
+      Endpoints/                         Minimal APIs agrupadas por módulo (Identity, Tenants, Yard, WhatsApp)
+      Middleware/                        TenantResolverMiddleware e pipelines HTTP
+      Services/                          Serviços de aplicação (JWT, Worker de background)
+    Modules/
+      Tenants/                           Módulo de Tenants, perfil da loja e branding
+      Identity/                          Módulo de Identity, autenticação, usuários e papéis
+      YardOperations/                    Módulo de Operações: clientes, veículos, pátio e serviços
+      WhatsApp/                          Módulo de conexão, pareamento e webhooks WhatsApp
+  Frontend/
+    CarWashSaaS.Client.Core/             Clients de API HTTP e modelos do cliente
+    CarWashSaaS.Client.Components/       Componentes Razor reutilizáveis de interface
+    CarWashSaaS.Client.Web/              Aplicação Blazor WebAssembly (SPA)
+tests/
+  Backend/
+    UnitTests/                          Testes unitários e invariantes de domínio
+    IntegrationTests/                   Testes de integração com Testcontainers (SQL, RabbitMQ)
+    ArchitectureTests/                  Testes de arquitetura e fronteiras entre camadas (NetArchTest)
+  Frontend/
+    ComponentTests/                     Testes de componentes Blazor (bUnit)
+scripts/
+  apply-migrations.sh                   Script para aplicar migrations em todos os módulos
+  verify-quality.sh                     Script de verificação de formatação, build e testes
 docs/
-  architecture/                               ADRs (decisões arquiteturais)
-  living-docs/                                Modelo e documentação viva
+  architecture/                         ADRs (Architectural Decision Records)
+  living-docs/                          Documentação viva de fluxos de negócio
 ```
 
-Cada módulo mantém seus próprios contextos e migrations. Todos usam o mesmo banco SQL Server, em schemas separados: `tenants`, `identity`, `whatsapp` e `yard`.
-Os endpoints HTTP são expostos como **Minimal APIs modulares** em `src/Backend/CarWashSaaS.Api/Endpoints/`, desacoplando o `Program.cs` e agrupando as rotas diretamente com seus módulos de negócio (conforme registrado no [ADR-0006](docs/architecture/ADR-0006-organizacao-minimal-apis-modulares.md)).
+---
 
 ## Pré-requisitos
 
-- .NET SDK 10.0.
-- SQL Server para aplicar e executar migrations localmente.
-- MinIO e RabbitMQ para executar a API. Configure endpoint, bucket e credenciais do MinIO e a URI AMQP(S) do RabbitMQ por variáveis de ambiente; `.env.example` contém os nomes esperados.
-- Docker acessível para executar os testes de integração baseados em Testcontainers.
-- Um arquivo `.env` na raiz do repositório com a connection string local. Use `.env.example` como referência e mantenha credenciais reais fora do Git.
-- `dotnet-ef` 10.0.9 para criar, inspecionar ou aplicar migrations. Caso ainda não esteja instalado:
+Antes de iniciar, certifique-se de ter instalado no seu ambiente:
+
+1. **.NET 10 SDK** (versão 10.0 ou superior):
+   ```sh
+   dotnet --version
+   ```
+2. **Docker e Docker Compose** (para serviços locais de infraestrutura e Testcontainers):
+   ```sh
+   docker --version
+   docker compose version
+   ```
+3. **Ferramenta de Linha de Comando do EF Core (`dotnet-ef`)**:
+   ```sh
+   dotnet tool install --global dotnet-ef --version 10.0.9
+   # Se já estiver instalado, garanta que esteja atualizado:
+   dotnet tool update --global dotnet-ef
+   ```
+
+---
+
+## Inicialização Completa do Projeto
+
+Siga os 5 passos abaixo para colocar toda a solução em funcionamento a partir de um checkout limpo.
+
+### 1. Configurar o arquivo de ambiente (`.env`)
+
+Na raiz do repositório, copie o modelo `.env.example` para `.env`:
 
 ```sh
-dotnet tool install --global dotnet-ef --version 10.0.9
+cp .env.example .env
 ```
 
-## Dependências locais
+O arquivo `.env` já vem pré-configurado com as credenciais padrões de desenvolvimento local:
+- String de conexão para o SQL Server local.
+- Credenciais e portas para MinIO e RabbitMQ.
+- Chave de assinatura e emissores para JWT (`Authentication__*`).
 
-O `compose.yaml` inicia SQL Server 2022, MinIO e RabbitMQ com volumes persistentes. Copie `.env.example` para `.env` em um checkout novo e mantenha a senha do SQL Server igual na variável `MSSQL_SA_PASSWORD` e na connection string. Os valores de exemplo são apenas para desenvolvimento local.
+> [!NOTE]
+> Mantenha a senha do SQL Server consistente entre `MSSQL_SA_PASSWORD` e o parâmetro `Password` da variável `ConnectionStrings__CarWashSaaS`.
+
+---
+
+### 2. Subir os serviços de infraestrutura (Docker)
+
+Inicie os containers do SQL Server 2022, MinIO e RabbitMQ:
 
 ```sh
 docker compose up -d
+```
+
+Acompanhe o status e garanta que todos os serviços fiquem saudáveis (`healthy` ou `running`):
+
+```sh
 docker compose ps
 ```
 
-As portas são publicadas somente em `127.0.0.1`. O console do MinIO fica em `http://localhost:9001` e o painel do RabbitMQ em `http://localhost:15672`; use as credenciais de desenvolvimento do `.env`. O bucket privado é criado pelo adapter no primeiro acesso.
+---
 
-Execute a API no host com `dotnet run --project src/Backend/CarWashSaaS.Api`. O gateway OIDC não está no Compose: configure `Authentication__Authority` e `Authentication__Audience` para um issuer de desenvolvimento. Evolution API também permanece externa e só é necessária para testar o pareamento do WhatsApp. `docker compose down` preserva os dados; `docker compose down -v` remove os volumes.
+### 3. Aplicar as migrações no banco de dados
 
-## Build e execução
+Com o container do SQL Server em execução, aplique as migrações de todos os módulos.
 
-Na raiz do repositório:
+#### Opção A: Via script automatizado (recomendado)
 
 ```sh
-dotnet restore CarWashSaaS.sln
-dotnet build CarWashSaaS.sln
-dotnet test CarWashSaaS.sln
+bash scripts/apply-migrations.sh
+```
+
+#### Opção B: Manualmente módulo a módulo via `dotnet ef`
+
+Caso prefira executar cada contexto individualmente:
+
+```sh
+# 1. Tenants (schema 'tenants')
+dotnet ef database update \
+  --project src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Infrastructure \
+  --startup-project src/Backend/CarWashSaaS.Api \
+  --context TenantsDbContext
+
+# 2. Identity (schema 'identity')
+dotnet ef database update \
+  --project src/Backend/Modules/Identity/CarWashSaaS.Identity.Infrastructure \
+  --startup-project src/Backend/CarWashSaaS.Api \
+  --context IdentityModuleDbContext
+
+# 3. Yard Operations (schema 'yard')
+dotnet ef database update \
+  --project src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Infrastructure \
+  --startup-project src/Backend/CarWashSaaS.Api \
+  --context YardOperationsDbContext
+
+# 4. WhatsApp (schema 'whatsapp')
+dotnet ef database update \
+  --project src/Backend/Modules/WhatsApp/CarWashSaaS.WhatsApp.Infrastructure \
+  --startup-project src/Backend/CarWashSaaS.Api \
+  --context WhatsAppDbContext
+```
+
+---
+
+### 4. Executar a API Backend
+
+Abra um terminal na raiz do projeto e execute o host da API:
+
+```sh
 dotnet run --project src/Backend/CarWashSaaS.Api
 ```
 
-O host exige `Authentication:Authority`, `Authentication:Audience`, configuração do MinIO e URI válida do RabbitMQ. Ele oferece `GET /health` e o documento OpenAPI em ambiente de desenvolvimento. Use a URL exibida pelo `dotnet run` para acessar esses endpoints.
+- A API estará disponível em: **`http://localhost:5225`** (e HTTPS em `https://localhost:7035`).
+- Verifique a saúde do serviço:
+  ```sh
+  curl http://localhost:5225/health
+  # Retorno esperado: {"status":"ok"}
+  ```
+- O documento OpenAPI pode ser consultado em: `http://localhost:5225/openapi/v1.json`.
 
-## Banco de dados e migrations
+---
 
-A API e as factories do EF carregam `.env` da raiz da solution. A variável `ConnectionStrings__CarWashSaaS` também pode ser fornecida diretamente pelo shell ou ambiente de execução; variáveis já definidas têm precedência sobre `.env`. Em produção, injete a connection string pelo ambiente/secret store e não use arquivo `.env`.
+### 5. Executar o Frontend Blazor
 
-Com a connection string configurada, aplique as migrations na ordem abaixo:
+Em outro terminal na raiz do projeto, execute o frontend WebAssembly:
 
 ```sh
-dotnet ef database update --project src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Infrastructure --startup-project src/Backend/CarWashSaaS.Api --context TenantsDbContext
-dotnet ef database update --project src/Backend/Modules/Identity/CarWashSaaS.Identity.Infrastructure --startup-project src/Backend/CarWashSaaS.Api --context IdentityModuleDbContext
-dotnet ef database update --project src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Infrastructure --startup-project src/Backend/CarWashSaaS.Api --context YardOperationsDbContext
+dotnet run --project src/Frontend/CarWashSaaS.Client.Web
 ```
 
-Cada módulo mantém sua própria tabela de histórico de migrations. As migrations podem ser geradas por contexto com `dotnet ef migrations add <Nome>`, usando o mesmo `--project`, `--startup-project` e `--context` correspondentes.
+- O aplicativo Web abrirá automaticamente no navegador ou estará acessível em: **`http://localhost:5199`** (e HTTPS em `https://localhost:7288`).
+- O frontend já está configurado por padrão em `wwwroot/appsettings.json` para consumir a API em `http://localhost:5225/`.
 
-## Testes
+---
+
+## Painéis e URLs dos Serviços
+
+| Serviço | Descrição | Endereço / URL | Credenciais Padrão (dev) |
+|---|---|---|---|
+| **Frontend Web** | Blazor WebAssembly SPA | `http://localhost:5199` | *(acesso web)* |
+| **Backend API** | ASP.NET Core Minimal APIs | `http://localhost:5225` | Bearer JWT / Basic |
+| **API Health Check** | Endpoint de verificação | `http://localhost:5225/health` | Anônimo |
+| **MinIO Console** | Painel Web de Storage S3 | `http://localhost:9001` | Usuário: `lavaway`<br>Senha: `LavawayMinioDev2026` |
+| **MinIO S3 API** | Endpoint de API S3 | `http://localhost:9000` | Idem |
+| **RabbitMQ Dashboard** | Painel de filas e mensageria | `http://localhost:15672` | Usuário: `lavaway`<br>Senha: `LavawayRabbitDev2026` |
+| **RabbitMQ AMQP** | Porta do broker de mensagens | `localhost:5672` | Idem |
+| **SQL Server 2022** | Banco de dados relacional | `localhost:1433` | Usuário: `sa`<br>Senha: `LavawaySqlDev2026!` |
+
+---
+
+## Testes e Garantia de Qualidade
+
+### Executar todos os testes da solução
 
 ```sh
 dotnet test CarWashSaaS.sln
 ```
 
-Os testes unitários podem ser executados sem serviços externos. Os testes de integração de isolamento aplicam migrations em SQL Server via Testcontainers; os testes da fila iniciam RabbitMQ via Testcontainers. Ambos exigem Docker acessível. Para executar apenas os testes da fila:
+> [!NOTE]
+> Os testes unitários e de arquitetura executam diretamente em memória. Os testes de integração utilizam **Testcontainers** para provisionar instâncias efêmeras de SQL Server e RabbitMQ, exigindo o Docker em execução.
+
+### Executar a verificação completa de qualidade
+
+O script `scripts/verify-quality.sh` executa todas as etapas do pipeline de CI:
+1. Validação de formatação (`dotnet format --verify-no-changes`).
+2. Build da solução em modo `Release`.
+3. Execução dos testes de arquitetura com NetArchTest.
+4. Execução dos testes unitários e de domínio.
 
 ```sh
-dotnet test tests/Backend/IntegrationTests/CarWashSaaS.IntegrationTests/CarWashSaaS.IntegrationTests.csproj --filter FullyQualifiedName~RabbitMqBackgroundQueueIntegrationTests
+bash scripts/verify-quality.sh
 ```
 
-## Documentação
+### Executar testes por categoria específica
 
-- [Roadmap de implementação](roadmap.md)
-- [Diretrizes de arquitetura e desenvolvimento](agents.md)
-- [Modelo de domínio e dados da fase 1.1](docs/living-docs/modelo-dominio-dados-1.1.md)
-- [ADR-0004: storage e fila self-hosted](docs/architecture/ADR-0004-storage-fila-self-hosted.md)
-- [Cadastro e perfil do estabelecimento — fase 2.1](docs/living-docs/cadastro-perfil-estabelecimento-2.1.md)
-- [ADR-0001: isolamento de tenant com EF Core](docs/architecture/ADR-0001-isolamento-tenant-ef-core.md)
+- **Testes Unitários:**
+  ```sh
+  dotnet test tests/Backend/UnitTests/CarWashSaaS.UnitTests/
+  ```
+- **Testes de Arquitetura:**
+  ```sh
+  dotnet test tests/Backend/ArchitectureTests/CarWashSaaS.ArchitectureTests/
+  ```
+- **Testes de Integração:**
+  ```sh
+  dotnet test tests/Backend/IntegrationTests/CarWashSaaS.IntegrationTests/
+  ```
+- **Testes de Componentes Frontend (bUnit):**
+  ```sh
+  dotnet test tests/Frontend/ComponentTests/CarWashSaaS.ComponentTests/
+  ```
+
+---
+
+## Comandos Úteis de Desenvolvimento
+
+### Gerenciar os containers locais
+
+- **Pausar containers mantendo os dados:**
+  ```sh
+  docker compose stop
+  ```
+- **Retomar containers pausados:**
+  ```sh
+  docker compose start
+  ```
+- **Derrubar containers mantendo os volumes persistidos:**
+  ```sh
+  docker compose down
+  ```
+- **Limpar completamente os containers e volumes (reset total do banco e storage):**
+  ```sh
+  docker compose down -v
+  ```
+
+### Criar uma nova migração do EF Core
+
+Para adicionar uma migration em um módulo específico, informe o projeto de infraestrutura do módulo e seu respectivo `DbContext`:
+
+```sh
+# Exemplo para o módulo YardOperations:
+dotnet ef migrations add <NomeDaMigration> \
+  --project src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Infrastructure \
+  --startup-project src/Backend/CarWashSaaS.Api \
+  --context YardOperationsDbContext
+```
+
+---
+
+## Documentação Adicional
+
+- [Roadmap de Implementação](roadmap.md)
+- [Diretrizes de Arquitetura e Regras de Desenvolvimento](agents.md)
+- [ADR-0001: Isolamento de Tenant com EF Core](docs/architecture/ADR-0001-isolamento-tenant-ef-core.md)
+- [ADR-0004: Storage Privado e Fila Self-Hosted](docs/architecture/ADR-0004-storage-fila-self-hosted.md)
+- [ADR-0006: Organização das Minimal APIs Modulares](docs/architecture/ADR-0006-organizacao-minimal-apis-modulares.md)
+- [Modelo de Domínio e Dados da Fase 1.1](docs/living-docs/modelo-dominio-dados-1.1.md)
+- [Cadastro e Perfil do Estabelecimento — Fase 2.1](docs/living-docs/cadastro-perfil-estabelecimento-2.1.md)

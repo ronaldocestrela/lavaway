@@ -19,4 +19,10 @@ dotnet ef database update \
   --startup-project src/Backend/CarWashSaaS.Api \
   --context YardOperationsDbContext
 
+echo "==> Aplicando migrations de WhatsApp..."
+dotnet ef database update \
+  --project src/Backend/Modules/WhatsApp/CarWashSaaS.WhatsApp.Infrastructure \
+  --startup-project src/Backend/CarWashSaaS.Api \
+  --context WhatsAppDbContext
+
 echo "==> Todas as migrations foram aplicadas com sucesso!"
