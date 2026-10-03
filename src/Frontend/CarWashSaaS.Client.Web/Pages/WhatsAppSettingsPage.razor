@@ -1,0 +1,228 @@
+@page "/settings/whatsapp"
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrator")]
+@implements IDisposable
+@inject WhatsAppApiClient WhatsAppApi
+
+<PageTitle>Pareamento WhatsApp | Lavaway</PageTitle>
+
+<section class="whatsapp-page">
+    <div class="page-heading">
+        <div>
+            <div class="eyebrow">
+                <span class="eyebrow-mark"></span>
+                <span>COMUNICAÇÃO &amp; MENSAGERIA</span>
+            </div>
+            <h1>Pareamento do WhatsApp</h1>
+            <p class="page-subtitle">Configure o canal oficial do WhatsApp da sua loja para envio automático de ordens de serviço, avisos de prontidão e links públicos aos clientes.</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_successMessage))
+    {
+        <div class="feedback feedback-success" role="status">
+            <span class="feedback-symbol">✓</span>
+            <div class="feedback-text">@_successMessage</div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="feedback feedback-error" role="alert">
+            <span class="feedback-symbol">!</span>
+            <div class="feedback-text">@_errorMessage</div>
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="loading-state" role="status">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <span>Carregando estado da conexão do WhatsApp...</span>
+        </div>
+    }
+    else
+    {
+        <div class="section-container">
+            <WhatsAppPairingCard Connection="@_connection"
+                                 IsLoading="@_isActionLoading"
+                                 ErrorMessage="@_cardErrorMessage"
+                                 OnStartPairing="StartPairingAsync"
+                                 OnRefreshPairing="RefreshPairingAsync"
+                                 OnDisconnect="DisconnectAsync" />
+        </div>
+    }
+</section>
+
+@code {
+    private WhatsAppConnectionDto? _connection;
+    private bool _isLoading = true;
+    private bool _isActionLoading = false;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private string? _cardErrorMessage;
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cts = new CancellationTokenSource();
+        await LoadStatusAsync();
+    }
+
+    private async Task LoadStatusAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            _errorMessage = null;
+            _connection = await WhatsAppApi.GetStatusAsync(_cts?.Token ?? CancellationToken.None);
+
+            if (_connection?.IsConnecting == true)
+            {
+                StartPolling();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Não foi possível consultar o status do WhatsApp: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task StartPairingAsync()
+    {
+        try
+        {
+            _isActionLoading = true;
+            _cardErrorMessage = null;
+            _errorMessage = null;
+            _successMessage = null;
+
+            _connection = await WhatsAppApi.StartPairingAsync(_cts?.Token ?? CancellationToken.None);
+            _successMessage = "Sessão iniciada! Aponte a câmera do seu celular para o QR Code.";
+            
+            StartPolling();
+        }
+        catch (Exception ex)
+        {
+            _cardErrorMessage = $"Falha ao iniciar pareamento: {ex.Message}";
+        }
+        finally
+        {
+            _isActionLoading = false;
+        }
+    }
+
+    private async Task RefreshPairingAsync()
+    {
+        try
+        {
+            _isActionLoading = true;
+            _cardErrorMessage = null;
+            _errorMessage = null;
+
+            _connection = await WhatsAppApi.RefreshPairingAsync(_cts?.Token ?? CancellationToken.None);
+            _successMessage = "QR Code atualizado com sucesso.";
+
+            StartPolling();
+        }
+        catch (Exception ex)
+        {
+            _cardErrorMessage = $"Falha ao atualizar QR Code: {ex.Message}";
+        }
+        finally
+        {
+            _isActionLoading = false;
+        }
+    }
+
+    private async Task DisconnectAsync()
+    {
+        try
+        {
+            _isActionLoading = true;
+            _cardErrorMessage = null;
+            _errorMessage = null;
+
+            _connection = await WhatsAppApi.DisconnectAsync(_cts?.Token ?? CancellationToken.None);
+            _successMessage = "WhatsApp desconectado com sucesso.";
+            StopPolling();
+        }
+        catch (Exception ex)
+        {
+            _cardErrorMessage = $"Falha ao desconectar WhatsApp: {ex.Message}";
+        }
+        finally
+        {
+            _isActionLoading = false;
+        }
+    }
+
+    private void StartPolling()
+    {
+        StopPolling();
+        _ = RunPollingLoopAsync();
+    }
+
+    private void StopPolling()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+    }
+
+    private async Task RunPollingLoopAsync()
+    {
+        var token = _cts?.Token ?? CancellationToken.None;
+
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(3000, token);
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                var latest = await WhatsAppApi.GetStatusAsync(token);
+                if (latest is not null)
+                {
+                    _connection = latest;
+                    await InvokeAsync(StateHasChanged);
+
+                    if (latest.IsConnected)
+                    {
+                        _successMessage = "WhatsApp conectado com sucesso! O canal da loja está ativo.";
+                        await InvokeAsync(StateHasChanged);
+                        break;
+                    }
+
+                    if (latest.IsDisconnected)
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch
+            {
+                // Ignora erros transitórios no loop de polling em background
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        StopPolling();
+    }
+}

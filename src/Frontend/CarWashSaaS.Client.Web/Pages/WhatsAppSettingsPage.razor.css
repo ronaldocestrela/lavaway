@@ -1,0 +1,98 @@
+.whatsapp-page {
+    padding: 32px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #10b981;
+    margin-bottom: 6px;
+}
+
+.eyebrow-mark {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+}
+
+.page-heading h1 {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 6px 0;
+}
+
+.page-subtitle {
+    font-size: 0.9375rem;
+    color: #64748b;
+    margin: 0;
+    max-width: 720px;
+}
+
+.feedback {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 0.875rem;
+}
+
+.feedback-success {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #16a34a;
+}
+
+.feedback-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+}
+
+.feedback-symbol {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.loading-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px 20px;
+    color: #64748b;
+    font-size: 0.9375rem;
+}
+
+.button-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #cbd5e1;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.section-container {
+    margin-bottom: 32px;
+}

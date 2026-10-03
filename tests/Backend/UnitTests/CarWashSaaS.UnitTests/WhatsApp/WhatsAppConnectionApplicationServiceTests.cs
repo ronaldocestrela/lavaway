@@ -50,6 +50,47 @@ public sealed class WhatsAppConnectionApplicationServiceTests
         Assert.Equal(WhatsAppConnectionStatus.Connecting, connection.Status);
     }
 
+    [Fact]
+    public async Task DisconnectAsync_Should_Mark_Connection_Disconnected_When_Active()
+    {
+        var tenantId = Guid.NewGuid();
+        var connection = WhatsAppConnection.Create(tenantId, "session-123", "qr-123").Value!;
+        connection.MarkConnected();
+        var repository = new InMemoryWhatsAppConnectionRepository(connection);
+        var service = new WhatsAppConnectionApplicationService(repository);
+
+        var result = await service.DisconnectAsync(tenantId);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(WhatsAppConnectionStatus.Disconnected, result.Value!.Status);
+        Assert.Equal(WhatsAppConnectionStatus.Disconnected, connection.Status);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_Should_Return_NotFound_When_Connection_Does_Not_Exist()
+    {
+        var tenantId = Guid.NewGuid();
+        var repository = new InMemoryWhatsAppConnectionRepository();
+        var service = new WhatsAppConnectionApplicationService(repository);
+
+        var result = await service.DisconnectAsync(tenantId);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.not_found", result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_Should_Reject_Empty_Tenant_Id()
+    {
+        var repository = new InMemoryWhatsAppConnectionRepository();
+        var service = new WhatsAppConnectionApplicationService(repository);
+
+        var result = await service.DisconnectAsync(Guid.Empty);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.tenant.required", result.Error!.Code);
+    }
+
     private sealed class InMemoryWhatsAppConnectionRepository : IWhatsAppConnectionRepository
     {
         private WhatsAppConnection? _connection;

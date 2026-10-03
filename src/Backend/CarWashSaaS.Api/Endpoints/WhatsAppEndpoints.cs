@@ -94,12 +94,20 @@ public static class WhatsAppEndpoints
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var result = await service.GetStatusAsync(tenantId);
-            return result.IsSuccess ? Results.Ok(new { status = result.Value!.ToString().ToLowerInvariant() }) : result.Error!.Type switch
+            var result = await service.GetConnectionAsync(tenantId);
+            if (!result.IsSuccess)
             {
-                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
-                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
-            };
+                return result.Error!.Type switch
+                {
+                    ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+            }
+
+            var connection = result.Value;
+            var status = connection?.Status.ToString().ToLowerInvariant() ?? WhatsAppStatusConstants.Disconnected;
+            var dto = new WhatsAppConnectionDto(status, connection?.QrCodeValue, connection?.UpdatedAt);
+            return Results.Ok(dto);
         }).RequireAuthorization();
 
         group.MapPost("/pairing/start", async (ICurrentTenantAccessor currentTenantAccessor, WhatsAppConnectionApplicationService service) =>
@@ -110,12 +118,22 @@ public static class WhatsAppEndpoints
             }
 
             var result = await service.StartPairingAsync(tenantId);
-            return result.IsSuccess ? Results.Ok(new { status = result.Value!.Status.ToString().ToLowerInvariant(), qrCode = result.Value.QrCodeValue }) : result.Error!.Type switch
+            if (!result.IsSuccess)
             {
-                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
-                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
-                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
-            };
+                return result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+            }
+
+            var connection = result.Value!;
+            var dto = new WhatsAppConnectionDto(
+                connection.Status.ToString().ToLowerInvariant(),
+                connection.QrCodeValue,
+                connection.UpdatedAt);
+            return Results.Ok(dto);
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
         group.MapPost("/pairing/refresh", async (ICurrentTenantAccessor currentTenantAccessor, WhatsAppConnectionApplicationService service) =>
@@ -126,12 +144,48 @@ public static class WhatsAppEndpoints
             }
 
             var result = await service.RefreshPairingAsync(tenantId);
-            return result.IsSuccess ? Results.Ok(new { status = result.Value!.Status.ToString().ToLowerInvariant(), qrCode = result.Value.QrCodeValue }) : result.Error!.Type switch
+            if (!result.IsSuccess)
             {
-                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
-                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
-                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
-            };
+                return result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+            }
+
+            var connection = result.Value!;
+            var dto = new WhatsAppConnectionDto(
+                connection.Status.ToString().ToLowerInvariant(),
+                connection.QrCodeValue,
+                connection.UpdatedAt);
+            return Results.Ok(dto);
+        }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+        group.MapPost("/pairing/disconnect", async (ICurrentTenantAccessor currentTenantAccessor, WhatsAppConnectionApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.DisconnectAsync(tenantId);
+            if (!result.IsSuccess)
+            {
+                return result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+            }
+
+            var connection = result.Value!;
+            var dto = new WhatsAppConnectionDto(
+                connection.Status.ToString().ToLowerInvariant(),
+                connection.QrCodeValue,
+                connection.UpdatedAt);
+            return Results.Ok(dto);
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
         return app;

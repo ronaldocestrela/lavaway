@@ -1,0 +1,237 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="whatsapp-card">
+    <div class="whatsapp-header">
+        <div>
+            <span class="whatsapp-eyebrow">COMUNICAÇÃO &amp; MENSAGERIA</span>
+            <h2 class="whatsapp-title">Pareamento do WhatsApp</h2>
+            <p class="whatsapp-subtitle">Conecte o canal de WhatsApp do seu estabelecimento para enviar ordens de serviço, avisos de prontidão e notificações aos clientes.</p>
+        </div>
+        <div class="whatsapp-status-indicator">
+            @if (IsConnected)
+            {
+                <span class="status-badge status-connected">
+                    <span class="status-dot pulse" aria-hidden="true"></span>
+                    <span>Conectado</span>
+                </span>
+            }
+            else if (IsConnecting)
+            {
+                <span class="status-badge status-connecting">
+                    <span class="status-dot pulse-warning" aria-hidden="true"></span>
+                    <span>Aguardando Leitura</span>
+                </span>
+            }
+            else
+            {
+                <span class="status-badge status-disconnected">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span>Desconectado</span>
+                </span>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert-danger feedback-error" role="alert">
+            <span class="feedback-icon" aria-hidden="true">⚠️</span>
+            <div class="feedback-text">@ErrorMessage</div>
+        </div>
+    }
+
+    @if (IsConnecting)
+    {
+        <div class="connecting-container">
+            <div class="qr-code-section">
+                <div class="qr-code-wrapper">
+                    @if (!string.IsNullOrWhiteSpace(Connection?.QrCode))
+                    {
+                        <img src="@FormatQrCodeSource(Connection.QrCode)"
+                             alt="QR Code para pareamento do WhatsApp"
+                             class="qr-code-image" />
+                    }
+                    else
+                    {
+                        <div class="qr-code-placeholder">
+                            <span class="spinner" aria-hidden="true"></span>
+                            <span>Gerando QR Code dinâmico...</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="qr-actions">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            id="btn-refresh-pairing"
+                            disabled="@IsLoading"
+                            @onclick="HandleRefresh">
+                        <span class="btn-icon">🔄</span>
+                        <span>@(IsLoading ? "Atualizando..." : "Atualizar QR Code")</span>
+                    </button>
+                    <span class="qr-expiry-hint">O QR Code expira automaticamente para sua segurança.</span>
+                </div>
+            </div>
+
+            <div class="pairing-instructions">
+                <h3 class="instructions-title">Como conectar seu WhatsApp:</h3>
+                <ol class="pairing-steps">
+                    <li>
+                        <span class="step-number">1</span>
+                        <div class="step-content">
+                            <strong>Abra o aplicativo do WhatsApp</strong> no celular do estabelecimento.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-number">2</span>
+                        <div class="step-content">
+                            Toque no menu <strong>Mais opções</strong> (Android: três pontos) ou <strong>Configurações</strong> (iPhone).
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-number">3</span>
+                        <div class="step-content">
+                            Selecione <strong>Aparelhos conectados</strong> e depois toque em <strong>Conectar um aparelho</strong>.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-number">4</span>
+                        <div class="step-content">
+                            <strong>Aponte a câmera</strong> para o QR Code ao lado. A sincronização será concluída em instantes.
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    }
+    else if (IsConnected)
+    {
+        <div class="connected-container">
+            <div class="connected-hero">
+                <div class="connected-icon-wrapper">
+                    <span class="connected-check">✓</span>
+                </div>
+                <div class="connected-info">
+                    <h3 class="connected-headline">Instância Ativa e Operacional</h3>
+                    <p class="connected-description">
+                        Seu WhatsApp está pronto para envio de notificações automáticas de status de veículos, comprovantes térmicos digitais e links de rastreamento.
+                    </p>
+                    @if (Connection?.UpdatedAt.HasValue == true)
+                    {
+                        <span class="connected-timestamp">
+                            Última atualização: @Connection.UpdatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="connected-actions">
+                <button type="button"
+                        class="btn btn-danger-outline"
+                        id="btn-disconnect-pairing"
+                        disabled="@IsLoading"
+                        @onclick="HandleDisconnect">
+                    <span>@(IsLoading ? "Desconectando..." : "Desconectar WhatsApp")</span>
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="disconnected-container">
+            <div class="disconnected-hero">
+                <div class="disconnected-icon-circle">
+                    <span class="whatsapp-logo-icon">💬</span>
+                </div>
+                <div class="disconnected-text">
+                    <h3 class="disconnected-headline">Nenhum aparelho pareado</h3>
+                    <p class="disconnected-description">
+                        Ao parear o WhatsApp, o lava-jato poderá notificar clientes instantaneamente quando o veículo estiver pronto, enviar ordens de serviço e receber confirmações.
+                    </p>
+                </div>
+            </div>
+
+            <div class="disconnected-actions">
+                <button type="button"
+                        class="btn btn-primary"
+                        id="btn-start-pairing"
+                        disabled="@IsLoading"
+                        @onclick="HandleStart">
+                    <span class="btn-icon">⚡</span>
+                    <span>@(IsLoading ? "Iniciando sessão..." : "Conectar WhatsApp")</span>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public WhatsAppConnectionDto? Connection { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public EventCallback OnStartPairing { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefreshPairing { get; set; }
+
+    [Parameter]
+    public EventCallback OnDisconnect { get; set; }
+
+    private bool IsConnected => Connection?.IsConnected ?? false;
+    private bool IsConnecting => Connection?.IsConnecting ?? false;
+
+    private async Task HandleStart()
+    {
+        if (OnStartPairing.HasDelegate)
+        {
+            await OnStartPairing.InvokeAsync();
+        }
+    }
+
+    private async Task HandleRefresh()
+    {
+        if (OnRefreshPairing.HasDelegate)
+        {
+            await OnRefreshPairing.InvokeAsync();
+        }
+    }
+
+    private async Task HandleDisconnect()
+    {
+        if (OnDisconnect.HasDelegate)
+        {
+            await OnDisconnect.InvokeAsync();
+        }
+    }
+
+    private static string FormatQrCodeSource(string qrCode)
+    {
+        if (string.IsNullOrWhiteSpace(qrCode))
+        {
+            return string.Empty;
+        }
+
+        if (qrCode.StartsWith("data:image", StringComparison.OrdinalIgnoreCase) ||
+            qrCode.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            qrCode.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return qrCode;
+        }
+
+        // Se for base64 puro sem prefixo data:image
+        if (qrCode.Length > 100 && !qrCode.Contains(' ') && !qrCode.StartsWith("evolution:", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"data:image/png;base64,{qrCode}";
+        }
+
+        // Fallback para serviço gerador de SVG/PNG de QR Code se for texto puro (ex: pairing text)
+        return $"https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={Uri.EscapeDataString(qrCode)}";
+    }
+}

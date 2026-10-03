@@ -22,6 +22,36 @@ public sealed class WhatsAppConnectionApplicationService(
         return Result<WhatsAppConnectionStatus>.Success(status);
     }
 
+    public async Task<Result<WhatsAppConnection?>> GetConnectionAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<WhatsAppConnection?>.Failure(new Error("whatsapp.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        var connection = await repository.GetByTenantAsync(tenantId, ct);
+        return Result<WhatsAppConnection?>.Success(connection);
+    }
+
+    public async Task<Result<WhatsAppConnection>> DisconnectAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<WhatsAppConnection>.Failure(new Error("whatsapp.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        var connection = await repository.GetByTenantAsync(tenantId, ct);
+        if (connection is null)
+        {
+            return Result<WhatsAppConnection>.Failure(new Error("whatsapp.not_found", "No WhatsApp connection was found for this tenant.", ErrorType.NotFound));
+        }
+
+        connection.MarkDisconnected();
+        await repository.UpdateAsync(connection, ct);
+
+        return Result<WhatsAppConnection>.Success(connection);
+    }
+
     public async Task<Result<WhatsAppConnection>> StartPairingAsync(Guid tenantId, CancellationToken ct = default)
     {
         if (tenantId == Guid.Empty)

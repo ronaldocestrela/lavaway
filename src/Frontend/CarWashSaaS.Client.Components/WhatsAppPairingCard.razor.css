@@ -1,0 +1,422 @@
+.whatsapp-card {
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 16px;
+    padding: 28px;
+    color: #f3f4f6;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.whatsapp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    border-bottom: 1px solid #1f2937;
+    padding-bottom: 20px;
+}
+
+.whatsapp-eyebrow {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #10b981;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.whatsapp-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 6px 0;
+}
+
+.whatsapp-subtitle {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    margin: 0;
+    max-width: 650px;
+    line-height: 1.5;
+}
+
+/* Status Badges */
+.whatsapp-status-indicator {
+    flex-shrink: 0;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-connected {
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-connected .status-dot {
+    background: #10b981;
+}
+
+.status-connecting {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-connecting .status-dot {
+    background: #f59e0b;
+}
+
+.status-disconnected {
+    background: rgba(107, 114, 128, 0.15);
+    color: #9ca3af;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.status-disconnected .status-dot {
+    background: #6b7280;
+}
+
+/* Pulses */
+.pulse {
+    animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+.pulse-warning {
+    animation: pulse-amber 1.5s infinite;
+}
+
+@keyframes pulse-amber {
+    0% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+}
+
+/* Error feedback */
+.feedback-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 14px 18px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.875rem;
+}
+
+/* Connecting State: Layout */
+.connecting-container {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 36px;
+    align-items: center;
+    background: #182234;
+    border: 1px solid #23354e;
+    border-radius: 14px;
+    padding: 28px;
+}
+
+.qr-code-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+
+.qr-code-wrapper {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 250px;
+    height: 250px;
+}
+
+.qr-code-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.qr-code-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #4b5563;
+    font-size: 0.8125rem;
+    text-align: center;
+}
+
+.qr-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.qr-expiry-hint {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    text-align: center;
+}
+
+/* Pairing Instructions */
+.pairing-instructions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.instructions-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #f3f4f6;
+    margin: 0;
+}
+
+.pairing-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.pairing-steps li {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.step-content {
+    font-size: 0.9rem;
+    color: #d1d5db;
+    line-height: 1.5;
+}
+
+.step-content strong {
+    color: #ffffff;
+}
+
+/* Connected State */
+.connected-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 14px;
+    padding: 24px 28px;
+    gap: 24px;
+}
+
+.connected-hero {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.connected-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #10b981;
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: bold;
+    flex-shrink: 0;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+.connected-headline {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 4px 0;
+}
+
+.connected-description {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    margin: 0 0 6px 0;
+    max-width: 600px;
+    line-height: 1.4;
+}
+
+.connected-timestamp {
+    font-size: 0.75rem;
+    color: #6ee7b7;
+}
+
+/* Disconnected State */
+.disconnected-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #151e2e;
+    border: 1px dashed #2d3b55;
+    border-radius: 14px;
+    padding: 30px;
+    gap: 24px;
+}
+
+.disconnected-hero {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.disconnected-icon-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 1px solid #334155;
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+
+.disconnected-headline {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #f3f4f6;
+    margin: 0 0 4px 0;
+}
+
+.disconnected-description {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    margin: 0;
+    max-width: 560px;
+    line-height: 1.4;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.btn-secondary {
+    background: #1e293b;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #334155;
+}
+
+.btn-danger-outline {
+    background: transparent;
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}
+
+@media (max-width: 860px) {
+    .connecting-container {
+        grid-template-columns: 1fr;
+    }
+
+    .connected-container,
+    .disconnected-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
