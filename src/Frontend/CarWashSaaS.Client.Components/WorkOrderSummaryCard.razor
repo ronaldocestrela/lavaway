@@ -1,0 +1,151 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="summary-panel" aria-label="Resumo da Ordem de Serviço">
+    <div class="panel-kicker">
+        <span class="pulse-indicator"></span>
+        <span>RESUMO DO ATENDIMENTO</span>
+    </div>
+
+    <h2 class="panel-title">Ordem de Serviço</h2>
+
+    <div class="metrics-card">
+        <div class="metric-row">
+            <div class="metric-item">
+                <span class="metric-label">VALOR TOTAL</span>
+                <span class="metric-value amount">@TotalAmount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">TEMPO ESTIMADO</span>
+                <span class="metric-value duration">@FormatDuration(TotalDurationMinutes)</span>
+            </div>
+        </div>
+
+        <div class="delivery-forecast">
+            <div class="forecast-badge">
+                <span class="forecast-icon" aria-hidden="true">&#9200;</span>
+                <div class="forecast-text">
+                    <span class="forecast-label">PREVISÃO DE ENTREGA</span>
+                    <span class="forecast-time">@ForecastTimeText</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="items-section">
+        <div class="section-header">
+            <span>SERVIÇOS SELECIONADOS</span>
+            <span class="badge-count">@SelectedItems.Count.ToString("00")</span>
+        </div>
+
+        @if (SelectedItems.Count == 0)
+        {
+            <div class="empty-items-notice">
+                <p>Nenhum serviço selecionado ainda. Selecione ao menos um serviço no catálogo.</p>
+            </div>
+        }
+        else
+        {
+            <div class="selected-items-list">
+                @foreach (var item in SelectedItems)
+                {
+                    <div class="summary-item-row">
+                        <div class="item-info">
+                            <span class="item-name">@item.Service.Name</span>
+                            <span class="item-detail">
+                                @item.Quantity &times; @item.UnitPrice.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) &bull; @FormatDuration(item.DurationMinutes * item.Quantity)
+                            </span>
+                        </div>
+                        <span class="item-total">@((item.UnitPrice * item.Quantity).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")))</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="notes-section">
+        <label for="checkin-notes" class="notes-label">
+            <span>OBSERVAÇÕES DO CHECK-IN</span>
+            <span class="char-count">@((Notes ?? string.Empty).Length)/500</span>
+        </label>
+        <textarea id="checkin-notes"
+                  class="notes-textarea"
+                  placeholder="Ex: Cuidado com o espelho retrovisor, pertences no console central..."
+                  maxlength="500"
+                  rows="3"
+                  value="@Notes"
+                  @oninput="HandleNotesInput"></textarea>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="summary-error" role="alert">
+            <span class="error-mark" aria-hidden="true">!</span>
+            <span>@ErrorMessage</span>
+        </div>
+    }
+
+    <div class="action-footer">
+        <button id="btn-submit-workorder"
+                type="button"
+                class="button-submit"
+                disabled="@(SelectedItems.Count == 0 || IsSubmitting)"
+                @onclick="HandleSubmit">
+            @if (IsSubmitting)
+            {
+                <span class="button-spinner" aria-hidden="true"></span>
+                <span>Processando check-in...</span>
+            }
+            else
+            {
+                <span>Confirmar e Abrir OS</span>
+                <span class="arrow-icon" aria-hidden="true">&#8594;</span>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<(ServiceDto Service, decimal UnitPrice, int DurationMinutes, int Quantity)> SelectedItems { get; set; } = [];
+    [Parameter] public string Notes { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> NotesChanged { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback OnSubmit { get; set; }
+
+    private decimal TotalAmount => SelectedItems.Sum(i => i.UnitPrice * i.Quantity);
+    private int TotalDurationMinutes => SelectedItems.Sum(i => i.DurationMinutes * i.Quantity);
+
+    private string ForecastTimeText
+    {
+        get
+        {
+            if (TotalDurationMinutes == 0) return "--:--";
+            var estimatedTime = DateTime.Now.AddMinutes(TotalDurationMinutes);
+            return $"Hoje às {estimatedTime:HH:mm}";
+        }
+    }
+
+    private async Task HandleNotesInput(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? string.Empty;
+        Notes = text;
+        await NotesChanged.InvokeAsync(text);
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (SelectedItems.Count > 0 && !IsSubmitting)
+        {
+            await OnSubmit.InvokeAsync();
+        }
+    }
+
+    private static string FormatDuration(int minutes)
+    {
+        if (minutes < 60) return $"{minutes} min";
+        var hours = minutes / 60;
+        var rem = minutes % 60;
+        return rem == 0 ? $"{hours}h" : $"{hours}h {rem}min";
+    }
+}

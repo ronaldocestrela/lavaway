@@ -15,6 +15,7 @@ builder.Services.AddScoped<CustomerVehicleApiClient>();
 builder.Services.AddScoped<ReceptionSessionState>();
 builder.Services.AddScoped<StoreProfileApiClient>();
 builder.Services.AddScoped<ServiceCatalogApiClient>();
+builder.Services.AddScoped<WorkOrderApiClient>();
 builder.Services.AddScoped<YardSetupApiClient>();
 builder.Services.AddScoped<WhatsAppApiClient>();
 

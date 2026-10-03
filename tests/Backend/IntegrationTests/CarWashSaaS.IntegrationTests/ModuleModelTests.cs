@@ -143,6 +143,7 @@ public sealed class ModuleModelTests
             index.Properties.Select(property => property.Name).SequenceEqual([nameof(Customer.TenantId), nameof(Customer.NormalizedPhone)]));
         Assert.Contains(workOrder.GetForeignKeys(), foreignKey =>
             foreignKey.Properties.Select(property => property.Name).SequenceEqual([nameof(WorkOrder.TenantId), nameof(WorkOrder.VehicleId)]));
+        Assert.NotNull(workOrder.FindProperty(nameof(WorkOrder.Notes)));
         Assert.Contains(context.Model.GetEntityTypes(), entityType => entityType.ClrType == typeof(ServicePrice));
         Assert.Contains(context.Model.GetEntityTypes(), entityType => entityType.ClrType == typeof(WorkOrderItem));
     }

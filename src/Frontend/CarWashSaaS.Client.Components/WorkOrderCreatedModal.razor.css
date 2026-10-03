@@ -1,0 +1,238 @@
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(18, 30, 25, 0.65);
+    backdrop-filter: blur(4px);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    animation: fadeIn 0.2s ease-out both;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-card {
+    width: 100%;
+    max-width: 460px;
+    background: #ffffff;
+    border: 1px solid #dce5de;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(18, 30, 25, 0.22);
+    padding: 28px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes scaleUp {
+    from {
+        opacity: 0;
+        transform: scale(0.94) translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-badge-wrapper {
+    position: relative;
+    margin-bottom: 14px;
+}
+
+.success-glow {
+    position: absolute;
+    inset: -6px;
+    background: radial-gradient(circle, rgba(198, 242, 119, 0.7) 0%, rgba(198, 242, 119, 0) 70%);
+    border-radius: 50%;
+}
+
+.success-badge {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #c6f277;
+    border: 2px solid #ffffff;
+    display: grid;
+    place-items: center;
+    color: #1f342d;
+    box-shadow: 0 4px 16px rgba(126, 179, 95, 0.35);
+}
+
+.check-icon {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.eyebrow {
+    color: #72847b;
+    font: 700 9px 'IBM Plex Mono', monospace;
+    letter-spacing: 1px;
+}
+
+.modal-title {
+    margin: 0;
+    color: #20352f;
+    font: 800 22px 'Manrope', sans-serif;
+}
+
+.os-code-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #f1f6f1;
+    border: 1px solid #dbe6dd;
+    color: #314b3e;
+    font: 600 11px 'IBM Plex Mono', monospace;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #7eb35f;
+}
+
+.status-name {
+    color: #557062;
+    font-weight: 700;
+}
+
+.modal-details {
+    width: 100%;
+    background: #f8faf8;
+    border: 1px solid #e2ede5;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 22px;
+    text-align: left;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.detail-label {
+    color: #7a8b81;
+    font: 600 9.5px 'IBM Plex Mono', monospace;
+}
+
+.detail-value {
+    color: #20352f;
+    font: 600 12px 'Manrope', sans-serif;
+}
+
+.plate-highlight {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+}
+
+.size-tag {
+    color: #6d8076;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.total-highlight {
+    color: #1b4d3e;
+    font-weight: 800;
+    font-size: 15px;
+}
+
+.forecast-row {
+    border-top: 1px dashed #dbe5dd;
+    padding-top: 8px;
+    margin-top: 2px;
+}
+
+.forecast-val {
+    color: #275237;
+    font-weight: 750;
+}
+
+.detail-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-top: 1px dashed #dbe5dd;
+    padding-top: 8px;
+}
+
+.notes-content {
+    margin: 0;
+    color: #53645c;
+    font-size: 11px;
+    line-height: 1.4;
+    font-style: italic;
+}
+
+.modal-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.btn-action {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px;
+    border-radius: 6px;
+    font: 700 12px 'Manrope', sans-serif;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    border: 1px solid transparent;
+}
+
+.btn-secondary {
+    background: #ffffff;
+    border-color: #d4ded6;
+    color: #385146;
+}
+
+.btn-secondary:hover {
+    background: #f1f5f2;
+    border-color: #a9bea8;
+}
+
+.btn-primary {
+    background: #c6f277;
+    color: #1f342d;
+    box-shadow: 0 4px 12px rgba(198, 242, 119, 0.35);
+}
+
+.btn-primary:hover {
+    background: #b6e564;
+    transform: translateY(-1px);
+}

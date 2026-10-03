@@ -1,0 +1,92 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+        <div class="modal-badge-wrapper">
+            <div class="success-glow"></div>
+            <div class="success-badge">
+                <span class="check-icon" aria-hidden="true">&#10003;</span>
+            </div>
+        </div>
+
+        <div class="modal-header">
+            <div class="eyebrow">CHECK-IN CONCLUÍDO COM SUCESSO</div>
+            <h2 id="modal-title" class="modal-title">Ordem de Serviço Aberta</h2>
+            <div class="os-code-pill">
+                <span>OS #@WorkOrder.Id.ToString()[..8].ToUpperInvariant()</span>
+                <span class="status-dot"></span>
+                <span class="status-name">Aguardando</span>
+            </div>
+        </div>
+
+        <div class="modal-details">
+            <div class="detail-row">
+                <span class="detail-label">CLIENTE</span>
+                <span class="detail-value">@WorkOrder.CustomerName</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">VEÍCULO</span>
+                <span class="detail-value plate-highlight">@FormatPlate(WorkOrder.Plate) <span class="size-tag">(@WorkOrder.VehicleSize)</span></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">VALOR TOTAL</span>
+                <span class="detail-value total-highlight">@WorkOrder.TotalAmount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">DURAÇÃO ESTIMADA</span>
+                <span class="detail-value">@FormatDuration(WorkOrder.EstimatedDurationMinutes)</span>
+            </div>
+            <div class="detail-row forecast-row">
+                <span class="detail-label">PREVISÃO DE ENTREGA</span>
+                <span class="detail-value forecast-val">&#9200; @WorkOrder.EstimatedCompletionAtUtc.ToLocalTime().ToString("HH:mm")</span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(WorkOrder.Notes))
+            {
+                <div class="detail-notes">
+                    <span class="detail-label">OBSERVAÇÕES:</span>
+                    <p class="notes-content">@WorkOrder.Notes</p>
+                </div>
+            }
+        </div>
+
+        <div class="modal-actions">
+            <button id="btn-modal-new-reception" type="button" class="btn-action btn-secondary" @onclick="HandleNewReception">
+                <span>Nova Recepção</span>
+            </button>
+            <button id="btn-modal-go-yard" type="button" class="btn-action btn-primary" @onclick="HandleGoToYard">
+                <span>Ir para o Pátio</span>
+                <span aria-hidden="true">&#8594;</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public WorkOrderDto WorkOrder { get; set; } = default!;
+    [Parameter] public EventCallback OnNewReception { get; set; }
+    [Parameter] public EventCallback OnGoToYard { get; set; }
+
+    private async Task HandleNewReception()
+    {
+        await OnNewReception.InvokeAsync();
+    }
+
+    private async Task HandleGoToYard()
+    {
+        await OnGoToYard.InvokeAsync();
+    }
+
+    private static string FormatPlate(string raw)
+    {
+        var clean = (raw ?? string.Empty).Replace("-", "").Trim().ToUpperInvariant();
+        return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
+    }
+
+    private static string FormatDuration(int minutes)
+    {
+        if (minutes < 60) return $"{minutes} min";
+        var hours = minutes / 60;
+        var rem = minutes % 60;
+        return rem == 0 ? $"{hours}h" : $"{hours}h {rem}min";
+    }
+}

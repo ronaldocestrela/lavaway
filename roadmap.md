@@ -141,9 +141,12 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 3.2 Abertura da ordem de serviço
 
-- [ ] Selecionar serviços e porte do veículo durante o check-in.
-- [ ] Calcular valor final e previsão de entrega usando preço e duração configurados.
-- [ ] **Entrega:** OS é criada com cliente, veículo, serviços, valor e previsão registrados.
+- [x] Selecionar serviços e porte do veículo durante o check-in.
+- [x] Calcular valor final e previsão de entrega usando preço e duração configurados.
+- [x] **Entrega:** OS é criada com cliente, veículo, serviços, valor e previsão registrados.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): o módulo `YardOperations` implementa a abertura de ordens de serviço (`WorkOrder` e `WorkOrderItem`) com snapshot de preços e durações configurados por porte de veículo, cálculo dinâmico da previsão estimada de conclusão (`EstimatedCompletionAtUtc`), registro de observações do check-in (`Notes`) e status inicial `Waiting`. A API conta com endpoints autenticados em `/work-orders` (criação via política `CreateWorkOrders`, consulta por ID e listagem recente via `ViewCustomers`) com isolamento multi-tenant estrito e contratos tipados compartilhados em `CarWashSaaS.Shared.Contracts` (`CreateWorkOrderRequest`, `WorkOrderDto`, `WorkOrderItemDto`). No frontend Blazor WebAssembly, a tela de check-in `NewWorkOrderPage` (`/work-orders/new`) integra-se com os componentes isolados `CheckinCustomerHeader` (com placa estilizada e seletor de porte interativo), `ServiceSelectorCard` (com filtragem, precificação dinâmica por porte e controladores de quantidade), `WorkOrderSummaryCard` (com cálculo reativo em tempo real do total financeiro, tempo total e banner de previsão de entrega com relógio) e `WorkOrderCreatedModal` (modal de confirmação de abertura de OS com ações direcionadas). A solução conta com 100% de aprovação nos 226 testes da solution (testes unitários, testes de integração SQL Server Testcontainers com validação cross-tenant, testes de arquitetura NetArchTest e testes de componentes bUnit). Detalhes em `docs/living-docs/abertura-ordem-servico-3.2.md`.
+
 
 ### 3.3 Vistoria digital de entrada
 

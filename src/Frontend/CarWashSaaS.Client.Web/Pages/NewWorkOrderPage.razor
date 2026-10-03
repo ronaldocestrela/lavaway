@@ -1,0 +1,260 @@
+@page "/work-orders/new"
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject CustomerVehicleApiClient CustomerApi
+@inject ServiceCatalogApiClient ServiceApi
+@inject WorkOrderApiClient WorkOrderApi
+@inject ReceptionSessionState ReceptionState
+@inject NavigationManager Navigation
+
+<PageTitle>Abertura de OS | Lavaway</PageTitle>
+
+<AuthorizeView Roles="Administrator,Receptionist">
+    <Authorized>
+        <section class="workorder-page">
+            @if (_isLoading)
+            {
+                <div class="loading-state">
+                    <span class="loading-spinner" aria-hidden="true"></span>
+                    <p>Carregando dados do atendimento...</p>
+                </div>
+            }
+            else if (_loadError is not null)
+            {
+                <div class="feedback feedback-error" role="alert">
+                    <span class="feedback-symbol" aria-hidden="true">!</span>
+                    <div>
+                        <strong>Não foi possível iniciar o check-in</strong>
+                        <p>@_loadError</p>
+                        <button type="button" class="button button-secondary" @onclick="GoBackToReception">Voltar para Recepção</button>
+                    </div>
+                </div>
+            }
+            else if (_customer is not null && _vehicle is not null)
+            {
+                <CheckinCustomerHeader CustomerName="@_customer.CustomerName"
+                                       Phone="@_customer.Phone"
+                                       Plate="@_vehicle.Plate"
+                                       SelectedVehicleSize="@_selectedVehicleSize"
+                                       OnVehicleSizeChanged="HandleVehicleSizeChanged"
+                                       OnBackToReception="GoBackToReception" />
+
+                <div class="workorder-grid">
+                    <div class="services-column">
+                        <ServiceSelectorCard Services="@_availableServices"
+                                             VehicleSize="@_selectedVehicleSize"
+                                             SelectedServices="@_selectedServiceQuantities"
+                                             OnServiceQuantityChanged="HandleServiceQuantityChanged" />
+                    </div>
+
+                    <aside class="summary-column">
+                        <WorkOrderSummaryCard SelectedItems="@SelectedItemsList"
+                                              Notes="@_notes"
+                                              NotesChanged="HandleNotesChanged"
+                                              IsSubmitting="@_isSubmitting"
+                                              ErrorMessage="@_errorMessage"
+                                              OnSubmit="SubmitWorkOrderAsync" />
+                    </aside>
+                </div>
+
+                @if (_createdWorkOrder is not null)
+                {
+                    <WorkOrderCreatedModal WorkOrder="@_createdWorkOrder"
+                                           OnNewReception="HandleNewReception"
+                                           OnGoToYard="HandleGoToYard" />
+                }
+            }
+        </section>
+    </Authorized>
+    <NotAuthorized>
+        <div class="feedback feedback-error">
+            <span>Acesso restrito. Somente Administradores e Recepcionistas podem abrir Ordens de Serviço.</span>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [SupplyParameterFromQuery(Name = "customerId")]
+    public Guid? CustomerIdQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "vehicleId")]
+    public Guid? VehicleIdQuery { get; set; }
+
+    private bool _isLoading = true;
+    private string? _loadError;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+    private string _notes = string.Empty;
+    private string _selectedVehicleSize = "HatchSedan";
+
+    private CustomerVehicleMatchDto? _customer;
+    private VehicleSummaryDto? _vehicle;
+    private IReadOnlyCollection<ServiceDto> _availableServices = [];
+    private readonly Dictionary<Guid, int> _selectedServiceQuantities = new();
+    private WorkOrderDto? _createdWorkOrder;
+
+    private IReadOnlyList<(ServiceDto Service, decimal UnitPrice, int DurationMinutes, int Quantity)> SelectedItemsList
+    {
+        get
+        {
+            var list = new List<(ServiceDto, decimal, int, int)>();
+            foreach (var (serviceId, qty) in _selectedServiceQuantities)
+            {
+                if (qty <= 0) continue;
+                var service = _availableServices.FirstOrDefault(s => s.Id == serviceId);
+                if (service is null) continue;
+
+                var price = service.Prices.FirstOrDefault(p =>
+                    string.Equals(p.VehicleSize, _selectedVehicleSize, StringComparison.OrdinalIgnoreCase));
+                if (price is null) continue;
+
+                list.Add((service, price.Amount, price.EstimatedDurationMinutes, qty));
+            }
+            return list;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+
+        try
+        {
+            // 1. Try to obtain customer & vehicle from query params or session state
+            var customerId = CustomerIdQuery ?? ReceptionState.SelectedCustomer?.CustomerId;
+            var vehicleId = VehicleIdQuery ?? ReceptionState.SelectedVehicle?.Id;
+
+            if (customerId is null || vehicleId is null)
+            {
+                _loadError = "Nenhum cliente ou veículo selecionado. Por favor, inicie o atendimento pela recepção.";
+                _isLoading = false;
+                return;
+            }
+
+            if (ReceptionState.SelectedCustomer?.CustomerId == customerId.Value &&
+                ReceptionState.SelectedCustomer.Vehicles.Any(v => v.Id == vehicleId.Value))
+            {
+                _customer = ReceptionState.SelectedCustomer;
+                _vehicle = _customer.Vehicles.First(v => v.Id == vehicleId.Value);
+            }
+            else
+            {
+                _customer = await CustomerApi.GetAsync(customerId.Value);
+                if (_customer is null)
+                {
+                    _loadError = "Cadastro de cliente não encontrado no estabelecimento.";
+                    _isLoading = false;
+                    return;
+                }
+
+                _vehicle = _customer.Vehicles.FirstOrDefault(v => v.Id == vehicleId.Value);
+                if (_vehicle is null)
+                {
+                    _loadError = "Veículo selecionado não pertence a este cliente.";
+                    _isLoading = false;
+                    return;
+                }
+            }
+
+            _selectedVehicleSize = _vehicle.Size;
+
+            // 2. Load services
+            _availableServices = await ServiceApi.GetServicesAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Erro ao carregar dados do check-in: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void HandleVehicleSizeChanged(string newSize)
+    {
+        _selectedVehicleSize = newSize;
+        StateHasChanged();
+    }
+
+    private void HandleServiceQuantityChanged((ServiceDto Service, int Quantity) change)
+    {
+        if (change.Quantity <= 0)
+        {
+            _selectedServiceQuantities.Remove(change.Service.Id);
+        }
+        else
+        {
+            _selectedServiceQuantities[change.Service.Id] = change.Quantity;
+        }
+        StateHasChanged();
+    }
+
+    private void HandleNotesChanged(string notes)
+    {
+        _notes = notes;
+    }
+
+    private async Task SubmitWorkOrderAsync()
+    {
+        if (_customer is null || _vehicle is null || _selectedServiceQuantities.Count == 0 || _isSubmitting)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var items = _selectedServiceQuantities
+                .Where(kvp => kvp.Value > 0)
+                .Select(kvp => new CreateWorkOrderItemRequest(kvp.Key, kvp.Value))
+                .ToList();
+
+            var request = new CreateWorkOrderRequest(
+                _customer.CustomerId,
+                _vehicle.Id,
+                items,
+                string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim());
+
+            _createdWorkOrder = await WorkOrderApi.CreateWorkOrderAsync(request);
+        }
+        catch (WorkOrderApiException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Ocorreu uma falha ao abrir a ordem de serviço: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void HandleNewReception()
+    {
+        ReceptionState.ClearSelection();
+        Navigation.NavigateTo("/reception");
+    }
+
+    private void HandleGoToYard()
+    {
+        ReceptionState.ClearSelection();
+        Navigation.NavigateTo("/reception");
+    }
+
+    private void GoBackToReception()
+    {
+        Navigation.NavigateTo("/reception");
+    }
+}

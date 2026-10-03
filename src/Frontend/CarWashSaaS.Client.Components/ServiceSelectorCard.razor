@@ -1,0 +1,151 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="service-selector">
+    <div class="selector-toolbar">
+        <div class="toolbar-title">
+            <h2>Catálogo de Serviços</h2>
+            <p>Selecione os serviços desejados para este atendimento.</p>
+        </div>
+        <div class="search-box">
+            <input type="text"
+                   placeholder="Filtrar serviços..."
+                   @bind="_filterText"
+                   @bind:event="oninput"
+                   class="filter-input" />
+        </div>
+    </div>
+
+    @if (FilteredServices.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">?</div>
+            <p>Nenhum serviço encontrado para o filtro informado.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var group in GroupedServices)
+        {
+            <div class="service-category-group">
+                <div class="category-header">
+                    <span class="category-indicator"></span>
+                    <h3 class="category-title">@group.Key</h3>
+                    <span class="category-count">@group.Count()</span>
+                </div>
+
+                <div class="services-grid">
+                    @foreach (var service in group)
+                    {
+                        var matchingPrice = service.Prices.FirstOrDefault(p =>
+                            string.Equals(p.VehicleSize, VehicleSize, StringComparison.OrdinalIgnoreCase));
+                        var isAvailable = matchingPrice is not null;
+                        var isSelected = SelectedServices.ContainsKey(service.Id);
+                        var quantity = isSelected ? SelectedServices[service.Id] : 0;
+
+                        <div class="service-card @(isSelected ? "selected" : string.Empty) @(!isAvailable ? "unavailable" : string.Empty)"
+                             @onclick="() => ToggleSelect(service, isAvailable, isSelected)">
+                            <div class="card-top">
+                                <div class="card-selection-indicator">
+                                    @if (isSelected)
+                                    {
+                                        <span class="check-glyph" aria-hidden="true">&#10003;</span>
+                                    }
+                                </div>
+                                <div class="card-title-block">
+                                    <h4 class="service-name">@service.Name</h4>
+                                    <span class="service-category-tag">@service.Category</span>
+                                </div>
+                            </div>
+
+                            <div class="card-bottom">
+                                @if (isAvailable && matchingPrice is not null)
+                                {
+                                    <div class="price-duration-block">
+                                        <div class="service-price">@matchingPrice.Amount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</div>
+                                        <div class="service-duration">
+                                            <span class="clock-icon" aria-hidden="true">&#9201;</span>
+                                            <span>@FormatDuration(matchingPrice.EstimatedDurationMinutes)</span>
+                                        </div>
+                                    </div>
+
+                                    @if (isSelected)
+                                    {
+                                        <div class="quantity-controller" @onclick:stopPropagation>
+                                            <button type="button"
+                                                    class="qty-btn"
+                                                    @onclick="() => Decrement(service, quantity)"
+                                                    title="Diminuir quantidade">-</button>
+                                            <span class="qty-display">@quantity</span>
+                                            <button type="button"
+                                                    class="qty-btn"
+                                                    @onclick="() => Increment(service, quantity)"
+                                                    title="Aumentar quantidade">+</button>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="unavailable-notice">
+                                        Indisponível para este porte
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyCollection<ServiceDto> Services { get; set; } = [];
+    [Parameter, EditorRequired] public string VehicleSize { get; set; } = "HatchSedan";
+    [Parameter, EditorRequired] public IReadOnlyDictionary<Guid, int> SelectedServices { get; set; } = new Dictionary<Guid, int>();
+    [Parameter] public EventCallback<(ServiceDto Service, int Quantity)> OnServiceQuantityChanged { get; set; }
+    [Parameter] public EventCallback<ServiceDto> OnServiceToggled { get; set; }
+
+    private string _filterText = string.Empty;
+
+    private IReadOnlyList<ServiceDto> FilteredServices => string.IsNullOrWhiteSpace(_filterText)
+        ? Services.ToList()
+        : Services.Where(s => s.Name.Contains(_filterText, StringComparison.OrdinalIgnoreCase) ||
+                              s.Category.Contains(_filterText, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private IEnumerable<IGrouping<string, ServiceDto>> GroupedServices =>
+        FilteredServices.GroupBy(s => string.IsNullOrWhiteSpace(s.Category) ? "Geral" : s.Category)
+                        .OrderBy(g => g.Key);
+
+    private async Task ToggleSelect(ServiceDto service, bool isAvailable, bool isSelected)
+    {
+        if (!isAvailable) return;
+
+        if (isSelected)
+        {
+            await OnServiceQuantityChanged.InvokeAsync((service, 0));
+        }
+        else
+        {
+            await OnServiceQuantityChanged.InvokeAsync((service, 1));
+        }
+    }
+
+    private async Task Increment(ServiceDto service, int currentQty)
+    {
+        await OnServiceQuantityChanged.InvokeAsync((service, currentQty + 1));
+    }
+
+    private async Task Decrement(ServiceDto service, int currentQty)
+    {
+        var newQty = Math.Max(0, currentQty - 1);
+        await OnServiceQuantityChanged.InvokeAsync((service, newQty));
+    }
+
+    private static string FormatDuration(int minutes)
+    {
+        if (minutes < 60) return $"{minutes} min";
+        var hours = minutes / 60;
+        var rem = minutes % 60;
+        return rem == 0 ? $"{hours}h" : $"{hours}h {rem}min";
+    }
+}

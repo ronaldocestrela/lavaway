@@ -1,0 +1,83 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="checkin-header">
+    <div class="header-main">
+        <button type="button" class="back-link" @onclick="HandleBack" title="Voltar para recepção">
+            <span class="back-arrow" aria-hidden="true">&#8592;</span>
+            <span>Recepção</span>
+        </button>
+
+        <div class="customer-info">
+            <div class="eyebrow">
+                <span class="status-indicator"></span>
+                <span>ATENDIMENTO EM ANDAMENTO</span>
+            </div>
+            <h1 class="customer-title">@CustomerName</h1>
+            <div class="customer-meta">
+                <span class="phone-badge">@Phone</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="vehicle-banner">
+        <div class="license-plate" aria-label="Placa do veículo">
+            <div class="plate-band">BRASIL</div>
+            <div class="plate-text">@FormatPlate(Plate)</div>
+        </div>
+
+        <div class="size-selector-group">
+            <span class="selector-label">PORTE DO VEÍCULO</span>
+            <div class="size-pill-container" role="radiogroup" aria-label="Selecione o porte do veículo">
+                @foreach (var sizeOption in Sizes)
+                {
+                    var isSelected = string.Equals(SelectedVehicleSize, sizeOption.Key, StringComparison.OrdinalIgnoreCase);
+                    <button type="button"
+                            role="radio"
+                            aria-checked="@isSelected"
+                            class="size-pill @(isSelected ? "active" : string.Empty)"
+                            @onclick="() => SelectSize(sizeOption.Key)">
+                        <span class="pill-dot" aria-hidden="true"></span>
+                        <span class="pill-title">@sizeOption.Value</span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string CustomerName { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Phone { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Plate { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string SelectedVehicleSize { get; set; } = "HatchSedan";
+    [Parameter] public EventCallback<string> OnVehicleSizeChanged { get; set; }
+    [Parameter] public EventCallback OnBackToReception { get; set; }
+
+    private static readonly IReadOnlyList<KeyValuePair<string, string>> Sizes =
+    [
+        new("HatchSedan", "Hatch / Sedan"),
+        new("Suv", "SUV"),
+        new("PickupVan", "Pick-up / Van"),
+        new("Motorcycle", "Moto")
+    ];
+
+    private async Task SelectSize(string size)
+    {
+        if (!string.Equals(SelectedVehicleSize, size, StringComparison.OrdinalIgnoreCase))
+        {
+            SelectedVehicleSize = size;
+            await OnVehicleSizeChanged.InvokeAsync(size);
+        }
+    }
+
+    private async Task HandleBack()
+    {
+        await OnBackToReception.InvokeAsync();
+    }
+
+    private static string FormatPlate(string raw)
+    {
+        var clean = (raw ?? string.Empty).Replace("-", "").Trim().ToUpperInvariant();
+        return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
+    }
+}

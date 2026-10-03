@@ -368,3 +368,24 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [yard].[__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261003181125_AddWorkOrderNotes'
+)
+BEGIN
+    ALTER TABLE [yard].[WorkOrders] ADD [Notes] nvarchar(500) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [yard].[__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261003181125_AddWorkOrderNotes'
+)
+BEGIN
+    INSERT INTO [yard].[__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261003181125_AddWorkOrderNotes', N'10.0.9');
+END;
+
+COMMIT;
+GO
+

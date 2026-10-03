@@ -16,8 +16,10 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.Property(order => order.VehicleId).IsRequired();
         builder.Property(order => order.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(order => order.CreatedAtUtc).HasColumnType("datetimeoffset").IsRequired();
+        builder.Property(order => order.Notes).HasMaxLength(500);
         builder.Ignore(order => order.TotalAmount);
         builder.Ignore(order => order.EstimatedDurationMinutes);
+        builder.Ignore(order => order.EstimatedCompletionAtUtc);
         builder.HasAlternateKey(order => new { order.TenantId, order.Id });
         builder.HasIndex(order => new { order.TenantId, order.CreatedAtUtc });
         builder.HasOne<Customer>()

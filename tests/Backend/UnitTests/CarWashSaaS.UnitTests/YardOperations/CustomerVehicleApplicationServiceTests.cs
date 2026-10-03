@@ -123,6 +123,9 @@ public sealed class CustomerVehicleApplicationServiceTests
         public Task<bool> IsPlateRegisteredAsync(Guid tenantId, string normalizedPlate, CancellationToken ct = default) =>
             Task.FromResult(Vehicles.Any(vehicle => vehicle.TenantId == tenantId && vehicle.Plate == normalizedPlate));
 
+        Task<Vehicle?> IVehicleRepository.GetByIdAsync(Guid tenantId, Guid vehicleId, CancellationToken ct) =>
+            Task.FromResult(Vehicles.SingleOrDefault(vehicle => vehicle.TenantId == tenantId && vehicle.Id == vehicleId));
+
         public Task AddAsync(Vehicle vehicle, CancellationToken ct = default)
         {
             Vehicles.Add(vehicle);

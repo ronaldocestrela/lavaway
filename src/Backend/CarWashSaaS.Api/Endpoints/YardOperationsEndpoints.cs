@@ -12,6 +12,7 @@ public static class YardOperationsEndpoints
         MapServicesEndpoints(app);
         MapCustomerEndpoints(app);
         MapYardSetupEndpoints(app);
+        MapWorkOrderEndpoints(app);
 
         return app;
     }
@@ -387,6 +388,77 @@ public static class YardOperationsEndpoints
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+    }
+
+    private static void MapWorkOrderEndpoints(IEndpointRouteBuilder app)
+    {
+        app.MapPost("/work-orders", async (
+            CreateWorkOrderRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            if (request.Items is null || request.Items.Count == 0)
+            {
+                return Results.BadRequest(new { Code = "work_order.items.required", Description = "Pelo menos um serviço é obrigatório." });
+            }
+
+            var command = new CreateWorkOrderCommand(
+                request.CustomerId,
+                request.VehicleId,
+                request.Items.Select(i => new CreateWorkOrderItemInput(i.ServiceId, i.Quantity)).ToList(),
+                request.Notes);
+
+            var result = await service.CreateAsync(tenantId, command);
+            return result.IsSuccess ? Results.Created($"/work-orders/{result.Value!.Id}", result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.CreateWorkOrders);
+
+        app.MapGet("/work-orders/{id:guid}", async (
+            Guid id,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetAsync(tenantId, id);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapGet("/work-orders", async (
+            int? limit,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.ListRecentAsync(tenantId, limit ?? 20);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
     }
 
     private static YardCapacityDto ToDto(YardCapacity capacity) => new(
