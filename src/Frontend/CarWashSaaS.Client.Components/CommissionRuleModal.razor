@@ -1,0 +1,176 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="modal-title" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">REGRAS DE REPASSE</span>
+                    <h2 id="modal-title">@(Model.Id.HasValue ? "Editar Regra de Comissão" : "Nova Regra de Comissão")</h2>
+                </div>
+                <button type="button" class="close-btn" @onclick="HandleCancel" aria-label="Fechar">×</button>
+            </header>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="feedback feedback-error" role="alert">
+                        <span class="feedback-symbol">!</span>
+                        <div class="feedback-text">@ErrorMessage</div>
+                    </div>
+                }
+
+                @if (!Model.Id.HasValue)
+                {
+                    <div class="form-group">
+                        <label for="commission-service" class="form-label">Serviço *</label>
+                        @if (AvailableServices is not null && AvailableServices.Count > 0)
+                        {
+                            <select id="commission-service" class="form-control" @bind="Model.ServiceName">
+                                <option value="">-- Selecione um serviço do catálogo --</option>
+                                @foreach (var s in AvailableServices)
+                                {
+                                    <option value="@s.Name">@s.Name (@s.Category)</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <input id="commission-service"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="Ex.: Ducha Completa"
+                                   maxlength="200"
+                                   @bind="Model.ServiceName" />
+                        }
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Função / Cargo *</label>
+                        <div class="role-chips">
+                            @foreach (var role in DefaultRoles)
+                            {
+                                var isSelected = string.Equals(Model.RoleName, role, StringComparison.OrdinalIgnoreCase);
+                                <button type="button"
+                                        class="role-chip @(isSelected ? "is-selected" : "")"
+                                        @onclick="() => Model.RoleName = role">
+                                    <span>@role</span>
+                                </button>
+                            }
+                        </div>
+                        <input id="commission-role"
+                               type="text"
+                               class="form-control mt-2"
+                               placeholder="Ou digite outra função"
+                               maxlength="80"
+                               @bind="Model.RoleName" />
+                    </div>
+                }
+                else
+                {
+                    <div class="rule-readonly-header">
+                        <div class="readonly-badge">
+                            <span class="readonly-label">SERVIÇO</span>
+                            <span class="readonly-value">@Model.ServiceName</span>
+                        </div>
+                        <div class="readonly-badge">
+                            <span class="readonly-label">FUNÇÃO</span>
+                            <span class="readonly-value">@Model.RoleName</span>
+                        </div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="commission-percentage" class="form-label">Percentual de Comissão (%) *</label>
+                    <div class="percent-presets">
+                        @foreach (var preset in DefaultPercentages)
+                        {
+                            var isSelected = Model.Percentage == preset;
+                            <button type="button"
+                                    class="preset-chip @(isSelected ? "is-selected" : "")"
+                                    @onclick="() => Model.Percentage = preset">
+                                <span>@($"{preset:0.#}")%</span>
+                            </button>
+                        }
+                    </div>
+                    <div class="input-with-symbol mt-2">
+                        <input id="commission-percentage"
+                               type="number"
+                               step="0.5"
+                               min="0"
+                               max="100"
+                               class="form-control"
+                               @bind="Model.Percentage" />
+                        <span class="symbol">%</span>
+                    </div>
+                    <span class="form-hint">Percentual repassado ao operador sobre o valor do serviço concluído.</span>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-outline" @onclick="HandleCancel" disabled="@IsBusy">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@IsBusy" id="btn-save-commission">
+                    <span>@(IsBusy ? "Salvando..." : (Model.Id.HasValue ? "Atualizar Percentual" : "Criar Regra"))</span>
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public CommissionRuleFormModel Model { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyCollection<ServiceDto>? AvailableServices { get; set; }
+
+    [Parameter]
+    public EventCallback<CommissionRuleFormModel> OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    private static readonly string[] DefaultRoles =
+    [
+        "Lavador",
+        "Secador",
+        "Polidor",
+        "Detailer",
+        "Encarregado"
+    ];
+
+    private static readonly decimal[] DefaultPercentages = [5.0m, 10.0m, 15.0m, 20.0m, 25.0m, 30.0m];
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleSave()
+    {
+        if (string.IsNullOrWhiteSpace(Model.ServiceName) || string.IsNullOrWhiteSpace(Model.RoleName))
+        {
+            return;
+        }
+
+        if (Model.Percentage < 0 || Model.Percentage > 100)
+        {
+            return;
+        }
+
+        await OnSave.InvokeAsync(Model);
+    }
+}

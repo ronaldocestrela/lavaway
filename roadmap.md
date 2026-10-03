@@ -114,7 +114,7 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 - [x] Cadastrar colaboradores e, quando aplicável, regras de comissão por serviço.
 - [x] **Entrega:** capacidade e equipe cadastradas e disponíveis para uso na operação.
 
-> Estado concluído: o módulo `YardOperations` já implementa `YardCapacity`, `TeamMember` e `CommissionRule` com validação do domínio, `Result<T>`, `TenantId` em todos os agregados e isolamento por tenant em `YardOperationsDbContext`. A proteção cruzada de dados foi validada pela suíte de integração e a base está pronta para o próximo fluxo operacional.
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor): o módulo `YardOperations` implementa os agregados `YardCapacity`, `TeamMember` e `CommissionRule` com validação de domínio puro, invariantes protegidas, ciclo de vida completo (criação, edição, ativação/desativação e exclusão) e retorno `Result<T>`. Contratos compartilhados em `CarWashSaaS.Shared.Contracts` (`YardCapacityDto`, `TeamMemberDto`, `CommissionRuleDto`, requisições tipadas) padronizam a comunicação eliminando o vazamento de entidades de domínio na API. Os endpoints em `/yard/capacity`, `/team-members` e `/commission-rules` contam com autorização por tenant e política `Administrator`. No frontend Blazor WebAssembly, o cliente `YardSetupApiClient` e os componentes isolados (`YardCapacityCard`, `TeamMemberModal`, `CommissionRuleModal`) integram a nova tela administrativa `CapacityAndTeamPage` (`/settings/team`), adicionada ao `NavMenu`. A entrega conta com 100% de aprovação nos testes unitários, testes de arquitetura e testes de componentes bUnit. Detalhes em `docs/living-docs/capacidade-equipe-2.4.md`.
 
 ### 2.5 Pareamento do WhatsApp
 

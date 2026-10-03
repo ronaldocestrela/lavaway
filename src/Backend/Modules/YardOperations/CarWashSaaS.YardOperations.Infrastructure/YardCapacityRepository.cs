@@ -9,7 +9,6 @@ public sealed class YardCapacityRepository(YardOperationsDbContext dbContext) : 
     public async Task<YardCapacity?> GetByTenantAsync(Guid tenantId, CancellationToken ct = default)
     {
         return await dbContext.YardCapacities
-            .AsNoTracking()
             .FirstOrDefaultAsync(capacity => capacity.TenantId == tenantId, ct);
     }
 

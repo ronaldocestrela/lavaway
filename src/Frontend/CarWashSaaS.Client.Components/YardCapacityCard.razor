@@ -1,0 +1,152 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+
+<div class="capacity-card">
+    <div class="capacity-header">
+        <div>
+            <span class="capacity-eyebrow">ESTRUTURA FÍSICA DO PÁTIO</span>
+            <h2 class="capacity-title">Capacidade Simultânea de Boxes</h2>
+            <p class="capacity-subtitle">Defina o limite de vagas ativas de lavagem para controlar o fluxo de entrada e Kanban.</p>
+        </div>
+        <div class="capacity-actions">
+            @if (!_isEditing)
+            {
+                <button type="button" class="btn btn-secondary" @onclick="StartEditing" id="btn-edit-capacity">
+                    <span>✏️ Alterar Capacidade</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="feedback feedback-error" role="alert">
+            <span class="feedback-symbol">!</span>
+            <div class="feedback-text">@ErrorMessage</div>
+        </div>
+    }
+
+    @if (_isEditing)
+    {
+        <div class="capacity-edit-form">
+            <div class="form-row">
+                <div class="form-group form-group-boxes">
+                    <label for="capacity-boxes" class="form-label">Total de Boxes / Vagas *</label>
+                    <input id="capacity-boxes"
+                           type="number"
+                           min="1"
+                           max="100"
+                           class="form-control"
+                           @bind="_editModel.TotalBoxes" />
+                    <span class="form-hint">Capacidade de atendimento paralelo (1 a 100).</span>
+                </div>
+                <div class="form-group form-group-desc">
+                    <label for="capacity-description" class="form-label">Identificação / Setor</label>
+                    <input id="capacity-description"
+                           type="text"
+                           maxlength="200"
+                           class="form-control"
+                           placeholder="Ex.: Pátio principal, Ducha rápida e Polimento"
+                           @bind="_editModel.Description" />
+                    <span class="form-hint">Descrição ou identificação da área física.</span>
+                </div>
+            </div>
+            <div class="edit-actions">
+                <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@IsBusy" id="btn-save-capacity">
+                    <span>@(IsBusy ? "Salvando..." : "Salvar Capacidade")</span>
+                </button>
+                <button type="button" class="btn btn-outline" @onclick="CancelEditing" disabled="@IsBusy" id="btn-cancel-capacity">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="capacity-display">
+            <div class="metric-container">
+                <div class="metric-badge">
+                    <span class="metric-value">@(Capacity?.TotalBoxes ?? 0)</span>
+                    <span class="metric-unit">boxes</span>
+                </div>
+                <div class="metric-info">
+                    <div class="metric-name">@(string.IsNullOrWhiteSpace(Capacity?.Description) ? "Pátio Principal" : Capacity.Description)</div>
+                    <div class="metric-status">
+                        <span class="status-indicator"></span>
+                        <span>Pronto para recepção de ordens de serviço</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="boxes-visual-grid">
+                @for (int i = 1; i <= Math.Min(Capacity?.TotalBoxes ?? 4, 20); i++)
+                {
+                    <div class="box-slot">
+                        <span class="box-number">Box @i.ToString("D2")</span>
+                        <span class="box-icon">🚿</span>
+                    </div>
+                }
+                @if ((Capacity?.TotalBoxes ?? 0) > 20)
+                {
+                    <div class="box-slot box-more">
+                        <span>+@((Capacity?.TotalBoxes ?? 0) - 20) boxes adicionais</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public YardCapacityDto? Capacity { get; set; }
+
+    [Parameter]
+    public EventCallback<YardCapacityFormModel> OnSave { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    private bool _isEditing;
+    private YardCapacityFormModel _editModel = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Capacity is not null)
+        {
+            _editModel.LoadFrom(Capacity);
+        }
+    }
+
+    private void StartEditing()
+    {
+        if (Capacity is not null)
+        {
+            _editModel.LoadFrom(Capacity);
+        }
+        else
+        {
+            _editModel = new YardCapacityFormModel();
+        }
+        _isEditing = true;
+    }
+
+    private void CancelEditing()
+    {
+        _isEditing = false;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_editModel.TotalBoxes <= 0)
+        {
+            return;
+        }
+
+        await OnSave.InvokeAsync(_editModel);
+        _isEditing = false;
+    }
+}

@@ -16,6 +16,12 @@ public sealed class CommissionRuleRepository(YardOperationsDbContext dbContext) 
             .ToListAsync(ct);
     }
 
+    public async Task<CommissionRule?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct = default)
+    {
+        return await dbContext.CommissionRules
+            .FirstOrDefaultAsync(rule => rule.TenantId == tenantId && rule.Id == id, ct);
+    }
+
     public async Task<CommissionRule?> GetByServiceAndRoleAsync(Guid tenantId, string serviceName, string roleName, CancellationToken ct = default)
     {
         return await dbContext.CommissionRules
@@ -25,6 +31,18 @@ public sealed class CommissionRuleRepository(YardOperationsDbContext dbContext) 
     public async Task AddAsync(CommissionRule commissionRule, CancellationToken ct = default)
     {
         await dbContext.CommissionRules.AddAsync(commissionRule, ct);
+        await dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(CommissionRule commissionRule, CancellationToken ct = default)
+    {
+        dbContext.CommissionRules.Update(commissionRule);
+        await dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(CommissionRule commissionRule, CancellationToken ct = default)
+    {
+        dbContext.CommissionRules.Remove(commissionRule);
         await dbContext.SaveChangesAsync(ct);
     }
 }

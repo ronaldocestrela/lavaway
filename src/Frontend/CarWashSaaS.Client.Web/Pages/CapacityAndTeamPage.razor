@@ -1,0 +1,489 @@
+@page "/settings/team"
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrator")]
+@inject YardSetupApiClient YardApi
+@inject ServiceCatalogApiClient ServiceApi
+
+<PageTitle>Capacidade &amp; Equipe | Lavaway</PageTitle>
+
+<section class="team-page">
+    <div class="page-heading">
+        <div>
+            <div class="eyebrow">
+                <span class="eyebrow-mark"></span>
+                <span>GESTÃO &amp; OPERAÇÃO</span>
+            </div>
+            <h1>Capacidade &amp; Equipe</h1>
+            <p class="page-subtitle">Configure o número de boxes simultâneos do pátio, cadastre colaboradores e defina regras de comissão por serviço e cargo.</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_successMessage))
+    {
+        <div class="feedback feedback-success" role="status">
+            <span class="feedback-symbol">✓</span>
+            <div class="feedback-text">@_successMessage</div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="feedback feedback-error" role="alert">
+            <span class="feedback-symbol">!</span>
+            <div class="feedback-text">@_errorMessage</div>
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="loading-state" role="status">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <span>Carregando dados de pátio e equipe...</span>
+        </div>
+    }
+    else
+    {
+        <!-- SEÇÃO 1: ESTRUTURA DO PÁTIO -->
+        <div class="section-container">
+            <YardCapacityCard Capacity="@_capacity"
+                              OnSave="SaveCapacityAsync"
+                              IsBusy="@_isSavingCapacity"
+                              ErrorMessage="@_capacityErrorMessage" />
+        </div>
+
+        <!-- TABS DE NAVEGAÇÃO INTERNA: EQUIPE E COMISSÕES -->
+        <div class="tabs-nav">
+            <button type="button"
+                    class="tab-btn @(_activeTab == "team" ? "is-active" : "")"
+                    @onclick='() => _activeTab = "team"'>
+                <span>👥 Equipe (@_teamMembers.Count)</span>
+            </button>
+            <button type="button"
+                    class="tab-btn @(_activeTab == "commissions" ? "is-active" : "")"
+                    @onclick='() => _activeTab = "commissions"'>
+                <span>💰 Regras de Comissão (@_commissionRules.Count)</span>
+            </button>
+        </div>
+
+        @if (_activeTab == "team")
+        {
+            <!-- SEÇÃO 2: MEMBROS DA EQUIPE -->
+            <div class="tab-content">
+                <div class="content-header">
+                    <div>
+                        <h2>Colaboradores Cadastrados</h2>
+                        <p>Gerencie operadores de pista, secadores, polidores e encarregados.</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" @onclick="OpenCreateTeamMemberModal" id="btn-new-member">
+                        <span class="btn-icon">+</span>
+                        <span>Novo Colaborador</span>
+                    </button>
+                </div>
+
+                @if (_teamMembers.Count == 0)
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">👥</div>
+                        <h3>Nenhum colaborador cadastrado</h3>
+                        <p>Adicione profissionais para atribuir às ordens de serviço e calcular comissões.</p>
+                        <button type="button" class="btn btn-secondary" @onclick="OpenCreateTeamMemberModal">
+                            Cadastrar Primeiro Colaborador
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Função / Cargo</th>
+                                    <th>E-mail</th>
+                                    <th>Status</th>
+                                    <th class="actions-col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var member in _teamMembers)
+                                {
+                                    <tr class="@(member.IsActive ? "" : "row-inactive")">
+                                        <td>
+                                            <div class="member-profile">
+                                                <div class="member-avatar">@GetInitials(member.FullName)</div>
+                                                <span class="member-name">@member.FullName</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="role-badge">@member.Role</span>
+                                        </td>
+                                        <td>
+                                            <span class="email-text">@(string.IsNullOrWhiteSpace(member.Email) ? "—" : member.Email)</span>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill @(member.IsActive ? "pill-active" : "pill-inactive")">
+                                                @(member.IsActive ? "Ativo" : "Inativo")
+                                            </span>
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="table-actions">
+                                                <button type="button"
+                                                        class="action-btn"
+                                                        title="Editar dados"
+                                                        @onclick="() => OpenEditTeamMemberModal(member)">
+                                                    ✏️
+                                                </button>
+                                                <button type="button"
+                                                        class="action-btn"
+                                                        title="@(member.IsActive ? "Desativar colaborador" : "Ativar colaborador")"
+                                                        @onclick="() => ToggleMemberStatusAsync(member.Id)">
+                                                    @(member.IsActive ? "⏸️" : "▶️")
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- SEÇÃO 3: REGRAS DE COMISSÃO -->
+            <div class="tab-content">
+                <div class="content-header">
+                    <div>
+                        <h2>Matriz de Comissionamento</h2>
+                        <p>Configure os percentuais automáticos de repasse por serviço e cargo.</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" @onclick="OpenCreateCommissionModal" id="btn-new-commission">
+                        <span class="btn-icon">+</span>
+                        <span>Nova Regra</span>
+                    </button>
+                </div>
+
+                @if (_commissionRules.Count == 0)
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">💰</div>
+                        <h3>Nenhuma regra de comissão ativa</h3>
+                        <p>Defina porcentagens de remuneração para incentivar a equipe de execução.</p>
+                        <button type="button" class="btn btn-secondary" @onclick="OpenCreateCommissionModal">
+                            Criar Primeira Regra
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Serviço</th>
+                                    <th>Cargo / Função</th>
+                                    <th>Comissão (%)</th>
+                                    <th class="actions-col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var rule in _commissionRules)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="service-highlight">@rule.ServiceName</span>
+                                        </td>
+                                        <td>
+                                            <span class="role-badge">@rule.RoleName</span>
+                                        </td>
+                                        <td>
+                                            <span class="percent-badge">@rule.Percentage.ToString("F1")%</span>
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="table-actions">
+                                                <button type="button"
+                                                        class="action-btn"
+                                                        title="Editar percentual"
+                                                        @onclick="() => OpenEditCommissionModal(rule)">
+                                                    ✏️
+                                                </button>
+                                                <button type="button"
+                                                        class="action-btn action-danger"
+                                                        title="Excluir regra"
+                                                        @onclick="() => DeleteCommissionRuleAsync(rule.Id)">
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+    }
+</section>
+
+<!-- MODAL COLABORADOR -->
+<TeamMemberModal IsVisible="@_isTeamMemberModalVisible"
+                 Model="@_teamMemberModel"
+                 IsBusy="@_isSavingMember"
+                 ErrorMessage="@_memberErrorMessage"
+                 OnSave="SaveTeamMemberAsync"
+                 OnCancel="CloseTeamMemberModal" />
+
+<!-- MODAL COMISSÃO -->
+<CommissionRuleModal IsVisible="@_isCommissionModalVisible"
+                     Model="@_commissionModel"
+                     AvailableServices="@_availableServices"
+                     IsBusy="@_isSavingCommission"
+                     ErrorMessage="@_commissionErrorMessage"
+                     OnSave="SaveCommissionRuleAsync"
+                     OnCancel="CloseCommissionModal" />
+
+@code {
+    private bool _isLoading = true;
+    private string _activeTab = "team";
+    private string? _successMessage;
+    private string? _errorMessage;
+
+    // Capacidade
+    private YardCapacityDto? _capacity;
+    private bool _isSavingCapacity;
+    private string? _capacityErrorMessage;
+
+    // Equipe
+    private List<TeamMemberDto> _teamMembers = [];
+    private bool _isTeamMemberModalVisible;
+    private TeamMemberFormModel _teamMemberModel = new();
+    private bool _isSavingMember;
+    private string? _memberErrorMessage;
+
+    // Comissões
+    private List<CommissionRuleDto> _commissionRules = [];
+    private List<ServiceDto> _availableServices = [];
+    private bool _isCommissionModalVisible;
+    private CommissionRuleFormModel _commissionModel = new();
+    private bool _isSavingCommission;
+    private string? _commissionErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _capacity = await YardApi.GetCapacityAsync();
+            var members = await YardApi.GetTeamMembersAsync();
+            _teamMembers = members.ToList();
+
+            var rules = await YardApi.GetCommissionRulesAsync();
+            _commissionRules = rules.ToList();
+
+            try
+            {
+                var services = await ServiceApi.GetServicesAsync();
+                _availableServices = services.ToList();
+            }
+            catch
+            {
+                _availableServices = [];
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao carregar dados: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveCapacityAsync(YardCapacityFormModel model)
+    {
+        _isSavingCapacity = true;
+        _capacityErrorMessage = null;
+
+        try
+        {
+            if (_capacity is null)
+            {
+                _capacity = await YardApi.CreateCapacityAsync(model.ToCreateRequest());
+            }
+            else
+            {
+                _capacity = await YardApi.UpdateCapacityAsync(model.ToUpdateRequest());
+            }
+
+            SetSuccessMessage("Capacidade do pátio salva com sucesso!");
+        }
+        catch (Exception ex)
+        {
+            _capacityErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSavingCapacity = false;
+        }
+    }
+
+    private void OpenCreateTeamMemberModal()
+    {
+        _teamMemberModel.Reset();
+        _memberErrorMessage = null;
+        _isTeamMemberModalVisible = true;
+    }
+
+    private void OpenEditTeamMemberModal(TeamMemberDto member)
+    {
+        _teamMemberModel.LoadFrom(member);
+        _memberErrorMessage = null;
+        _isTeamMemberModalVisible = true;
+    }
+
+    private void CloseTeamMemberModal()
+    {
+        _isTeamMemberModalVisible = false;
+    }
+
+    private async Task SaveTeamMemberAsync(TeamMemberFormModel model)
+    {
+        _isSavingMember = true;
+        _memberErrorMessage = null;
+
+        try
+        {
+            if (model.Id.HasValue)
+            {
+                var updated = await YardApi.UpdateTeamMemberAsync(model.Id.Value, model.ToUpdateRequest());
+                var idx = _teamMembers.FindIndex(m => m.Id == updated.Id);
+                if (idx >= 0) _teamMembers[idx] = updated;
+                SetSuccessMessage("Colaborador atualizado com sucesso!");
+            }
+            else
+            {
+                var created = await YardApi.CreateTeamMemberAsync(model.ToCreateRequest());
+                _teamMembers.Add(created);
+                SetSuccessMessage("Colaborador cadastrado com sucesso!");
+            }
+
+            _isTeamMemberModalVisible = false;
+        }
+        catch (Exception ex)
+        {
+            _memberErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSavingMember = false;
+        }
+    }
+
+    private async Task ToggleMemberStatusAsync(Guid memberId)
+    {
+        try
+        {
+            var updated = await YardApi.ToggleTeamMemberStatusAsync(memberId);
+            var idx = _teamMembers.FindIndex(m => m.Id == memberId);
+            if (idx >= 0) _teamMembers[idx] = updated;
+            SetSuccessMessage($"Status do colaborador alterado para {(updated.IsActive ? "Ativo" : "Inativo")}.");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erro ao alterar status: {ex.Message}";
+        }
+    }
+
+    private void OpenCreateCommissionModal()
+    {
+        _commissionModel.Reset();
+        _commissionErrorMessage = null;
+        _isCommissionModalVisible = true;
+    }
+
+    private void OpenEditCommissionModal(CommissionRuleDto rule)
+    {
+        _commissionModel.LoadFrom(rule);
+        _commissionErrorMessage = null;
+        _isCommissionModalVisible = true;
+    }
+
+    private void CloseCommissionModal()
+    {
+        _isCommissionModalVisible = false;
+    }
+
+    private async Task SaveCommissionRuleAsync(CommissionRuleFormModel model)
+    {
+        _isSavingCommission = true;
+        _commissionErrorMessage = null;
+
+        try
+        {
+            if (model.Id.HasValue)
+            {
+                var updated = await YardApi.UpdateCommissionRuleAsync(model.Id.Value, model.ToUpdateRequest());
+                var idx = _commissionRules.FindIndex(r => r.Id == updated.Id);
+                if (idx >= 0) _commissionRules[idx] = updated;
+                SetSuccessMessage("Regra de comissão atualizada!");
+            }
+            else
+            {
+                var created = await YardApi.CreateCommissionRuleAsync(model.ToCreateRequest());
+                _commissionRules.Add(created);
+                SetSuccessMessage("Regra de comissão criada com sucesso!");
+            }
+
+            _isCommissionModalVisible = false;
+        }
+        catch (Exception ex)
+        {
+            _commissionErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSavingCommission = false;
+        }
+    }
+
+    private async Task DeleteCommissionRuleAsync(Guid ruleId)
+    {
+        try
+        {
+            await YardApi.DeleteCommissionRuleAsync(ruleId);
+            _commissionRules.RemoveAll(r => r.Id == ruleId);
+            SetSuccessMessage("Regra de comissão removida com sucesso.");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erro ao excluir regra: {ex.Message}";
+        }
+    }
+
+    private void SetSuccessMessage(string message)
+    {
+        _successMessage = message;
+        _errorMessage = null;
+    }
+
+    private static string GetInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+}

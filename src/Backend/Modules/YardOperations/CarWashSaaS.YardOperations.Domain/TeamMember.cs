@@ -95,4 +95,16 @@ public sealed class TeamMember : IMustHaveTenant
 
         return Result<TeamMember>.Success(this);
     }
+
+    public Result<TeamMember> Deactivate()
+    {
+        IsActive = false;
+        return Result<TeamMember>.Success(this);
+    }
+
+    public Result<TeamMember> Activate()
+    {
+        IsActive = true;
+        return Result<TeamMember>.Success(this);
+    }
 }

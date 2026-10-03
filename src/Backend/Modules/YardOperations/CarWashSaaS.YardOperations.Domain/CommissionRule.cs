@@ -55,4 +55,15 @@ public sealed class CommissionRule : IMustHaveTenant
 
         return Result<CommissionRule>.Success(new CommissionRule(Guid.CreateVersion7(), tenantId, normalizedServiceName, normalizedRoleName, percentage));
     }
+
+    public Result<CommissionRule> UpdatePercentage(decimal percentage)
+    {
+        if (percentage < 0m || percentage > 100m)
+        {
+            return Result<CommissionRule>.Failure(new Error("commission_rule.percentage.invalid", "Commission percentage must be between 0 and 100.", ErrorType.Validation));
+        }
+
+        Percentage = percentage;
+        return Result<CommissionRule>.Success(this);
+    }
 }

@@ -14,6 +14,7 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<CustomerVehicleApiClient>();
 builder.Services.AddScoped<StoreProfileApiClient>();
 builder.Services.AddScoped<ServiceCatalogApiClient>();
+builder.Services.AddScoped<YardSetupApiClient>();
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
 var authority = builder.Configuration["Authentication:Authority"];

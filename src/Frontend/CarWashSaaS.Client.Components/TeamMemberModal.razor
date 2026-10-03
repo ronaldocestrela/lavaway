@@ -1,0 +1,123 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="modal-title" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">EQUIPE &amp; COLABORADORES</span>
+                    <h2 id="modal-title">@(Model.Id.HasValue ? "Editar Colaborador" : "Novo Colaborador")</h2>
+                </div>
+                <button type="button" class="close-btn" @onclick="HandleCancel" aria-label="Fechar">×</button>
+            </header>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="feedback feedback-error" role="alert">
+                        <span class="feedback-symbol">!</span>
+                        <div class="feedback-text">@ErrorMessage</div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="member-name" class="form-label">Nome Completo *</label>
+                    <input id="member-name"
+                           type="text"
+                           class="form-control"
+                           placeholder="Ex.: Carlos Eduardo Santos"
+                           maxlength="200"
+                           @bind="Model.FullName" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Função / Cargo *</label>
+                    <div class="role-chips">
+                        @foreach (var role in DefaultRoles)
+                        {
+                            var isSelected = string.Equals(Model.Role, role, StringComparison.OrdinalIgnoreCase);
+                            <button type="button"
+                                    class="role-chip @(isSelected ? "is-selected" : "")"
+                                    @onclick="() => Model.Role = role">
+                                <span>@role</span>
+                            </button>
+                        }
+                    </div>
+                    <input id="member-role"
+                           type="text"
+                           class="form-control mt-2"
+                           placeholder="Ou digite outra função personalizada"
+                           maxlength="80"
+                           @bind="Model.Role" />
+                </div>
+
+                <div class="form-group">
+                    <label for="member-email" class="form-label">E-mail (Opcional)</label>
+                    <input id="member-email"
+                           type="email"
+                           class="form-control"
+                           placeholder="Ex.: carlos@lava.com"
+                           maxlength="200"
+                           @bind="Model.Email" />
+                    <span class="form-hint">Usado para identificação de repasses e login futuro.</span>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-outline" @onclick="HandleCancel" disabled="@IsBusy">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@IsBusy" id="btn-save-member">
+                    <span>@(IsBusy ? "Salvando..." : (Model.Id.HasValue ? "Atualizar Colaborador" : "Cadastrar Colaborador"))</span>
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public TeamMemberFormModel Model { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<TeamMemberFormModel> OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    private static readonly string[] DefaultRoles =
+    [
+        "Lavador",
+        "Secador",
+        "Polidor",
+        "Detailer",
+        "Encarregado",
+        "Gerente de Pátio"
+    ];
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleSave()
+    {
+        if (string.IsNullOrWhiteSpace(Model.FullName) || string.IsNullOrWhiteSpace(Model.Role))
+        {
+            return;
+        }
+
+        await OnSave.InvokeAsync(Model);
+    }
+}
