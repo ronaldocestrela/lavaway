@@ -68,8 +68,9 @@ h1 { margin: 10px 0 6px; color: #20352f; font: 800 34px/1.15 'Manrope', sans-ser
 .vehicle-selected { margin-left: auto; color: #557645; font: 600 8px 'IBM Plex Mono', monospace; }
 .button-outline { width: 100%; border-color: #dce6dd; color: #3c6550; background: white; }
 .button-outline:hover { border-color: #abc5b2; background: #f7faf7; }
-.add-vehicle-button { margin-top: 16px; }
-.selection-note { margin-top: 11px; padding: 10px 11px; border-left: 2px solid #c6f277; color: #677c6d; background: #f7faf5; font-size: 10px; line-height: 1.45; }
+.selection-ready-container { margin-top: 12px; display: grid; gap: 10px; }
+.selection-note { padding: 10px 11px; border-left: 2px solid #c6f277; color: #677c6d; background: #f7faf5; font-size: 10px; line-height: 1.45; border-radius: 0 4px 4px 0; }
+.advance-wo-button { width: 100%; }
 .detail-placeholder { min-height: 194px; display: grid; justify-items: center; align-content: center; gap: 15px; border: 1px dashed #cad7cc; border-radius: 7px; background: rgba(255,255,255,.4); }
 .placeholder-orbit { width: 43px; height: 43px; position: relative; display: grid; place-items: center; border: 1px solid #cbd9cd; border-radius: 50%; }
 .placeholder-orbit span { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #d87860; }

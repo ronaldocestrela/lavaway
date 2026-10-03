@@ -12,6 +12,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<CustomerVehicleApiClient>();
+builder.Services.AddScoped<ReceptionSessionState>();
 builder.Services.AddScoped<StoreProfileApiClient>();
 builder.Services.AddScoped<ServiceCatalogApiClient>();
 builder.Services.AddScoped<YardSetupApiClient>();

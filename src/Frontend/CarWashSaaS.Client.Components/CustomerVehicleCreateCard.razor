@@ -1,0 +1,61 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="detail-panel form-panel">
+    <div class="detail-kicker"><span class="detail-status"></span> NOVO CADASTRO</div>
+    <h2>Cliente e veículo</h2>
+    <p class="form-intro">Os dois registros serão salvos juntos.</p>
+    <form class="entry-form" @onsubmit="HandleSubmit" @onsubmit:preventDefault>
+        <label class="field">
+            <span>Nome do cliente</span>
+            <input id="input-customer-name" @bind="Name" maxlength="200" autocomplete="name" placeholder="Ex.: Lucas Santos" required />
+        </label>
+        <label class="field">
+            <span>Telefone</span>
+            <input id="input-customer-phone" @bind="Phone" inputmode="tel" maxlength="32" autocomplete="tel" placeholder="(11) 98765-4321" required />
+        </label>
+        <label class="field">
+            <span>Placa do veículo</span>
+            <input id="input-vehicle-plate" @bind="Plate" maxlength="10" placeholder="ABC-1D23" autocomplete="off" required />
+        </label>
+        <label class="field">
+            <span>Porte</span>
+            <select id="select-vehicle-size" @bind="Size">
+                <option value="HatchSedan">Hatch / Sedan</option>
+                <option value="Suv">SUV</option>
+                <option value="PickupVan">Picape / Van</option>
+                <option value="Motorcycle">Moto</option>
+            </select>
+        </label>
+        <div class="form-actions">
+            <button id="btn-cancel-create" class="button button-quiet" type="button" @onclick="HandleCancel" disabled="@IsSaving">Cancelar</button>
+            <button id="btn-submit-create" class="button button-primary" type="submit" disabled="@IsSaving">
+                @(IsSaving ? "Salvando..." : "Salvar cadastro")
+            </button>
+        </div>
+    </form>
+</div>
+
+@code {
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public string Phone { get; set; } = string.Empty;
+    [Parameter] public string Plate { get; set; } = string.Empty;
+    [Parameter] public string Size { get; set; } = "HatchSedan";
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public EventCallback<CreateCustomerWithVehicleRequest> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(Name) || string.IsNullOrWhiteSpace(Phone) || string.IsNullOrWhiteSpace(Plate))
+        {
+            return;
+        }
+
+        await OnSubmit.InvokeAsync(new CreateCustomerWithVehicleRequest(Name, Phone, Plate, Size));
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}

@@ -1,0 +1,52 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="detail-panel form-panel">
+    <div class="detail-kicker"><span class="detail-status"></span> NOVO VEÍCULO</div>
+    <h2>@CustomerName</h2>
+    <p class="form-intro">Vincular outro veículo a este cliente.</p>
+    <form class="entry-form" @onsubmit="HandleSubmit" @onsubmit:preventDefault>
+        <label class="field">
+            <span>Placa</span>
+            <input id="input-add-plate" @bind="Plate" maxlength="10" placeholder="ABC-1D23" autocomplete="off" required />
+        </label>
+        <label class="field">
+            <span>Porte</span>
+            <select id="select-add-size" @bind="Size">
+                <option value="HatchSedan">Hatch / Sedan</option>
+                <option value="Suv">SUV</option>
+                <option value="PickupVan">Picape / Van</option>
+                <option value="Motorcycle">Moto</option>
+            </select>
+        </label>
+        <div class="form-actions">
+            <button id="btn-cancel-add-vehicle" class="button button-quiet" type="button" @onclick="HandleCancel" disabled="@IsSaving">Cancelar</button>
+            <button id="btn-submit-add-vehicle" class="button button-primary" type="submit" disabled="@IsSaving">
+                @(IsSaving ? "Salvando..." : "Adicionar veículo")
+            </button>
+        </div>
+    </form>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string CustomerName { get; set; } = string.Empty;
+    [Parameter] public string Plate { get; set; } = string.Empty;
+    [Parameter] public string Size { get; set; } = "HatchSedan";
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public EventCallback<AddVehicleToCustomerRequest> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(Plate))
+        {
+            return;
+        }
+
+        await OnSubmit.InvokeAsync(new AddVehicleToCustomerRequest(Plate, Size));
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}

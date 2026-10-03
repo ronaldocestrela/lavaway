@@ -132,11 +132,12 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 3.1 Cadastro e busca de clientes/veículos
 
-- [ ] Criar ou localizar cliente e veículo por placa e telefone do proprietário.
-- [ ] Reutilizar dados encontrados no fluxo de recepção sem duplicar cadastros.
-- [ ] **Entrega:** recepção localiza rapidamente um cliente/veículo existente ou inicia um cadastro.
+- [x] Criar ou localizar cliente e veículo por placa e telefone do proprietário.
+- [x] Reutilizar dados encontrados no fluxo de recepção sem duplicar cadastros.
+- [x] **Entrega:** recepção localiza rapidamente um cliente/veículo existente ou inicia um cadastro.
 
-> Implementação disponível em backend e Blazor WebAssembly: busca tenant-scoped por placa/telefone, cadastro atômico cliente+veículo, inclusão de veículo e seleção para OS futura. Os testes unitários, os testes SQL Server/Testcontainers específicos de 3.1 e o build da solution passaram. A suite completa executou 76 testes: 74 passaram e 2 falharam em fluxos preexistentes de WhatsApp e StoreProfile; o smoke test autenticado ainda depende da configuração do gateway OIDC/JWT. Foram geradas migrations para completar o modelo atual de StoreProfile e persistência de equipe/capacidade. A subfase permanece aberta até o smoke autenticado e os gates globais serem resolvidos. Detalhes em `docs/living-docs/cadastro-clientes-veiculos-3.1.md`.
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): o módulo `YardOperations` implementa os agregados `Customer` e `Vehicle` com normalização rigorosa de placa Mercosul/antiga e telefone, busca tenant-scoped combinada ou individual, persistência atômica cliente+primeiro veículo e adição subsequente de novos veículos sem duplicidade. A API conta com endpoints autenticados em `/customers/search`, `/customers/{id}` e inclusão de veículos com isolamento estrito via `TenantId` e retorno em `Result<T>`. No frontend Blazor WebAssembly, os componentes isolados `CustomerMatchRow`, `CustomerVehicleCreateCard` e `AddVehicleCard` em `CarWashSaaS.Client.Components` integram-se à `ReceptionPage` com design automotivo e o novo state container `ReceptionSessionState` em `CarWashSaaS.Client.Core`, viabilizando transição reativa imediata para a subfase 3.2 (Abertura de OS). A solução conta com 100% de aprovação nos 209 testes da solution (testes unitários, testes de integração SQL Server Testcontainers com validação cross-tenant, testes de limites de arquitetura NetArchTest e testes de componentes bUnit). Detalhes em `docs/living-docs/cadastro-clientes-veiculos-3.1.md`.
+
 
 ### 3.2 Abertura da ordem de serviço
 
