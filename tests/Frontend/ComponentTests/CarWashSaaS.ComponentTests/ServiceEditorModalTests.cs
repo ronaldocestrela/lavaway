@@ -98,4 +98,33 @@ public sealed class ServiceEditorModalTests : BunitContext
 
         Assert.True(wasCancelled);
     }
+
+    [Fact]
+    public void Render_ShouldNotDisplayErrorMessage_WhenErrorMessageIsNullOrWhiteSpace()
+    {
+        var model = ServiceFormModel.CreateDefault();
+
+        var cut = Render<ServiceEditorModal>(parameters => parameters
+            .Add(p => p.IsVisible, true)
+            .Add(p => p.Model, model)
+            .Add(p => p.ErrorMessage, null));
+
+        Assert.Empty(cut.FindAll(".feedback-error"));
+    }
+
+    [Fact]
+    public void Render_ShouldDisplayErrorMessage_WhenErrorMessageIsProvided()
+    {
+        var model = ServiceFormModel.CreateDefault();
+        const string expectedError = "Erro ao conectar com a API";
+
+        var cut = Render<ServiceEditorModal>(parameters => parameters
+            .Add(p => p.IsVisible, true)
+            .Add(p => p.Model, model)
+            .Add(p => p.ErrorMessage, expectedError));
+
+        var feedback = cut.Find(".feedback-error");
+        Assert.NotNull(feedback);
+        Assert.Contains(expectedError, feedback.TextContent);
+    }
 }

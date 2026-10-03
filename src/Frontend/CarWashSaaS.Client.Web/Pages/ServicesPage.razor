@@ -138,14 +138,15 @@
             </div>
         }
     }
-
-    <ServiceEditorModal IsVisible="_isModalVisible"
-                        Model="_modalModel"
-                        IsSaving="_isSaving"
-                        ErrorMessage="_modalErrorMessage"
-                        OnCancel="CloseModal"
-                        OnSave="HandleSaveService" />
 </section>
+
+<!-- MODAL SERVIÇO -->
+<ServiceEditorModal IsVisible="@_isModalVisible"
+                    Model="@_modalModel"
+                    IsSaving="@_isSaving"
+                    ErrorMessage="@_modalErrorMessage"
+                    OnCancel="CloseModal"
+                    OnSave="HandleSaveService" />
 
 @code {
     private List<ServiceDto> _services = [];
