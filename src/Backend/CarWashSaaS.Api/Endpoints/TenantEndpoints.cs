@@ -3,6 +3,8 @@ using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Tenants.Application;
 using CarWashSaaS.Tenants.Domain;
+using CarWashSaaS.Tenants.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace CarWashSaaS.Api.Endpoints;
 
@@ -87,9 +89,7 @@ public static class TenantEndpoints
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
         group.MapPost("/profile/logo", async (
-            IFormFile? logoFile,
-            string? brandPrimaryColor,
-            string? brandSecondaryColor,
+            HttpRequest request,
             ICurrentTenantAccessor currentTenantAccessor,
             StoreProfileApplicationService service,
             TenantBrandingStorageService storageService,
@@ -101,12 +101,23 @@ public static class TenantEndpoints
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
+            if (!request.HasFormContentType)
+            {
+                return Results.BadRequest(new { code = "store_profile.form.invalid", description = "Multipart form data is required." });
+            }
+
+            var form = await request.ReadFormAsync(ct);
+            var logoFile = form.Files.GetFile("logoFile") ?? form.Files.FirstOrDefault();
+
             if (logoFile is null || logoFile.Length == 0)
             {
                 return Results.BadRequest(new { code = "store_profile.logo.required", description = "A logo file is required." });
             }
 
-            var profileResult = await service.GetAsync(tenantId);
+            var brandPrimaryColor = form["brandPrimaryColor"].ToString();
+            var brandSecondaryColor = form["brandSecondaryColor"].ToString();
+
+            var profileResult = await service.GetAsync(tenantId, ct);
             if (!profileResult.IsSuccess)
             {
                 return profileResult.Error!.Type switch
@@ -138,7 +149,7 @@ public static class TenantEndpoints
                 string.IsNullOrWhiteSpace(brandPrimaryColor) ? existingProfile.BrandPrimaryColor : brandPrimaryColor,
                 string.IsNullOrWhiteSpace(brandSecondaryColor) ? existingProfile.BrandSecondaryColor : brandSecondaryColor);
 
-            var updateResult = await service.UpdateAsync(tenantId, updatedCommand);
+            var updateResult = await service.UpdateAsync(tenantId, updatedCommand, ct);
             if (!updateResult.IsSuccess)
             {
                 return updateResult.Error!.Type switch
@@ -157,27 +168,32 @@ public static class TenantEndpoints
 
         group.MapGet("/profile/logo/{fileName}", async (
             string fileName,
-            ICurrentTenantAccessor currentTenantAccessor,
-            StoreProfileApplicationService service,
+            TenantsDbContext dbContext,
             TenantBrandingStorageService storageService,
             CancellationToken ct) =>
         {
-            if (currentTenantAccessor.TenantId is not Guid tenantId)
-            {
-                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
-            }
-
-            var profileResult = await service.GetAsync(tenantId, ct);
-            if (!profileResult.IsSuccess || !string.Equals(profileResult.Value!.LogoUrl, $"/tenants/profile/logo/{fileName}", StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(fileName))
             {
                 return Results.NotFound();
             }
 
-            var logo = await storageService.GetLogoAsync(tenantId, fileName, ct);
+            var safeFileName = Path.GetFileName(fileName);
+            var expectedPath = $"/tenants/profile/logo/{safeFileName}";
+            var profile = await dbContext.StoreProfiles
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.LogoUrl == expectedPath, ct);
+
+            if (profile is null)
+            {
+                return Results.NotFound();
+            }
+
+            var logo = await storageService.GetLogoAsync(profile.TenantId, safeFileName, ct);
             return logo is null
                 ? Results.NotFound()
                 : Results.File(logo.Content, logo.ContentType);
-        }).RequireAuthorization();
+        }).AllowAnonymous();
 
         group.MapGet("/{tenantId:guid}/public/logo", async (
             Guid tenantId,

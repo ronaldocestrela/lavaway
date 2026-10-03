@@ -62,6 +62,25 @@ public sealed class StoreProfileApiClient(HttpClient httpClient)
         return await ReadResponseAsync<StoreProfileDto>(response, ct);
     }
 
+    public string? BuildLogoUrl(string? logoPath)
+    {
+        if (string.IsNullOrWhiteSpace(logoPath))
+        {
+            return null;
+        }
+
+        if (logoPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            logoPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            logoPath.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            return logoPath;
+        }
+
+        var baseUri = httpClient.BaseAddress?.ToString().TrimEnd('/') ?? string.Empty;
+        var relative = logoPath.StartsWith('/') ? logoPath : $"/{logoPath}";
+        return $"{baseUri}{relative}";
+    }
+
     private static string GetMediaType(string fileName)
     {
         var ext = Path.GetExtension(fileName).ToLowerInvariant();

@@ -1,6 +1,9 @@
 using System.Net;
 using System.Text;
+using CarWashSaaS.WhatsApp.Application;
 using CarWashSaaS.WhatsApp.Infrastructure;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CarWashSaaS.UnitTests.WhatsApp;
 
@@ -28,9 +31,45 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
         Assert.Equal("data:image/png;base64,test-qr", result.QrCodeValue);
     }
 
+    [Fact]
+    public void DependencyInjection_Should_Resolve_EvolutionApiWhatsAppPairingProvider_Without_Ambiguity()
+    {
+        var services = new ServiceCollection();
+        var configuration = new StubConfiguration(new Dictionary<string, string?>
+        {
+            ["WhatsApp:EvolutionApi:BaseUrl"] = "http://localhost:8080/",
+            ["WhatsApp:EvolutionApi:ApiKey"] = "test-api-key",
+            ["WhatsApp:EvolutionApi:InstanceNamePrefix"] = "lavaway"
+        });
+
+        services.AddSingleton<IConfiguration>(configuration);
+        using var provider = services.BuildServiceProvider();
+
+        using var httpClient = new HttpClient();
+        var factory = ActivatorUtilities.CreateFactory(typeof(EvolutionApiWhatsAppPairingProvider), [typeof(HttpClient)]);
+        var instance = factory(provider, [httpClient]);
+
+        Assert.NotNull(instance);
+        Assert.IsType<EvolutionApiWhatsAppPairingProvider>(instance);
+    }
+
+    private sealed class StubConfiguration(Dictionary<string, string?> values) : IConfiguration
+    {
+        public string? this[string key]
+        {
+            get => values.TryGetValue(key, out var v) ? v : null;
+            set => values[key] = value;
+        }
+
+        public IEnumerable<IConfigurationSection> GetChildren() => [];
+        public Microsoft.Extensions.Primitives.IChangeToken GetReloadToken() => throw new NotSupportedException();
+        public IConfigurationSection GetSection(string key) => throw new NotSupportedException();
+    }
+
     private sealed class StubHttpMessageHandler(HttpResponseMessage response) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromResult(response);
     }
 }
+

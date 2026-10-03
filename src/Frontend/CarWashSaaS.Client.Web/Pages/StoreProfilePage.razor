@@ -66,7 +66,7 @@
                         <div class="store-badge">
                             @if (!string.IsNullOrWhiteSpace(_currentProfile.LogoUrl))
                             {
-                                <img src="@_currentProfile.LogoUrl" alt="Logo @_currentProfile.TradeName" class="store-profile-logo-img" />
+                                <img src="@Api.BuildLogoUrl(_currentProfile.LogoUrl)" alt="Logo @_currentProfile.TradeName" class="store-profile-logo-img" />
                             }
                             else
                             {
@@ -153,7 +153,7 @@
                         <BrandReceiptPreview TradeName="@_currentProfile.TradeName"
                                              Phone="@_currentProfile.Phone"
                                              Address="@($"{_currentProfile.Street}, {_currentProfile.City} - {_currentProfile.State}")"
-                                             LogoUrl="@_currentProfile.LogoUrl"
+                                             LogoUrl="@Api.BuildLogoUrl(_currentProfile.LogoUrl)"
                                              PrimaryColor="@_currentProfile.BrandPrimaryColor"
                                              SecondaryColor="@_currentProfile.BrandSecondaryColor" />
                     </div>
@@ -276,12 +276,16 @@
                 _successMessage = "Dados cadastrais atualizados com sucesso!";
             }
 
-            // Se o usuário selecionou uma nova logo no wizard, envia o arquivo
-            if (_wizardRef?.SelectedLogoFile is not null)
+            // Se o usuário selecionou uma nova logo no wizard, envia os bytes carregados
+            if (_wizardRef?.SelectedLogoBytes is { Length: > 0 } logoBytes &&
+                !string.IsNullOrWhiteSpace(_wizardRef.SelectedLogoFileName))
             {
-                var file = _wizardRef.SelectedLogoFile;
-                using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
-                _currentProfile = await Api.UploadLogoAsync(stream, file.Name, model.BrandPrimaryColor, model.BrandSecondaryColor);
+                using var stream = new MemoryStream(logoBytes);
+                _currentProfile = await Api.UploadLogoAsync(
+                    stream,
+                    _wizardRef.SelectedLogoFileName,
+                    model.BrandPrimaryColor,
+                    model.BrandSecondaryColor);
             }
 
             _formModel = StoreProfileFormModel.FromDto(_currentProfile);

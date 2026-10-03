@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using CarWashSaaS.WhatsApp.Application;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CarWashSaaS.WhatsApp.Infrastructure;
 
@@ -12,6 +13,7 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
     private readonly string _apiKey;
     private readonly string _instanceNamePrefix;
 
+    [ActivatorUtilitiesConstructor]
     public EvolutionApiWhatsAppPairingProvider(HttpClient httpClient, IConfiguration configuration)
         : this(httpClient,
             configuration["WhatsApp:EvolutionApi:ApiKey"] ?? throw new InvalidOperationException("WhatsApp:EvolutionApi:ApiKey must be configured."),

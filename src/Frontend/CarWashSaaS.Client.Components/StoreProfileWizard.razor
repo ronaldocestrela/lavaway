@@ -508,6 +508,8 @@
     public string? ErrorMessage { get; set; }
 
     public IBrowserFile? SelectedLogoFile { get; private set; }
+    public byte[]? SelectedLogoBytes { get; private set; }
+    public string? SelectedLogoFileName { get; private set; }
     private string? _selectedFileName;
     private string? _previewLogoDataUrl;
 
@@ -550,12 +552,14 @@
         try
         {
             SelectedLogoFile = file;
+            SelectedLogoFileName = file.Name;
             _selectedFileName = $"{file.Name} ({(file.Size / 1024):N0} KB)";
 
             using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
-            var base64 = Convert.ToBase64String(ms.ToArray());
+            SelectedLogoBytes = ms.ToArray();
+            var base64 = Convert.ToBase64String(SelectedLogoBytes);
             var mime = file.ContentType;
             if (string.IsNullOrWhiteSpace(mime))
             {
@@ -581,6 +585,8 @@
     private void ClearSelectedLogo()
     {
         SelectedLogoFile = null;
+        SelectedLogoBytes = null;
+        SelectedLogoFileName = null;
         _selectedFileName = null;
         _previewLogoDataUrl = null;
         Model.LogoUrl = null;
