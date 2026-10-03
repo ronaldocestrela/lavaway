@@ -119,7 +119,36 @@
                 </section>
 
                 <aside class="detail-column" aria-label="Cliente selecionado">
-                    @if (SelectedCustomer is not null)
+                    @if (_showAddVehicleForm && SelectedCustomer is not null)
+                    {
+                        <div class="detail-panel form-panel">
+                            <div class="detail-kicker"><span class="detail-status"></span> NOVO VEÍCULO</div>
+                            <h2>@SelectedCustomer.CustomerName</h2>
+                            <p class="form-intro">Vincular outro veículo a este cliente.</p>
+                            <form class="entry-form" @onsubmit="AddVehicleAsync" @onsubmit:preventDefault>
+                                <label class="field">
+                                    <span>Placa</span>
+                                    <input @bind="_newVehiclePlate" maxlength="10" placeholder="ABC-1D23" autocomplete="off" required />
+                                </label>
+                                <label class="field">
+                                    <span>Porte</span>
+                                    <select @bind="_newVehicleSize">
+                                        <option value="HatchSedan">Hatch / Sedan</option>
+                                        <option value="Suv">SUV</option>
+                                        <option value="PickupVan">Picape / Van</option>
+                                        <option value="Motorcycle">Moto</option>
+                                    </select>
+                                </label>
+                                <div class="form-actions">
+                                    <button class="button button-quiet" type="button" @onclick="CloseForms">Cancelar</button>
+                                    <button class="button button-primary" type="submit" disabled="@_isSaving">
+                                        @(_isSaving ? "Salvando..." : "Adicionar veículo")
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+                    else if (SelectedCustomer is not null)
                     {
                         <div class="detail-panel">
                             <div class="detail-kicker"><span class="detail-status"></span> CADASTRO SELECIONADO</div>
@@ -194,35 +223,6 @@
                                     <button class="button button-quiet" type="button" @onclick="CloseForms">Cancelar</button>
                                     <button class="button button-primary" type="submit" disabled="@_isSaving">
                                         @(_isSaving ? "Salvando..." : "Salvar cadastro")
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    }
-                    else if (_showAddVehicleForm && SelectedCustomer is not null)
-                    {
-                        <div class="detail-panel form-panel">
-                            <div class="detail-kicker"><span class="detail-status"></span> NOVO VEÍCULO</div>
-                            <h2>@SelectedCustomer.CustomerName</h2>
-                            <p class="form-intro">Vincular outro veículo a este cliente.</p>
-                            <form class="entry-form" @onsubmit="AddVehicleAsync" @onsubmit:preventDefault>
-                                <label class="field">
-                                    <span>Placa</span>
-                                    <input @bind="_newVehiclePlate" maxlength="10" placeholder="ABC-1D23" autocomplete="off" required />
-                                </label>
-                                <label class="field">
-                                    <span>Porte</span>
-                                    <select @bind="_newVehicleSize">
-                                        <option value="HatchSedan">Hatch / Sedan</option>
-                                        <option value="Suv">SUV</option>
-                                        <option value="PickupVan">Picape / Van</option>
-                                        <option value="Motorcycle">Moto</option>
-                                    </select>
-                                </label>
-                                <div class="form-actions">
-                                    <button class="button button-quiet" type="button" @onclick="CloseForms">Cancelar</button>
-                                    <button class="button button-primary" type="submit" disabled="@_isSaving">
-                                        @(_isSaving ? "Salvando..." : "Adicionar veículo")
                                     </button>
                                 </div>
                             </form>
@@ -367,6 +367,7 @@
         _showAddVehicleForm = true;
         _showCreateForm = false;
         _newVehiclePlate = string.Empty;
+        _newVehicleSize = "HatchSedan";
     }
 
     private void CloseForms()
