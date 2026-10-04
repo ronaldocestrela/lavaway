@@ -265,6 +265,25 @@
     color: #94a3b8;
 }
 
+.btn-gallery-trigger {
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    color: #d8b4fe;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-gallery-trigger:hover {
+    background: rgba(168, 85, 247, 0.28);
+    color: #f3e8ff;
+    border-color: rgba(168, 85, 247, 0.6);
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
 /* Actions */
 .card-actions {
     display: flex;

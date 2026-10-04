@@ -8,4 +8,5 @@ public interface IWorkOrderRepository
     Task<IReadOnlyCollection<WorkOrder>> ListRecentAsync(Guid tenantId, int limit = 20, CancellationToken ct = default);
     Task<IReadOnlyCollection<WorkOrder>> ListActiveAsync(Guid tenantId, CancellationToken ct = default);
     Task AddAsync(WorkOrder workOrder, CancellationToken ct = default);
+    void Update(WorkOrder workOrder);
 }

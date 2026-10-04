@@ -11,8 +11,19 @@ public sealed class WorkOrderApplicationService(
     IUnitOfWork unitOfWork,
     ITeamMemberRepository? teamMemberRepository = null,
     IYardCapacityRepository? yardCapacityRepository = null,
-    IYardRealtimeNotifier? realtimeNotifier = null)
+    IYardRealtimeNotifier? realtimeNotifier = null,
+    ITenantObjectStorage? tenantObjectStorage = null,
+    IVehicleInspectionRepository? vehicleInspectionRepository = null)
 {
+    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    };
+
+    private const long MaxPhotoSizeBytes = 10 * 1024 * 1024; // 10 MB
+
     public async Task<Result<WorkOrderDto>> CreateAsync(
         Guid tenantId,
         CreateWorkOrderCommand command,
@@ -84,7 +95,8 @@ public sealed class WorkOrderApplicationService(
                 service.Name,
                 matchingPrice.Amount,
                 matchingPrice.EstimatedDurationMinutes,
-                itemInput.Quantity);
+                itemInput.Quantity,
+                service.Category);
 
             if (!itemResult.IsSuccess)
             {
@@ -384,6 +396,286 @@ public sealed class WorkOrderApplicationService(
             cards.Count,
             totalBoxes,
             occupiedBoxes));
+    }
+
+    public async Task<Result<WorkOrderComparisonGalleryDto>> GetComparisonGalleryAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || workOrderId == Guid.Empty)
+        {
+            return Result<WorkOrderComparisonGalleryDto>.Failure(new Error("work_order.id.required", "Tenant e ID da ordem de serviço são obrigatórios.", ErrorType.Validation));
+        }
+
+        var workOrder = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (workOrder is null)
+        {
+            return Result<WorkOrderComparisonGalleryDto>.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        var customer = await customerRepository.GetByIdAsync(tenantId, workOrder.CustomerId, ct);
+        var vehicle = await vehicleRepository.GetByIdAsync(tenantId, workOrder.VehicleId, ct);
+
+        VehicleInspection? inspection = null;
+        if (vehicleInspectionRepository is not null)
+        {
+            inspection = await vehicleInspectionRepository.GetByWorkOrderIdAsync(tenantId, workOrderId, ct);
+        }
+
+        var isEligible = workOrder.IsEligibleForPostServicePhotos();
+        var eligibleServices = workOrder.Items
+            .Where(PostServiceEligibilityRule.IsEligible)
+            .Select(i => new WorkOrderItemDto(i.Id, i.ServiceId, i.ServiceName, i.UnitPrice, i.EstimatedDurationMinutes, i.Quantity, i.TotalAmount, i.TotalDurationMinutes))
+            .ToList();
+
+        var allBeforePhotos = inspection?.Photos ?? [];
+        var comparisonPairs = new List<PostServiceComparisonPairDto>();
+
+        foreach (var postPhoto in workOrder.PostServicePhotos)
+        {
+            InspectionPhoto? matchedBefore = null;
+            if (postPhoto.BeforeInspectionPhotoId.HasValue)
+            {
+                matchedBefore = allBeforePhotos.FirstOrDefault(p => p.Id == postPhoto.BeforeInspectionPhotoId.Value);
+            }
+
+            if (matchedBefore is null && postPhoto.Category != InspectionPhotoCategory.Other)
+            {
+                matchedBefore = allBeforePhotos.FirstOrDefault(p => p.Category == postPhoto.Category);
+            }
+
+            var serviceItem = postPhoto.WorkOrderItemId.HasValue
+                ? workOrder.Items.FirstOrDefault(i => i.Id == postPhoto.WorkOrderItemId.Value)
+                : null;
+
+            InspectionPhotoDto? beforeDto = matchedBefore is null
+                ? null
+                : new InspectionPhotoDto(
+                    matchedBefore.Id,
+                    matchedBefore.Category,
+                    matchedBefore.FileName,
+                    matchedBefore.ContentType,
+                    matchedBefore.SizeBytes,
+                    matchedBefore.DamageId,
+                    matchedBefore.UploadedAtUtc);
+
+            var afterDto = new PostServicePhotoDto(
+                postPhoto.Id,
+                postPhoto.WorkOrderId,
+                postPhoto.WorkOrderItemId,
+                serviceItem?.ServiceName,
+                postPhoto.BeforeInspectionPhotoId,
+                postPhoto.Category,
+                postPhoto.Title,
+                postPhoto.FileName,
+                postPhoto.ContentType,
+                postPhoto.SizeBytes,
+                postPhoto.UploadedAtUtc,
+                postPhoto.Notes);
+
+            comparisonPairs.Add(new PostServiceComparisonPairDto(
+                postPhoto.WorkOrderItemId,
+                serviceItem?.ServiceName,
+                postPhoto.Category,
+                postPhoto.Title,
+                beforeDto,
+                afterDto,
+                postPhoto.Notes));
+        }
+
+        var pairedBeforeIds = comparisonPairs
+            .Where(cp => cp.BeforePhoto is not null)
+            .Select(cp => cp.BeforePhoto!.Id)
+            .ToHashSet();
+
+        var unpairedBefore = allBeforePhotos
+            .Where(p => !pairedBeforeIds.Contains(p.Id))
+            .Select(p => new InspectionPhotoDto(p.Id, p.Category, p.FileName, p.ContentType, p.SizeBytes, p.DamageId, p.UploadedAtUtc))
+            .ToList();
+
+        var unpairedAfter = comparisonPairs
+            .Where(cp => cp.BeforePhoto is null)
+            .Select(cp => cp.AfterPhoto)
+            .ToList();
+
+        var gallery = new WorkOrderComparisonGalleryDto(
+            workOrder.Id,
+            customer?.Name ?? "Cliente",
+            vehicle?.Plate ?? string.Empty,
+            vehicle?.Size.ToString() ?? "HatchSedan",
+            workOrder.Status.ToString(),
+            isEligible,
+            eligibleServices,
+            comparisonPairs,
+            unpairedBefore,
+            unpairedAfter);
+
+        return Result<WorkOrderComparisonGalleryDto>.Success(gallery);
+    }
+
+    public async Task<Result<PostServicePhotoDto>> UploadPostServicePhotoAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        Guid? workOrderItemId,
+        Guid? beforeInspectionPhotoId,
+        InspectionPhotoCategory category,
+        string title,
+        Stream content,
+        string fileName,
+        string contentType,
+        long sizeBytes,
+        string? notes = null,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || workOrderId == Guid.Empty)
+        {
+            return Result<PostServicePhotoDto>.Failure(new Error("work_order.id.required", "Tenant e ID da ordem de serviço são obrigatórios.", ErrorType.Validation));
+        }
+
+        if (tenantObjectStorage is null)
+        {
+            return Result<PostServicePhotoDto>.Failure(new Error("storage.unavailable", "Serviço de armazenamento não disponível.", ErrorType.Validation));
+        }
+
+        var workOrder = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (workOrder is null)
+        {
+            return Result<PostServicePhotoDto>.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        if (!AllowedContentTypes.Contains(contentType))
+        {
+            return Result<PostServicePhotoDto>.Failure(new Error("photo.content_type.invalid", "Formato de imagem inválido. Formatos suportados: JPEG, PNG e WebP.", ErrorType.Validation));
+        }
+
+        if (sizeBytes <= 0 || sizeBytes > MaxPhotoSizeBytes)
+        {
+            return Result<PostServicePhotoDto>.Failure(new Error("photo.size.exceeded", $"O tamanho da foto deve ser entre 1 byte e {MaxPhotoSizeBytes / (1024 * 1024)}MB.", ErrorType.Validation));
+        }
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(extension) || extension is not (".jpg" or ".jpeg" or ".png" or ".webp"))
+        {
+            extension = contentType switch
+            {
+                "image/png" => ".png",
+                "image/webp" => ".webp",
+                _ => ".jpg"
+            };
+        }
+
+        var uniqueFileName = $"{Guid.CreateVersion7():N}{extension}";
+        var storagePath = $"post-service-photos/{workOrder.Id}/{uniqueFileName}";
+
+        await tenantObjectStorage.PutAsync(tenantId, "post-service-photos", uniqueFileName, content, contentType, ct);
+
+        var addResult = workOrder.AddPostServicePhoto(
+            workOrderItemId,
+            beforeInspectionPhotoId,
+            category,
+            title,
+            storagePath,
+            uniqueFileName,
+            contentType,
+            sizeBytes,
+            notes);
+
+        if (!addResult.IsSuccess)
+        {
+            return Result<PostServicePhotoDto>.Failure(addResult.Error!);
+        }
+
+        workOrderRepository.Update(workOrder);
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<PostServicePhotoDto>.Failure(saveResult.Error!);
+        }
+
+        var photo = addResult.Value!;
+        var serviceItem = photo.WorkOrderItemId.HasValue
+            ? workOrder.Items.FirstOrDefault(i => i.Id == photo.WorkOrderItemId.Value)
+            : null;
+
+        return Result<PostServicePhotoDto>.Success(new PostServicePhotoDto(
+            photo.Id,
+            photo.WorkOrderId,
+            photo.WorkOrderItemId,
+            serviceItem?.ServiceName,
+            photo.BeforeInspectionPhotoId,
+            photo.Category,
+            photo.Title,
+            photo.FileName,
+            photo.ContentType,
+            photo.SizeBytes,
+            photo.UploadedAtUtc,
+            photo.Notes));
+    }
+
+    public async Task<Result<StoredObject>> GetPostServicePhotoStreamAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        Guid photoId,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || workOrderId == Guid.Empty || photoId == Guid.Empty)
+        {
+            return Result<StoredObject>.Failure(new Error("work_order.id.required", "Tenant, ID da OS e ID da foto são obrigatórios.", ErrorType.Validation));
+        }
+
+        if (tenantObjectStorage is null)
+        {
+            return Result<StoredObject>.Failure(new Error("storage.unavailable", "Serviço de armazenamento não disponível.", ErrorType.Validation));
+        }
+
+        var workOrder = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (workOrder is null)
+        {
+            return Result<StoredObject>.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        var photo = workOrder.PostServicePhotos.FirstOrDefault(p => p.Id == photoId);
+        if (photo is null)
+        {
+            return Result<StoredObject>.Failure(new Error("post_service_photo.not_found", "Foto pós-serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        var stored = await tenantObjectStorage.GetAsync(tenantId, "post-service-photos", photo.FileName, ct);
+        if (stored is null)
+        {
+            return Result<StoredObject>.Failure(new Error("post_service_photo.file_not_found", "Arquivo da foto não encontrado no armazenamento.", ErrorType.NotFound));
+        }
+
+        return Result<StoredObject>.Success(stored);
+    }
+
+    public async Task<Result> RemovePostServicePhotoAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        Guid photoId,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || workOrderId == Guid.Empty || photoId == Guid.Empty)
+        {
+            return Result.Failure(new Error("work_order.id.required", "Tenant, ID da OS e ID da foto são obrigatórios.", ErrorType.Validation));
+        }
+
+        var workOrder = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (workOrder is null)
+        {
+            return Result.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        var removeResult = workOrder.RemovePostServicePhoto(photoId);
+        if (!removeResult.IsSuccess)
+        {
+            return removeResult;
+        }
+
+        workOrderRepository.Update(workOrder);
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        return saveResult.IsSuccess ? Result.Success() : Result.Failure(saveResult.Error!);
     }
 
     private static WorkOrderDto ToDto(WorkOrder order, string customerName, string plate, string vehicleSize) =>

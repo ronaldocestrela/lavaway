@@ -69,6 +69,12 @@
         <button type="button" class="btn-history-trigger" @onclick="HandleViewHistory" title="Ver histórico de etapas">
             <span>&#9201; Histórico</span>
         </button>
+        @if (IsEligibleForPhotos)
+        {
+            <button type="button" class="btn-gallery-trigger" @onclick="HandleViewGallery" title="Fotos Antes e Depois">
+                <span>📸 Antes/Depois</span>
+            </button>
+        }
     </div>
 
     <div class="card-actions">
@@ -101,6 +107,27 @@
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnRewindClicked { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnAssignOperatorClicked { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnViewHistoryClicked { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnComparisonGalleryClicked { get; set; }
+
+    private bool IsEligibleForPhotos =>
+        Card.ServiceNames.Any(name =>
+        {
+            var lower = name.ToLowerInvariant();
+            return lower.Contains("polimento") ||
+                   lower.Contains("vitrificação") ||
+                   lower.Contains("vitrificacao") ||
+                   lower.Contains("detalhamento") ||
+                   lower.Contains("banco") ||
+                   lower.Contains("estofado") ||
+                   lower.Contains("couro") ||
+                   lower.Contains("higienização") ||
+                   lower.Contains("higienizacao");
+        });
+
+    private void HandleViewGallery()
+    {
+        OnComparisonGalleryClicked.InvokeAsync(Card);
+    }
 
     private bool IsDelayed => DateTimeOffset.UtcNow > Card.EstimatedCompletionAtUtc && Card.Status != WorkOrderStatusConstants.ReadyForPickup;
 

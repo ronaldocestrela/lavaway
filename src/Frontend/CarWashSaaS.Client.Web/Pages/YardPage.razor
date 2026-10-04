@@ -42,8 +42,6 @@
             <button type="button" class="btn-retry" @onclick="LoadBoardAsync">Tentar Novamente</button>
         </div>
     }
-    else if (_board is not null)
-    {
         <YardKanbanBoard Board="_board"
                          AvailableOperators="_operators"
                          IsRefreshing="_isRefreshing"
@@ -53,7 +51,18 @@
                          OnErrorDismissed="HandleErrorDismissed"
                          OnStatusChangeRequested="HandleStatusChangeAsync"
                          OnOperatorAssignRequested="HandleOperatorAssignAsync"
+                         OnComparisonGalleryRequested="HandleComparisonGalleryRequested"
                          OnFetchHistory="FetchHistoryAsync" />
+    }
+
+    @if (_selectedGalleryWorkOrderId.HasValue)
+    {
+        <div class="gallery-modal-backdrop" @onclick="CloseComparisonGallery">
+            <div class="gallery-modal-dialog" @onclick:stopPropagation="true">
+                <PhotoComparisonGallery WorkOrderId="_selectedGalleryWorkOrderId.Value"
+                                        OnClose="CloseComparisonGallery" />
+            </div>
+        </div>
     }
 </div>
 
@@ -64,6 +73,7 @@
     private bool _isRefreshing;
     private string? _loadError;
     private string? _actionError;
+    private Guid? _selectedGalleryWorkOrderId;
     private System.Threading.Timer? _pollTimer;
 
     protected override async Task OnInitializedAsync()
@@ -184,6 +194,16 @@
     private void HandleErrorDismissed(YardKanbanBoard.ErrorMessageDismissArgs _)
     {
         _actionError = null;
+    }
+
+    private void HandleComparisonGalleryRequested(WorkOrderKanbanCardDto card)
+    {
+        _selectedGalleryWorkOrderId = card.Id;
+    }
+
+    private void CloseComparisonGallery()
+    {
+        _selectedGalleryWorkOrderId = null;
     }
 
     private void NavigateToReception()

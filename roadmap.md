@@ -167,8 +167,10 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 3.5 Registro de fotos pós-serviço
 
-- [ ] Permitir fotos de "Depois" e associá-las às fotos de entrada para serviços elegíveis (detalhamento, vitrificação e bancos).
-- [ ] **Entrega:** galeria comparativa fica disponível na OS para consulta e envio futuro.
+- [x] Permitir fotos de "Depois" e associá-las às fotos de entrada para serviços elegíveis (detalhamento, vitrificação e bancos).
+- [x] **Entrega:** galeria comparativa fica disponível na OS para consulta e envio futuro.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): o módulo `YardOperations` implementa o registro de fotos de conclusão ("Depois") associadas opcionalmente às fotos de entrada ("Antes") no agregado `WorkOrder` por meio da entidade `PostServicePhoto` (`IMustHaveTenant`, Guid v7 e metadados contextuais). A regra de domínio `PostServiceEligibilityRule` identifica automaticamente serviços elegíveis (polimento/detalhamento, vitrificação e higienização de bancos/interiores) impedindo anexação fora do fluxo operacional ou em ordens inelegíveis. O armazenamento utiliza `ITenantObjectStorage` (MinIO) sob o caminho isolado `tenants/{tenantId}/post-service-photos/{file}`, validando tamanho máximo (10MB) e tipos MIME seguros (`image/jpeg`, `image/png`, `image/webp`). A API expõe endpoints autenticados sob a política `UpdateWorkOrderStatus` em `/work-orders/{id}/comparison-gallery`, `/work-orders/{id}/post-service-photos` (upload multipart, streaming seguro e remoção). No frontend Blazor WebAssembly, o componente interativo `PhotoComparisonGallery` oferece visualização em tela cheia com slider divisor "Antes/Depois" interativo (com recorte CSS preciso), modo lado a lado (*side-by-side*), cartões de fotos avulsas e modal responsivo de captura de fotos otimizado para celulares/tablets, integrado diretamente aos cards do Kanban (`YardKanbanCard` com badge visual `📸 Antes/Depois`) e na página operacional `YardPage`. A solução conta com 100% de aprovação nos 283 testes da solution (testes unitários de domínio, testes de integração SQL Server Testcontainers com validação cross-tenant, testes de limites de arquitetura NetArchTest e testes de componentes bUnit). Detalhes em `docs/living-docs/registro-fotos-pos-servico-3.5.md`.
 
 ---
 

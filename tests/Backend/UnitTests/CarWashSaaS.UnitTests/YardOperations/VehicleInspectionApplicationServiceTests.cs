@@ -170,6 +170,7 @@ public sealed class VehicleInspectionApplicationServiceTests
         }
 
         Task IWorkOrderRepository.AddAsync(WorkOrder workOrder, CancellationToken ct) => Task.CompletedTask;
+        void IWorkOrderRepository.Update(WorkOrder workOrder) { }
 
         // ITenantObjectStorage
         public Task PutAsync(Guid tenantId, string category, string fileName, Stream content, string contentType, CancellationToken ct = default)

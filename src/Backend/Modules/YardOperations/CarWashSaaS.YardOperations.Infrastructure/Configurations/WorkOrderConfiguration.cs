@@ -52,6 +52,7 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
             item.Property(value => value.UnitPrice).HasPrecision(18, 2).IsRequired();
             item.Property(value => value.EstimatedDurationMinutes).IsRequired();
             item.Property(value => value.Quantity).IsRequired();
+            item.Property(value => value.ServiceCategory).HasMaxLength(100);
             item.Ignore(value => value.TotalAmount);
             item.Ignore(value => value.TotalDurationMinutes);
             item.HasIndex(value => new { value.TenantId, value.ServiceId });
@@ -74,7 +75,29 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
             history.HasIndex(h => new { h.TenantId, h.WorkOrderId });
         });
 
+        builder.OwnsMany(order => order.PostServicePhotos, photo =>
+        {
+            photo.ToTable("WorkOrderPostServicePhotos", "yard");
+            photo.WithOwner().HasForeignKey("WorkOrderId");
+            photo.HasKey(p => p.Id);
+            photo.Property(p => p.Id).ValueGeneratedNever();
+            photo.Property(p => p.TenantId).IsRequired();
+            photo.Property(p => p.WorkOrderId).IsRequired();
+            photo.Property(p => p.WorkOrderItemId);
+            photo.Property(p => p.BeforeInspectionPhotoId);
+            photo.Property(p => p.Category).HasConversion<string>().HasMaxLength(32).IsRequired();
+            photo.Property(p => p.Title).HasMaxLength(150).IsRequired();
+            photo.Property(p => p.StoragePath).HasMaxLength(500).IsRequired();
+            photo.Property(p => p.FileName).HasMaxLength(255).IsRequired();
+            photo.Property(p => p.ContentType).HasMaxLength(64).IsRequired();
+            photo.Property(p => p.SizeBytes).IsRequired();
+            photo.Property(p => p.UploadedAtUtc).HasColumnType("datetimeoffset").IsRequired();
+            photo.Property(p => p.Notes).HasMaxLength(500);
+            photo.HasIndex(p => new { p.TenantId, p.WorkOrderId });
+        });
+
         builder.Navigation(order => order.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Navigation(order => order.StatusHistory).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(order => order.PostServicePhotos).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

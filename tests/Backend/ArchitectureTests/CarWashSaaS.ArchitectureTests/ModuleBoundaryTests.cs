@@ -164,7 +164,8 @@ public sealed class ModuleBoundaryTests
             typeof(VehicleInspection),
             typeof(InspectionDamage),
             typeof(InspectionChecklistItem),
-            typeof(InspectionPhoto)
+            typeof(InspectionPhoto),
+            typeof(PostServicePhoto)
         };
 
         Assert.All(tenantOwnedTypes, type =>

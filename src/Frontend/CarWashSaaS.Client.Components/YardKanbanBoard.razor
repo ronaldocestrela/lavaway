@@ -69,7 +69,8 @@
                               OnCardAdvance="HandleCardAdvance"
                               OnCardRewind="HandleCardRewind"
                               OnCardAssignOperator="HandleCardAssignOperator"
-                              OnCardViewHistory="HandleCardViewHistory" />
+                              OnCardViewHistory="HandleCardViewHistory"
+                              OnCardComparisonGallery="HandleCardComparisonGallery" />
         }
     </div>
 
@@ -201,7 +202,10 @@
     [Parameter] public EventCallback<ErrorMessageDismissArgs> OnErrorDismissed { get; set; }
     [Parameter] public EventCallback<WorkOrderStatusChangeArgs> OnStatusChangeRequested { get; set; }
     [Parameter] public EventCallback<WorkOrderOperatorAssignArgs> OnOperatorAssignRequested { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnComparisonGalleryRequested { get; set; }
     [Parameter] public Func<Guid, Task<IReadOnlyCollection<WorkOrderStatusHistoryDto>>>? OnFetchHistory { get; set; }
+
+    private void HandleCardComparisonGallery(WorkOrderKanbanCardDto card) => OnComparisonGalleryRequested.InvokeAsync(card);
 
     private string _searchQuery = string.Empty;
     private Guid? _selectedOperatorFilter;

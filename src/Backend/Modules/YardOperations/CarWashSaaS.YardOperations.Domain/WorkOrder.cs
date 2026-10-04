@@ -6,6 +6,7 @@ public sealed class WorkOrder : IMustHaveTenant
 {
     private readonly List<WorkOrderItem> _items = [];
     private readonly List<WorkOrderStatusHistory> _statusHistory = [];
+    private readonly List<PostServicePhoto> _postServicePhotos = [];
 
     private WorkOrder()
     {
@@ -52,6 +53,7 @@ public sealed class WorkOrder : IMustHaveTenant
 
     public IReadOnlyCollection<WorkOrderItem> Items => _items.AsReadOnly();
     public IReadOnlyCollection<WorkOrderStatusHistory> StatusHistory => _statusHistory.AsReadOnly();
+    public IReadOnlyCollection<PostServicePhoto> PostServicePhotos => _postServicePhotos.AsReadOnly();
 
     public decimal TotalAmount => _items.Sum(item => item.TotalAmount);
     public int EstimatedDurationMinutes => _items.Sum(item => item.TotalDurationMinutes);
@@ -174,5 +176,89 @@ public sealed class WorkOrder : IMustHaveTenant
             notes));
 
         return Result<WorkOrder>.Success(this);
+    }
+
+    public bool IsEligibleForPostServicePhotos() =>
+        _items.Any(PostServiceEligibilityRule.IsEligible);
+
+    public Result<PostServicePhoto> AddPostServicePhoto(
+        Guid? workOrderItemId,
+        Guid? beforeInspectionPhotoId,
+        InspectionPhotoCategory category,
+        string title,
+        string storagePath,
+        string fileName,
+        string contentType,
+        long sizeBytes,
+        string? notes = null)
+    {
+        if (Status == WorkOrderStatus.Waiting)
+        {
+            return Result<PostServicePhoto>.Failure(new Error(
+                "work_order.invalid_status_for_post_service_photos",
+                "Fotos pós-serviço não podem ser registradas enquanto a ordem de serviço estiver aguardando início.",
+                ErrorType.Conflict));
+        }
+
+        if (!IsEligibleForPostServicePhotos())
+        {
+            return Result<PostServicePhoto>.Failure(new Error(
+                "work_order.no_eligible_services",
+                "A ordem de serviço não possui serviços elegíveis para fotos pós-serviço (detalhamento, vitrificação ou bancos).",
+                ErrorType.Validation));
+        }
+
+        if (workOrderItemId.HasValue && workOrderItemId.Value != Guid.Empty)
+        {
+            var item = _items.FirstOrDefault(i => i.Id == workOrderItemId.Value);
+            if (item is null)
+            {
+                return Result<PostServicePhoto>.Failure(new Error(
+                    "work_order.item_not_found",
+                    "O item de serviço especificado não pertence a esta ordem de serviço.",
+                    ErrorType.NotFound));
+            }
+
+            if (!PostServiceEligibilityRule.IsEligible(item))
+            {
+                return Result<PostServicePhoto>.Failure(new Error(
+                    "work_order.item_not_eligible",
+                    $"O serviço '{item.ServiceName}' não é elegível para fotos pós-serviço.",
+                    ErrorType.Validation));
+            }
+        }
+
+        var photoResult = PostServicePhoto.Create(
+            TenantId,
+            Id,
+            workOrderItemId,
+            beforeInspectionPhotoId,
+            category,
+            title,
+            storagePath,
+            fileName,
+            contentType,
+            sizeBytes,
+            notes);
+
+        if (!photoResult.IsSuccess)
+        {
+            return photoResult;
+        }
+
+        _postServicePhotos.Add(photoResult.Value!);
+        return photoResult;
+    }
+
+    public Result RemovePostServicePhoto(Guid photoId)
+    {
+        var photo = _postServicePhotos.FirstOrDefault(p => p.Id == photoId);
+        if (photo is null)
+        {
+            return Result.Failure(new Error("post_service_photo.not_found", "Foto pós-serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        _postServicePhotos.Remove(photo);
+        return Result.Success();
     }
 }

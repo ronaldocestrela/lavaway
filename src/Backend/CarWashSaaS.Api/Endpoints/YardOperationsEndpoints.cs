@@ -14,6 +14,7 @@ public static class YardOperationsEndpoints
         MapYardSetupEndpoints(app);
         MapWorkOrderEndpoints(app);
         MapVehicleInspectionEndpoints(app);
+        MapPostServicePhotosEndpoints(app);
 
         return app;
     }
@@ -780,5 +781,125 @@ public static class YardOperationsEndpoints
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+    }
+
+    private static void MapPostServicePhotosEndpoints(IEndpointRouteBuilder app)
+    {
+        app.MapGet("/work-orders/{workOrderId:guid}/comparison-gallery", async (
+            Guid workOrderId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetComparisonGalleryAsync(tenantId, workOrderId, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPost("/work-orders/{workOrderId:guid}/post-service-photos", async (
+            Guid workOrderId,
+            IFormFile file,
+            string? category,
+            string? title,
+            Guid? workOrderItemId,
+            Guid? beforeInspectionPhotoId,
+            string? notes,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var photoCategory = InspectionPhotoCategory.Other;
+            if (!string.IsNullOrWhiteSpace(category) && !Enum.TryParse(category, true, out photoCategory))
+            {
+                return Results.BadRequest(new { Code = "photo.category.invalid", Description = "Categoria de foto inválida." });
+            }
+
+            if (file is null || file.Length == 0)
+            {
+                return Results.BadRequest(new { Code = "photo.file.empty", Description = "Arquivo não enviado." });
+            }
+
+            var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Foto Pós-Serviço" : title.Trim();
+
+            await using var stream = file.OpenReadStream();
+            var result = await service.UploadPostServicePhotoAsync(
+                tenantId,
+                workOrderId,
+                workOrderItemId,
+                beforeInspectionPhotoId,
+                photoCategory,
+                resolvedTitle,
+                stream,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                notes,
+                ct);
+
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus)
+          .DisableAntiforgery();
+
+        app.MapGet("/work-orders/{workOrderId:guid}/post-service-photos/{photoId:guid}", async (
+            Guid workOrderId,
+            Guid photoId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetPostServicePhotoStreamAsync(tenantId, workOrderId, photoId, ct);
+            return result.IsSuccess
+                ? Results.File(result.Value!.Content, result.Value.ContentType)
+                : result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapDelete("/work-orders/{workOrderId:guid}/post-service-photos/{photoId:guid}", async (
+            Guid workOrderId,
+            Guid photoId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.RemovePostServicePhotoAsync(tenantId, workOrderId, photoId, ct);
+            return result.IsSuccess ? Results.NoContent() : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus);
     }
 }

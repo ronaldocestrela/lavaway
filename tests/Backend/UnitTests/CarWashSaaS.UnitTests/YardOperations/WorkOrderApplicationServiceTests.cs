@@ -226,6 +226,10 @@ public sealed class WorkOrderApplicationServiceTests
             return Task.CompletedTask;
         }
 
+        public void Update(WorkOrder workOrder)
+        {
+        }
+
         Task<Customer?> ICustomerRepository.GetByIdAsync(Guid tenantId, Guid customerId, CancellationToken ct) =>
             Task.FromResult(Customers.FirstOrDefault(c => c.TenantId == tenantId && c.Id == customerId));
 

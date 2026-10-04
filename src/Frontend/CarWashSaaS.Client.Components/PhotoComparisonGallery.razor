@@ -1,0 +1,547 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Components.Forms
+@inject WorkOrderApiClient WorkOrderClient
+
+<div class="gallery-container">
+    <div class="gallery-header">
+        <div class="header-left">
+            <div class="plate-box">
+                <span class="plate-brazil-bar"></span>
+                <span class="plate-number">@FormatPlate(Gallery?.Plate)</span>
+            </div>
+            <div class="header-info">
+                <h3 class="header-title">Antes e Depois — Galeria Comparativa</h3>
+                <span class="customer-subtitle">@Gallery?.CustomerName • @Gallery?.VehicleSize</span>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            @if (Gallery?.IsEligible == true)
+            {
+                <button type="button" class="btn-action-primary" @onclick="OpenUploadModal">
+                    <span class="btn-icon">📸</span>
+                    <span>+ Nova Foto Pós-Serviço</span>
+                </button>
+            }
+            <button type="button" class="btn-close-gallery" @onclick="HandleClose" title="Fechar galeria">
+                <span>&times;</span>
+            </button>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="gallery-loading">
+            <div class="loading-spinner"></div>
+            <p>Carregando fotos comparativas...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="gallery-alert alert-error">
+            <span class="alert-icon">&#9888;</span>
+            <div class="alert-content">
+                <strong>Erro ao carregar galeria</strong>
+                <p>@ErrorMessage</p>
+            </div>
+            <button type="button" class="btn-retry" @onclick="LoadGalleryAsync">Tentar Novamente</button>
+        </div>
+    }
+    else if (Gallery is not null)
+    {
+        @if (!Gallery.IsEligible)
+        {
+            <div class="gallery-alert alert-info">
+                <span class="alert-icon">&#8505;</span>
+                <div class="alert-content">
+                    <strong>Serviço Convencional</strong>
+                    <p>Esta ordem de serviço não possui itens com fotos comparativas obrigatórias (Polimento, Vitrificação ou Bancos). Você ainda pode registrar fotos avulsas de pós-serviço se desejar.</p>
+                </div>
+            </div>
+        }
+
+        <!-- Toolbar com Alternador de Visualização -->
+        <div class="gallery-toolbar">
+            <div class="toolbar-stats">
+                <span class="stat-badge stat-eligible">
+                    <span>✨ Serviços Elegíveis: @Gallery.EligibleServices.Count</span>
+                </span>
+                <span class="stat-badge stat-pairs">
+                    <span>🔄 Pares Antes/Depois: @Gallery.ComparisonPairs.Count</span>
+                </span>
+            </div>
+
+            <div class="view-mode-toggle">
+                <button type="button" class="btn-toggle @(ViewMode == "slider" ? "active" : "")" @onclick="@(() => ViewMode = "slider")">
+                    <span>⚡ Slider Interativo</span>
+                </button>
+                <button type="button" class="btn-toggle @(ViewMode == "side-by-side" ? "active" : "")" @onclick="@(() => ViewMode = "side-by-side")">
+                    <span>🔲 Lado a Lado</span>
+                </button>
+            </div>
+        </div>
+
+        @if (Gallery.ComparisonPairs.Count == 0 && Gallery.UnpairedAfterPhotos.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📷</div>
+                <h4>Nenhuma foto pós-serviço registrada</h4>
+                <p>Assim que o acabamento ou controle de qualidade for executado, registre fotos de "Depois" para visualizar o comparativo interativo de brilho e restauração.</p>
+                @if (Gallery.IsEligible)
+                {
+                    <button type="button" class="btn-action-primary mt-3" @onclick="OpenUploadModal">
+                        <span>+ Registrar Primeira Foto de Depois</span>
+                    </button>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- Lista de Pares Comparativos -->
+            <div class="pairs-grid">
+                @foreach (var pair in Gallery.ComparisonPairs)
+                {
+                    var sliderValue = GetSliderPosition(pair.AfterPhoto.Id);
+                    <div class="pair-card" id="pair-@pair.AfterPhoto.Id">
+                        <div class="pair-card-header">
+                            <div class="pair-title-box">
+                                <span class="service-tag">@(pair.ServiceName ?? "Estética Automotiva")</span>
+                                <span class="category-tag">@GetCategoryName(pair.Category)</span>
+                                <h4 class="pair-title">@pair.Title</h4>
+                            </div>
+                            <button type="button" class="btn-delete-photo" @onclick="@(() => HandleDeletePhoto(pair.AfterPhoto.Id))" title="Remover foto pós-serviço">
+                                <span>&#128465;</span>
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(pair.Notes))
+                        {
+                            <div class="pair-notes">
+                                <span class="notes-icon">&#9998;</span>
+                                <span>@pair.Notes</span>
+                            </div>
+                        }
+
+                        @if (ViewMode == "slider" && pair.BeforePhoto is not null)
+                        {
+                            <!-- Modo Slider Interativo com Corte de Imagem -->
+                            <div class="interactive-slider-wrapper">
+                                <div class="slider-canvas" style="--slider-pos: @(sliderValue)%">
+                                    <!-- Imagem DEPOIS (Fundo base) -->
+                                    <div class="img-layer after-layer">
+                                        <img src="@GetAfterPhotoUrl(pair.AfterPhoto.Id)" alt="Depois: @pair.Title" />
+                                        <span class="layer-pill pill-after">DEPOIS</span>
+                                    </div>
+
+                                    <!-- Imagem ANTES (Sobreposição com clip) -->
+                                    <div class="img-layer before-layer" style="clip-path: polygon(0 0, @(sliderValue)% 0, @(sliderValue)% 100%, 0 100%);">
+                                        <img src="@GetBeforePhotoUrl(pair.BeforePhoto.Id)" alt="Antes" />
+                                        <span class="layer-pill pill-before">ANTES</span>
+                                    </div>
+
+                                    <!-- Divisória Arrastável -->
+                                    <div class="slider-divider" style="left: @(sliderValue)%;">
+                                        <div class="divider-handle">
+                                            <span>&#8644;</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="slider-controls">
+                                    <span class="control-label label-before">Antes (@pair.BeforePhoto.UploadedAtUtc.ToLocalTime().ToString("HH:mm"))</span>
+                                    <input type="range" min="0" max="100" value="@sliderValue"
+                                           @oninput="@((ChangeEventArgs e) => SetSliderPosition(pair.AfterPhoto.Id, e.Value))"
+                                           class="range-slider" />
+                                    <span class="control-label label-after">Depois (@pair.AfterPhoto.UploadedAtUtc.ToLocalTime().ToString("HH:mm"))</span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Modo Lado a Lado -->
+                            <div class="side-by-side-wrapper">
+                                @if (pair.BeforePhoto is not null)
+                                {
+                                    <div class="comparison-column column-before">
+                                        <div class="column-badge badge-before">
+                                            <span>ANTES</span>
+                                            <span class="badge-time">@pair.BeforePhoto.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                                        </div>
+                                        <div class="column-image">
+                                            <img src="@GetBeforePhotoUrl(pair.BeforePhoto.Id)" alt="Antes" />
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="comparison-column column-before column-empty">
+                                        <div class="column-badge badge-before">
+                                            <span>ANTES</span>
+                                        </div>
+                                        <div class="empty-before-box">
+                                            <span>Sem foto de entrada pareada</span>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="comparison-column column-after">
+                                    <div class="column-badge badge-after">
+                                        <span>DEPOIS</span>
+                                        <span class="badge-time">@pair.AfterPhoto.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                                    </div>
+                                    <div class="column-image">
+                                        <img src="@GetAfterPhotoUrl(pair.AfterPhoto.Id)" alt="Depois: @pair.Title" />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Seção de Fotos de Entrada Não Pareadas (Para referência visual) -->
+        @if (Gallery.UnpairedBeforePhotos.Count > 0)
+        {
+            <div class="unpaired-section">
+                <div class="unpaired-header">
+                    <h5 class="unpaired-title">Fotos da Vistoria de Entrada Disponíveis para Pareamento (@Gallery.UnpairedBeforePhotos.Count)</h5>
+                </div>
+                <div class="unpaired-grid">
+                    @foreach (var photo in Gallery.UnpairedBeforePhotos)
+                    {
+                        <div class="unpaired-card">
+                            <img src="@GetBeforePhotoUrl(photo.Id)" alt="Vistoria: @photo.Category" />
+                            <div class="unpaired-info">
+                                <span class="unpaired-tag">@GetCategoryName(photo.Category)</span>
+                                <button type="button" class="btn-quick-pair" @onclick="@(() => OpenUploadModalWithBefore(photo.Id, photo.Category))">
+                                    <span>+ Fotografar Depois</span>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+
+    <!-- Modal de Envio de Nova Foto Pós-Serviço -->
+    @if (ShowUploadModal)
+    {
+        <div class="modal-backdrop">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h4 class="modal-title">Registrar Foto Pós-Serviço ("Depois")</h4>
+                    <button type="button" class="btn-modal-close" @onclick="CloseUploadModal">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(UploadError))
+                    {
+                        <div class="gallery-alert alert-error mb-3">
+                            <span class="alert-icon">&#9888;</span>
+                            <span>@UploadError</span>
+                        </div>
+                    }
+
+                    <!-- Seleção do Serviço Elegível -->
+                    <div class="form-group">
+                        <label class="form-label">Serviço Executado:</label>
+                        <select class="form-select" @bind="UploadWorkOrderItemId">
+                            <option value="">Selecione o serviço...</option>
+                            @if (Gallery is not null)
+                            {
+                                @foreach (var s in Gallery.EligibleServices)
+                                {
+                                    <option value="@s.Id">@s.ServiceName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Seleção da Categoria / Área -->
+                    <div class="form-group">
+                        <label class="form-label">Área / Perímetro:</label>
+                        <select class="form-select" @bind="UploadCategory">
+                            <option value="@InspectionPhotoCategory.Front">Frente / Capô</option>
+                            <option value="@InspectionPhotoCategory.Rear">Traseira / Porta-Malas</option>
+                            <option value="@InspectionPhotoCategory.LeftSide">Lateral Esquerda</option>
+                            <option value="@InspectionPhotoCategory.RightSide">Lateral Direita</option>
+                            <option value="@InspectionPhotoCategory.Interior">Interior / Bancos</option>
+                            <option value="@InspectionPhotoCategory.DamageDetail">Detalhe Específico</option>
+                            <option value="@InspectionPhotoCategory.Other">Outro</option>
+                        </select>
+                    </div>
+
+                    <!-- Parear com Foto de Entrada (Opcional) -->
+                    @if (Gallery?.UnpairedBeforePhotos.Count > 0)
+                    {
+                        <div class="form-group">
+                            <label class="form-label">Vincular à Foto de Entrada (Antes):</label>
+                            <select class="form-select" @bind="UploadBeforePhotoId">
+                                <option value="">Sem vínculo automático (foto avulsa)</option>
+                                @foreach (var bp in Gallery.UnpairedBeforePhotos)
+                                {
+                                    <option value="@bp.Id">@GetCategoryName(bp.Category) — @bp.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
+                    <!-- Título -->
+                    <div class="form-group">
+                        <label class="form-label">Título Identificador:</label>
+                        <input type="text" class="form-input" placeholder="Ex: Capô com Vitrificação 9H" @bind="UploadTitle" />
+                    </div>
+
+                    <!-- Observações -->
+                    <div class="form-group">
+                        <label class="form-label">Observações Técnicas / Acabamento:</label>
+                        <textarea class="form-textarea" placeholder="Descreva os produtos aplicados, repelência, brilho ou estado do estofamento..." @bind="UploadNotes"></textarea>
+                    </div>
+
+                    <!-- Input de Arquivo com Câmera Mobile -->
+                    <div class="form-group">
+                        <label class="form-label">Foto de Alta Resolução:</label>
+                        <div class="file-upload-box">
+                            <InputFile OnChange="HandleFileSelected" accept="image/jpeg,image/png,image/webp" capture="environment" class="file-input-hidden" id="post-photo-file" />
+                            <label for="post-photo-file" class="file-upload-label">
+                                <span class="upload-icon">📷</span>
+                                <span class="upload-text">@(SelectedFile is not null ? SelectedFile.Name : "Toque para abrir a câmera ou escolher foto")</span>
+                                <span class="upload-hint">Formatos: JPEG, PNG, WebP (até 10 MB)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(PreviewDataUrl))
+                    {
+                        <div class="preview-box">
+                            <span class="preview-label">Pré-visualização:</span>
+                            <img src="@PreviewDataUrl" alt="Pré-visualização" class="preview-img" />
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" @onclick="CloseUploadModal" disabled="@IsUploading">Cancelar</button>
+                    <button type="button" class="btn-save" @onclick="SubmitUploadAsync" disabled="@(IsUploading || SelectedFile is null)">
+                        @if (IsUploading)
+                        {
+                            <span class="spinner-sm"></span>
+                            <span>Enviando...</span>
+                        }
+                        else
+                        {
+                            <span>Salvar Foto Pós-Serviço</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Guid WorkOrderId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private WorkOrderComparisonGalleryDto? Gallery { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private string? ErrorMessage { get; set; }
+    private string ViewMode { get; set; } = "slider";
+
+    // Posições dos sliders interativos indexados pelo PhotoId
+    private readonly Dictionary<Guid, int> _sliderPositions = [];
+
+    // Estado do Modal de Upload
+    private bool ShowUploadModal { get; set; }
+    private bool IsUploading { get; set; }
+    private string? UploadError { get; set; }
+    private string UploadWorkOrderItemId { get; set; } = string.Empty;
+    private string UploadBeforePhotoId { get; set; } = string.Empty;
+    private InspectionPhotoCategory UploadCategory { get; set; } = InspectionPhotoCategory.Front;
+    private string UploadTitle { get; set; } = string.Empty;
+    private string? UploadNotes { get; set; }
+    private IBrowserFile? SelectedFile { get; set; }
+    private string? PreviewDataUrl { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (WorkOrderId != Guid.Empty)
+        {
+            await LoadGalleryAsync();
+        }
+    }
+
+    private async Task LoadGalleryAsync()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        try
+        {
+            Gallery = await WorkOrderClient.GetComparisonGalleryAsync(WorkOrderId);
+            if (Gallery is not null)
+            {
+                foreach (var pair in Gallery.ComparisonPairs)
+                {
+                    if (!_sliderPositions.ContainsKey(pair.AfterPhoto.Id))
+                    {
+                        _sliderPositions[pair.AfterPhoto.Id] = 50; // Inicializar divisória no centro
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private int GetSliderPosition(Guid photoId) =>
+        _sliderPositions.TryGetValue(photoId, out var pos) ? pos : 50;
+
+    private void SetSliderPosition(Guid photoId, object? val)
+    {
+        if (val is not null && int.TryParse(val.ToString(), out var pos))
+        {
+            _sliderPositions[photoId] = Math.Clamp(pos, 0, 100);
+        }
+    }
+
+    private string GetAfterPhotoUrl(Guid photoId) =>
+        WorkOrderClient.GetPostServicePhotoUrl(WorkOrderId, photoId);
+
+    private string GetBeforePhotoUrl(Guid photoId) =>
+        WorkOrderClient.GetInspectionPhotoUrl(WorkOrderId, photoId);
+
+    private string FormatPlate(string? plate)
+    {
+        if (string.IsNullOrWhiteSpace(plate)) return "---";
+        var clean = plate.Trim().ToUpperInvariant();
+        return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
+    }
+
+    private static string GetCategoryName(InspectionPhotoCategory cat) => cat switch
+    {
+        InspectionPhotoCategory.Front => "Frente / Capô",
+        InspectionPhotoCategory.Rear => "Traseira",
+        InspectionPhotoCategory.LeftSide => "Lateral Esquerda",
+        InspectionPhotoCategory.RightSide => "Lateral Direita",
+        InspectionPhotoCategory.Interior => "Bancos / Interior",
+        InspectionPhotoCategory.DamageDetail => "Detalhe / Avaria",
+        _ => "Geral"
+    };
+
+    private void OpenUploadModal()
+    {
+        UploadError = null;
+        UploadWorkOrderItemId = Gallery?.EligibleServices.FirstOrDefault()?.Id.ToString() ?? string.Empty;
+        UploadBeforePhotoId = string.Empty;
+        UploadCategory = InspectionPhotoCategory.Front;
+        UploadTitle = "Foto Pós-Serviço";
+        UploadNotes = string.Empty;
+        SelectedFile = null;
+        PreviewDataUrl = null;
+        ShowUploadModal = true;
+    }
+
+    private void OpenUploadModalWithBefore(Guid beforePhotoId, InspectionPhotoCategory category)
+    {
+        OpenUploadModal();
+        UploadBeforePhotoId = beforePhotoId.ToString();
+        UploadCategory = category;
+        UploadTitle = $"Acabamento - {GetCategoryName(category)}";
+    }
+
+    private void CloseUploadModal()
+    {
+        if (IsUploading) return;
+        ShowUploadModal = false;
+        SelectedFile = null;
+        PreviewDataUrl = null;
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        SelectedFile = e.File;
+        UploadError = null;
+
+        if (SelectedFile is not null)
+        {
+            try
+            {
+                // Limitar preview a 10MB
+                using var stream = SelectedFile.OpenReadStream(10 * 1024 * 1024);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                var base64 = Convert.ToBase64String(ms.ToArray());
+                PreviewDataUrl = $"data:{SelectedFile.ContentType};base64,{base64}";
+            }
+            catch (Exception ex)
+            {
+                UploadError = $"Falha ao ler prévia da foto: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task SubmitUploadAsync()
+    {
+        if (SelectedFile is null)
+        {
+            UploadError = "Por favor, selecione ou tire uma foto.";
+            return;
+        }
+
+        IsUploading = true;
+        UploadError = null;
+
+        try
+        {
+            Guid? workOrderItemId = Guid.TryParse(UploadWorkOrderItemId, out var wId) ? wId : null;
+            Guid? beforePhotoId = Guid.TryParse(UploadBeforePhotoId, out var bId) ? bId : null;
+
+            using var stream = SelectedFile.OpenReadStream(10 * 1024 * 1024);
+            await WorkOrderClient.UploadPostServicePhotoAsync(
+                WorkOrderId,
+                workOrderItemId,
+                beforePhotoId,
+                UploadCategory,
+                string.IsNullOrWhiteSpace(UploadTitle) ? "Foto Pós-Serviço" : UploadTitle.Trim(),
+                stream,
+                SelectedFile.Name,
+                SelectedFile.ContentType,
+                UploadNotes);
+
+            ShowUploadModal = false;
+            await LoadGalleryAsync();
+        }
+        catch (Exception ex)
+        {
+            UploadError = ex.Message;
+        }
+        finally
+        {
+            IsUploading = false;
+        }
+    }
+
+    private async Task HandleDeletePhoto(Guid photoId)
+    {
+        try
+        {
+            await WorkOrderClient.DeletePostServicePhotoAsync(WorkOrderId, photoId);
+            await LoadGalleryAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Falha ao excluir foto: {ex.Message}";
+        }
+    }
+
+    private Task HandleClose() => OnClose.InvokeAsync();
+}

@@ -59,6 +59,63 @@ public sealed class WorkOrderApiClient(HttpClient httpClient)
         return await ReadResponseAsync<IReadOnlyCollection<WorkOrderStatusHistoryDto>>(response, ct);
     }
 
+    public async Task<WorkOrderComparisonGalleryDto> GetComparisonGalleryAsync(Guid workOrderId, CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync($"work-orders/{workOrderId}/comparison-gallery", ct);
+        return await ReadResponseAsync<WorkOrderComparisonGalleryDto>(response, ct);
+    }
+
+    public async Task<PostServicePhotoDto> UploadPostServicePhotoAsync(
+        Guid workOrderId,
+        Guid? workOrderItemId,
+        Guid? beforeInspectionPhotoId,
+        InspectionPhotoCategory category,
+        string title,
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        string? notes = null,
+        CancellationToken ct = default)
+    {
+        using var multipart = new MultipartFormDataContent();
+        var fileContent = new StreamContent(fileStream);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        multipart.Add(fileContent, "file", fileName);
+
+        var query = $"category={category}&title={Uri.EscapeDataString(title)}";
+        if (workOrderItemId.HasValue)
+        {
+            query += $"&workOrderItemId={workOrderItemId.Value}";
+        }
+        if (beforeInspectionPhotoId.HasValue)
+        {
+            query += $"&beforeInspectionPhotoId={beforeInspectionPhotoId.Value}";
+        }
+        if (!string.IsNullOrWhiteSpace(notes))
+        {
+            query += $"&notes={Uri.EscapeDataString(notes)}";
+        }
+
+        using var response = await httpClient.PostAsync($"work-orders/{workOrderId}/post-service-photos?{query}", multipart, ct);
+        return await ReadResponseAsync<PostServicePhotoDto>(response, ct);
+    }
+
+    public async Task DeletePostServicePhotoAsync(Guid workOrderId, Guid photoId, CancellationToken ct = default)
+    {
+        using var response = await httpClient.DeleteAsync($"work-orders/{workOrderId}/post-service-photos/{photoId}", ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = await ReadErrorMessageAsync(response, ct);
+            throw new WorkOrderApiException(response.StatusCode, message);
+        }
+    }
+
+    public string GetPostServicePhotoUrl(Guid workOrderId, Guid photoId) =>
+        $"{httpClient.BaseAddress}work-orders/{workOrderId}/post-service-photos/{photoId}";
+
+    public string GetInspectionPhotoUrl(Guid workOrderId, Guid photoId) =>
+        $"{httpClient.BaseAddress}work-orders/{workOrderId}/inspection/photos/{photoId}";
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (!response.IsSuccessStatusCode)

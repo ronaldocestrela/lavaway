@@ -185,6 +185,10 @@ public sealed class YardKanbanApplicationServiceTests
             return Task.CompletedTask;
         }
 
+        void IWorkOrderRepository.Update(WorkOrder workOrder)
+        {
+        }
+
         // ICustomerRepository
         Task<Customer?> ICustomerRepository.GetByIdAsync(Guid tenantId, Guid customerId, CancellationToken ct) =>
             Task.FromResult(Customers.FirstOrDefault(c => c.TenantId == tenantId && c.Id == customerId));
