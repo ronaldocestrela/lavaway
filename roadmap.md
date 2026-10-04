@@ -180,10 +180,13 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 4.1 Base de integração e entrega confiável
 
-- [ ] Definir o provedor e implementar adaptador para envio/recebimento de mensagens e webhooks.
-- [ ] Processar eventos de forma assíncrona, com idempotência, retentativas e registro de falhas.
-- [ ] Aplicar limites de envio por tenant e registrar consentimento/preferências de comunicação.
-- [ ] **Entrega:** mensagem de teste é enviada e falhas podem ser rastreadas sem duplicar processamento.
+- [x] Definir o provedor e implementar adaptador para envio/recebimento de mensagens e webhooks.
+- [x] Processar eventos de forma assíncrona, com idempotência, retentativas e registro de falhas.
+- [x] Aplicar limites de envio por tenant e registrar consentimento/preferências de comunicação.
+- [x] **Entrega:** mensagem de teste é enviada e falhas podem ser rastreadas sem duplicar processamento.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): o módulo WhatsApp dispõe de envio assíncrono durável via RabbitMQ (`IBackgroundQueue` com `OutboundWhatsAppMessageQueueHandler`), adaptador HTTP tipado para Evolution API (`EvolutionApiWhatsAppMessageSender`), garantia estrita de idempotência por `IdempotencyKey`, isolamento multi-tenant completo no schema `whatsapp` (`OutboundWhatsAppMessage`, `WhatsAppDeliveryAttempt`, `TenantWhatsAppQuota` e `CustomerCommunicationPreference`), governança anti-ban com controle de taxa de envio por minuto e cota diária, registro de consentimento LGPD (Opt-in/Opt-out) e ingestão de webhooks de status de entrega (`MESSAGES_UPDATE` e `SEND_MESSAGE`). A API expõe endpoints autenticados sob política `Administrator` em `/whatsapp/messages/test`, `/whatsapp/messages`, `/whatsapp/messages/{id}` e `/whatsapp/quota`. No frontend Blazor WebAssembly, a tela administrativa `WhatsAppSettingsPage` integra os novos componentes isolados `WhatsAppTestMessageCard` (disparo de teste com validação em tempo real de telefone), `WhatsAppQuotaMeter` (medidor de cota diária e velocidade de envio anti-ban) e `WhatsAppMessageHistoryTable` (tabela de mensagens recentes com badges de status e rastreamento de falhas). A solução conta com 100% de aprovação nos 272 testes da solution (testes unitários, testes de arquitetura NetArchTest e testes de componentes bUnit). Decisão formalizada na [ADR-0007](docs/architecture/ADR-0007-mensageria-assincrona-e-entrega-confiavel-whatsapp.md) e documentação viva em [docs/living-docs/base-integracao-entrega-confiavel-4.1.md](docs/living-docs/base-integracao-entrega-confiavel-4.1.md).
+
 
 ### 4.2 Notificações da ordem de serviço
 

@@ -1,0 +1,68 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="quota-meter-card">
+    <div class="quota-header">
+        <div>
+            <div class="quota-eyebrow">GOVERNANÇA &amp; ANTI-BAN</div>
+            <h4 class="quota-title">Capacidade de Envio</h4>
+        </div>
+        <div class="quota-status">
+            @if (Quota?.IsThrottled == true)
+            {
+                <span class="throttle-badge badge-throttled">⚠️ Limite Atingido</span>
+            }
+            else
+            {
+                <span class="throttle-badge badge-normal">✓ Operação Normal</span>
+            }
+        </div>
+    </div>
+
+    @if (Quota is not null)
+    {
+        <div class="quota-grid">
+            <div class="quota-metric">
+                <div class="metric-top">
+                    <span class="metric-label">Envios Hoje</span>
+                    <span class="metric-val">@Quota.MessagesSentToday / @Quota.DailyLimit</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-bar @(DailyPercentage >= 90 ? "bar-danger" : DailyPercentage >= 70 ? "bar-warning" : "bar-primary")"
+                         style="width: @(Math.Min(DailyPercentage, 100))%"></div>
+                </div>
+                <span class="metric-help">Limite diário de segurança da loja</span>
+            </div>
+
+            <div class="quota-metric">
+                <div class="metric-top">
+                    <span class="metric-label">Ritmo de Envio (Minuto Atual)</span>
+                    <span class="metric-val">@Quota.MessagesSentCurrentMinute / @Quota.MinuteLimit msg/min</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-bar @(MinutePercentage >= 90 ? "bar-danger" : MinutePercentage >= 70 ? "bar-warning" : "bar-primary")"
+                         style="width: @(Math.Min(MinutePercentage, 100))%"></div>
+                </div>
+                <span class="metric-help">Proteção de rajada para evitar bloqueio pelo WhatsApp</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="quota-loading">
+            <span class="button-spinner"></span>
+            <span>Carregando dados de cota...</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public WhatsAppQuotaDto? Quota { get; set; }
+
+    private double DailyPercentage => Quota is null || Quota.DailyLimit == 0
+        ? 0
+        : (double)Quota.MessagesSentToday / Quota.DailyLimit * 100;
+
+    private double MinutePercentage => Quota is null || Quota.MinuteLimit == 0
+        ? 0
+        : (double)Quota.MessagesSentCurrentMinute / Quota.MinuteLimit * 100;
+}

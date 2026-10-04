@@ -7,7 +7,7 @@
 @implements IDisposable
 @inject WhatsAppApiClient WhatsAppApi
 
-<PageTitle>Pareamento WhatsApp | Lavaway</PageTitle>
+<PageTitle>Pareamento &amp; Mensageria WhatsApp | Lavaway</PageTitle>
 
 <section class="whatsapp-page">
     <div class="page-heading">
@@ -16,8 +16,8 @@
                 <span class="eyebrow-mark"></span>
                 <span>COMUNICAÇÃO &amp; MENSAGERIA</span>
             </div>
-            <h1>Pareamento do WhatsApp</h1>
-            <p class="page-subtitle">Configure o canal oficial do WhatsApp da sua loja para envio automático de ordens de serviço, avisos de prontidão e links públicos aos clientes.</p>
+            <h1>Canal Oficial do WhatsApp</h1>
+            <p class="page-subtitle">Configure o canal oficial do WhatsApp da sua loja, monitore quotas anti-ban, envie mensagens de teste e acompanhe a entrega em tempo real.</p>
         </div>
     </div>
 
@@ -41,7 +41,7 @@
     {
         <div class="loading-state" role="status">
             <span class="button-spinner" aria-hidden="true"></span>
-            <span>Carregando estado da conexão do WhatsApp...</span>
+            <span>Carregando estado do canal do WhatsApp...</span>
         </div>
     }
     else
@@ -53,23 +53,49 @@
                                  OnStartPairing="StartPairingAsync"
                                  OnRefreshPairing="RefreshPairingAsync"
                                  OnDisconnect="DisconnectAsync" />
+
+            @if (_connection?.IsConnected == true)
+            {
+                <WhatsAppQuotaMeter Quota="@_quota" />
+
+                <WhatsAppTestMessageCard IsConnected="@_connection.IsConnected"
+                                         IsSending="@_isSendingTest"
+                                         FeedbackMessage="@_testFeedbackMessage"
+                                         IsSuccessFeedback="@_isTestFeedbackSuccess"
+                                         OnSendTestMessage="SendTestMessageAsync" />
+
+                <WhatsAppMessageHistoryTable Messages="@_messages"
+                                             IsLoading="@_isLoadingMessages"
+                                             OnRefresh="LoadMessagesAndQuotaAsync" />
+            }
         </div>
     }
 </section>
 
 @code {
     private WhatsAppConnectionDto? _connection;
+    private WhatsAppQuotaDto? _quota;
+    private IReadOnlyList<WhatsAppMessageDto>? _messages;
     private bool _isLoading = true;
     private bool _isActionLoading = false;
+    private bool _isSendingTest = false;
+    private bool _isLoadingMessages = false;
     private string? _errorMessage;
     private string? _successMessage;
     private string? _cardErrorMessage;
+    private string? _testFeedbackMessage;
+    private bool _isTestFeedbackSuccess = false;
     private CancellationTokenSource? _cts;
 
     protected override async Task OnInitializedAsync()
     {
         _cts = new CancellationTokenSource();
         await LoadStatusAsync();
+
+        if (_connection?.IsConnected == true)
+        {
+            await LoadMessagesAndQuotaAsync();
+        }
     }
 
     private async Task LoadStatusAsync()
@@ -95,6 +121,29 @@
         }
     }
 
+    private async Task LoadMessagesAndQuotaAsync()
+    {
+        try
+        {
+            _isLoadingMessages = true;
+            var token = _cts?.Token ?? CancellationToken.None;
+            var quotaTask = WhatsAppApi.GetQuotaAsync(token);
+            var messagesTask = WhatsAppApi.GetRecentMessagesAsync(20, token);
+
+            await Task.WhenAll(quotaTask, messagesTask);
+            _quota = await quotaTask;
+            _messages = await messagesTask;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao carregar métricas de mensageria: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingMessages = false;
+        }
+    }
+
     private async Task StartPairingAsync()
     {
         try
@@ -111,7 +160,7 @@
         }
         catch (Exception ex)
         {
-            _cardErrorMessage = $"Falha ao iniciar pareamento: {ex.Message}";
+            _cardErrorMessage = ex.Message;
         }
         finally
         {
@@ -126,6 +175,7 @@
             _isActionLoading = true;
             _cardErrorMessage = null;
             _errorMessage = null;
+            _successMessage = null;
 
             _connection = await WhatsAppApi.RefreshPairingAsync(_cts?.Token ?? CancellationToken.None);
             _successMessage = "QR Code atualizado com sucesso.";
@@ -134,7 +184,7 @@
         }
         catch (Exception ex)
         {
-            _cardErrorMessage = $"Falha ao atualizar QR Code: {ex.Message}";
+            _cardErrorMessage = ex.Message;
         }
         finally
         {
@@ -149,18 +199,46 @@
             _isActionLoading = true;
             _cardErrorMessage = null;
             _errorMessage = null;
+            _successMessage = null;
+
+            StopPolling();
 
             _connection = await WhatsAppApi.DisconnectAsync(_cts?.Token ?? CancellationToken.None);
-            _successMessage = "WhatsApp desconectado com sucesso.";
-            StopPolling();
+            _successMessage = "Instância desconectada com sucesso.";
+            _quota = null;
+            _messages = null;
         }
         catch (Exception ex)
         {
-            _cardErrorMessage = $"Falha ao desconectar WhatsApp: {ex.Message}";
+            _cardErrorMessage = ex.Message;
         }
         finally
         {
             _isActionLoading = false;
+        }
+    }
+
+    private async Task SendTestMessageAsync(SendWhatsAppTestMessageRequest request)
+    {
+        try
+        {
+            _isSendingTest = true;
+            _testFeedbackMessage = null;
+
+            var result = await WhatsAppApi.SendTestMessageAsync(request, _cts?.Token ?? CancellationToken.None);
+            _isTestFeedbackSuccess = true;
+            _testFeedbackMessage = $"Mensagem disparada com sucesso! Status inicial: '{result.Status}'. Acompanhe no histórico abaixo.";
+            
+            await LoadMessagesAndQuotaAsync();
+        }
+        catch (Exception ex)
+        {
+            _isTestFeedbackSuccess = false;
+            _testFeedbackMessage = $"Falha ao disparar mensagem de teste: {ex.Message}";
+        }
+        finally
+        {
+            _isSendingTest = false;
         }
     }
 
@@ -200,6 +278,7 @@
                     if (latest.IsConnected)
                     {
                         _successMessage = "WhatsApp conectado com sucesso! O canal da loja está ativo.";
+                        await LoadMessagesAndQuotaAsync();
                         await InvokeAsync(StateHasChanged);
                         break;
                     }

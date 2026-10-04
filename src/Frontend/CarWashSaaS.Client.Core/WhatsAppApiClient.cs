@@ -36,6 +36,24 @@ public sealed class WhatsAppApiClient(HttpClient httpClient)
         return await ReadResponseAsync<WhatsAppConnectionDto>(response, ct);
     }
 
+    public async Task<WhatsAppMessageDto> SendTestMessageAsync(SendWhatsAppTestMessageRequest request, CancellationToken ct = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync("whatsapp/messages/test", request, JsonOptions, ct);
+        return await ReadResponseAsync<WhatsAppMessageDto>(response, ct);
+    }
+
+    public async Task<IReadOnlyList<WhatsAppMessageDto>> GetRecentMessagesAsync(int count = 20, CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync($"whatsapp/messages?count={count}", ct);
+        return await ReadResponseAsync<List<WhatsAppMessageDto>>(response, ct);
+    }
+
+    public async Task<WhatsAppQuotaDto> GetQuotaAsync(CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync("whatsapp/quota", ct);
+        return await ReadResponseAsync<WhatsAppQuotaDto>(response, ct);
+    }
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (!response.IsSuccessStatusCode)

@@ -1,0 +1,127 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="message-history-card">
+    <div class="history-header">
+        <div>
+            <div class="history-eyebrow">RASTREABILIDADE &amp; AUDITORIA</div>
+            <h4 class="history-title">Histórico de Mensagens Recentes</h4>
+        </div>
+        <button type="button" class="btn-refresh" @onclick="OnRefresh" disabled="@IsLoading">
+            <span class="@(IsLoading ? "button-spinner" : "refresh-icon")"></span>
+            <span>Atualizar</span>
+        </button>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="history-loading">
+            <span class="button-spinner"></span>
+            <span>Carregando histórico de mensagens...</span>
+        </div>
+    }
+    else if (Messages is null || Messages.Count == 0)
+    {
+        <div class="history-empty">
+            <span class="empty-icon">💬</span>
+            <p>Nenhuma mensagem enviada recentemente por esta loja.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Destinatário</th>
+                        <th>Mensagem</th>
+                        <th>Data/Hora</th>
+                        <th>Status</th>
+                        <th>Tentativas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var msg in Messages)
+                    {
+                        <tr>
+                            <td class="cell-phone">
+                                <span class="phone-badge">@FormatPhone(msg.RecipientPhone)</span>
+                            </td>
+                            <td class="cell-body" title="@msg.MessageText">
+                                @Truncate(msg.MessageText, 60)
+                            </td>
+                            <td class="cell-date">
+                                @msg.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </td>
+                            <td class="cell-status">
+                                <span class="status-pill @GetStatusClass(msg.Status)">
+                                    @GetStatusLabel(msg.Status)
+                                </span>
+                                @if (!string.IsNullOrWhiteSpace(msg.FailureReason))
+                                {
+                                    <div class="failure-hint" title="@msg.FailureReason">
+                                        ⚠️ @Truncate(msg.FailureReason, 30)
+                                    </div>
+                                }
+                            </td>
+                            <td class="cell-attempts">
+                                @msg.AttemptCount
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<WhatsAppMessageDto>? Messages { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    private static string FormatPhone(string phone)
+    {
+        if (phone.Length == 11)
+        {
+            return $"({phone[..2]}) {phone.Substring(2, 5)}-{phone.Substring(7, 4)}";
+        }
+        if (phone.Length == 10)
+        {
+            return $"({phone[..2]}) {phone.Substring(2, 4)}-{phone.Substring(6, 4)}";
+        }
+        return phone;
+    }
+
+    private static string Truncate(string text, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text.Length <= maxLength)
+        {
+            return text;
+        }
+        return text[..maxLength] + "...";
+    }
+
+    private static string GetStatusClass(string status) => status.ToLowerInvariant() switch
+    {
+        "sent" => "pill-sent",
+        "delivered" => "pill-delivered",
+        "read" => "pill-read",
+        "queued" => "pill-queued",
+        "sending" => "pill-sending",
+        "failed" => "pill-failed",
+        "rejected" => "pill-rejected",
+        _ => "pill-default"
+    };
+
+    private static string GetStatusLabel(string status) => status.ToLowerInvariant() switch
+    {
+        "sent" => "Enviado",
+        "delivered" => "Entregue",
+        "read" => "Lido",
+        "queued" => "Na Fila",
+        "sending" => "Enviando",
+        "failed" => "Falha",
+        "rejected" => "Rejeitado",
+        _ => status
+    };
+}

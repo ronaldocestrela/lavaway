@@ -105,7 +105,20 @@ builder.Services.AddHttpClient<IWhatsAppPairingProvider, EvolutionApiWhatsAppPai
     client.BaseAddress = new Uri(baseUrl);
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
+builder.Services.AddHttpClient<IWhatsAppMessageSender, EvolutionApiWhatsAppMessageSender>((serviceProvider, client) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var baseUrl = configuration["WhatsApp:EvolutionApi:BaseUrl"] ?? "http://localhost:8080/";
+    client.BaseAddress = new Uri(baseUrl);
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+});
+builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
+builder.Services.AddScoped<IOutboundWhatsAppMessageRepository, OutboundWhatsAppMessageRepository>();
+builder.Services.AddScoped<ITenantWhatsAppQuotaRepository, TenantWhatsAppQuotaRepository>();
+builder.Services.AddScoped<ICustomerCommunicationPreferenceRepository, CustomerCommunicationPreferenceRepository>();
 builder.Services.AddScoped<WhatsAppConnectionApplicationService>();
+builder.Services.AddScoped<WhatsAppMessageApplicationService>();
+builder.Services.AddScoped<ITenantQueueMessageHandler, OutboundWhatsAppMessageQueueHandler>();
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));
 builder.Services.AddDbContext<IdentityModuleDbContext>(options =>

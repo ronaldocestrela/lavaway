@@ -1,0 +1,140 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="test-message-card @(IsConnected ? "is-connected" : "is-disabled")">
+    <div class="test-header">
+        <div>
+            <div class="test-eyebrow">DISPARO SEGURO &amp; VALIDAÇÃO</div>
+            <h3 class="test-title">Mensagem de Teste</h3>
+            <p class="test-subtitle">Envie uma mensagem real pelo WhatsApp conectado para conferir a entrega, idempotência e tempo de resposta.</p>
+        </div>
+        <div class="test-channel-status">
+            @if (IsConnected)
+            {
+                <span class="channel-badge badge-active">Canal Conectado</span>
+            }
+            else
+            {
+                <span class="channel-badge badge-inactive">WhatsApp Desconectado</span>
+            }
+        </div>
+    </div>
+
+    @if (!IsConnected)
+    {
+        <div class="test-disabled-banner">
+            <span class="disabled-icon">⚠️</span>
+            <div class="disabled-text">
+                <strong>Instância não conectada.</strong>
+                <span>Pareie sua conta do WhatsApp acima para habilitar o envio de mensagens de teste e notificações aos clientes.</span>
+            </div>
+        </div>
+    }
+
+    <div class="test-form">
+        <div class="form-group">
+            <label for="recipientPhone" class="form-label">Número de Telefone (com DDD)</label>
+            <div class="input-prefix-wrapper">
+                <span class="phone-prefix">+55</span>
+                <input id="recipientPhone"
+                       type="tel"
+                       class="form-input phone-input"
+                       placeholder="(11) 99999-8888"
+                       value="@RecipientPhone"
+                       @oninput="OnPhoneChanged"
+                       disabled="@(!IsConnected || IsSending)" />
+            </div>
+            @if (!string.IsNullOrWhiteSpace(PhoneValidationError))
+            {
+                <span class="validation-error">@PhoneValidationError</span>
+            }
+        </div>
+
+        <div class="form-group">
+            <label for="messageText" class="form-label">Conteúdo da Mensagem</label>
+            <textarea id="messageText"
+                      rows="3"
+                      class="form-textarea"
+                      placeholder="Ex: Olá! Esta é uma mensagem de teste enviada pela Lavaway para validar nosso canal de WhatsApp."
+                      value="@MessageText"
+                      @oninput="OnMessageTextChanged"
+                      disabled="@(!IsConnected || IsSending)"></textarea>
+            <div class="textarea-footer">
+                <span class="char-counter">@MessageText.Length / 4096 caracteres</span>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
+        {
+            <div class="feedback-banner @(IsSuccessFeedback ? "feedback-success" : "feedback-error")">
+                <span>@(IsSuccessFeedback ? "✓" : "!")</span>
+                <span>@FeedbackMessage</span>
+            </div>
+        }
+
+        <div class="form-actions">
+            <button id="btnSendWhatsAppTest"
+                    type="button"
+                    class="btn-send-test"
+                    disabled="@(!IsConnected || IsSending || string.IsNullOrWhiteSpace(RecipientPhone) || string.IsNullOrWhiteSpace(MessageText))"
+                    @onclick="TriggerSendAsync">
+                @if (IsSending)
+                {
+                    <span class="button-spinner"></span>
+                    <span>Enviando Mensagem...</span>
+                }
+                else
+                {
+                    <span>🚀 Disparar Teste de Envio</span>
+                }
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsConnected { get; set; }
+    [Parameter] public bool IsSending { get; set; }
+    [Parameter] public string? FeedbackMessage { get; set; }
+    [Parameter] public bool IsSuccessFeedback { get; set; }
+    [Parameter] public EventCallback<SendWhatsAppTestMessageRequest> OnSendTestMessage { get; set; }
+
+    public string RecipientPhone { get; set; } = string.Empty;
+    public string MessageText { get; set; } = "Olá! Esta é uma mensagem de teste do Lavaway confirmando a integração ativa com o WhatsApp.";
+    public string? PhoneValidationError { get; set; }
+
+    private void OnPhoneChanged(ChangeEventArgs e)
+    {
+        RecipientPhone = e.Value?.ToString() ?? string.Empty;
+        var digits = new string(RecipientPhone.Where(char.IsDigit).ToArray());
+        if (digits.Length > 0 && (digits.Length < 10 || digits.Length > 11))
+        {
+            PhoneValidationError = "O telefone deve ter DDD + 8 ou 9 dígitos.";
+        }
+        else
+        {
+            PhoneValidationError = null;
+        }
+    }
+
+    private void OnMessageTextChanged(ChangeEventArgs e)
+    {
+        MessageText = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task TriggerSendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(RecipientPhone) || string.IsNullOrWhiteSpace(MessageText) || IsSending || !IsConnected)
+        {
+            return;
+        }
+
+        var digits = new string(RecipientPhone.Where(char.IsDigit).ToArray());
+        if (digits.Length < 10)
+        {
+            PhoneValidationError = "Por favor informe um telefone válido com DDD.";
+            return;
+        }
+
+        await OnSendTestMessage.InvokeAsync(new SendWhatsAppTestMessageRequest(RecipientPhone, MessageText));
+    }
+}
