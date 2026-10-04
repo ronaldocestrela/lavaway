@@ -42,6 +42,8 @@
             <button type="button" class="btn-retry" @onclick="LoadBoardAsync">Tentar Novamente</button>
         </div>
     }
+    else if (_board is not null)
+    {
         <YardKanbanBoard Board="_board"
                          AvailableOperators="_operators"
                          IsRefreshing="_isRefreshing"
@@ -107,7 +109,8 @@
             await Task.WhenAll(boardTask, operatorsTask);
 
             _board = await boardTask;
-            _operators = (await operatorsTask).Where(m => m.IsActive).ToList();
+            var ops = await operatorsTask;
+            _operators = ops is not null ? ops.Where(m => m.IsActive).ToList() : [];
         }
         catch (Exception ex)
         {

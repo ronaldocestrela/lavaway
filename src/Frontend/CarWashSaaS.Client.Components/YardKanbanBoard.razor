@@ -1,5 +1,7 @@
 @using CarWashSaaS.Shared.Contracts
 
+@if (Board is not null)
+{
 <div class="kanban-board-wrapper">
     <!-- Top Toolbar -->
     <div class="kanban-toolbar">
@@ -191,9 +193,10 @@
                             History="_workOrderHistory"
                             OnClose="() => _isHistoryDrawerOpen = false" />
 </div>
+}
 
 @code {
-    [Parameter, EditorRequired] public YardKanbanBoardDto Board { get; set; } = default!;
+    [Parameter, EditorRequired] public YardKanbanBoardDto? Board { get; set; }
     [Parameter] public IReadOnlyList<TeamMemberDto> AvailableOperators { get; set; } = [];
     [Parameter] public bool IsRefreshing { get; set; }
     [Parameter] public bool IsLiveConnected { get; set; }
@@ -235,6 +238,7 @@
     {
         get
         {
+            if (Board?.Columns is null) yield break;
             var query = _searchQuery.Trim().ToUpperInvariant();
             foreach (var col in Board.Columns)
             {
@@ -438,7 +442,7 @@
 
     private int GetCapacityPercentage()
     {
-        if (Board.CapacityTotalBoxes <= 0) return 0;
+        if (Board is null || Board.CapacityTotalBoxes <= 0) return 0;
         return Math.Min(100, (int)Math.Round((double)Board.OccupiedBoxes / Board.CapacityTotalBoxes * 100));
     }
 

@@ -126,6 +126,15 @@ public sealed class YardKanbanComponentTests : BunitContext
     }
 
     [Fact]
+    public void YardKanbanBoard_ShouldNotThrow_WhenBoardIsNull()
+    {
+        var cut = Render<YardKanbanBoard>(parameters => parameters
+            .Add(p => p.Board, null));
+
+        Assert.NotNull(cut.Markup);
+    }
+
+    [Fact]
     public void WorkOrderHistoryDrawer_ShouldRenderTimelineWhenOpen()
     {
         var orderId = Guid.NewGuid();
