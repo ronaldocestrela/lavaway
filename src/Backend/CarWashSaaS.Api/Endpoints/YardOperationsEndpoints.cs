@@ -13,6 +13,7 @@ public static class YardOperationsEndpoints
         MapCustomerEndpoints(app);
         MapYardSetupEndpoints(app);
         MapWorkOrderEndpoints(app);
+        MapVehicleInspectionEndpoints(app);
 
         return app;
     }
@@ -504,5 +505,203 @@ public static class YardOperationsEndpoints
         }
 
         return Result<List<ServicePriceInput>>.Success(list);
+    }
+
+    private static void MapVehicleInspectionEndpoints(IEndpointRouteBuilder app)
+    {
+        app.MapGet("/work-orders/{workOrderId:guid}/inspection", async (
+            Guid workOrderId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetByWorkOrderIdAsync(tenantId, workOrderId, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPost("/work-orders/{workOrderId:guid}/inspection", async (
+            Guid workOrderId,
+            CreateInspectionRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.CreateOrGetInspectionAsync(tenantId, workOrderId, request, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPut("/work-orders/{workOrderId:guid}/inspection/checklist", async (
+            Guid workOrderId,
+            UpdateInspectionChecklistRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.UpdateChecklistAsync(tenantId, workOrderId, request, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPost("/work-orders/{workOrderId:guid}/inspection/damages", async (
+            Guid workOrderId,
+            AddInspectionDamageRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.AddDamageAsync(tenantId, workOrderId, request, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapDelete("/work-orders/{workOrderId:guid}/inspection/damages/{damageId:guid}", async (
+            Guid workOrderId,
+            Guid damageId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.RemoveDamageAsync(tenantId, workOrderId, damageId, ct);
+            return result.IsSuccess ? Results.NoContent() : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPost("/work-orders/{workOrderId:guid}/inspection/photos", async (
+            Guid workOrderId,
+            IFormFile file,
+            string category,
+            Guid? damageId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            if (!Enum.TryParse<InspectionPhotoCategory>(category, true, out var photoCategory))
+            {
+                return Results.BadRequest(new { Code = "photo.category.invalid", Description = "Categoria de foto inválida." });
+            }
+
+            if (file is null || file.Length == 0)
+            {
+                return Results.BadRequest(new { Code = "photo.file.empty", Description = "Arquivo não enviado." });
+            }
+
+            await using var stream = file.OpenReadStream();
+            var result = await service.UploadPhotoAsync(
+                tenantId,
+                workOrderId,
+                photoCategory,
+                stream,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                damageId,
+                ct);
+
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers)
+          .DisableAntiforgery();
+
+        app.MapGet("/work-orders/{workOrderId:guid}/inspection/photos/{photoId:guid}", async (
+            Guid workOrderId,
+            Guid photoId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetPhotoStreamAsync(tenantId, workOrderId, photoId, ct);
+            return result.IsSuccess
+                ? Results.File(result.Value!.Content, result.Value.ContentType)
+                : result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPost("/work-orders/{workOrderId:guid}/inspection/complete", async (
+            Guid workOrderId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.CompleteInspectionAsync(tenantId, workOrderId, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
     }
 }

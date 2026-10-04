@@ -1,4 +1,4 @@
-﻿IF OBJECT_ID(N'[yard].[__EFMigrationsHistory]') IS NULL
+IF OBJECT_ID(N'[yard].[__EFMigrationsHistory]') IS NULL
 BEGIN
     IF SCHEMA_ID(N'yard') IS NULL EXEC(N'CREATE SCHEMA [yard];');
     CREATE TABLE [yard].[__EFMigrationsHistory] (
@@ -384,6 +384,83 @@ IF NOT EXISTS (
 BEGIN
     INSERT INTO [yard].[__EFMigrationsHistory] ([MigrationId], [ProductVersion])
     VALUES (N'20261003181125_AddWorkOrderNotes', N'10.0.9');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [yard].[__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261003204000_AddVehicleInspections'
+)
+BEGIN
+    CREATE TABLE [yard].[VehicleInspections] (
+        [Id] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        [WorkOrderId] uniqueidentifier NOT NULL,
+        [VehicleId] uniqueidentifier NOT NULL,
+        [FuelLevel] nvarchar(32) NULL,
+        [OdometerKm] int NULL,
+        [Notes] nvarchar(500) NULL,
+        [Status] nvarchar(32) NOT NULL,
+        [CreatedAtUtc] datetimeoffset NOT NULL,
+        [CompletedAtUtc] datetimeoffset NULL,
+        CONSTRAINT [PK_VehicleInspections] PRIMARY KEY ([Id]),
+        CONSTRAINT [AK_VehicleInspections_TenantId_Id] UNIQUE ([TenantId], [Id])
+    );
+
+    CREATE TABLE [yard].[InspectionDamages] (
+        [Id] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        [VehicleInspectionId] uniqueidentifier NOT NULL,
+        [Type] nvarchar(32) NOT NULL,
+        [View] nvarchar(32) NOT NULL,
+        [CoordinateX] decimal(5,2) NOT NULL,
+        [CoordinateY] decimal(5,2) NOT NULL,
+        [Severity] nvarchar(32) NOT NULL,
+        [Description] nvarchar(300) NULL,
+        CONSTRAINT [PK_InspectionDamages] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_InspectionDamages_VehicleInspections_VehicleInspectionId] FOREIGN KEY ([VehicleInspectionId]) REFERENCES [yard].[VehicleInspections] ([Id]) ON DELETE CASCADE
+    );
+
+    CREATE TABLE [yard].[InspectionChecklistItems] (
+        [Id] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        [VehicleInspectionId] uniqueidentifier NOT NULL,
+        [ItemKey] nvarchar(64) NOT NULL,
+        [Title] nvarchar(150) NOT NULL,
+        [Status] nvarchar(32) NOT NULL,
+        [Observation] nvarchar(300) NULL,
+        CONSTRAINT [PK_InspectionChecklistItems] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_InspectionChecklistItems_VehicleInspections_VehicleInspectionId] FOREIGN KEY ([VehicleInspectionId]) REFERENCES [yard].[VehicleInspections] ([Id]) ON DELETE CASCADE
+    );
+
+    CREATE TABLE [yard].[InspectionPhotos] (
+        [Id] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        [VehicleInspectionId] uniqueidentifier NOT NULL,
+        [Category] nvarchar(32) NOT NULL,
+        [StoragePath] nvarchar(500) NOT NULL,
+        [FileName] nvarchar(255) NOT NULL,
+        [ContentType] nvarchar(64) NOT NULL,
+        [SizeBytes] bigint NOT NULL,
+        [DamageId] uniqueidentifier NULL,
+        [UploadedAtUtc] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_InspectionPhotos] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_InspectionPhotos_VehicleInspections_VehicleInspectionId] FOREIGN KEY ([VehicleInspectionId]) REFERENCES [yard].[VehicleInspections] ([Id]) ON DELETE CASCADE
+    );
+
+    CREATE UNIQUE INDEX [IX_VehicleInspections_TenantId_WorkOrderId] ON [yard].[VehicleInspections] ([TenantId], [WorkOrderId]);
+    CREATE INDEX [IX_InspectionDamages_TenantId_VehicleInspectionId] ON [yard].[InspectionDamages] ([TenantId], [VehicleInspectionId]);
+    CREATE INDEX [IX_InspectionDamages_VehicleInspectionId] ON [yard].[InspectionDamages] ([VehicleInspectionId]);
+    CREATE INDEX [IX_InspectionChecklistItems_TenantId_VehicleInspectionId] ON [yard].[InspectionChecklistItems] ([TenantId], [VehicleInspectionId]);
+    CREATE INDEX [IX_InspectionChecklistItems_VehicleInspectionId] ON [yard].[InspectionChecklistItems] ([VehicleInspectionId]);
+    CREATE INDEX [IX_InspectionPhotos_TenantId_VehicleInspectionId] ON [yard].[InspectionPhotos] ([TenantId], [VehicleInspectionId]);
+    CREATE INDEX [IX_InspectionPhotos_VehicleInspectionId] ON [yard].[InspectionPhotos] ([VehicleInspectionId]);
+
+    INSERT INTO [yard].[__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261003204000_AddVehicleInspections', N'10.0.9');
 END;
 
 COMMIT;

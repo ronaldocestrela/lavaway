@@ -1,0 +1,338 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="inspection-diagram-card">
+    <div class="diagram-header">
+        <div class="header-info">
+            <span class="view-tag">MAPEAMENTO DE AVARIAS</span>
+            <h3 class="view-title">Diagrama Interativo do Veículo</h3>
+            <p class="view-hint">Toque ou clique em qualquer ponto da carroceria para marcar avarias pré-existentes.</p>
+        </div>
+        <div class="view-selector">
+            <button type="button" class="btn-view @(CurrentView == VehicleView.Top ? "active" : "")" @onclick="() => SetView(VehicleView.Top)">
+                Superior
+            </button>
+            <button type="button" class="btn-view @(CurrentView == VehicleView.LeftSide ? "active" : "")" @onclick="() => SetView(VehicleView.LeftSide)">
+                Lat. Esquerda
+            </button>
+            <button type="button" class="btn-view @(CurrentView == VehicleView.RightSide ? "active" : "")" @onclick="() => SetView(VehicleView.RightSide)">
+                Lat. Direita
+            </button>
+            <button type="button" class="btn-view @(CurrentView == VehicleView.Front ? "active" : "")" @onclick="() => SetView(VehicleView.Front)">
+                Frente
+            </button>
+            <button type="button" class="btn-view @(CurrentView == VehicleView.Rear ? "active" : "")" @onclick="() => SetView(VehicleView.Rear)">
+                Traseira
+            </button>
+        </div>
+    </div>
+
+    <div class="diagram-canvas-wrapper" @onclick="HandleCanvasClick">
+        <div class="diagram-canvas">
+            @if (CurrentView == VehicleView.Top)
+            {
+                <svg viewBox="0 0 400 240" class="vehicle-svg" preserveAspectRatio="xMidYMid meet">
+                    <!-- Silhueta Superior Carroceria -->
+                    <rect x="50" y="30" width="300" height="180" rx="35" class="svg-body-base" />
+                    <!-- Vidros -->
+                    <path d="M 110 50 L 140 70 L 140 170 L 110 190 Z" class="svg-glass" />
+                    <rect x="150" y="65" width="100" height="110" rx="10" class="svg-roof" />
+                    <path d="M 290 50 L 260 70 L 260 170 L 290 190 Z" class="svg-glass" />
+                    <!-- Faróis e Lanternas -->
+                    <rect x="45" y="45" width="12" height="30" rx="6" class="svg-light-front" />
+                    <rect x="45" y="165" width="12" height="30" rx="6" class="svg-light-front" />
+                    <rect x="343" y="45" width="12" height="30" rx="4" class="svg-light-rear" />
+                    <rect x="343" y="165" width="12" height="30" rx="4" class="svg-light-rear" />
+                    <!-- Retrovisores -->
+                    <ellipse cx="125" cy="22" rx="12" ry="7" class="svg-mirror" />
+                    <ellipse cx="125" cy="218" rx="12" ry="7" class="svg-mirror" />
+                    <!-- Linhas Guia de Painel -->
+                    <line x1="145" y1="30" x2="145" y2="210" class="svg-line" />
+                    <line x1="255" y1="30" x2="255" y2="210" class="svg-line" />
+                    <text x="75" y="125" class="svg-label">FRENTE</text>
+                    <text x="305" y="125" class="svg-label">TRASEIRA</text>
+                </svg>
+            }
+            else if (CurrentView == VehicleView.LeftSide || CurrentView == VehicleView.RightSide)
+            {
+                <svg viewBox="0 0 400 200" class="vehicle-svg" preserveAspectRatio="xMidYMid meet">
+                    <!-- Silhueta Lateral -->
+                    <path d="M 30 140 C 30 100, 60 90, 110 85 L 160 50 L 270 50 L 330 90 L 370 100 L 370 140 L 330 140 C 330 120, 290 120, 290 140 L 140 140 C 140 120, 100 120, 100 140 Z" class="svg-body-base" />
+                    <!-- Rodas -->
+                    <circle cx="120" cy="140" r="28" class="svg-wheel" />
+                    <circle cx="310" cy="140" r="28" class="svg-wheel" />
+                    <circle cx="120" cy="140" r="14" class="svg-rim" />
+                    <circle cx="310" cy="140" r="14" class="svg-rim" />
+                    <!-- Janelas -->
+                    <path d="M 165 58 L 210 58 L 210 85 L 125 85 Z" class="svg-glass" />
+                    <path d="M 218 58 L 265 58 L 315 85 L 218 85 Z" class="svg-glass" />
+                    <!-- Linhas de Portas -->
+                    <line x1="214" y1="58" x2="214" y2="138" class="svg-line" />
+                    <line x1="125" y1="88" x2="125" y2="138" class="svg-line" />
+                    <line x1="315" y1="88" x2="315" y2="138" class="svg-line" />
+                    <text x="200" y="175" class="svg-label">@(CurrentView == VehicleView.LeftSide ? "LATERAL ESQUERDA" : "LATERAL DIREITA")</text>
+                </svg>
+            }
+            else if (CurrentView == VehicleView.Front)
+            {
+                <svg viewBox="0 0 400 220" class="vehicle-svg" preserveAspectRatio="xMidYMid meet">
+                    <!-- Frente -->
+                    <path d="M 70 170 C 60 170, 50 140, 70 100 L 100 60 L 300 60 L 330 100 C 350 140, 340 170, 330 170 Z" class="svg-body-base" />
+                    <!-- Parabrisa -->
+                    <path d="M 110 65 L 290 65 L 275 105 L 125 105 Z" class="svg-glass" />
+                    <!-- Grade Frontal -->
+                    <rect x="140" y="130" width="120" height="35" rx="6" class="svg-grille" />
+                    <!-- Faróis -->
+                    <polygon points="75,115 125,115 115,135 80,135" class="svg-light-front" />
+                    <polygon points="325,115 275,115 285,135 320,135" class="svg-light-front" />
+                    <!-- Placa -->
+                    <rect x="165" y="150" width="70" height="20" rx="3" class="svg-plate" />
+                    <text x="200" y="164" class="svg-plate-text">PLACA</text>
+                    <text x="200" y="195" class="svg-label">VISTA DIANTEIRA</text>
+                </svg>
+            }
+            else
+            {
+                <svg viewBox="0 0 400 220" class="vehicle-svg" preserveAspectRatio="xMidYMid meet">
+                    <!-- Traseira -->
+                    <path d="M 70 170 C 60 170, 50 140, 70 100 L 100 60 L 300 60 L 330 100 C 350 140, 340 170, 330 170 Z" class="svg-body-base" />
+                    <!-- Vidro Traseiro -->
+                    <path d="M 110 65 L 290 65 L 275 105 L 125 105 Z" class="svg-glass" />
+                    <!-- Lanternas -->
+                    <polygon points="75,115 125,115 115,135 80,135" class="svg-light-rear" />
+                    <polygon points="325,115 275,115 285,135 320,135" class="svg-light-rear" />
+                    <!-- Placa -->
+                    <rect x="165" y="135" width="70" height="20" rx="3" class="svg-plate" />
+                    <text x="200" y="149" class="svg-plate-text">PLACA</text>
+                    <text x="200" y="195" class="svg-label">VISTA TRASEIRA</text>
+                </svg>
+            }
+
+            <!-- Pinos de Avarias Marcadas na Vista Atual -->
+            @foreach (var damage in CurrentViewDamages)
+            {
+                <div class="damage-pin @GetSeverityClass(damage.Severity)"
+                     style="left: @damage.CoordinateX.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%; top: @damage.CoordinateY.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%;"
+                     @onclick:stopPropagation="true"
+                     @onclick="() => HandlePinClick(damage)">
+                    <span class="pin-symbol">@GetDamageSymbol(damage.Type)</span>
+                    <span class="pin-pulse"></span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Modal / Bottom Sheet para Adicionar Nova Avaria -->
+    @if (_showAddModal)
+    {
+        <div class="damage-modal-backdrop" @onclick="CloseAddModal">
+            <div class="damage-modal-card" @onclick:stopPropagation="true">
+                <div class="modal-title-row">
+                    <h4>Nova Avaria</h4>
+                    <button type="button" class="btn-close" @onclick="CloseAddModal">&times;</button>
+                </div>
+
+                <div class="modal-info-pill">
+                    <span>Vista: @GetViewName(CurrentView)</span>
+                    <span>X: @_pendingX.ToString("0.0")% | Y: @_pendingY.ToString("0.0")%</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Dano</label>
+                    <div class="damage-type-chips">
+                        <button type="button" class="chip @(_selectedType == DamageType.Scratch ? "active" : "")" @onclick="() => _selectedType = DamageType.Scratch">
+                            &#9998; Arranhão
+                        </button>
+                        <button type="button" class="chip @(_selectedType == DamageType.Dent ? "active" : "")" @onclick="() => _selectedType = DamageType.Dent">
+                            &#9679; Mossa / Amassado
+                        </button>
+                        <button type="button" class="chip @(_selectedType == DamageType.Crack ? "active" : "")" @onclick="() => _selectedType = DamageType.Crack">
+                            &#9889; Trinca / Vidro
+                        </button>
+                        <button type="button" class="chip @(_selectedType == DamageType.PaintChip ? "active" : "")" @onclick="() => _selectedType = DamageType.PaintChip">
+                            &#9638; Picado de Pedra
+                        </button>
+                        <button type="button" class="chip @(_selectedType == DamageType.Other ? "active" : "")" @onclick="() => _selectedType = DamageType.Other">
+                            &#8230; Outro
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Severidade</label>
+                    <div class="severity-buttons">
+                        <button type="button" class="btn-sev low @(_selectedSeverity == DamageSeverity.Low ? "active" : "")" @onclick="() => _selectedSeverity = DamageSeverity.Low">
+                            Leve
+                        </button>
+                        <button type="button" class="btn-sev med @(_selectedSeverity == DamageSeverity.Medium ? "active" : "")" @onclick="() => _selectedSeverity = DamageSeverity.Medium">
+                            Média
+                        </button>
+                        <button type="button" class="btn-sev high @(_selectedSeverity == DamageSeverity.High ? "active" : "")" @onclick="() => _selectedSeverity = DamageSeverity.High">
+                            Grave
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição (Opcional)</label>
+                    <input type="text" class="input-text" placeholder="Ex.: Risco de chave na porta dianteira" @bind="_description" maxlength="300" />
+                </div>
+
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn-secondary" @onclick="CloseAddModal">Cancelar</button>
+                    <button type="button" class="btn-primary" @onclick="ConfirmAddDamage">Marcar Avaria</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Detalhe da Avaria Selecionada -->
+    @if (_selectedDamage is not null)
+    {
+        <div class="damage-detail-backdrop" @onclick="() => _selectedDamage = null">
+            <div class="damage-detail-card" @onclick:stopPropagation="true">
+                <div class="modal-title-row">
+                    <h4>@GetDamageName(_selectedDamage.Type)</h4>
+                    <button type="button" class="btn-close" @onclick="() => _selectedDamage = null">&times;</button>
+                </div>
+                <div class="detail-props">
+                    <div class="prop-item">
+                        <span class="label">Severidade:</span>
+                        <span class="val badge-@_selectedDamage.Severity.ToString().ToLowerInvariant()">@_selectedDamage.Severity</span>
+                    </div>
+                    <div class="prop-item">
+                        <span class="label">Vista:</span>
+                        <span class="val">@GetViewName(_selectedDamage.View)</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_selectedDamage.Description))
+                    {
+                        <div class="prop-item full">
+                            <span class="label">Descrição:</span>
+                            <span class="val">@_selectedDamage.Description</span>
+                        </div>
+                    }
+                </div>
+                @if (!IsReadOnly)
+                {
+                    <div class="detail-actions">
+                        <button type="button" class="btn-danger" @onclick="() => HandleDeleteDamage(_selectedDamage.Id)">
+                            Remover Avaria
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Lista Resumida de Avarias Registradas -->
+    <div class="damages-summary-row">
+        <span class="summary-count">
+            Total de avarias registradas: <strong>@Damages.Count</strong>
+        </span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyCollection<InspectionDamageDto> Damages { get; set; } = [];
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public EventCallback<AddInspectionDamageRequest> OnAddDamage { get; set; }
+    [Parameter] public EventCallback<Guid> OnRemoveDamage { get; set; }
+
+    public VehicleView CurrentView { get; private set; } = VehicleView.Top;
+
+    private bool _showAddModal;
+    private decimal _pendingX;
+    private decimal _pendingY;
+    private DamageType _selectedType = DamageType.Scratch;
+    private DamageSeverity _selectedSeverity = DamageSeverity.Low;
+    private string? _description;
+    private InspectionDamageDto? _selectedDamage;
+
+    private IEnumerable<InspectionDamageDto> CurrentViewDamages =>
+        Damages.Where(d => d.View == CurrentView);
+
+    private void SetView(VehicleView view)
+    {
+        CurrentView = view;
+        _selectedDamage = null;
+    }
+
+    private void HandleCanvasClick(MouseEventArgs e)
+    {
+        if (IsReadOnly) return;
+
+        // Dimensões do SVG: base 400x240 para Top, 400x200 para Lateral, 400x220 para Frente/Traseira
+        // Em um container flexível, estimamos percentual normalizado:
+        // Calculamos coordenadas relativas aproximadas
+        var x = (decimal)Math.Clamp(e.OffsetX / 380.0 * 100.0, 5.0, 95.0);
+        var y = (decimal)Math.Clamp(e.OffsetY / 220.0 * 100.0, 5.0, 95.0);
+
+        _pendingX = Math.Round(x, 1);
+        _pendingY = Math.Round(y, 1);
+        _selectedType = DamageType.Scratch;
+        _selectedSeverity = DamageSeverity.Low;
+        _description = null;
+        _showAddModal = true;
+    }
+
+    private void CloseAddModal() => _showAddModal = false;
+
+    private async Task ConfirmAddDamage()
+    {
+        _showAddModal = false;
+        var request = new AddInspectionDamageRequest(
+            _selectedType,
+            CurrentView,
+            _pendingX,
+            _pendingY,
+            _selectedSeverity,
+            _description);
+
+        await OnAddDamage.InvokeAsync(request);
+    }
+
+    private void HandlePinClick(InspectionDamageDto damage)
+    {
+        _selectedDamage = damage;
+    }
+
+    private async Task HandleDeleteDamage(Guid id)
+    {
+        _selectedDamage = null;
+        await OnRemoveDamage.InvokeAsync(id);
+    }
+
+    private static string GetDamageSymbol(DamageType type) => type switch
+    {
+        DamageType.Scratch => "—",
+        DamageType.Dent => "●",
+        DamageType.Crack => "⚡",
+        DamageType.PaintChip => "▪",
+        _ => "!"
+    };
+
+    private static string GetDamageName(DamageType type) => type switch
+    {
+        DamageType.Scratch => "Arranhão",
+        DamageType.Dent => "Mossa / Amassado",
+        DamageType.Crack => "Trinca / Vidro",
+        DamageType.PaintChip => "Picado de Pedra",
+        _ => "Outro"
+    };
+
+    private static string GetViewName(VehicleView view) => view switch
+    {
+        VehicleView.Top => "Superior / Teto",
+        VehicleView.LeftSide => "Lateral Esquerda",
+        VehicleView.RightSide => "Lateral Direita",
+        VehicleView.Front => "Frente",
+        VehicleView.Rear => "Traseira",
+        _ => view.ToString()
+    };
+
+    private static string GetSeverityClass(DamageSeverity severity) => severity switch
+    {
+        DamageSeverity.High => "sev-high",
+        DamageSeverity.Medium => "sev-med",
+        _ => "sev-low"
+    };
+}

@@ -51,6 +51,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
     public DbContextOptions<YardOperationsDbContext> CreateYardOperationsOptions() =>
         new DbContextOptionsBuilder<YardOperationsDbContext>()
             .UseSqlServer(_container!.GetConnectionString(), sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "yard"))
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning))
             .Options;
 
     public DbContextOptions<WhatsAppDbContext> CreateWhatsAppOptions() =>

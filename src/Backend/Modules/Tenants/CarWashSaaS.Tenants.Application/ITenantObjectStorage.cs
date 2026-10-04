@@ -1,10 +1,2 @@
-namespace CarWashSaaS.Tenants.Application;
-
-public interface ITenantObjectStorage
-{
-    Task PutAsync(Guid tenantId, string category, string fileName, Stream content, string contentType, CancellationToken ct = default);
-
-    Task<StoredObject?> GetAsync(Guid tenantId, string category, string fileName, CancellationToken ct = default);
-}
-
-public sealed record StoredObject(Stream Content, string ContentType);
+global using ITenantObjectStorage = CarWashSaaS.Shared.Contracts.ITenantObjectStorage;
+global using StoredObject = CarWashSaaS.Shared.Contracts.StoredObject;

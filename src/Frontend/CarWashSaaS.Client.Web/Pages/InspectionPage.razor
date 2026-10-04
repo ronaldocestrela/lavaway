@@ -1,0 +1,314 @@
+@page "/work-orders/{WorkOrderId:guid}/inspection"
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Components.Forms
+@inject InspectionApiClient InspectionApi
+@inject WorkOrderApiClient WorkOrderApi
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>Vistoria Digital de Entrada — Lavaway</PageTitle>
+
+<div class="inspection-page-container">
+    @if (_isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <span>Carregando vistoria da Ordem de Serviço...</span>
+        </div>
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="error-banner">
+            <span class="error-icon">&#9888;</span>
+            <div class="error-content">
+                <strong>Não foi possível carregar a vistoria</strong>
+                <p>@_errorMessage</p>
+            </div>
+            <button type="button" class="btn-retry" @onclick="LoadDataAsync">Tentar Novamente</button>
+        </div>
+    }
+    else if (_workOrder is not null && _inspection is not null)
+    {
+        <!-- Header da Vistoria -->
+        <header class="inspection-header">
+            <div class="header-left">
+                <button type="button" class="btn-back" @onclick="GoBack">
+                    &#8592; Voltar
+                </button>
+                <div class="header-title-block">
+                    <span class="eyebrow">VISTORIA DIGITAL DE ENTRADA</span>
+                    <h1 class="page-title">Check-in do Veículo</h1>
+                    <div class="os-pills">
+                        <span class="pill-os">OS #@_workOrder.Id.ToString()[..8].ToUpperInvariant()</span>
+                        <span class="pill-plate">@FormatPlate(_workOrder.Plate)</span>
+                        <span class="pill-size">@_workOrder.VehicleSize</span>
+                        <span class="pill-status @(_inspection.Status == InspectionStatus.Completed ? "completed" : "draft")">
+                            @(_inspection.Status == InspectionStatus.Completed ? "✓ Vistoria Concluída" : "● Rascunho / Em Andamento")
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-customer">
+                <span class="customer-label">CLIENTE</span>
+                <span class="customer-name">@_workOrder.CustomerName</span>
+            </div>
+        </header>
+
+        @if (_alertMessage is not null)
+        {
+            <div class="alert-toast @(_isSuccessAlert ? "alert-success" : "alert-error")">
+                <span>@_alertMessage</span>
+                <button type="button" class="alert-close" @onclick="() => _alertMessage = null">&times;</button>
+            </div>
+        }
+
+        <!-- Seletor de Abas Móveis -->
+        <nav class="inspection-nav-tabs">
+            <button type="button" class="tab-btn @(_activeTab == Tab.Diagram ? "active" : "")" @onclick="() => _activeTab = Tab.Diagram">
+                <span class="tab-icon">&#9998;</span>
+                <span>1. Diagrama de Avarias (@_inspection.Damages.Count)</span>
+            </button>
+            <button type="button" class="tab-btn @(_activeTab == Tab.Checklist ? "active" : "")" @onclick="() => _activeTab = Tab.Checklist">
+                <span class="tab-icon">&#9745;</span>
+                <span>2. Itens & Combustível</span>
+            </button>
+            <button type="button" class="tab-btn @(_activeTab == Tab.Photos ? "active" : "")" @onclick="() => _activeTab = Tab.Photos">
+                <span class="tab-icon">&#128247;</span>
+                <span>3. Fotos (@RequiredPhotosCount/4)</span>
+            </button>
+        </nav>
+
+        <!-- Conteúdo da Aba Ativa -->
+        <main class="tab-content-area">
+            @if (_activeTab == Tab.Diagram)
+            {
+                <VehicleInspectionDiagram Damages="@_inspection.Damages"
+                                          IsReadOnly="@IsReadOnly"
+                                          OnAddDamage="HandleAddDamage"
+                                          OnRemoveDamage="HandleRemoveDamage" />
+            }
+            else if (_activeTab == Tab.Checklist)
+            {
+                <InspectionChecklistCard FuelLevel="@_inspection.FuelLevel"
+                                         OdometerKm="@_inspection.OdometerKm"
+                                         Notes="@_inspection.Notes"
+                                         Items="@_inspection.ChecklistItems"
+                                         IsReadOnly="@IsReadOnly"
+                                         OnSave="HandleSaveChecklist" />
+            }
+            else
+            {
+                <InspectionPhotoGallery WorkOrderId="@WorkOrderId"
+                                        Photos="@_inspection.Photos"
+                                        IsReadOnly="@IsReadOnly"
+                                        PhotoBaseUrl="@(Http.BaseAddress?.ToString() ?? string.Empty)"
+                                        OnUploadPhoto="HandleUploadPhoto" />
+            }
+        </main>
+
+        <!-- Barra de Ação Fixa Inferior -->
+        <footer class="bottom-action-bar">
+            <div class="bottom-status">
+                <div class="photo-indicator @(HasAllRequiredPhotos ? "all-photos" : "missing-photos")">
+                    <span>@RequiredPhotosCount de 4 fotos obrigatórias</span>
+                </div>
+                @if (!HasAllRequiredPhotos && !IsReadOnly)
+                {
+                    <span class="bottom-hint">Envie as 4 fotos para poder concluir</span>
+                }
+            </div>
+
+            <div class="bottom-buttons">
+                @if (!IsReadOnly)
+                {
+                    <button id="btn-complete-inspection"
+                            type="button"
+                            class="btn-complete @(HasAllRequiredPhotos ? "btn-enabled" : "btn-disabled")"
+                            @onclick="HandleCompleteInspection"
+                            disabled="@(!HasAllRequiredPhotos || _isSubmitting)">
+                        @if (_isSubmitting)
+                        {
+                            <span class="btn-spinner"></span>
+                            <span>Concluindo...</span>
+                        }
+                        else
+                        {
+                            <span>Concluir Vistoria</span>
+                            <span aria-hidden="true">&#10003;</span>
+                        }
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="btn-secondary-action" @onclick="GoBack">
+                        <span>Retornar para o Pátio</span>
+                    </button>
+                }
+            </div>
+        </footer>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid WorkOrderId { get; set; }
+
+    private enum Tab { Diagram, Checklist, Photos }
+    private Tab _activeTab = Tab.Diagram;
+
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+    private string? _alertMessage;
+    private bool _isSuccessAlert;
+
+    private WorkOrderDto? _workOrder;
+    private VehicleInspectionDto? _inspection;
+
+    private bool IsReadOnly => _inspection?.Status == InspectionStatus.Completed;
+
+    private bool HasFront => _inspection?.Photos.Any(p => p.Category == InspectionPhotoCategory.Front) ?? false;
+    private bool HasRear => _inspection?.Photos.Any(p => p.Category == InspectionPhotoCategory.Rear) ?? false;
+    private bool HasLeft => _inspection?.Photos.Any(p => p.Category == InspectionPhotoCategory.LeftSide) ?? false;
+    private bool HasRight => _inspection?.Photos.Any(p => p.Category == InspectionPhotoCategory.RightSide) ?? false;
+
+    private int RequiredPhotosCount => (HasFront ? 1 : 0) + (HasRear ? 1 : 0) + (HasLeft ? 1 : 0) + (HasRight ? 1 : 0);
+    private bool HasAllRequiredPhotos => RequiredPhotosCount == 4;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _workOrder = await WorkOrderApi.GetWorkOrderByIdAsync(WorkOrderId);
+            if (_workOrder is null)
+            {
+                _errorMessage = "Ordem de serviço não encontrada.";
+                _isLoading = false;
+                return;
+            }
+
+            // Tenta obter ou cria rascunho
+            _inspection = await InspectionApi.GetInspectionAsync(WorkOrderId);
+            if (_inspection is null)
+            {
+                _inspection = await InspectionApi.CreateOrGetInspectionAsync(WorkOrderId, new CreateInspectionRequest());
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleAddDamage(AddInspectionDamageRequest request)
+    {
+        try
+        {
+            await InspectionApi.AddDamageAsync(WorkOrderId, request);
+            _inspection = await InspectionApi.GetInspectionAsync(WorkOrderId);
+            ShowAlert("Avaria registrada com sucesso!", true);
+        }
+        catch (Exception ex)
+        {
+            ShowAlert(ex.Message, false);
+        }
+    }
+
+    private async Task HandleRemoveDamage(Guid damageId)
+    {
+        try
+        {
+            await InspectionApi.RemoveDamageAsync(WorkOrderId, damageId);
+            _inspection = await InspectionApi.GetInspectionAsync(WorkOrderId);
+            ShowAlert("Avaria removida.", true);
+        }
+        catch (Exception ex)
+        {
+            ShowAlert(ex.Message, false);
+        }
+    }
+
+    private async Task HandleSaveChecklist(UpdateInspectionChecklistRequest request)
+    {
+        try
+        {
+            _inspection = await InspectionApi.UpdateChecklistAsync(WorkOrderId, request);
+            ShowAlert("Checklist e dados do veículo salvos com sucesso!", true);
+        }
+        catch (Exception ex)
+        {
+            ShowAlert(ex.Message, false);
+        }
+    }
+
+    private async Task HandleUploadPhoto((InspectionPhotoCategory Category, IBrowserFile File) args)
+    {
+        try
+        {
+            using var stream = args.File.OpenReadStream(10 * 1024 * 1024);
+            await InspectionApi.UploadPhotoAsync(
+                WorkOrderId,
+                args.Category,
+                stream,
+                args.File.Name,
+                args.File.ContentType);
+
+            _inspection = await InspectionApi.GetInspectionAsync(WorkOrderId);
+            ShowAlert("Foto enviada com sucesso!", true);
+        }
+        catch (Exception ex)
+        {
+            ShowAlert(ex.Message, false);
+        }
+    }
+
+    private async Task HandleCompleteInspection()
+    {
+        if (!HasAllRequiredPhotos || _isSubmitting) return;
+
+        _isSubmitting = true;
+        try
+        {
+            _inspection = await InspectionApi.CompleteInspectionAsync(WorkOrderId);
+            ShowAlert("Vistoria digital concluída com sucesso!", true);
+        }
+        catch (Exception ex)
+        {
+            ShowAlert(ex.Message, false);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void ShowAlert(string msg, bool success)
+    {
+        _alertMessage = msg;
+        _isSuccessAlert = success;
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/reception");
+    }
+
+    private static string FormatPlate(string raw)
+    {
+        var clean = (raw ?? string.Empty).Replace("-", "").Trim().ToUpperInvariant();
+        return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
+    }
+}

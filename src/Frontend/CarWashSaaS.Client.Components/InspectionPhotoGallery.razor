@@ -1,0 +1,134 @@
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="photo-gallery-card">
+    <div class="gallery-header">
+        <div class="header-info">
+            <span class="header-tag">REGISTRO FOTOGRÁFICO DE ENTRADA</span>
+            <h3 class="header-title">Fotos Obrigatórias de Perímetro</h3>
+            <p class="header-hint">Tire ou envie as 4 fotos dos ângulos do veículo para resguardo de avarias pré-existentes.</p>
+        </div>
+        <div class="photos-progress-badge @(HasAllRequiredPhotos ? "complete" : "pending")">
+            <span class="badge-icon">@(HasAllRequiredPhotos ? "✓" : "!")</span>
+            <span>@RequiredPhotosCount/4 Fotos Obrigatórias</span>
+        </div>
+    </div>
+
+    <!-- Grade das 4 Fotos Obrigatórias -->
+    <div class="required-photos-grid">
+        @RenderPhotoSlot(InspectionPhotoCategory.Front, "Frente / Placa Dianteira", "Capturar Frente")
+        @RenderPhotoSlot(InspectionPhotoCategory.Rear, "Traseira / Placa Traseira", "Capturar Traseira")
+        @RenderPhotoSlot(InspectionPhotoCategory.LeftSide, "Lateral Esquerda", "Capturar Lat. Esq.")
+        @RenderPhotoSlot(InspectionPhotoCategory.RightSide, "Lateral Direita", "Capturar Lat. Dir.")
+    </div>
+
+    <!-- Seção de Fotos Adicionais (Interior / Detalhes de Avarias) -->
+    <div class="additional-photos-section">
+        <div class="additional-header">
+            <h4 class="additional-title">Fotos Adicionais / Detalhes de Avarias</h4>
+            @if (!IsReadOnly)
+            {
+                <label class="btn-add-photo">
+                    <span>+ Adicionar Foto</span>
+                    <InputFile OnChange="@(e => HandleUpload(e, InspectionPhotoCategory.DamageDetail))"
+                               accept="image/png,image/jpeg,image/webp"
+                               capture="environment"
+                               style="display: none;" />
+                </label>
+            }
+        </div>
+
+        @if (AdditionalPhotos.Any())
+        {
+            <div class="additional-photos-grid">
+                @foreach (var photo in AdditionalPhotos)
+                {
+                    <div class="additional-photo-thumb">
+                        <img src="@GetPhotoStreamUrl(photo.Id)" alt="Foto adicional" class="thumb-img" />
+                        <span class="photo-tag">@photo.Category</span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-additional-state">
+                <span>Nenhuma foto adicional enviada. Você pode registrar o interior, odômetro ou avarias específicas.</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid WorkOrderId { get; set; }
+    [Parameter] public IReadOnlyCollection<InspectionPhotoDto> Photos { get; set; } = [];
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public string PhotoBaseUrl { get; set; } = string.Empty;
+    [Parameter] public EventCallback<(InspectionPhotoCategory Category, IBrowserFile File)> OnUploadPhoto { get; set; }
+
+    private bool HasFront => Photos.Any(p => p.Category == InspectionPhotoCategory.Front);
+    private bool HasRear => Photos.Any(p => p.Category == InspectionPhotoCategory.Rear);
+    private bool HasLeft => Photos.Any(p => p.Category == InspectionPhotoCategory.LeftSide);
+    private bool HasRight => Photos.Any(p => p.Category == InspectionPhotoCategory.RightSide);
+
+    public int RequiredPhotosCount => (HasFront ? 1 : 0) + (HasRear ? 1 : 0) + (HasLeft ? 1 : 0) + (HasRight ? 1 : 0);
+    public bool HasAllRequiredPhotos => RequiredPhotosCount == 4;
+
+    private IEnumerable<InspectionPhotoDto> AdditionalPhotos =>
+        Photos.Where(p => p.Category != InspectionPhotoCategory.Front
+                       && p.Category != InspectionPhotoCategory.Rear
+                       && p.Category != InspectionPhotoCategory.LeftSide
+                       && p.Category != InspectionPhotoCategory.RightSide);
+
+    private string GetPhotoStreamUrl(Guid photoId) =>
+        $"{PhotoBaseUrl.TrimEnd('/')}/work-orders/{WorkOrderId}/inspection/photos/{photoId}";
+
+    private async Task HandleUpload(InputFileChangeEventArgs e, InspectionPhotoCategory category)
+    {
+        if (e.File is null) return;
+        await OnUploadPhoto.InvokeAsync((category, e.File));
+    }
+
+    private RenderFragment RenderPhotoSlot(InspectionPhotoCategory category, string title, string btnLabel) => __builder =>
+    {
+        var photo = Photos.FirstOrDefault(p => p.Category == category);
+        var isUploaded = photo is not null;
+
+        <div class="photo-slot-card @(isUploaded ? "uploaded" : "pending")">
+            <div class="slot-header">
+                <span class="slot-title">@title</span>
+                <span class="slot-badge @(isUploaded ? "badge-ok" : "badge-warn")">
+                    @(isUploaded ? "Enviada" : "Obrigatória")
+                </span>
+            </div>
+
+            <div class="slot-preview-area">
+                @if (isUploaded)
+                {
+                    <img src="@GetPhotoStreamUrl(photo!.Id)" alt="@title" class="preview-img" />
+                    <div class="photo-meta">
+                        <span>@photo.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-slot-content">
+                        <span class="camera-icon">&#128247;</span>
+                        <span class="slot-hint">Toque para abrir a câmera</span>
+                    </div>
+                }
+            </div>
+
+            @if (!IsReadOnly)
+            {
+                <label class="btn-slot-upload @(isUploaded ? "btn-reupload" : "btn-capture")">
+                    <span>@(isUploaded ? "Substituir Foto" : btnLabel)</span>
+                    <InputFile OnChange="@(e => HandleUpload(e, category))"
+                               accept="image/png,image/jpeg,image/webp"
+                               capture="environment"
+                               style="display: none;" />
+                </label>
+            }
+        </div>
+    };
+}

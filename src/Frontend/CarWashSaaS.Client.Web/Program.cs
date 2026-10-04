@@ -18,6 +18,7 @@ builder.Services.AddScoped<ServiceCatalogApiClient>();
 builder.Services.AddScoped<WorkOrderApiClient>();
 builder.Services.AddScoped<YardSetupApiClient>();
 builder.Services.AddScoped<WhatsAppApiClient>();
+builder.Services.AddScoped<InspectionApiClient>();
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
 var authority = builder.Configuration["Authentication:Authority"];

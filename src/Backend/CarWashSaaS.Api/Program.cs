@@ -72,6 +72,8 @@ builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IUnitOfWork, YardOperationsUnitOfWork>();
 builder.Services.AddScoped<CustomerVehicleApplicationService>();
 builder.Services.AddScoped<WorkOrderApplicationService>();
+builder.Services.AddScoped<IVehicleInspectionRepository, VehicleInspectionRepository>();
+builder.Services.AddScoped<VehicleInspectionApplicationService>();
 builder.Services.AddScoped<IYardCapacityRepository, YardCapacityRepository>();
 builder.Services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
 builder.Services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();

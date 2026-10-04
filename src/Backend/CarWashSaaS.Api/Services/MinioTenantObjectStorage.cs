@@ -1,4 +1,5 @@
 using CarWashSaaS.Shared.Configuration;
+using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Tenants.Application;
 using Minio;
 using Minio.DataModel.Args;

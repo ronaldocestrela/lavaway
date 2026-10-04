@@ -1,0 +1,168 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="checklist-card">
+    <div class="card-header">
+        <span class="header-tag">CONFERÊNCIA DE ENTRADA</span>
+        <h3 class="header-title">Itens e Estado do Veículo</h3>
+    </div>
+
+    <!-- Indicador de Combustível -->
+    <div class="section-group">
+        <label class="section-label">Nível de Combustível</label>
+        <div class="fuel-level-pills">
+            <button type="button" class="btn-pill @(FuelLevel == "Empty" ? "active" : "")" @onclick='() => SetFuel("Empty")'>
+                Reserva / Vazio
+            </button>
+            <button type="button" class="btn-pill @(FuelLevel == "OneQuarter" ? "active" : "")" @onclick='() => SetFuel("OneQuarter")'>
+                1/4
+            </button>
+            <button type="button" class="btn-pill @(FuelLevel == "Half" ? "active" : "")" @onclick='() => SetFuel("Half")'>
+                1/2
+            </button>
+            <button type="button" class="btn-pill @(FuelLevel == "ThreeQuarters" ? "active" : "")" @onclick='() => SetFuel("ThreeQuarters")'>
+                3/4
+            </button>
+            <button type="button" class="btn-pill @(FuelLevel == "Full" ? "active" : "")" @onclick='() => SetFuel("Full")'>
+                Cheio
+            </button>
+        </div>
+    </div>
+
+    <!-- Odômetro -->
+    <div class="section-group">
+        <label class="section-label">Quilometragem (Odômetro)</label>
+        <div class="odometer-input-wrapper">
+            <span class="odometer-icon">&#128392;</span>
+            <input type="number"
+                   class="odometer-input"
+                   placeholder="Ex.: 45000"
+                   value="@OdometerKm"
+                   @onchange="HandleOdometerChange"
+                   disabled="@IsReadOnly" />
+            <span class="odometer-unit">km</span>
+        </div>
+    </div>
+
+    <!-- Itens de Checklist Físico -->
+    <div class="section-group">
+        <label class="section-label">Itens de Conferência</label>
+        <div class="items-list">
+            @foreach (var item in Items)
+            {
+                <div class="checklist-item-row">
+                    <div class="item-info">
+                        <span class="item-title">@item.Title</span>
+                        @if (!string.IsNullOrWhiteSpace(item.Observation))
+                        {
+                            <span class="item-obs">Obs: @item.Observation</span>
+                        }
+                    </div>
+                    <div class="item-status-actions">
+                        <button type="button"
+                                class="btn-status ok @(item.Status == ChecklistItemStatus.Ok ? "active" : "")"
+                                @onclick="() => SetItemStatus(item, ChecklistItemStatus.Ok)"
+                                disabled="@IsReadOnly">
+                            OK
+                        </button>
+                        <button type="button"
+                                class="btn-status missing @(item.Status == ChecklistItemStatus.Missing ? "active" : "")"
+                                @onclick="() => SetItemStatus(item, ChecklistItemStatus.Missing)"
+                                disabled="@IsReadOnly">
+                            Faltando
+                        </button>
+                        <button type="button"
+                                class="btn-status damaged @(item.Status == ChecklistItemStatus.Damaged ? "active" : "")"
+                                @onclick="() => SetItemStatus(item, ChecklistItemStatus.Damaged)"
+                                disabled="@IsReadOnly">
+                            Avariado
+                        </button>
+                        <button type="button"
+                                class="btn-status na @(item.Status == ChecklistItemStatus.NotApplicable ? "active" : "")"
+                                @onclick="() => SetItemStatus(item, ChecklistItemStatus.NotApplicable)"
+                                disabled="@IsReadOnly">
+                            N/A
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Observações Gerais -->
+    <div class="section-group">
+        <label class="section-label">Observações Gerais da Vistoria</label>
+        <textarea class="notes-textarea"
+                  placeholder="Ex.: Pertences no porta-malas conferidos com o cliente..."
+                  rows="3"
+                  value="@Notes"
+                  @onchange="HandleNotesChange"
+                  disabled="@IsReadOnly"
+                  maxlength="500"></textarea>
+        <span class="char-count">@((Notes?.Length ?? 0))/500 caracteres</span>
+    </div>
+
+    @if (!IsReadOnly)
+    {
+        <div class="checklist-save-action">
+            <button type="button" class="btn-save-checklist" @onclick="HandleSave">
+                Salvar Checklist
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? FuelLevel { get; set; }
+    [Parameter] public int? OdometerKm { get; set; }
+    [Parameter] public string? Notes { get; set; }
+    [Parameter] public IReadOnlyCollection<InspectionChecklistItemDto> Items { get; set; } = [];
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public EventCallback<UpdateInspectionChecklistRequest> OnSave { get; set; }
+
+    private readonly Dictionary<string, (ChecklistItemStatus Status, string? Obs)> _localChanges = [];
+
+    private void SetFuel(string level)
+    {
+        if (IsReadOnly) return;
+        FuelLevel = level;
+    }
+
+    private void HandleOdometerChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var km))
+        {
+            OdometerKm = km;
+        }
+        else
+        {
+            OdometerKm = null;
+        }
+    }
+
+    private void HandleNotesChange(ChangeEventArgs e)
+    {
+        Notes = e.Value?.ToString();
+    }
+
+    private void SetItemStatus(InspectionChecklistItemDto item, ChecklistItemStatus status)
+    {
+        if (IsReadOnly) return;
+        _localChanges[item.ItemKey] = (status, item.Observation);
+        // Atualiza temporariamente em tela se possível
+    }
+
+    private async Task HandleSave()
+    {
+        var updatedItems = Items.Select(i =>
+        {
+            if (_localChanges.TryGetValue(i.ItemKey, out var change))
+            {
+                return new UpdateChecklistItemRequest(i.ItemKey, i.Title, change.Status, change.Obs);
+            }
+            return new UpdateChecklistItemRequest(i.ItemKey, i.Title, i.Status, i.Observation);
+        }).ToArray();
+
+        var request = new UpdateInspectionChecklistRequest(FuelLevel, OdometerKm, Notes, updatedItems);
+        await OnSave.InvokeAsync(request);
+    }
+}

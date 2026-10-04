@@ -53,6 +53,9 @@
             <button id="btn-modal-new-reception" type="button" class="btn-action btn-secondary" @onclick="HandleNewReception">
                 <span>Nova Recepção</span>
             </button>
+            <button id="btn-modal-go-inspection" type="button" class="btn-action btn-inspection" @onclick="HandleGoToInspection">
+                <span>&#128247; Fazer Vistoria</span>
+            </button>
             <button id="btn-modal-go-yard" type="button" class="btn-action btn-primary" @onclick="HandleGoToYard">
                 <span>Ir para o Pátio</span>
                 <span aria-hidden="true">&#8594;</span>
@@ -65,6 +68,12 @@
     [Parameter, EditorRequired] public WorkOrderDto WorkOrder { get; set; } = default!;
     [Parameter] public EventCallback OnNewReception { get; set; }
     [Parameter] public EventCallback OnGoToYard { get; set; }
+    [Parameter] public EventCallback<Guid> OnGoToInspection { get; set; }
+
+    private async Task HandleGoToInspection()
+    {
+        await OnGoToInspection.InvokeAsync(WorkOrder.Id);
+    }
 
     private async Task HandleNewReception()
     {

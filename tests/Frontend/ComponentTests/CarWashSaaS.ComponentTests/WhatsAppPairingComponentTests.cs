@@ -19,7 +19,7 @@ public sealed class WhatsAppPairingComponentTests : BunitContext
 
         Assert.Contains("Desconectado", cut.Find(".status-badge").TextContent);
         Assert.NotNull(cut.Find("#btn-start-pairing"));
-        
+
         cut.Find("#btn-start-pairing").Click();
         Assert.True(startClicked);
     }

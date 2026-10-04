@@ -150,9 +150,11 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 3.3 Vistoria digital de entrada
 
-- [ ] Criar interface responsiva para celular/tablet com checklist e diagrama do veículo.
-- [ ] Permitir marcar arranhões, mossas e trincas e anexar fotos obrigatórias.
-- [ ] **Entrega:** vistoria fica vinculada à OS e suas fotos podem ser consultadas com isolamento por tenant.
+- [x] Criar interface responsiva para celular/tablet com checklist e diagrama do veículo.
+- [x] Permitir marcar arranhões, mossas e trincas e anexar fotos obrigatórias.
+- [x] **Entrega:** vistoria fica vinculada à OS e suas fotos podem ser consultadas com isolamento por tenant.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): o módulo `YardOperations` implementa o agregado `VehicleInspection` com avarias vetoriais (`InspectionDamage` com coordenadas normatizadas X% e Y% em 5 vistas da carroceria), checklist de pertences e combustível (`InspectionChecklistItem`), galeria de fotos privadas (`InspectionPhoto`) com validação de obrigatoriedade das 4 fotos de perímetro (Frente, Traseira, Lateral Esquerda e Lateral Direita) para conclusão. A API conta com endpoints REST autenticados em `/work-orders/{workOrderId}/inspection` (início, checklist, avarias, upload multipart de fotos no MinIO sob `tenants/{tenantId}/inspections/...`, download seguro e conclusão). No frontend Blazor WebAssembly, a tela `InspectionPage` (`/work-orders/{id}/inspection`) e os componentes isolados `VehicleInspectionDiagram`, `InspectionChecklistCard` e `InspectionPhotoGallery` oferecem experiência responsiva e tátil para celular/tablet com captura de câmera integrada, conectados diretamente ao modal da OS (`WorkOrderCreatedModal`). Detalhes em `docs/living-docs/vistoria-digital-entrada-3.3.md`.
 
 ### 3.4 Fluxo operacional e Kanban
 

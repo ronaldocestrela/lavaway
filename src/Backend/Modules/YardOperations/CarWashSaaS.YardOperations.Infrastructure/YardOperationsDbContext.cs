@@ -18,6 +18,7 @@ public sealed class YardOperationsDbContext(
     public DbSet<YardCapacity> YardCapacities => Set<YardCapacity>();
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
     public DbSet<CommissionRule> CommissionRules => Set<CommissionRule>();
+    public DbSet<VehicleInspection> VehicleInspections => Set<VehicleInspection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
