@@ -1,0 +1,198 @@
+@page "/yard"
+@attribute [Authorize(Roles = "Administrator,Receptionist,Operator")]
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@implements IDisposable
+@inject WorkOrderApiClient WorkOrderApi
+@inject YardSetupApiClient YardSetupApi
+@inject NavigationManager Navigation
+
+<PageTitle>Pátio &amp; Kanban — Lava-Jato SaaS</PageTitle>
+
+<div class="yard-page-container">
+    <div class="page-header">
+        <div class="header-titles">
+            <span class="eyebrow">FLUXO OPERACIONAL</span>
+            <h1 class="page-title">Quadro do Pátio &amp; Kanban</h1>
+            <p class="page-subtitle">Acompanhamento e transição de veículos em atendimento em tempo real.</p>
+        </div>
+        <div class="header-actions">
+            <button id="btn-header-new-reception" type="button" class="btn-primary-action" @onclick="NavigateToReception">
+                <span>+ Novo Check-in</span>
+            </button>
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="page-loading">
+            <div class="spinner-large"></div>
+            <span>Carregando pátio operacional...</span>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="error-banner">
+            <div class="error-icon">&#9888;</div>
+            <div class="error-content">
+                <strong>Falha ao carregar quadro do pátio</strong>
+                <p>@_loadError</p>
+            </div>
+            <button type="button" class="btn-retry" @onclick="LoadBoardAsync">Tentar Novamente</button>
+        </div>
+    }
+    else if (_board is not null)
+    {
+        <YardKanbanBoard Board="_board"
+                         AvailableOperators="_operators"
+                         IsRefreshing="_isRefreshing"
+                         IsLiveConnected="true"
+                         ErrorMessage="_actionError"
+                         OnRefreshRequested="RefreshBoardAsync"
+                         OnErrorDismissed="HandleErrorDismissed"
+                         OnStatusChangeRequested="HandleStatusChangeAsync"
+                         OnOperatorAssignRequested="HandleOperatorAssignAsync"
+                         OnFetchHistory="FetchHistoryAsync" />
+    }
+</div>
+
+@code {
+    private YardKanbanBoardDto? _board;
+    private List<TeamMemberDto> _operators = [];
+    private bool _isLoading = true;
+    private bool _isRefreshing;
+    private string? _loadError;
+    private string? _actionError;
+    private System.Threading.Timer? _pollTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBoardAsync();
+
+        // Background polling every 12 seconds
+        _pollTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (!_isLoading && !_isRefreshing)
+                {
+                    await RefreshBoardSilentAsync();
+                }
+            });
+        }, null, TimeSpan.FromSeconds(12), TimeSpan.FromSeconds(12));
+    }
+
+    private async Task LoadBoardAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        try
+        {
+            var boardTask = WorkOrderApi.GetKanbanBoardAsync();
+            var operatorsTask = YardSetupApi.GetTeamMembersAsync();
+
+            await Task.WhenAll(boardTask, operatorsTask);
+
+            _board = await boardTask;
+            _operators = (await operatorsTask).Where(m => m.IsActive).ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshBoardAsync()
+    {
+        if (_isRefreshing) return;
+        _isRefreshing = true;
+        _actionError = null;
+        StateHasChanged();
+
+        try
+        {
+            _board = await WorkOrderApi.GetKanbanBoardAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = $"Erro ao atualizar o quadro: {ex.Message}";
+        }
+        finally
+        {
+            _isRefreshing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshBoardSilentAsync()
+    {
+        try
+        {
+            _board = await WorkOrderApi.GetKanbanBoardAsync();
+            StateHasChanged();
+        }
+        catch
+        {
+            // Silently ignore background poll errors to avoid disrupting operator UI
+        }
+    }
+
+    private async Task HandleStatusChangeAsync(YardKanbanBoard.WorkOrderStatusChangeArgs args)
+    {
+        _actionError = null;
+        try
+        {
+            var request = new ChangeWorkOrderStatusRequest(args.TargetStatus, args.OperatorId, args.Notes);
+            await WorkOrderApi.ChangeWorkOrderStatusAsync(args.WorkOrderId, request);
+            await RefreshBoardAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleOperatorAssignAsync(YardKanbanBoard.WorkOrderOperatorAssignArgs args)
+    {
+        _actionError = null;
+        try
+        {
+            await WorkOrderApi.AssignOperatorAsync(args.WorkOrderId, args.OperatorId);
+            await RefreshBoardAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<IReadOnlyCollection<WorkOrderStatusHistoryDto>> FetchHistoryAsync(Guid workOrderId)
+    {
+        return await WorkOrderApi.GetStatusHistoryAsync(workOrderId);
+    }
+
+    private void HandleErrorDismissed(YardKanbanBoard.ErrorMessageDismissArgs _)
+    {
+        _actionError = null;
+    }
+
+    private void NavigateToReception()
+    {
+        Navigation.NavigateTo("/reception");
+    }
+
+    public void Dispose()
+    {
+        _pollTimer?.Dispose();
+    }
+}

@@ -35,6 +35,30 @@ public sealed class WorkOrderApiClient(HttpClient httpClient)
         return await ReadResponseAsync<IReadOnlyCollection<WorkOrderDto>>(response, ct);
     }
 
+    public async Task<YardKanbanBoardDto> GetKanbanBoardAsync(CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync("yard/kanban", ct);
+        return await ReadResponseAsync<YardKanbanBoardDto>(response, ct);
+    }
+
+    public async Task<WorkOrderDto> ChangeWorkOrderStatusAsync(Guid workOrderId, ChangeWorkOrderStatusRequest request, CancellationToken ct = default)
+    {
+        using var response = await httpClient.PatchAsJsonAsync($"work-orders/{workOrderId}/status", request, ct);
+        return await ReadResponseAsync<WorkOrderDto>(response, ct);
+    }
+
+    public async Task<WorkOrderDto> AssignOperatorAsync(Guid workOrderId, Guid? operatorId, CancellationToken ct = default)
+    {
+        using var response = await httpClient.PatchAsJsonAsync($"work-orders/{workOrderId}/operator", new AssignOperatorRequest(operatorId), ct);
+        return await ReadResponseAsync<WorkOrderDto>(response, ct);
+    }
+
+    public async Task<IReadOnlyCollection<WorkOrderStatusHistoryDto>> GetStatusHistoryAsync(Guid workOrderId, CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync($"work-orders/{workOrderId}/history", ct);
+        return await ReadResponseAsync<IReadOnlyCollection<WorkOrderStatusHistoryDto>>(response, ct);
+    }
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (!response.IsSuccessStatusCode)

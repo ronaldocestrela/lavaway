@@ -158,10 +158,12 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 3.4 Fluxo operacional e Kanban
 
-- [ ] Implementar estados: *Aguardando* → *Em Lavagem* → *Secagem/Acabamento* → *Controle de Qualidade* → *Pronto para Retirada*.
-- [ ] Permitir transição por clique ou *drag and drop*, com validação de transições e atualização em tempo real.
-- [ ] Atribuir operador por veículo/OS.
-- [ ] **Entrega:** equipe acompanha e atualiza o fluxo operacional, mantendo histórico do estado.
+- [x] Implementar estados: *Aguardando* → *Em Lavagem* → *Secagem/Acabamento* → *Controle de Qualidade* → *Pronto para Retirada*.
+- [x] Permitir transição por clique ou *drag and drop*, com validação de transições e atualização em tempo real.
+- [x] Atribuir operador por veículo/OS.
+- [x] **Entrega:** equipe acompanha e atualiza o fluxo operacional, mantendo histórico do estado.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): o módulo `YardOperations` implementa a máquina de estados operacional no agregado `WorkOrder` com transições estritas nos 5 estados (*Aguardando* → *Em Lavagem* → *Secagem/Acabamento* → *Controle de Qualidade* → *Pronto para Retirada*), mecanismo de refação com justificativa obrigatória e registro imutável em `WorkOrderStatusHistory`. Permite atribuição e desassociação de operadores ativos (`TeamMember`), cálculo em tempo real de ocupação de boxes versus `YardCapacity` e canais de tempo real com SignalR (`YardHub` em `/hubs/yard` com grupos por `TenantId`). A API conta com endpoints REST autenticados em `/yard/kanban`, `/work-orders/{id}/status`, `/work-orders/{id}/operator` e `/work-orders/{id}/history` sob as políticas `UpdateWorkOrderStatus` e `ViewCustomers`. No frontend Blazor WebAssembly, a tela `YardPage` (`/yard`) e os componentes isolados `YardKanbanBoard`, `YardKanbanColumn`, `YardKanbanCard` e `WorkOrderHistoryDrawer` oferecem layout em 5 colunas com drag and drop nativo, ações rápidas de avanço/retorno por clique, modais táteis de refação e atribuição de operador, busca rápida por placa/cliente, filtro por operador e medidor de capacidade do pátio. A solução conta com 100% de aprovação nos 268 testes da solution (testes unitários, testes de integração SQL Server Testcontainers com isolamento cross-tenant, testes de limites de arquitetura NetArchTest e testes de componentes bUnit). Detalhes em `docs/living-docs/fluxo-operacional-kanban-3.4.md`.
 
 ### 3.5 Registro de fotos pós-serviço
 

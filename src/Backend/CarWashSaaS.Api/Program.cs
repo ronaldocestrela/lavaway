@@ -1,5 +1,6 @@
 using System.Text;
 using CarWashSaaS.Api.Endpoints;
+using CarWashSaaS.Api.Hubs;
 using CarWashSaaS.Api.Middleware;
 using CarWashSaaS.Api.Services;
 using CarWashSaaS.Identity.Application;
@@ -78,6 +79,8 @@ builder.Services.AddScoped<IYardCapacityRepository, YardCapacityRepository>();
 builder.Services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
 builder.Services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
 builder.Services.AddScoped<YardSetupApplicationService>();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
 builder.Services.AddSingleton<IMinioClient>(_ => new MinioClient()
     .WithEndpoint(minioEndpoint)
@@ -155,6 +158,8 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString()));
     options.AddPolicy(AuthorizationPolicyNames.ViewCustomers,
         policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString(), ShopRole.Operator.ToString()));
+    options.AddPolicy(AuthorizationPolicyNames.UpdateWorkOrderStatus,
+        policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString(), ShopRole.Operator.ToString()));
 
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
@@ -164,7 +169,7 @@ builder.Services.AddCors(options => options.AddPolicy("Client", policy =>
 {
     if (allowedOrigins.Length > 0)
     {
-        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     }
 }));
 builder.Services.AddOpenApi();
@@ -196,5 +201,6 @@ app.MapIdentityEndpoints();
 app.MapWhatsAppEndpoints();
 app.MapTenantEndpoints();
 app.MapYardOperationsEndpoints();
+app.MapHub<YardHub>("/hubs/yard").RequireCors("Client");
 
 app.Run();

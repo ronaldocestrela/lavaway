@@ -17,16 +17,23 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.Property(order => order.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(order => order.CreatedAtUtc).HasColumnType("datetimeoffset").IsRequired();
         builder.Property(order => order.Notes).HasMaxLength(500);
+        builder.Property(order => order.AssignedOperatorId);
+        builder.Property(order => order.AssignedOperatorName).HasMaxLength(200);
+
         builder.Ignore(order => order.TotalAmount);
         builder.Ignore(order => order.EstimatedDurationMinutes);
         builder.Ignore(order => order.EstimatedCompletionAtUtc);
+
         builder.HasAlternateKey(order => new { order.TenantId, order.Id });
         builder.HasIndex(order => new { order.TenantId, order.CreatedAtUtc });
+        builder.HasIndex(order => new { order.TenantId, order.Status });
+
         builder.HasOne<Customer>()
             .WithMany()
             .HasForeignKey(order => new { order.TenantId, order.CustomerId })
             .HasPrincipalKey(customer => new { customer.TenantId, customer.Id })
             .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne<Vehicle>()
             .WithMany()
             .HasForeignKey(order => new { order.TenantId, order.VehicleId })
@@ -50,6 +57,24 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
             item.HasIndex(value => new { value.TenantId, value.ServiceId });
         });
 
+        builder.OwnsMany(order => order.StatusHistory, history =>
+        {
+            history.ToTable("WorkOrderStatusHistories", "yard");
+            history.WithOwner().HasForeignKey("WorkOrderId");
+            history.HasKey(h => h.Id);
+            history.Property(h => h.Id).ValueGeneratedNever();
+            history.Property(h => h.TenantId).IsRequired();
+            history.Property(h => h.WorkOrderId).IsRequired();
+            history.Property(h => h.FromStatus).HasConversion<string>().HasMaxLength(32);
+            history.Property(h => h.ToStatus).HasConversion<string>().HasMaxLength(32).IsRequired();
+            history.Property(h => h.ChangedAtUtc).HasColumnType("datetimeoffset").IsRequired();
+            history.Property(h => h.ChangedByOperatorId);
+            history.Property(h => h.ChangedByOperatorName).HasMaxLength(200);
+            history.Property(h => h.Notes).HasMaxLength(500);
+            history.HasIndex(h => new { h.TenantId, h.WorkOrderId });
+        });
+
         builder.Navigation(order => order.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(order => order.StatusHistory).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

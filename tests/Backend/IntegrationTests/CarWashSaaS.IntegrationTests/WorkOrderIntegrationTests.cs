@@ -125,6 +125,123 @@ public sealed class WorkOrderIntegrationTests(SqlServerFixture fixture)
         Assert.Equal(ErrorType.NotFound, crossTenantGet.Error!.Type);
     }
 
+    [Fact]
+    public async Task KanbanFlow_ShouldAdvanceStatusThroughAllPhases_AndPersistAuditHistory()
+    {
+        var tenantId = await CreateTenantAsync("Kanban Flow Tenant");
+        await using var context = CreateYardContext(tenantId);
+        var workOrderService = CreateWorkOrderService(context);
+
+        // 1. Setup Customer, Vehicle, Service, Operator and Capacity
+        var customer = Customer.Create(tenantId, "Mariana Rios", "11988884444").Value!;
+        var vehicle = Vehicle.Create(tenantId, customer.Id, "KAN1B23", VehicleSize.HatchSedan).Value!;
+        var price = ServicePrice.Create(tenantId, VehicleSize.HatchSedan, 80m, 40).Value!;
+        var service = Service.Create(tenantId, "Lavagem e Cera", "Lavagem", [price]).Value!;
+        var operatorMember = TeamMember.Create(tenantId, "Pedro Lavador", "Lavador", "pedro@flow.com").Value!;
+        var capacity = YardCapacity.Create(tenantId, 5, "Pátio Operacional").Value!;
+
+        context.Customers.Add(customer);
+        context.Vehicles.Add(vehicle);
+        context.Services.Add(service);
+        context.TeamMembers.Add(operatorMember);
+        context.YardCapacities.Add(capacity);
+        await context.SaveChangesAsync();
+
+        // 2. Open Work Order (Status: Waiting)
+        var createResult = await workOrderService.CreateAsync(tenantId, new CreateWorkOrderCommand(
+            customer.Id,
+            vehicle.Id,
+            [new CreateWorkOrderItemInput(service.Id, 1)]));
+        Assert.True(createResult.IsSuccess);
+        var orderId = createResult.Value!.Id;
+
+        // 3. Move Waiting -> InWashing (with operator Pedro)
+        var move1 = await workOrderService.ChangeStatusAsync(tenantId, orderId, new ChangeWorkOrderStatusRequest("InWashing", operatorMember.Id));
+        Assert.True(move1.IsSuccess);
+        Assert.Equal("InWashing", move1.Value!.Status);
+        Assert.Equal(operatorMember.Id, move1.Value!.AssignedOperatorId);
+        Assert.Equal("Pedro Lavador", move1.Value!.AssignedOperatorName);
+
+        // 4. Move InWashing -> Finishing
+        var move2 = await workOrderService.ChangeStatusAsync(tenantId, orderId, new ChangeWorkOrderStatusRequest("Finishing"));
+        Assert.True(move2.IsSuccess);
+        Assert.Equal("Finishing", move2.Value!.Status);
+
+        // 5. Move Finishing -> QualityControl
+        var move3 = await workOrderService.ChangeStatusAsync(tenantId, orderId, new ChangeWorkOrderStatusRequest("QualityControl"));
+        Assert.True(move3.IsSuccess);
+        Assert.Equal("QualityControl", move3.Value!.Status);
+
+        // 6. QualityControl -> ReadyForPickup
+        var move4 = await workOrderService.ChangeStatusAsync(tenantId, orderId, new ChangeWorkOrderStatusRequest("ReadyForPickup"));
+        Assert.True(move4.IsSuccess);
+        Assert.Equal("ReadyForPickup", move4.Value!.Status);
+
+        // 7. Verify Board and History from a fresh context
+        await using var verifyContext = CreateYardContext(tenantId);
+        var verifyService = CreateWorkOrderService(verifyContext);
+
+        var boardResult = await verifyService.GetKanbanBoardAsync(tenantId);
+        Assert.True(boardResult.IsSuccess);
+        var board = boardResult.Value!;
+        Assert.Equal(5, board.CapacityTotalBoxes);
+        Assert.Equal(1, board.TotalActiveOrders);
+
+        var readyCol = board.Columns.First(c => c.Status == "ReadyForPickup");
+        Assert.Equal(1, readyCol.Count);
+        Assert.Equal("KAN1B23", readyCol.Cards[0].Plate);
+        Assert.Equal("Pedro Lavador", readyCol.Cards[0].AssignedOperatorName);
+
+        var historyResult = await verifyService.GetStatusHistoryAsync(tenantId, orderId);
+        Assert.True(historyResult.IsSuccess);
+        var history = historyResult.Value!;
+        Assert.Equal(5, history.Count); // Waiting -> InWashing -> Finishing -> QualityControl -> ReadyForPickup
+        Assert.Equal("ReadyForPickup", history.Last().ToStatus);
+    }
+
+    [Fact]
+    public async Task KanbanMultiTenant_ShouldPreventTenantB_FromSeeingOrMovingTenantA_WorkOrders()
+    {
+        var tenantA = await CreateTenantAsync("Kanban Tenant A");
+        var tenantB = await CreateTenantAsync("Kanban Tenant B");
+
+        Guid tenantAOrderId;
+
+        await using (var contextA = CreateYardContext(tenantA))
+        {
+            var serviceA = CreateWorkOrderService(contextA);
+            var customer = Customer.Create(tenantA, "Cliente A", "11988881111").Value!;
+            var vehicle = Vehicle.Create(tenantA, customer.Id, "AAA1A11", VehicleSize.HatchSedan).Value!;
+            var price = ServicePrice.Create(tenantA, VehicleSize.HatchSedan, 50m, 30).Value!;
+            var service = Service.Create(tenantA, "Ducha A", "Lavagem", [price]).Value!;
+
+            contextA.Customers.Add(customer);
+            contextA.Vehicles.Add(vehicle);
+            contextA.Services.Add(service);
+            await contextA.SaveChangesAsync();
+
+            var created = await serviceA.CreateAsync(tenantA, new CreateWorkOrderCommand(customer.Id, vehicle.Id, [new CreateWorkOrderItemInput(service.Id, 1)]));
+            tenantAOrderId = created.Value!.Id;
+        }
+
+        // Tenant B attempts to change status or read Kanban
+        await using var contextB = CreateYardContext(tenantB);
+        var serviceB = CreateWorkOrderService(contextB);
+
+        var crossTenantMove = await serviceB.ChangeStatusAsync(tenantB, tenantAOrderId, new ChangeWorkOrderStatusRequest("InWashing"));
+        Assert.False(crossTenantMove.IsSuccess);
+        Assert.Equal(ErrorType.NotFound, crossTenantMove.Error!.Type);
+
+        var crossTenantHistory = await serviceB.GetStatusHistoryAsync(tenantB, tenantAOrderId);
+        Assert.False(crossTenantHistory.IsSuccess);
+        Assert.Equal(ErrorType.NotFound, crossTenantHistory.Error!.Type);
+
+        var boardB = await serviceB.GetKanbanBoardAsync(tenantB);
+        Assert.True(boardB.IsSuccess);
+        Assert.Equal(0, boardB.Value!.TotalActiveOrders);
+        Assert.All(boardB.Value!.Columns, col => Assert.Empty(col.Cards));
+    }
+
     private async Task<Guid> CreateTenantAsync(string name)
     {
         await using var context = new TenantsDbContext(fixture.CreateTenantsOptions(), new CurrentTenantAccessor());
@@ -146,5 +263,7 @@ public sealed class WorkOrderIntegrationTests(SqlServerFixture fixture)
         new CustomerRepository(context),
         new VehicleRepository(context),
         new ServiceRepository(context),
-        new YardOperationsUnitOfWork(context));
+        new YardOperationsUnitOfWork(context),
+        new TeamMemberRepository(context),
+        new YardCapacityRepository(context));
 }

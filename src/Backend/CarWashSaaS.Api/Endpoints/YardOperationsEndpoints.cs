@@ -460,6 +460,83 @@ public static class YardOperationsEndpoints
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapGet("/yard/kanban", async (
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetKanbanBoardAsync(tenantId);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPatch("/work-orders/{id:guid}/status", async (
+            Guid id,
+            ChangeWorkOrderStatusRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.ChangeStatusAsync(tenantId, id, request);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus);
+
+        app.MapPatch("/work-orders/{id:guid}/operator", async (
+            Guid id,
+            AssignOperatorRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.AssignOperatorAsync(tenantId, id, request.OperatorId);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus);
+
+        app.MapGet("/work-orders/{id:guid}/history", async (
+            Guid id,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetStatusHistoryAsync(tenantId, id);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
     }
 
     private static YardCapacityDto ToDto(YardCapacity capacity) => new(

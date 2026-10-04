@@ -25,6 +25,7 @@ public static class AuthorizationPolicyNames
     public const string Operator = "OperatorPolicy";
     public const string CreateWorkOrders = "CreateWorkOrdersPolicy";
     public const string ViewCustomers = "ViewCustomersPolicy";
+    public const string UpdateWorkOrderStatus = "UpdateWorkOrderStatusPolicy";
 }
 
 public static class ShopRolePermissions

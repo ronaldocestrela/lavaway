@@ -8,7 +8,10 @@ public sealed class WorkOrderApplicationService(
     ICustomerRepository customerRepository,
     IVehicleRepository vehicleRepository,
     IServiceRepository serviceRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ITeamMemberRepository? teamMemberRepository = null,
+    IYardCapacityRepository? yardCapacityRepository = null,
+    IYardRealtimeNotifier? realtimeNotifier = null)
 {
     public async Task<Result<WorkOrderDto>> CreateAsync(
         Guid tenantId,
@@ -158,6 +161,231 @@ public sealed class WorkOrderApplicationService(
         return Result<IReadOnlyCollection<WorkOrderDto>>.Success(list);
     }
 
+    public async Task<Result<WorkOrderDto>> ChangeStatusAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        ChangeWorkOrderStatusRequest request,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || workOrderId == Guid.Empty)
+        {
+            return Result<WorkOrderDto>.Failure(new Error("work_order.id.required", "Tenant e ID da ordem de serviço são obrigatórios.", ErrorType.Validation));
+        }
+
+        if (!Enum.TryParse<WorkOrderStatus>(request.TargetStatus, true, out var targetStatus))
+        {
+            return Result<WorkOrderDto>.Failure(new Error("work_order.target_status.invalid", $"Status '{request.TargetStatus}' inválido.", ErrorType.Validation));
+        }
+
+        var workOrder = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (workOrder is null)
+        {
+            return Result<WorkOrderDto>.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        string? operatorName = null;
+        if (request.OperatorId.HasValue && request.OperatorId.Value != Guid.Empty && teamMemberRepository is not null)
+        {
+            var member = await teamMemberRepository.GetByIdAsync(tenantId, request.OperatorId.Value, ct);
+            if (member is null)
+            {
+                return Result<WorkOrderDto>.Failure(new Error("team_member.not_found", "Colaborador não encontrado.", ErrorType.NotFound));
+            }
+
+            if (!member.IsActive)
+            {
+                return Result<WorkOrderDto>.Failure(new Error("team_member.inactive", "Colaborador está inativo e não pode receber ordens de serviço.", ErrorType.Validation));
+            }
+
+            operatorName = member.FullName;
+        }
+
+        var previousStatus = workOrder.Status.ToString();
+        var changeResult = workOrder.ChangeStatus(targetStatus, request.OperatorId, operatorName, request.Notes);
+        if (!changeResult.IsSuccess)
+        {
+            return Result<WorkOrderDto>.Failure(changeResult.Error!);
+        }
+
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<WorkOrderDto>.Failure(saveResult.Error!);
+        }
+
+        if (realtimeNotifier is not null)
+        {
+            var notification = new WorkOrderMovedNotification(
+                workOrder.Id,
+                previousStatus,
+                workOrder.Status.ToString(),
+                workOrder.AssignedOperatorId,
+                workOrder.AssignedOperatorName,
+                DateTimeOffset.UtcNow,
+                request.Notes);
+            await realtimeNotifier.NotifyWorkOrderMovedAsync(tenantId, notification, ct);
+        }
+
+        var customer = await customerRepository.GetByIdAsync(tenantId, workOrder.CustomerId, ct);
+        var vehicle = await vehicleRepository.GetByIdAsync(tenantId, workOrder.VehicleId, ct);
+        return Result<WorkOrderDto>.Success(ToDto(workOrder, customer?.Name ?? "Cliente", vehicle?.Plate ?? string.Empty, vehicle?.Size.ToString() ?? "HatchSedan"));
+    }
+
+    public async Task<Result<WorkOrderDto>> AssignOperatorAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        Guid? operatorId,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || workOrderId == Guid.Empty)
+        {
+            return Result<WorkOrderDto>.Failure(new Error("work_order.id.required", "Tenant e ID da ordem de serviço são obrigatórios.", ErrorType.Validation));
+        }
+
+        var workOrder = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (workOrder is null)
+        {
+            return Result<WorkOrderDto>.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        string? operatorName = null;
+        if (operatorId.HasValue && operatorId.Value != Guid.Empty && teamMemberRepository is not null)
+        {
+            var member = await teamMemberRepository.GetByIdAsync(tenantId, operatorId.Value, ct);
+            if (member is null)
+            {
+                return Result<WorkOrderDto>.Failure(new Error("team_member.not_found", "Colaborador não encontrado.", ErrorType.NotFound));
+            }
+
+            if (!member.IsActive)
+            {
+                return Result<WorkOrderDto>.Failure(new Error("team_member.inactive", "Colaborador está inativo e não pode receber ordens de serviço.", ErrorType.Validation));
+            }
+
+            operatorName = member.FullName;
+        }
+
+        var assignResult = workOrder.AssignOperator(operatorId, operatorName);
+        if (!assignResult.IsSuccess)
+        {
+            return Result<WorkOrderDto>.Failure(assignResult.Error!);
+        }
+
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<WorkOrderDto>.Failure(saveResult.Error!);
+        }
+
+        if (realtimeNotifier is not null)
+        {
+            await realtimeNotifier.NotifyOperatorAssignedAsync(tenantId, workOrder.Id, workOrder.AssignedOperatorId, workOrder.AssignedOperatorName, ct);
+        }
+
+        var customer = await customerRepository.GetByIdAsync(tenantId, workOrder.CustomerId, ct);
+        var vehicle = await vehicleRepository.GetByIdAsync(tenantId, workOrder.VehicleId, ct);
+        return Result<WorkOrderDto>.Success(ToDto(workOrder, customer?.Name ?? "Cliente", vehicle?.Plate ?? string.Empty, vehicle?.Size.ToString() ?? "HatchSedan"));
+    }
+
+    public async Task<Result<IReadOnlyCollection<WorkOrderStatusHistoryDto>>> GetStatusHistoryAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || workOrderId == Guid.Empty)
+        {
+            return Result<IReadOnlyCollection<WorkOrderStatusHistoryDto>>.Failure(new Error("work_order.id.required", "Tenant e ID da ordem de serviço são obrigatórios.", ErrorType.Validation));
+        }
+
+        var workOrder = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (workOrder is null)
+        {
+            return Result<IReadOnlyCollection<WorkOrderStatusHistoryDto>>.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        var history = workOrder.StatusHistory
+            .OrderBy(h => h.ChangedAtUtc)
+            .Select(h => new WorkOrderStatusHistoryDto(
+                h.Id,
+                h.FromStatus?.ToString(),
+                h.ToStatus.ToString(),
+                h.ChangedAtUtc,
+                h.ChangedByOperatorId,
+                h.ChangedByOperatorName,
+                h.Notes))
+            .ToList();
+
+        return Result<IReadOnlyCollection<WorkOrderStatusHistoryDto>>.Success(history);
+    }
+
+    public async Task<Result<YardKanbanBoardDto>> GetKanbanBoardAsync(
+        Guid tenantId,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<YardKanbanBoardDto>.Failure(new Error("tenant.required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var totalBoxes = 0;
+        if (yardCapacityRepository is not null)
+        {
+            var capacity = await yardCapacityRepository.GetByTenantAsync(tenantId, ct);
+            totalBoxes = capacity?.TotalBoxes ?? 0;
+        }
+
+        var activeOrders = await workOrderRepository.ListActiveAsync(tenantId, ct);
+
+        var cards = new List<WorkOrderKanbanCardDto>(activeOrders.Count);
+        foreach (var order in activeOrders)
+        {
+            var customer = await customerRepository.GetByIdAsync(tenantId, order.CustomerId, ct);
+            var vehicle = await vehicleRepository.GetByIdAsync(tenantId, order.VehicleId, ct);
+            var lastHistory = order.StatusHistory.OrderByDescending(h => h.ChangedAtUtc).FirstOrDefault();
+
+            cards.Add(new WorkOrderKanbanCardDto(
+                order.Id,
+                order.CustomerId,
+                customer?.Name ?? "Cliente",
+                order.VehicleId,
+                vehicle?.Plate ?? string.Empty,
+                vehicle?.Size.ToString() ?? "HatchSedan",
+                order.Status.ToString(),
+                order.TotalAmount,
+                order.EstimatedDurationMinutes,
+                order.CreatedAtUtc,
+                order.EstimatedCompletionAtUtc,
+                order.AssignedOperatorId,
+                order.AssignedOperatorName,
+                order.Notes,
+                order.Items.Select(i => i.ServiceName).ToList(),
+                order.Items.Count,
+                lastHistory?.ChangedAtUtc ?? order.CreatedAtUtc));
+        }
+
+        var columns = new List<YardKanbanColumnDto>(WorkOrderStatusConstants.OrderedStatuses.Count);
+        foreach (var status in WorkOrderStatusConstants.OrderedStatuses)
+        {
+            var columnCards = cards.Where(c => c.Status.Equals(status, StringComparison.OrdinalIgnoreCase)).ToList();
+            columns.Add(new YardKanbanColumnDto(
+                status,
+                WorkOrderStatusConstants.ToDisplayName(status),
+                columnCards.Count,
+                columnCards));
+        }
+
+        var occupiedBoxes = cards.Count(c =>
+            c.Status == WorkOrderStatusConstants.InWashing ||
+            c.Status == WorkOrderStatusConstants.Finishing ||
+            c.Status == WorkOrderStatusConstants.QualityControl);
+
+        return Result<YardKanbanBoardDto>.Success(new YardKanbanBoardDto(
+            columns,
+            cards.Count,
+            totalBoxes,
+            occupiedBoxes));
+    }
+
     private static WorkOrderDto ToDto(WorkOrder order, string customerName, string plate, string vehicleSize) =>
         new(
             order.Id,
@@ -180,5 +408,15 @@ public sealed class WorkOrderApplicationService(
                 item.EstimatedDurationMinutes,
                 item.Quantity,
                 item.TotalAmount,
-                item.TotalDurationMinutes)).ToList());
+                item.TotalDurationMinutes)).ToList(),
+            order.AssignedOperatorId,
+            order.AssignedOperatorName,
+            order.StatusHistory.Select(h => new WorkOrderStatusHistoryDto(
+                h.Id,
+                h.FromStatus?.ToString(),
+                h.ToStatus.ToString(),
+                h.ChangedAtUtc,
+                h.ChangedByOperatorId,
+                h.ChangedByOperatorName,
+                h.Notes)).ToList());
 }

@@ -1,0 +1,463 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="kanban-board-wrapper">
+    <!-- Top Toolbar -->
+    <div class="kanban-toolbar">
+        <div class="toolbar-left">
+            <div class="capacity-indicator" title="Ocupação física do pátio">
+                <div class="capacity-header">
+                    <span class="capacity-title">CAPACIDADE DE BOXES</span>
+                    <span class="capacity-numbers"><strong>@Board.OccupiedBoxes</strong> / @(Board.CapacityTotalBoxes > 0 ? Board.CapacityTotalBoxes.ToString() : "—")</span>
+                </div>
+                <div class="capacity-bar">
+                    <div class="capacity-fill @GetCapacityFillClass()" style="width: @GetCapacityPercentage()%"></div>
+                </div>
+            </div>
+
+            <div class="search-input-group">
+                <span class="search-icon">&#128269;</span>
+                <input type="text"
+                       class="search-input"
+                       placeholder="Buscar por placa ou cliente..."
+                       value="@_searchQuery"
+                       @oninput="HandleSearchInput" />
+                @if (!string.IsNullOrWhiteSpace(_searchQuery))
+                {
+                    <button type="button" class="btn-clear-search" @onclick="ClearSearch">&#10005;</button>
+                }
+            </div>
+
+            <div class="operator-filter-group">
+                <select class="operator-filter-select" @onchange="HandleOperatorFilterChanged">
+                    <option value="">Todos os Operadores</option>
+                    @foreach (var op in AvailableOperators)
+                    {
+                        <option value="@op.Id">@op.FullName (@op.Role)</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="toolbar-right">
+            <div class="live-status-pill @(IsLiveConnected ? "live-active" : "live-polling")" title="@(IsLiveConnected ? "Sincronização em tempo real ativa (SignalR)" : "Modo de atualização periódica")">
+                <span class="live-dot"></span>
+                <span>@(IsLiveConnected ? "TEMPO REAL" : "AUTO-SYNC")</span>
+            </div>
+
+            <button type="button" class="btn-refresh" @onclick="HandleRefresh" disabled="@IsRefreshing" title="Atualizar quadro">
+                <span class="@(IsRefreshing ? "spinning" : "")">&#8635;</span>
+                <span>Atualizar</span>
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="kanban-alert error-alert">
+            <span>&#9888; @ErrorMessage</span>
+            <button type="button" class="btn-dismiss-alert" @onclick="DismissError">&#10005;</button>
+        </div>
+    }
+
+    <!-- Columns Grid -->
+    <div class="columns-grid">
+        @foreach (var col in FilteredColumns)
+        {
+            <YardKanbanColumn Column="col"
+                              OnCardDragStarted="HandleCardDragStarted"
+                              OnCardDroppedToStatus="HandleCardDroppedToStatus"
+                              OnCardAdvance="HandleCardAdvance"
+                              OnCardRewind="HandleCardRewind"
+                              OnCardAssignOperator="HandleCardAssignOperator"
+                              OnCardViewHistory="HandleCardViewHistory" />
+        }
+    </div>
+
+    <!-- Modal: Retornar Etapa (Refação com Justificativa) -->
+    @if (_isReworkModalOpen && _targetReworkCard is not null)
+    {
+        <div class="modal-backdrop" @onclick="CloseReworkModal">
+            <div class="modal-dialog" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <span class="modal-eyebrow">CONTROLE DE REFAÇÃO</span>
+                    <h3 class="modal-title">Retornar Etapa do Veículo</h3>
+                    <div class="modal-plate-tag">@_targetReworkCard.Plate</div>
+                </div>
+
+                <div class="modal-body">
+                    <p class="modal-desc">
+                        Informe o motivo da reprovação ou retorno para que a equipe execute os ajustes necessários:
+                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label" for="rework-target-status">Retornar para qual etapa?</label>
+                        <select id="rework-target-status" class="form-select" @bind="_selectedReworkTargetStatus">
+                            @if (_targetReworkCard.Status == WorkOrderStatusConstants.QualityControl)
+                            {
+                                <option value="@WorkOrderStatusConstants.Finishing">Secagem / Acabamento</option>
+                                <option value="@WorkOrderStatusConstants.InWashing">Em Lavagem (Relavagem)</option>
+                            }
+                            else if (_targetReworkCard.Status == WorkOrderStatusConstants.Finishing)
+                            {
+                                <option value="@WorkOrderStatusConstants.InWashing">Em Lavagem (Relavagem)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="rework-notes">Motivo / Instruções de Ajuste *</label>
+                        <textarea id="rework-notes"
+                                  class="form-textarea"
+                                  rows="3"
+                                  placeholder="Ex.: Manchas no vidro traseiro, refazer aspiração dos bancos..."
+                                  @bind="_reworkNotes"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal btn-cancel" @onclick="CloseReworkModal">Cancelar</button>
+                    <button type="button"
+                            class="btn-modal btn-confirm-rework"
+                            disabled="@(string.IsNullOrWhiteSpace(_reworkNotes) || _isProcessingAction)"
+                            @onclick="ConfirmReworkAsync">
+                        <span>Confirmar Retorno</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Modal: Atribuir Operador -->
+    @if (_isAssignModalOpen && _targetAssignCard is not null)
+    {
+        <div class="modal-backdrop" @onclick="CloseAssignModal">
+            <div class="modal-dialog" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <span class="modal-eyebrow">EQUIPE OPERACIONAL</span>
+                    <h3 class="modal-title">Atribuir Operador</h3>
+                    <div class="modal-plate-tag">@_targetAssignCard.Plate</div>
+                </div>
+
+                <div class="modal-body">
+                    <p class="modal-desc">
+                        Selecione o colaborador responsável pela execução deste veículo:
+                    </p>
+
+                    <div class="operators-list">
+                        <button type="button"
+                                class="operator-choice-btn @(_selectedOperatorId == null ? "selected" : "")"
+                                @onclick="() => _selectedOperatorId = null">
+                            <span class="operator-choice-avatar">&#10005;</span>
+                            <span class="operator-choice-info">
+                                <strong>Sem Operador Atribuído</strong>
+                                <small>Liberar atribuição atual</small>
+                            </span>
+                        </button>
+
+                        @foreach (var op in AvailableOperators.Where(o => o.IsActive))
+                        {
+                            <button type="button"
+                                    class="operator-choice-btn @(_selectedOperatorId == op.Id ? "selected" : "")"
+                                    @onclick="() => _selectedOperatorId = op.Id">
+                                <span class="operator-choice-avatar">@GetInitials(op.FullName)</span>
+                                <span class="operator-choice-info">
+                                    <strong>@op.FullName</strong>
+                                    <small>@op.Role</small>
+                                </span>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal btn-cancel" @onclick="CloseAssignModal">Cancelar</button>
+                    <button type="button"
+                            class="btn-modal btn-confirm-assign"
+                            disabled="@_isProcessingAction"
+                            @onclick="ConfirmAssignAsync">
+                        <span>Salvar Atribuição</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Drawer de Histórico -->
+    <WorkOrderHistoryDrawer IsOpen="_isHistoryDrawerOpen"
+                            WorkOrderId="_historyWorkOrderId"
+                            Plate="_historyPlate"
+                            IsLoading="_isLoadingHistory"
+                            History="_workOrderHistory"
+                            OnClose="() => _isHistoryDrawerOpen = false" />
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YardKanbanBoardDto Board { get; set; } = default!;
+    [Parameter] public IReadOnlyList<TeamMemberDto> AvailableOperators { get; set; } = [];
+    [Parameter] public bool IsRefreshing { get; set; }
+    [Parameter] public bool IsLiveConnected { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback OnRefreshRequested { get; set; }
+    [Parameter] public EventCallback<ErrorMessageDismissArgs> OnErrorDismissed { get; set; }
+    [Parameter] public EventCallback<WorkOrderStatusChangeArgs> OnStatusChangeRequested { get; set; }
+    [Parameter] public EventCallback<WorkOrderOperatorAssignArgs> OnOperatorAssignRequested { get; set; }
+    [Parameter] public Func<Guid, Task<IReadOnlyCollection<WorkOrderStatusHistoryDto>>>? OnFetchHistory { get; set; }
+
+    private string _searchQuery = string.Empty;
+    private Guid? _selectedOperatorFilter;
+    private WorkOrderKanbanCardDto? _draggedCard;
+
+    // Rework modal state
+    private bool _isReworkModalOpen;
+    private WorkOrderKanbanCardDto? _targetReworkCard;
+    private string _selectedReworkTargetStatus = WorkOrderStatusConstants.Finishing;
+    private string _reworkNotes = string.Empty;
+
+    // Assign modal state
+    private bool _isAssignModalOpen;
+    private WorkOrderKanbanCardDto? _targetAssignCard;
+    private Guid? _selectedOperatorId;
+
+    // History drawer state
+    private bool _isHistoryDrawerOpen;
+    private Guid _historyWorkOrderId;
+    private string _historyPlate = string.Empty;
+    private bool _isLoadingHistory;
+    private IReadOnlyList<WorkOrderStatusHistoryDto> _workOrderHistory = [];
+
+    private bool _isProcessingAction;
+
+    private IEnumerable<YardKanbanColumnDto> FilteredColumns
+    {
+        get
+        {
+            var query = _searchQuery.Trim().ToUpperInvariant();
+            foreach (var col in Board.Columns)
+            {
+                var filteredCards = col.Cards.Where(card =>
+                {
+                    if (!string.IsNullOrWhiteSpace(query))
+                    {
+                        var plate = card.Plate.Replace("-", "").ToUpperInvariant();
+                        var name = card.CustomerName.ToUpperInvariant();
+                        if (!plate.Contains(query) && !name.Contains(query)) return false;
+                    }
+
+                    if (_selectedOperatorFilter.HasValue && card.AssignedOperatorId != _selectedOperatorFilter.Value)
+                    {
+                        return false;
+                    }
+
+                    return true;
+                }).ToList();
+
+                yield return new YardKanbanColumnDto(col.Status, col.Title, filteredCards.Count, filteredCards);
+            }
+        }
+    }
+
+    private void HandleSearchInput(ChangeEventArgs e)
+    {
+        _searchQuery = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void ClearSearch()
+    {
+        _searchQuery = string.Empty;
+    }
+
+    private void HandleOperatorFilterChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var opId))
+        {
+            _selectedOperatorFilter = opId;
+        }
+        else
+        {
+            _selectedOperatorFilter = null;
+        }
+    }
+
+    private void HandleRefresh()
+    {
+        OnRefreshRequested.InvokeAsync();
+    }
+
+    private void DismissError()
+    {
+        OnErrorDismissed.InvokeAsync(new ErrorMessageDismissArgs());
+    }
+
+    private void HandleCardDragStarted(WorkOrderKanbanCardDto card)
+    {
+        _draggedCard = card;
+    }
+
+    private void HandleCardDroppedToStatus(string targetStatus)
+    {
+        if (_draggedCard is null) return;
+        if (_draggedCard.Status == targetStatus) return;
+
+        // Check if forward or rework
+        var isRework = (targetStatus == WorkOrderStatusConstants.Finishing || targetStatus == WorkOrderStatusConstants.InWashing)
+            && (_draggedCard.Status == WorkOrderStatusConstants.QualityControl || _draggedCard.Status == WorkOrderStatusConstants.Finishing);
+
+        if (isRework)
+        {
+            _targetReworkCard = _draggedCard;
+            _selectedReworkTargetStatus = targetStatus;
+            _reworkNotes = string.Empty;
+            _isReworkModalOpen = true;
+        }
+        else
+        {
+            OnStatusChangeRequested.InvokeAsync(new WorkOrderStatusChangeArgs(
+                _draggedCard.Id,
+                targetStatus,
+                _draggedCard.AssignedOperatorId,
+                null));
+        }
+
+        _draggedCard = null;
+    }
+
+    private void HandleCardAdvance(WorkOrderKanbanCardDto card)
+    {
+        var nextStatus = YardKanbanCard.GetNextStatus(card.Status);
+        if (nextStatus is null) return;
+
+        OnStatusChangeRequested.InvokeAsync(new WorkOrderStatusChangeArgs(
+            card.Id,
+            nextStatus,
+            card.AssignedOperatorId,
+            null));
+    }
+
+    private void HandleCardRewind(WorkOrderKanbanCardDto card)
+    {
+        _targetReworkCard = card;
+        _selectedReworkTargetStatus = card.Status == WorkOrderStatusConstants.QualityControl
+            ? WorkOrderStatusConstants.Finishing
+            : WorkOrderStatusConstants.InWashing;
+        _reworkNotes = string.Empty;
+        _isReworkModalOpen = true;
+    }
+
+    private void CloseReworkModal()
+    {
+        _isReworkModalOpen = false;
+        _targetReworkCard = null;
+    }
+
+    private async Task ConfirmReworkAsync()
+    {
+        if (_targetReworkCard is null || string.IsNullOrWhiteSpace(_reworkNotes)) return;
+
+        _isProcessingAction = true;
+        try
+        {
+            await OnStatusChangeRequested.InvokeAsync(new WorkOrderStatusChangeArgs(
+                _targetReworkCard.Id,
+                _selectedReworkTargetStatus,
+                _targetReworkCard.AssignedOperatorId,
+                _reworkNotes.Trim()));
+
+            CloseReworkModal();
+        }
+        finally
+        {
+            _isProcessingAction = false;
+        }
+    }
+
+    private void HandleCardAssignOperator(WorkOrderKanbanCardDto card)
+    {
+        _targetAssignCard = card;
+        _selectedOperatorId = card.AssignedOperatorId;
+        _isAssignModalOpen = true;
+    }
+
+    private void CloseAssignModal()
+    {
+        _isAssignModalOpen = false;
+        _targetAssignCard = null;
+    }
+
+    private async Task ConfirmAssignAsync()
+    {
+        if (_targetAssignCard is null) return;
+
+        _isProcessingAction = true;
+        try
+        {
+            await OnOperatorAssignRequested.InvokeAsync(new WorkOrderOperatorAssignArgs(
+                _targetAssignCard.Id,
+                _selectedOperatorId));
+
+            CloseAssignModal();
+        }
+        finally
+        {
+            _isProcessingAction = false;
+        }
+    }
+
+    private async Task HandleCardViewHistory(WorkOrderKanbanCardDto card)
+    {
+        _historyWorkOrderId = card.Id;
+        _historyPlate = card.Plate;
+        _isHistoryDrawerOpen = true;
+        _isLoadingHistory = true;
+        _workOrderHistory = [];
+
+        if (OnFetchHistory is not null)
+        {
+            try
+            {
+                var history = await OnFetchHistory(card.Id);
+                _workOrderHistory = history.ToList();
+            }
+            catch
+            {
+                _workOrderHistory = [];
+            }
+            finally
+            {
+                _isLoadingHistory = false;
+            }
+        }
+        else
+        {
+            _isLoadingHistory = false;
+        }
+    }
+
+    private int GetCapacityPercentage()
+    {
+        if (Board.CapacityTotalBoxes <= 0) return 0;
+        return Math.Min(100, (int)Math.Round((double)Board.OccupiedBoxes / Board.CapacityTotalBoxes * 100));
+    }
+
+    private string GetCapacityFillClass()
+    {
+        var pct = GetCapacityPercentage();
+        if (pct >= 100) return "fill-full";
+        if (pct >= 80) return "fill-warning";
+        return "fill-normal";
+    }
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
+        };
+    }
+
+    public sealed record ErrorMessageDismissArgs;
+    public sealed record WorkOrderStatusChangeArgs(Guid WorkOrderId, string TargetStatus, Guid? OperatorId, string? Notes);
+    public sealed record WorkOrderOperatorAssignArgs(Guid WorkOrderId, Guid? OperatorId);
+}

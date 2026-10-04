@@ -159,6 +159,7 @@ public sealed class ModuleBoundaryTests
             typeof(CommissionRule),
             typeof(WorkOrder),
             typeof(WorkOrderItem),
+            typeof(WorkOrderStatusHistory),
             typeof(WhatsAppConnection),
             typeof(VehicleInspection),
             typeof(InspectionDamage),

@@ -1,0 +1,77 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="kanban-column @GetColumnClass(Column.Status) @(_isDragOver ? "column-drag-over" : "")"
+     ondragover="event.preventDefault();"
+     @ondragenter="HandleDragEnter"
+     @ondragleave="HandleDragLeave"
+     @ondrop="HandleDrop"
+     id="column-@Column.Status">
+    
+    <div class="column-header">
+        <div class="header-left">
+            <span class="status-indicator"></span>
+            <h4 class="column-title">@Column.Title</h4>
+        </div>
+        <span class="count-badge">@Column.Count</span>
+    </div>
+
+    <div class="column-cards-container">
+        @if (Column.Cards.Count == 0)
+        {
+            <div class="column-empty">
+                <span class="empty-icon">&#128663;</span>
+                <span class="empty-text">Nenhum veículo</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var card in Column.Cards)
+            {
+                <YardKanbanCard Card="card"
+                                OnDragStarted="OnCardDragStarted"
+                                OnAdvanceClicked="OnCardAdvance"
+                                OnRewindClicked="OnCardRewind"
+                                OnAssignOperatorClicked="OnCardAssignOperator"
+                                OnViewHistoryClicked="OnCardViewHistory" />
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YardKanbanColumnDto Column { get; set; } = default!;
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardDragStarted { get; set; }
+    [Parameter] public EventCallback<string> OnCardDroppedToStatus { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardAdvance { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardRewind { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardAssignOperator { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardViewHistory { get; set; }
+
+    private bool _isDragOver;
+
+    private void HandleDragEnter()
+    {
+        _isDragOver = true;
+    }
+
+    private void HandleDragLeave()
+    {
+        _isDragOver = false;
+    }
+
+    private void HandleDrop()
+    {
+        _isDragOver = false;
+        OnCardDroppedToStatus.InvokeAsync(Column.Status);
+    }
+
+    private static string GetColumnClass(string status) => status switch
+    {
+        WorkOrderStatusConstants.Waiting => "col-waiting",
+        WorkOrderStatusConstants.InWashing => "col-washing",
+        WorkOrderStatusConstants.Finishing => "col-finishing",
+        WorkOrderStatusConstants.QualityControl => "col-quality",
+        WorkOrderStatusConstants.ReadyForPickup => "col-ready",
+        _ => ""
+    };
+}

@@ -1,0 +1,187 @@
+@using CarWashSaaS.Shared.Contracts
+
+<div class="kanban-card @GetStatusClass(Card.Status)"
+     draggable="true"
+     @ondragstart="HandleDragStart"
+     id="card-@Card.Id">
+    
+    <div class="card-header">
+        <div class="plate-box">
+            <span class="plate-brazil-bar"></span>
+            <span class="plate-number">@FormatPlate(Card.Plate)</span>
+        </div>
+        <span class="size-badge">@Card.VehicleSize</span>
+    </div>
+
+    <div class="card-customer">
+        <span class="customer-name" title="@Card.CustomerName">@Card.CustomerName</span>
+        <span class="order-id">#@Card.Id.ToString()[..8].ToUpperInvariant()</span>
+    </div>
+
+    <div class="card-services">
+        @if (Card.ServiceNames.Count > 0)
+        {
+            <div class="service-chips">
+                @foreach (var s in Card.ServiceNames.Take(2))
+                {
+                    <span class="service-chip" title="@s">@s</span>
+                }
+                @if (Card.ServiceNames.Count > 2)
+                {
+                    <span class="service-chip-more">+@(Card.ServiceNames.Count - 2)</span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="card-metrics">
+        <div class="metric-item">
+            <span class="metric-icon">&#128337;</span>
+            <span class="metric-text @(IsDelayed ? "delayed-alert" : "")">@GetElapsedTimeString()</span>
+        </div>
+        <div class="metric-item price-metric">
+            <span class="metric-price">@Card.TotalAmount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Card.Notes))
+    {
+        <div class="card-notes" title="@Card.Notes">
+            <span class="notes-icon">&#9998;</span>
+            <span class="notes-text">@Card.Notes</span>
+        </div>
+    }
+
+    <div class="card-operator-row">
+        @if (!string.IsNullOrWhiteSpace(Card.AssignedOperatorName))
+        {
+            <div class="operator-badge" title="Operador atribuído">
+                <span class="operator-avatar">@GetInitials(Card.AssignedOperatorName)</span>
+                <span class="operator-name">@Card.AssignedOperatorName</span>
+            </div>
+        }
+        else
+        {
+            <button type="button" class="btn-assign-operator" @onclick="HandleRequestAssign">
+                <span>+ Atribuir</span>
+            </button>
+        }
+        <button type="button" class="btn-history-trigger" @onclick="HandleViewHistory" title="Ver histórico de etapas">
+            <span>&#9201; Histórico</span>
+        </button>
+    </div>
+
+    <div class="card-actions">
+        @if (CanRewind(Card.Status))
+        {
+            <button type="button" class="btn-step btn-rewind" @onclick="HandleRewind" title="Retornar etapa (Refação)">
+                <span>&#8592; Retornar</span>
+            </button>
+        }
+        @if (GetNextStatus(Card.Status) is not null)
+        {
+            <button type="button" class="btn-step btn-advance" @onclick="HandleAdvance" title="@GetNextStepLabel(Card.Status)">
+                <span>@GetNextStepLabel(Card.Status)</span>
+                <span>&#8594;</span>
+            </button>
+        }
+        else
+        {
+            <div class="ready-stamp">
+                <span>&#10003; LIBERADO</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public WorkOrderKanbanCardDto Card { get; set; } = default!;
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnDragStarted { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnAdvanceClicked { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnRewindClicked { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnAssignOperatorClicked { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnViewHistoryClicked { get; set; }
+
+    private bool IsDelayed => DateTimeOffset.UtcNow > Card.EstimatedCompletionAtUtc && Card.Status != WorkOrderStatusConstants.ReadyForPickup;
+
+    private void HandleDragStart()
+    {
+        OnDragStarted.InvokeAsync(Card);
+    }
+
+    private void HandleAdvance()
+    {
+        OnAdvanceClicked.InvokeAsync(Card);
+    }
+
+    private void HandleRewind()
+    {
+        OnRewindClicked.InvokeAsync(Card);
+    }
+
+    private void HandleRequestAssign()
+    {
+        OnAssignOperatorClicked.InvokeAsync(Card);
+    }
+
+    private void HandleViewHistory()
+    {
+        OnViewHistoryClicked.InvokeAsync(Card);
+    }
+
+    private static string FormatPlate(string plate)
+    {
+        var clean = (plate ?? string.Empty).Replace("-", "").Trim().ToUpperInvariant();
+        return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
+    }
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
+        };
+    }
+
+    private string GetElapsedTimeString()
+    {
+        var elapsed = DateTimeOffset.UtcNow - Card.LastStatusChangedAtUtc;
+        if (elapsed.TotalMinutes < 1) return "< 1 min nesta etapa";
+        if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes} min nesta etapa";
+        return $"{(int)elapsed.TotalHours}h {elapsed.Minutes}min";
+    }
+
+    private static string GetStatusClass(string status) => status switch
+    {
+        WorkOrderStatusConstants.Waiting => "card-waiting",
+        WorkOrderStatusConstants.InWashing => "card-washing",
+        WorkOrderStatusConstants.Finishing => "card-finishing",
+        WorkOrderStatusConstants.QualityControl => "card-quality",
+        WorkOrderStatusConstants.ReadyForPickup => "card-ready",
+        _ => ""
+    };
+
+    private static bool CanRewind(string status) =>
+        status == WorkOrderStatusConstants.Finishing || status == WorkOrderStatusConstants.QualityControl;
+
+    public static string? GetNextStatus(string status) => status switch
+    {
+        WorkOrderStatusConstants.Waiting => WorkOrderStatusConstants.InWashing,
+        WorkOrderStatusConstants.InWashing => WorkOrderStatusConstants.Finishing,
+        WorkOrderStatusConstants.Finishing => WorkOrderStatusConstants.QualityControl,
+        WorkOrderStatusConstants.QualityControl => WorkOrderStatusConstants.ReadyForPickup,
+        _ => null
+    };
+
+    private static string GetNextStepLabel(string status) => status switch
+    {
+        WorkOrderStatusConstants.Waiting => "Iniciar Lavagem",
+        WorkOrderStatusConstants.InWashing => "Acabamento",
+        WorkOrderStatusConstants.Finishing => "Qualidade",
+        WorkOrderStatusConstants.QualityControl => "Liberar Retirada",
+        _ => "Avançar"
+    };
+}

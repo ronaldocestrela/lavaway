@@ -217,6 +217,9 @@ public sealed class WorkOrderApplicationServiceTests
         public Task<IReadOnlyCollection<WorkOrder>> ListRecentAsync(Guid tenantId, int limit = 20, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyCollection<WorkOrder>>(SavedWorkOrders.Where(w => w.TenantId == tenantId).Take(limit).ToList());
 
+        public Task<IReadOnlyCollection<WorkOrder>> ListActiveAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyCollection<WorkOrder>>(SavedWorkOrders.Where(w => w.TenantId == tenantId).ToList());
+
         public Task AddAsync(WorkOrder workOrder, CancellationToken ct = default)
         {
             SavedWorkOrders.Add(workOrder);

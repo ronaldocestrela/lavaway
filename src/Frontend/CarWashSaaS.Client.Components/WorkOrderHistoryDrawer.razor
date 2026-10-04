@@ -1,0 +1,118 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen)
+{
+    <div class="drawer-backdrop" @onclick="HandleClose">
+        <div class="drawer-container" @onclick:stopPropagation="true">
+            <div class="drawer-header">
+                <div class="drawer-title-group">
+                    <span class="drawer-eyebrow">HISTÓRICO DA ORDEM DE SERVIÇO</span>
+                    <h3 class="drawer-title">Trilha Operacional</h3>
+                    <div class="drawer-plate">
+                        <span class="plate-number">@Plate</span>
+                        <span class="os-code">#@WorkOrderId.ToString()[..8].ToUpperInvariant()</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-drawer" @onclick="HandleClose" aria-label="Fechar">&#10005;</button>
+            </div>
+
+            <div class="drawer-body">
+                @if (IsLoading)
+                {
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Carregando histórico...</span>
+                    </div>
+                }
+                else if (History.Count == 0)
+                {
+                    <div class="empty-state">
+                        <span>Nenhum histórico registrado para esta OS.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="timeline">
+                        @for (int i = 0; i < History.Count; i++)
+                        {
+                            var item = History[i];
+                            var isLast = i == History.Count - 1;
+                            <div class="timeline-item @(isLast ? "timeline-current" : "")">
+                                <div class="timeline-marker">
+                                    <div class="marker-dot @GetStatusClass(item.ToStatus)"></div>
+                                    @if (!isLast)
+                                    {
+                                        <div class="marker-line"></div>
+                                    }
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-header">
+                                        <span class="timeline-status-badge @GetStatusClass(item.ToStatus)">
+                                            @WorkOrderStatusConstants.ToDisplayName(item.ToStatus)
+                                        </span>
+                                        <span class="timeline-time">
+                                            @item.ChangedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                                        </span>
+                                    </div>
+
+                                    @if (item.FromStatus is not null)
+                                    {
+                                        <div class="timeline-from">
+                                            <span>Origem: <strong>@WorkOrderStatusConstants.ToDisplayName(item.FromStatus)</strong></span>
+                                        </div>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(item.ChangedByOperatorName))
+                                    {
+                                        <div class="timeline-operator">
+                                            <span class="operator-icon">&#128100;</span>
+                                            <span>Operador: <strong>@item.ChangedByOperatorName</strong></span>
+                                        </div>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(item.Notes))
+                                    {
+                                        <div class="timeline-notes">
+                                            <span class="notes-quote">"</span>
+                                            <span>@item.Notes</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="drawer-footer">
+                <button type="button" class="btn-drawer-close" @onclick="HandleClose">
+                    <span>Fechar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public Guid WorkOrderId { get; set; }
+    [Parameter] public string Plate { get; set; } = string.Empty;
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public IReadOnlyList<WorkOrderStatusHistoryDto> History { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private void HandleClose()
+    {
+        OnClose.InvokeAsync();
+    }
+
+    private static string GetStatusClass(string status) => status switch
+    {
+        WorkOrderStatusConstants.Waiting => "status-waiting",
+        WorkOrderStatusConstants.InWashing => "status-washing",
+        WorkOrderStatusConstants.Finishing => "status-finishing",
+        WorkOrderStatusConstants.QualityControl => "status-quality",
+        WorkOrderStatusConstants.ReadyForPickup => "status-ready",
+        _ => ""
+    };
+}

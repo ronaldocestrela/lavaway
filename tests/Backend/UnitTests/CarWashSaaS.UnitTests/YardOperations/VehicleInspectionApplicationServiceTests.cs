@@ -164,6 +164,11 @@ public sealed class VehicleInspectionApplicationServiceTests
             return Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
         }
 
+        public Task<IReadOnlyCollection<WorkOrder>> ListActiveAsync(Guid tenantId, CancellationToken ct = default)
+        {
+            return Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
+        }
+
         Task IWorkOrderRepository.AddAsync(WorkOrder workOrder, CancellationToken ct) => Task.CompletedTask;
 
         // ITenantObjectStorage

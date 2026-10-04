@@ -13,7 +13,10 @@ public sealed record WorkOrderDto(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset EstimatedCompletionAtUtc,
     string? Notes,
-    IReadOnlyCollection<WorkOrderItemDto> Items);
+    IReadOnlyCollection<WorkOrderItemDto> Items,
+    Guid? AssignedOperatorId = null,
+    string? AssignedOperatorName = null,
+    IReadOnlyCollection<WorkOrderStatusHistoryDto>? StatusHistory = null);
 
 public sealed record WorkOrderItemDto(
     Guid Id,

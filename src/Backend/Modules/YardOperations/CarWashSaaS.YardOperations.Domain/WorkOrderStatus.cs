@@ -2,5 +2,9 @@ namespace CarWashSaaS.YardOperations.Domain;
 
 public enum WorkOrderStatus
 {
-    Waiting
+    Waiting,
+    InWashing,
+    Finishing,
+    QualityControl,
+    ReadyForPickup
 }
