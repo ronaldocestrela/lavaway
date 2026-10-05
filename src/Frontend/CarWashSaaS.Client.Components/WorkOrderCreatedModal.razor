@@ -1,4 +1,6 @@
+@using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
+@inject WorkOrderApiClient WorkOrderClient
 
 <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-card">
@@ -49,6 +51,22 @@
             }
         </div>
 
+        <div class="notification-quick-actions">
+            <a id="btn-modal-download-pdf" href="@ReceiptPdfUrl" target="_blank" download="@($"comprovante-os-{WorkOrder.Id.ToString()[..8].ToUpperInvariant()}.pdf")" class="btn-action btn-pdf" title="Baixar comprovante de entrada em PDF">
+                <span>📄 Baixar PDF</span>
+            </a>
+            <button id="btn-modal-send-receipt-whatsapp" type="button" class="btn-action btn-whatsapp" @onclick="HandleSendReceiptWhatsApp" disabled="@_isSendingWhatsApp">
+                <span>💬 @(_isSendingWhatsApp ? "Enviando..." : _receiptSentSuccess ? "Voucher Enviado!" : "Enviar WhatsApp")</span>
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_notificationFeedback))
+        {
+            <div class="notification-feedback @(_receiptSentSuccess ? "feedback-success" : "feedback-error")">
+                <span>@_notificationFeedback</span>
+            </div>
+        }
+
         <div class="modal-actions">
             <button id="btn-modal-new-reception" type="button" class="btn-action btn-secondary" @onclick="HandleNewReception">
                 <span>Nova Recepção</span>
@@ -69,6 +87,33 @@
     [Parameter] public EventCallback OnNewReception { get; set; }
     [Parameter] public EventCallback OnGoToYard { get; set; }
     [Parameter] public EventCallback<Guid> OnGoToInspection { get; set; }
+
+    private bool _isSendingWhatsApp;
+    private bool _receiptSentSuccess;
+    private string? _notificationFeedback;
+
+    private string ReceiptPdfUrl => WorkOrderClient.GetReceiptPdfUrl(WorkOrder.Id);
+
+    private async Task HandleSendReceiptWhatsApp()
+    {
+        _isSendingWhatsApp = true;
+        _notificationFeedback = null;
+        try
+        {
+            await WorkOrderClient.SendReceiptNotificationAsync(WorkOrder.Id);
+            _receiptSentSuccess = true;
+            _notificationFeedback = "Comprovante com checklist e PDF enviado no WhatsApp do cliente com sucesso!";
+        }
+        catch (Exception ex)
+        {
+            _receiptSentSuccess = false;
+            _notificationFeedback = $"Não foi possível enviar via WhatsApp: {ex.Message}";
+        }
+        finally
+        {
+            _isSendingWhatsApp = false;
+        }
+    }
 
     private async Task HandleGoToInspection()
     {

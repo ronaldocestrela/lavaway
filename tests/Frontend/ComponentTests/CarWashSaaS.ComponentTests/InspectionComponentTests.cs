@@ -1,6 +1,8 @@
 using Bunit;
 using CarWashSaaS.Client.Components;
+using CarWashSaaS.Client.Core;
 using CarWashSaaS.Shared.Contracts;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CarWashSaaS.ComponentTests;
@@ -90,6 +92,8 @@ public sealed class InspectionComponentTests : BunitContext
             DateTimeOffset.UtcNow.AddMinutes(60),
             "Sem observações",
             []);
+
+        Services.AddSingleton(new WorkOrderApiClient(new HttpClient { BaseAddress = new Uri("http://localhost/") }));
 
         var cut = Render<WorkOrderCreatedModal>(parameters => parameters
             .Add(p => p.WorkOrder, wo)

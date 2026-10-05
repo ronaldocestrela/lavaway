@@ -165,4 +165,24 @@ public sealed class YardKanbanComponentTests : BunitContext
         cut.Find("button.btn-close-drawer").Click();
         Assert.True(closedClicked);
     }
+
+    [Fact]
+    public void YardKanbanCard_InReadyForPickupStatus_ShouldOfferNotifyReadyButton_AndTriggerCallback()
+    {
+        var card = CreateSampleCard("ReadyForPickup", "ABC1D23");
+        WorkOrderKanbanCardDto? notifiedCard = null;
+
+        var cut = Render<YardKanbanCard>(parameters => parameters
+            .Add(p => p.Card, card)
+            .Add(p => p.OnNotifyReadyClicked, c => notifiedCard = c));
+
+        var notifyBtn = cut.Find("button.btn-notify-ready");
+        Assert.NotNull(notifyBtn);
+        Assert.Contains("Notificar", notifyBtn.TextContent);
+        Assert.Contains("LIBERADO", cut.Markup);
+
+        notifyBtn.Click();
+        Assert.NotNull(notifiedCard);
+        Assert.Equal(card.Id, notifiedCard.Id);
+    }
 }

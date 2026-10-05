@@ -17,6 +17,13 @@
         </div>
 
         <div class="header-actions">
+            @if (Gallery?.ComparisonPairs.Count > 0 || Gallery?.UnpairedAfterPhotos.Count > 0)
+            {
+                <button type="button" class="btn-action-whatsapp" @onclick="HandleSendWhatsAppComparison" disabled="@IsSendingWhatsApp" title="Enviar galeria Antes/Depois para o cliente via WhatsApp">
+                    <span class="btn-icon">💬</span>
+                    <span>@(IsSendingWhatsApp ? "Enviando..." : "Enviar Antes/Depois (WhatsApp)")</span>
+                </button>
+            }
             @if (Gallery?.IsEligible == true)
             {
                 <button type="button" class="btn-action-primary" @onclick="OpenUploadModal">
@@ -29,6 +36,29 @@
             </button>
         </div>
     </div>
+
+    @if (!string.IsNullOrWhiteSpace(WhatsAppSuccessMessage))
+    {
+        <div class="gallery-alert alert-success">
+            <span class="alert-icon">&#10003;</span>
+            <div class="alert-content">
+                <strong>WhatsApp Enviado!</strong>
+                <p>@WhatsAppSuccessMessage</p>
+            </div>
+            <button type="button" class="btn-dismiss" @onclick="@(() => WhatsAppSuccessMessage = null)">&times;</button>
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(WhatsAppErrorMessage))
+    {
+        <div class="gallery-alert alert-error">
+            <span class="alert-icon">&#9888;</span>
+            <div class="alert-content">
+                <strong>Falha ao enviar WhatsApp</strong>
+                <p>@WhatsAppErrorMessage</p>
+            </div>
+            <button type="button" class="btn-dismiss" @onclick="@(() => WhatsAppErrorMessage = null)">&times;</button>
+        </div>
+    }
 
     @if (IsLoading)
     {
@@ -540,6 +570,30 @@
         catch (Exception ex)
         {
             ErrorMessage = $"Falha ao excluir foto: {ex.Message}";
+        }
+    }
+
+    private bool IsSendingWhatsApp;
+    private string? WhatsAppSuccessMessage;
+    private string? WhatsAppErrorMessage;
+
+    private async Task HandleSendWhatsAppComparison()
+    {
+        IsSendingWhatsApp = true;
+        WhatsAppSuccessMessage = null;
+        WhatsAppErrorMessage = null;
+        try
+        {
+            await WorkOrderClient.SendComparisonPhotosNotificationAsync(WorkOrderId);
+            WhatsAppSuccessMessage = "Fotos comparativas e mensagem personalizada enviadas com sucesso para o WhatsApp do cliente!";
+        }
+        catch (Exception ex)
+        {
+            WhatsAppErrorMessage = $"Não foi possível enviar via WhatsApp: {ex.Message}";
+        }
+        finally
+        {
+            IsSendingWhatsApp = false;
         }
     }
 

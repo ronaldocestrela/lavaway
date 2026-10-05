@@ -105,6 +105,33 @@
     box-shadow: 0 6px 16px rgba(14, 165, 233, 0.45);
 }
 
+.btn-action-whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #25d366;
+    color: #ffffff;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+}
+
+.btn-action-whatsapp:hover:not(:disabled) {
+    background: #1eb857;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 211, 102, 0.45);
+}
+
+.btn-action-whatsapp:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
 .btn-close-gallery {
     background: #1e293b;
     border: 1px solid #334155;
@@ -209,6 +236,27 @@
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
     color: #fca5a5;
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #6ee7b7;
+}
+
+.btn-dismiss {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1.25rem;
+    cursor: pointer;
+    margin-left: auto;
+    padding: 0 0.25rem;
+    opacity: 0.8;
+}
+
+.btn-dismiss:hover {
+    opacity: 1;
 }
 
 .btn-retry {

@@ -18,18 +18,22 @@ public sealed class VehicleInspectionApplicationService
     private readonly IWorkOrderRepository _workOrderRepository;
     private readonly ITenantObjectStorage _storage;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IBackgroundQueue? _backgroundQueue;
 
     public VehicleInspectionApplicationService(
         IVehicleInspectionRepository inspectionRepository,
         IWorkOrderRepository workOrderRepository,
         ITenantObjectStorage storage,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IBackgroundQueue? backgroundQueue = null)
     {
         _inspectionRepository = inspectionRepository;
         _workOrderRepository = workOrderRepository;
         _storage = storage;
         _unitOfWork = unitOfWork;
+        _backgroundQueue = backgroundQueue;
     }
+
 
     public async Task<Result<VehicleInspectionDto>> GetByWorkOrderIdAsync(
         Guid tenantId,
@@ -285,7 +289,14 @@ public sealed class VehicleInspectionApplicationService
         _inspectionRepository.Update(inspection);
         await _unitOfWork.SaveChangesAsync(ct);
 
+        if (_backgroundQueue is not null)
+        {
+            var payload = System.Text.Json.JsonSerializer.Serialize(new WorkOrderReceiptEventPayload(workOrderId));
+            await _backgroundQueue.EnqueueAsync(new TenantQueueMessage(tenantId, WorkOrderNotificationEvents.ReceiptRequested, payload, workOrderId), ct);
+        }
+
         return Result<VehicleInspectionDto>.Success(MapToDto(inspection));
+
     }
 
     private static VehicleInspectionDto MapToDto(VehicleInspection inspection)

@@ -53,6 +53,37 @@ public sealed class EvolutionApiWhatsAppMessageSenderTests
         Assert.Equal("whatsapp.provider.error", result.Error!.Code);
     }
 
+    [Fact]
+    public async Task SendMediaMessageAsync_Should_Succeed_When_Evolution_Returns_200()
+    {
+        var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var handler = new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"key\":{\"id\":\"EVOLUTION-MEDIA-999\"}}", Encoding.UTF8, "application/json")
+            });
+
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://evolution.example.com/")
+        };
+
+        var sender = new EvolutionApiWhatsAppMessageSender(client, "test-api-key", "lavaway");
+
+        var result = await sender.SendMediaMessageAsync(
+            tenantId,
+            "5511999998888",
+            "data:application/pdf;base64,JVBERi0x...",
+            "document",
+            "application/pdf",
+            "comprovante.pdf",
+            "Aqui está seu comprovante!");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("EVOLUTION-MEDIA-999", result.Value);
+    }
+
+
     private sealed class StubHttpMessageHandler(HttpResponseMessage response) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

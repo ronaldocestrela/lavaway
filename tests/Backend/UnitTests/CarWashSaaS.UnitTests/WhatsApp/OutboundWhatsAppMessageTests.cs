@@ -130,4 +130,90 @@ public sealed class OutboundWhatsAppMessageTests
         Assert.Equal(WhatsAppMessageStatus.Rejected, message.Status);
         Assert.Equal("OptedOut: cliente recusou mensagens", message.FailureReason);
     }
+
+    [Fact]
+    public void CreateWithMedia_Should_Succeed_For_Document_Pdf()
+    {
+        var tenantId = Guid.NewGuid();
+        var result = OutboundWhatsAppMessage.CreateWithMedia(
+            tenantId,
+            "(11) 98765-4321",
+            "Comprovante da sua OS",
+            "document",
+            "data:application/pdf;base64,JVBERi0xLjQK...",
+            "application/pdf",
+            "comprovante-os-123.pdf",
+            "receipt-os-123");
+
+        Assert.True(result.IsSuccess);
+        var msg = result.Value!;
+        Assert.Equal("document", msg.MediaType);
+        Assert.Equal("application/pdf", msg.MediaMimeType);
+        Assert.Equal("comprovante-os-123.pdf", msg.MediaFileName);
+        Assert.Equal("receipt-os-123", msg.IdempotencyKey);
+        Assert.Equal(WhatsAppMessageStatus.Queued, msg.Status);
+    }
+
+    [Fact]
+    public void CreateWithMedia_Should_Succeed_For_Image()
+    {
+        var tenantId = Guid.NewGuid();
+        var result = OutboundWhatsAppMessage.CreateWithMedia(
+            tenantId,
+            "11987654321",
+            "Foto do serviço",
+            "image",
+            "https://storage.local/tenants/t1/photo.jpg",
+            "image/jpeg",
+            "depois.jpg");
+
+        Assert.True(result.IsSuccess);
+        var msg = result.Value!;
+        Assert.Equal("image", msg.MediaType);
+        Assert.Equal("image/jpeg", msg.MediaMimeType);
+        Assert.Equal("depois.jpg", msg.MediaFileName);
+    }
+
+    [Fact]
+    public void CreateWithMedia_Should_Reject_Invalid_MediaType()
+    {
+        var result = OutboundWhatsAppMessage.CreateWithMedia(
+            Guid.NewGuid(),
+            "11987654321",
+            "Legenda",
+            "video",
+            "data:video/mp4;base64,...",
+            "video/mp4",
+            "video.mp4");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.media_type.invalid", result.Error!.Code);
+    }
+
+    [Fact]
+    public void CreateWithMedia_Should_Reject_Empty_MediaContent_Or_FileName()
+    {
+        var result1 = OutboundWhatsAppMessage.CreateWithMedia(
+            Guid.NewGuid(),
+            "11987654321",
+            "Legenda",
+            "document",
+            "   ",
+            "application/pdf",
+            "arquivo.pdf");
+        Assert.False(result1.IsSuccess);
+        Assert.Equal("whatsapp.media_content.required", result1.Error!.Code);
+
+        var result2 = OutboundWhatsAppMessage.CreateWithMedia(
+            Guid.NewGuid(),
+            "11987654321",
+            "Legenda",
+            "document",
+            "base64data",
+            "application/pdf",
+            "   ");
+        Assert.False(result2.IsSuccess);
+        Assert.Equal("whatsapp.media_filename.required", result2.Error!.Code);
+    }
 }
+

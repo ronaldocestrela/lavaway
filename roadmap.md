@@ -190,10 +190,12 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 4.2 Notificações da ordem de serviço
 
-- [ ] Gerar e enviar comprovante PDF de entrada com dados da OS e checklist da vistoria.
-- [ ] Enviar aviso de veículo pronto quando a OS chegar ao estado *Pronto para Retirada*.
-- [ ] Enviar galeria comparativa "Antes e Depois" quando houver fotos.
-- [ ] **Entrega:** eventos da OS disparam as mensagens correspondentes e o resultado do envio é registrado.
+- [x] Gerar e enviar comprovante PDF de entrada com dados da OS e checklist da vistoria.
+- [x] Enviar aviso de veículo pronto quando a OS chegar ao estado *Pronto para Retirada*.
+- [x] Enviar galeria comparativa "Antes e Depois" quando houver fotos.
+- [x] **Entrega:** eventos da OS disparam as mensagens correspondentes e o resultado do envio é registrado.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): geração determinística de comprovante em PDF 1.4 streaming em C# puro (`WorkOrderReceiptPdfGenerator`) com dados cadastrais do estabelecimento via `ITenantStoreProfileLookup`, identificação do cliente e veículo, discriminação de serviços, dados de odômetro/combustível e tabela de checklist e avarias mapeadas na vistoria, com persistência multi-tenant em `ITenantObjectStorage` (`work-orders/{id}/receipt.pdf`). O módulo WhatsApp foi estendido para envio de documentos e imagens (`OutboundWhatsAppMessage.CreateWithMedia` com migração EF Core `AddMediaSupportToWhatsAppMessage` e suporte a `POST /message/sendMedia` na Evolution API). Disparo automatizado desacoplado via RabbitMQ (`IBackgroundQueue`) com os eventos `WorkOrderReceiptRequestedEvent` e `WorkOrderReadyForPickupEvent` consumidos por `WorkOrderReceiptNotificationQueueHandler` e `WorkOrderReadyNotificationQueueHandler`. A API expõe endpoints em `/work-orders/{id}/receipt-pdf`, `/work-orders/{id}/notifications/receipt`, `/work-orders/{id}/notifications/ready`, `/work-orders/{id}/notifications/comparison-photos` e `/work-orders/{id}/notifications`. No frontend Blazor WebAssembly, o modal pós check-in (`WorkOrderCreatedModal`) oferece botões diretos para download do PDF e envio de comprovante via WhatsApp com feedback instantâneo; o quadro do pátio (`YardKanbanCard` e `YardPage`) exibe ação de notificação de retirada no status `ReadyForPickup` com alerta de confirmação; e a galeria comparativa (`PhotoComparisonGallery`) permite disparar o comparativo "Antes e Depois" diretamente para o WhatsApp do cliente. Cobertura completa de testes unitários, testes de arquitetura NetArchTest, testes de integração de isolamento de banco e testes de componentes bUnit. Decisão formalizada na [ADR-0008](docs/architecture/ADR-0008-notificacoes-ordem-servico-whatsapp-e-pdf.md) e documentação viva em [docs/living-docs/notificacoes-ordem-servico-4.2.md](docs/living-docs/notificacoes-ordem-servico-4.2.md).
 
 ### 4.3 Agendamento conversacional
 

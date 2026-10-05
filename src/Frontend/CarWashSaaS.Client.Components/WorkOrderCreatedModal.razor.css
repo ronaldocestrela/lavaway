@@ -259,3 +259,65 @@
     background: #b6e564;
     transform: translateY(-1px);
 }
+
+.notification-quick-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.btn-pdf {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+    text-decoration: none;
+}
+
+.btn-pdf:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    color: #1e293b;
+    transform: translateY(-1px);
+}
+
+.btn-whatsapp {
+    background: #25d366;
+    border-color: #1eb857;
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(37, 211, 102, 0.3);
+}
+
+.btn-whatsapp:hover:not(:disabled) {
+    background: #20ba5a;
+    transform: translateY(-1px);
+}
+
+.btn-whatsapp:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.notification-feedback {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-align: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.feedback-success {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.feedback-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}

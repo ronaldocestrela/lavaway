@@ -64,6 +64,7 @@ builder.Services.AddScoped<IIdentityUserRepository, IdentityUserRepository>();
 builder.Services.AddScoped<IdentityApplicationService>();
 builder.Services.AddScoped<IStoreProfileRepository, StoreProfileRepository>();
 builder.Services.AddScoped<StoreProfileApplicationService>();
+builder.Services.AddScoped<ITenantStoreProfileLookup>(sp => sp.GetRequiredService<StoreProfileApplicationService>());
 builder.Services.AddScoped<IServiceRepository, ServiceRepository>();
 builder.Services.AddScoped<ServiceCatalogApplicationService>();
 builder.Services.AddScoped<ICustomerVehicleSearchRepository, CustomerVehicleSearchRepository>();
@@ -72,7 +73,9 @@ builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IUnitOfWork, YardOperationsUnitOfWork>();
 builder.Services.AddScoped<CustomerVehicleApplicationService>();
+builder.Services.AddScoped<IWorkOrderReceiptPdfGenerator, WorkOrderReceiptPdfGenerator>();
 builder.Services.AddScoped<WorkOrderApplicationService>();
+builder.Services.AddScoped<WorkOrderNotificationApplicationService>();
 builder.Services.AddScoped<IVehicleInspectionRepository, VehicleInspectionRepository>();
 builder.Services.AddScoped<VehicleInspectionApplicationService>();
 builder.Services.AddScoped<IYardCapacityRepository, YardCapacityRepository>();
@@ -118,7 +121,11 @@ builder.Services.AddScoped<ITenantWhatsAppQuotaRepository, TenantWhatsAppQuotaRe
 builder.Services.AddScoped<ICustomerCommunicationPreferenceRepository, CustomerCommunicationPreferenceRepository>();
 builder.Services.AddScoped<WhatsAppConnectionApplicationService>();
 builder.Services.AddScoped<WhatsAppMessageApplicationService>();
+builder.Services.AddScoped<IOutboundWhatsAppDispatcher>(sp => sp.GetRequiredService<WhatsAppMessageApplicationService>());
 builder.Services.AddScoped<ITenantQueueMessageHandler, OutboundWhatsAppMessageQueueHandler>();
+builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReadyNotificationQueueHandler>();
+builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReceiptNotificationQueueHandler>();
+
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));
 builder.Services.AddDbContext<IdentityModuleDbContext>(options =>

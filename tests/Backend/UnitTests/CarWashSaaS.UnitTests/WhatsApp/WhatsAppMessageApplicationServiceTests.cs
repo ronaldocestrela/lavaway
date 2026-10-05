@@ -190,9 +190,56 @@ public sealed class WhatsAppMessageApplicationServiceTests
             => ValueTask.FromResult<IBackgroundQueueDelivery?>(null);
     }
 
+    [Fact]
+    public async Task SendMediaMessageAsync_Should_Succeed_With_Valid_Parameters()
+    {
+        var tenantId = Guid.NewGuid();
+        var connection = WhatsAppConnection.Create(tenantId, "sess-1", "qr-1").Value!;
+        connection.MarkConnected();
+
+        var quota = TenantWhatsAppQuota.CreateDefault(tenantId, 10, 100).Value!;
+        var prefRepo = new FakeCustomerCommunicationPreferenceRepository();
+        var messageRepo = new FakeOutboundWhatsAppMessageRepository();
+        var queue = new FakeBackgroundQueue();
+        var service = new WhatsAppMessageApplicationService(
+            new FakeWhatsAppConnectionRepository(connection),
+            messageRepo,
+            new FakeTenantWhatsAppQuotaRepository(quota),
+            prefRepo,
+            queue);
+
+        var result = await service.SendMediaMessageAsync(
+            tenantId,
+            "11987654321",
+            "Segue comprovante",
+            "document",
+            "data:application/pdf;base64,JVBERi...",
+            "application/pdf",
+            "comprovante.pdf");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("11987654321", result.Value!.RecipientPhone);
+        Assert.Equal("document", result.Value.MediaType);
+        Assert.Equal("comprovante.pdf", result.Value.MediaFileName);
+        Assert.Single(messageRepo.Messages);
+        Assert.Single(queue.Messages);
+    }
+
     private sealed class FakeWhatsAppMessageSender(string successResult) : IWhatsAppMessageSender
     {
         public Task<Result<string>> SendTextMessageAsync(Guid tenantId, string recipientPhone, string messageText, CancellationToken ct = default)
             => Task.FromResult(Result<string>.Success(successResult));
+
+        public Task<Result<string>> SendMediaMessageAsync(
+            Guid tenantId,
+            string recipientPhone,
+            string mediaBase64OrUrl,
+            string mediaType,
+            string mimeType,
+            string fileName,
+            string? caption = null,
+            CancellationToken ct = default)
+            => Task.FromResult(Result<string>.Success(successResult));
     }
 }
+

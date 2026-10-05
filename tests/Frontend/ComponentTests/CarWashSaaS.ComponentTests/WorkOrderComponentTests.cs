@@ -1,6 +1,8 @@
 using Bunit;
 using CarWashSaaS.Client.Components;
+using CarWashSaaS.Client.Core;
 using CarWashSaaS.Shared.Contracts;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CarWashSaaS.ComponentTests;
@@ -117,6 +119,8 @@ public sealed class WorkOrderComponentTests : BunitContext
             "Cuidado ao manobrar",
             []);
 
+        Services.AddSingleton(new WorkOrderApiClient(new HttpClient { BaseAddress = new Uri("http://localhost/") }));
+
         var cut = Render<WorkOrderCreatedModal>(parameters => parameters
             .Add(p => p.WorkOrder, workOrder)
             .Add(p => p.OnNewReception, () => newReceptionClicked = true));
@@ -127,6 +131,8 @@ public sealed class WorkOrderComponentTests : BunitContext
         Assert.Contains("120,00", cut.Markup);
         Assert.Contains("1h", cut.Markup);
         Assert.Contains("Cuidado ao manobrar", cut.Markup);
+        Assert.NotNull(cut.Find("#btn-modal-download-pdf"));
+        Assert.NotNull(cut.Find("#btn-modal-send-receipt-whatsapp"));
 
         cut.Find("#btn-modal-new-reception").Click();
         Assert.True(newReceptionClicked);

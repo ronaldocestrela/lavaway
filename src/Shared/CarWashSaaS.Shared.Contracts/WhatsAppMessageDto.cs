@@ -9,4 +9,7 @@ public sealed record WhatsAppMessageDto(
     int AttemptCount,
     DateTimeOffset CreatedAt,
     DateTimeOffset? SentAtUtc,
-    DateTimeOffset? DeliveredAtUtc);
+    DateTimeOffset? DeliveredAtUtc,
+    string? MediaType = null,
+    string? MediaFileName = null);
+

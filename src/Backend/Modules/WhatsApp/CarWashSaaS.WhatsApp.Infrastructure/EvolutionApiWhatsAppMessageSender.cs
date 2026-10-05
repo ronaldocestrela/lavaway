@@ -77,6 +77,61 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
         }
     }
 
+    public async Task<Result<string>> SendMediaMessageAsync(
+        Guid tenantId,
+        string recipientPhone,
+        string mediaBase64OrUrl,
+        string mediaType,
+        string mimeType,
+        string fileName,
+        string? caption = null,
+        CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        var instanceName = $"{_instanceNamePrefix}-{tenantId:N}";
+        var request = new HttpRequestMessage(HttpMethod.Post, $"message/sendMedia/{instanceName}");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.Add("apikey", _apiKey);
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            number = recipientPhone,
+            mediatype = mediaType,
+            mimetype = mimeType,
+            caption = caption ?? string.Empty,
+            media = mediaBase64OrUrl,
+            fileName = fileName
+        });
+        request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(request, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            return Result<string>.Failure(new Error("whatsapp.provider.network_error", ex.Message, ErrorType.Validation));
+        }
+
+        using (response)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result<string>.Failure(new Error("whatsapp.provider.error",
+                    $"Evolution API returned status {(int)response.StatusCode}: {responseBody}",
+                    ErrorType.Validation));
+            }
+
+            var providerMessageId = ExtractMessageId(responseBody);
+            return Result<string>.Success(providerMessageId);
+        }
+    }
+
+
     private static string ExtractMessageId(string responseBody)
     {
         if (string.IsNullOrWhiteSpace(responseBody))

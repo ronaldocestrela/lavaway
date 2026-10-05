@@ -36,7 +36,21 @@ public sealed class OutboundWhatsAppMessageQueueHandler(
         outboundMessage.MarkSending();
         await messageRepository.SaveChangesAsync(cancellationToken);
 
-        var sendResult = await messageSender.SendTextMessageAsync(outboundMessage.TenantId, outboundMessage.RecipientPhone, outboundMessage.Body, cancellationToken);
+        var sendResult = !string.IsNullOrWhiteSpace(outboundMessage.MediaType) && !string.IsNullOrWhiteSpace(outboundMessage.MediaUrlOrBase64)
+            ? await messageSender.SendMediaMessageAsync(
+                outboundMessage.TenantId,
+                outboundMessage.RecipientPhone,
+                outboundMessage.MediaUrlOrBase64,
+                outboundMessage.MediaType,
+                outboundMessage.MediaMimeType ?? "application/octet-stream",
+                outboundMessage.MediaFileName ?? "document.pdf",
+                outboundMessage.Body,
+                cancellationToken)
+            : await messageSender.SendTextMessageAsync(
+                outboundMessage.TenantId,
+                outboundMessage.RecipientPhone,
+                outboundMessage.Body,
+                cancellationToken);
 
         if (sendResult.IsSuccess)
         {

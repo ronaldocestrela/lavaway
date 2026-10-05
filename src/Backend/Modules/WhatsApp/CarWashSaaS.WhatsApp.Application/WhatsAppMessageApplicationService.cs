@@ -8,12 +8,22 @@ public sealed class WhatsAppMessageApplicationService(
     IOutboundWhatsAppMessageRepository messageRepository,
     ITenantWhatsAppQuotaRepository quotaRepository,
     ICustomerCommunicationPreferenceRepository preferenceRepository,
-    IBackgroundQueue backgroundQueue)
+    IBackgroundQueue backgroundQueue) : IOutboundWhatsAppDispatcher
 {
     public async Task<Result<WhatsAppMessageDto>> SendTestMessageAsync(
         Guid tenantId,
         string recipientPhone,
         string messageText,
+        CancellationToken ct = default)
+    {
+        return await DispatchTextMessageAsync(tenantId, recipientPhone, messageText, idempotencyKey: null, ct: ct);
+    }
+
+    public async Task<Result<WhatsAppMessageDto>> DispatchTextMessageAsync(
+        Guid tenantId,
+        string recipientPhone,
+        string messageText,
+        string? idempotencyKey = null,
         CancellationToken ct = default)
     {
         if (tenantId == Guid.Empty)
@@ -44,7 +54,7 @@ public sealed class WhatsAppMessageApplicationService(
         }
 
         // 4. Criar mensagem de domínio
-        var messageResult = OutboundWhatsAppMessage.Create(tenantId, recipientPhone, messageText);
+        var messageResult = OutboundWhatsAppMessage.Create(tenantId, recipientPhone, messageText, idempotencyKey);
         if (!messageResult.IsSuccess)
         {
             return Result<WhatsAppMessageDto>.Failure(messageResult.Error!);
@@ -74,6 +84,7 @@ public sealed class WhatsAppMessageApplicationService(
 
         return Result<WhatsAppMessageDto>.Success(MapToDto(message));
     }
+
 
     public async Task<Result<IReadOnlyList<WhatsAppMessageDto>>> GetRecentMessagesAsync(
         Guid tenantId,
@@ -165,6 +176,97 @@ public sealed class WhatsAppMessageApplicationService(
         return Result<bool>.Success(false);
     }
 
+    public Task<Result<WhatsAppMessageDto>> DispatchMediaMessageAsync(
+        Guid tenantId,
+        string recipientPhone,
+        string caption,
+        string mediaType,
+        string mediaUrlOrBase64,
+        string mediaMimeType,
+        string mediaFileName,
+        string? idempotencyKey = null,
+        CancellationToken ct = default)
+        => SendMediaMessageAsync(tenantId, recipientPhone, caption, mediaType, mediaUrlOrBase64, mediaMimeType, mediaFileName, idempotencyKey, ct);
+
+    public async Task<Result<WhatsAppMessageDto>> SendMediaMessageAsync(
+        Guid tenantId,
+        string recipientPhone,
+        string caption,
+        string mediaType,
+        string mediaUrlOrBase64,
+        string mediaMimeType,
+        string mediaFileName,
+        string? idempotencyKey = null,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<WhatsAppMessageDto>.Failure(new Error("whatsapp.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        // 1. Validar conexão ativa
+        var connection = await connectionRepository.GetByTenantAsync(tenantId, ct);
+        if (connection is null || connection.Status != WhatsAppConnectionStatus.Connected)
+        {
+            return Result<WhatsAppMessageDto>.Failure(new Error("whatsapp.not_connected", "WhatsApp instance is not connected. Please pair your WhatsApp first.", ErrorType.Validation));
+        }
+
+        // 2. Validar consentimento do destinatário
+        var normalizedPhone = OutboundWhatsAppMessage.CleanPhoneNumber(recipientPhone);
+        var preference = await preferenceRepository.GetByPhoneAsync(tenantId, normalizedPhone, ct);
+        if (preference is not null && !preference.IsOptedIn)
+        {
+            return Result<WhatsAppMessageDto>.Failure(new Error("whatsapp.recipient.opted_out", "The recipient has opted out of WhatsApp messages.", ErrorType.Validation));
+        }
+
+        // 3. Validar cota / rate-limit
+        var quota = await quotaRepository.GetOrCreateAsync(tenantId, ct);
+        if (!quota.CanSend())
+        {
+            return Result<WhatsAppMessageDto>.Failure(new Error("whatsapp.quota_exceeded", "Sending rate limit or daily quota exceeded for this store.", ErrorType.Conflict));
+        }
+
+        // 4. Criar mensagem com mídia de domínio
+        var messageResult = OutboundWhatsAppMessage.CreateWithMedia(
+            tenantId,
+            recipientPhone,
+            caption,
+            mediaType,
+            mediaUrlOrBase64,
+            mediaMimeType,
+            mediaFileName,
+            idempotencyKey);
+
+        if (!messageResult.IsSuccess)
+        {
+            return Result<WhatsAppMessageDto>.Failure(messageResult.Error!);
+        }
+
+        var message = messageResult.Value!;
+
+        // 5. Registrar débito na cota e persistir
+        var quotaRecordResult = quota.RecordSend();
+        if (!quotaRecordResult.IsSuccess)
+        {
+            return Result<WhatsAppMessageDto>.Failure(quotaRecordResult.Error!);
+        }
+
+        await quotaRepository.SaveChangesAsync(ct);
+        await messageRepository.AddAsync(message, ct);
+        await messageRepository.SaveChangesAsync(ct);
+
+        // 6. Enfileirar no RabbitMQ para processamento assíncrono confiável
+        var queueMessage = new TenantQueueMessage(
+            tenantId,
+            "whatsapp.message.dispatch",
+            message.Id.ToString("D"),
+            message.Id);
+
+        await backgroundQueue.EnqueueAsync(queueMessage, ct);
+
+        return Result<WhatsAppMessageDto>.Success(MapToDto(message));
+    }
+
     public static WhatsAppMessageDto MapToDto(OutboundWhatsAppMessage message) => new(
         message.Id,
         message.RecipientPhone,
@@ -174,5 +276,8 @@ public sealed class WhatsAppMessageApplicationService(
         message.AttemptCount,
         message.CreatedAt,
         message.SentAtUtc,
-        message.DeliveredAtUtc);
+        message.DeliveredAtUtc,
+        message.MediaType,
+        message.MediaFileName);
 }
+

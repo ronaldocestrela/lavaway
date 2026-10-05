@@ -116,6 +116,33 @@ public sealed class WorkOrderApiClient(HttpClient httpClient)
     public string GetInspectionPhotoUrl(Guid workOrderId, Guid photoId) =>
         $"{httpClient.BaseAddress}work-orders/{workOrderId}/inspection/photos/{photoId}";
 
+    public string GetReceiptPdfUrl(Guid workOrderId) =>
+        $"{httpClient.BaseAddress}work-orders/{workOrderId}/receipt-pdf";
+
+    public async Task<WhatsAppMessageDto> SendReceiptNotificationAsync(Guid workOrderId, SendWorkOrderNotificationRequest? request = null, CancellationToken ct = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync($"work-orders/{workOrderId}/notifications/receipt", request ?? new SendWorkOrderNotificationRequest(null), ct);
+        return await ReadResponseAsync<WhatsAppMessageDto>(response, ct);
+    }
+
+    public async Task<WhatsAppMessageDto> SendReadyNotificationAsync(Guid workOrderId, SendWorkOrderNotificationRequest? request = null, CancellationToken ct = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync($"work-orders/{workOrderId}/notifications/ready", request ?? new SendWorkOrderNotificationRequest(null), ct);
+        return await ReadResponseAsync<WhatsAppMessageDto>(response, ct);
+    }
+
+    public async Task<WhatsAppMessageDto> SendComparisonPhotosNotificationAsync(Guid workOrderId, SendComparisonPhotosRequest? request = null, CancellationToken ct = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync($"work-orders/{workOrderId}/notifications/comparison-photos", request ?? new SendComparisonPhotosRequest(null, null), ct);
+        return await ReadResponseAsync<WhatsAppMessageDto>(response, ct);
+    }
+
+    public async Task<WorkOrderNotificationSummaryDto> GetNotificationSummaryAsync(Guid workOrderId, CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync($"work-orders/{workOrderId}/notifications", ct);
+        return await ReadResponseAsync<WorkOrderNotificationSummaryDto>(response, ct);
+    }
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (!response.IsSuccessStatusCode)

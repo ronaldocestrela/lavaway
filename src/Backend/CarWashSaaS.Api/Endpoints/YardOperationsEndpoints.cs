@@ -901,5 +901,112 @@ public static class YardOperationsEndpoints
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus);
+
+        app.MapGet("/work-orders/{id:guid}/receipt-pdf", async (
+            Guid id,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderNotificationApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetReceiptPdfStreamAsync(tenantId, id, ct);
+            if (!result.IsSuccess)
+            {
+                return result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+            }
+
+            var fileName = $"comprovante-OS-{id.ToString("D")[..8].ToUpperInvariant()}.pdf";
+            return Results.File(result.Value!.Content, "application/pdf", fileName);
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPost("/work-orders/{id:guid}/notifications/receipt", async (
+            Guid id,
+            SendWorkOrderNotificationRequest? request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderNotificationApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.SendReceiptNotificationAsync(tenantId, id, request?.CustomMessage, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus);
+
+        app.MapPost("/work-orders/{id:guid}/notifications/ready", async (
+            Guid id,
+            SendWorkOrderNotificationRequest? request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderNotificationApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.SendReadyForPickupNotificationAsync(tenantId, id, request?.CustomMessage, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus);
+
+        app.MapPost("/work-orders/{id:guid}/notifications/comparison-photos", async (
+            Guid id,
+            SendComparisonPhotosRequest? request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderNotificationApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.SendComparisonPhotosNotificationAsync(tenantId, id, request?.SelectedPhotoIds, request?.CustomMessage, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus);
+
+        app.MapGet("/work-orders/{id:guid}/notifications", async (
+            Guid id,
+            ICurrentTenantAccessor currentTenantAccessor,
+            WorkOrderNotificationApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetNotificationSummaryAsync(tenantId, id, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound(new { result.Error!.Code, result.Error.Description });
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
     }
 }
+

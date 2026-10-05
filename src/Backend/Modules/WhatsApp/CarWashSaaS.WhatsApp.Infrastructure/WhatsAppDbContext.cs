@@ -53,6 +53,10 @@ public sealed class WhatsAppDbContext(
         message.Property(value => value.SentAtUtc).HasColumnType("datetimeoffset");
         message.Property(value => value.DeliveredAtUtc).HasColumnType("datetimeoffset");
         message.Property(value => value.ReadAtUtc).HasColumnType("datetimeoffset");
+        message.Property(value => value.MediaType).HasMaxLength(32);
+        message.Property(value => value.MediaUrlOrBase64);
+        message.Property(value => value.MediaMimeType).HasMaxLength(64);
+        message.Property(value => value.MediaFileName).HasMaxLength(256);
         message.HasIndex(value => new { value.TenantId, value.IdempotencyKey }).IsUnique();
         message.HasIndex(value => new { value.TenantId, value.CreatedAt });
         message.HasMany(value => value.DeliveryAttempts)

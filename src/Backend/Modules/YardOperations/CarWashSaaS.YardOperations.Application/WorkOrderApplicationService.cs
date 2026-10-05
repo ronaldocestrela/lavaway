@@ -13,7 +13,8 @@ public sealed class WorkOrderApplicationService(
     IYardCapacityRepository? yardCapacityRepository = null,
     IYardRealtimeNotifier? realtimeNotifier = null,
     ITenantObjectStorage? tenantObjectStorage = null,
-    IVehicleInspectionRepository? vehicleInspectionRepository = null)
+    IVehicleInspectionRepository? vehicleInspectionRepository = null,
+    IBackgroundQueue? backgroundQueue = null)
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -236,6 +237,12 @@ public sealed class WorkOrderApplicationService(
                 DateTimeOffset.UtcNow,
                 request.Notes);
             await realtimeNotifier.NotifyWorkOrderMovedAsync(tenantId, notification, ct);
+        }
+
+        if (targetStatus == WorkOrderStatus.ReadyForPickup && backgroundQueue is not null)
+        {
+            var payload = System.Text.Json.JsonSerializer.Serialize(new WorkOrderReadyEventPayload(workOrder.Id));
+            await backgroundQueue.EnqueueAsync(new TenantQueueMessage(tenantId, WorkOrderNotificationEvents.ReadyForPickup, payload, workOrder.Id), ct);
         }
 
         var customer = await customerRepository.GetByIdAsync(tenantId, workOrder.CustomerId, ct);

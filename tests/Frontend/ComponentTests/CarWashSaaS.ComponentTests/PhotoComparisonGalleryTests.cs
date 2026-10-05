@@ -181,4 +181,78 @@ public sealed class PhotoComparisonGalleryTests : BunitContext
         Assert.NotNull(clickedCard);
         Assert.Equal(card.Id, clickedCard.Id);
     }
+
+    [Fact]
+    public async Task PhotoComparisonGallery_ShouldRenderSendWhatsAppButton_AndTriggerSend()
+    {
+        var workOrderId = Guid.NewGuid();
+        var afterPhotoId = Guid.NewGuid();
+
+        var afterPhoto = new PostServicePhotoDto(
+            afterPhotoId,
+            workOrderId,
+            null,
+            null,
+            null,
+            InspectionPhotoCategory.Front,
+            "Capô Polido",
+            "after.jpg",
+            "image/jpeg",
+            2048,
+            DateTimeOffset.UtcNow,
+            "Espelhamento");
+
+        var galleryDto = new WorkOrderComparisonGalleryDto(
+            workOrderId,
+            "Paulo Lima",
+            "BRA2E19",
+            "Suv",
+            "Finishing",
+            true,
+            [],
+            [],
+            [],
+            [afterPhoto]);
+
+        var whatsAppCalled = false;
+        var handler = new MockHttpMessageHandler(req =>
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath.Contains("comparison-gallery") == true)
+            {
+                var json = JsonSerializer.Serialize(galleryDto, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            }
+
+            if (req.Method == HttpMethod.Post && req.RequestUri?.AbsolutePath.Contains("notifications/comparison-photos") == true)
+            {
+                whatsAppCalled = true;
+                var msgDto = new WhatsAppMessageDto(
+                    Guid.NewGuid(), "11988887777", "Caption", "sent", null, 0, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, null);
+                var json = JsonSerializer.Serialize(msgDto, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        Services.AddSingleton(new WorkOrderApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
+
+        var cut = Render<PhotoComparisonGallery>(parameters => parameters
+            .Add(p => p.WorkOrderId, workOrderId));
+
+        var sendWhatsAppBtn = cut.Find("button.btn-action-whatsapp");
+        Assert.NotNull(sendWhatsAppBtn);
+        Assert.Contains("WhatsApp", sendWhatsAppBtn.TextContent);
+
+        await cut.InvokeAsync(() => sendWhatsAppBtn.Click());
+
+        Assert.True(whatsAppCalled);
+        Assert.Contains("WhatsApp Enviado!", cut.Markup);
+    }
 }

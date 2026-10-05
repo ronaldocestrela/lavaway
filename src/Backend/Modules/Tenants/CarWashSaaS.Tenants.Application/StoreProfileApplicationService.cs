@@ -3,8 +3,36 @@ using CarWashSaaS.Tenants.Domain;
 
 namespace CarWashSaaS.Tenants.Application;
 
-public sealed class StoreProfileApplicationService(IStoreProfileRepository repository)
+public sealed class StoreProfileApplicationService(IStoreProfileRepository repository) : ITenantStoreProfileLookup
 {
+    public async Task<Result<StoreProfileDto>> GetProfileAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        var result = await GetAsync(tenantId, ct);
+        if (!result.IsSuccess)
+        {
+            return Result<StoreProfileDto>.Failure(result.Error!);
+        }
+
+        var p = result.Value!;
+        var dto = new StoreProfileDto(
+            p.Id,
+            p.TenantId,
+            p.LegalName,
+            p.TradeName,
+            p.Cnpj,
+            p.Phone,
+            p.Street,
+            p.City,
+            p.State,
+            p.PostalCode,
+            p.LogoUrl,
+            p.BrandPrimaryColor,
+            p.BrandSecondaryColor);
+
+        return Result<StoreProfileDto>.Success(dto);
+    }
+
+
     public async Task<Result<StoreProfile>> GetAsync(Guid tenantId, CancellationToken ct = default)
     {
         if (tenantId == Guid.Empty)
@@ -20,6 +48,7 @@ public sealed class StoreProfileApplicationService(IStoreProfileRepository repos
 
         return Result<StoreProfile>.Success(profile);
     }
+
 
     public async Task<Result<StoreProfile>> CreateAsync(Guid tenantId, CreateStoreProfileCommand command, CancellationToken ct = default)
     {
