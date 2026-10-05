@@ -38,6 +38,20 @@ public sealed class SimulatedPixGatewayProvider : IPixGatewayProvider
         return Task.FromResult(Result<PixGatewayChargeResponse>.Success(response));
     }
 
+    public Task<Result<PixGatewayPaymentDetails>> GetPaymentDetailsAsync(
+        Guid tenantId,
+        string paymentIdOrTxId,
+        CancellationToken ct = default)
+    {
+        var details = new PixGatewayPaymentDetails(
+            paymentIdOrTxId,
+            "approved",
+            0m,
+            DateTimeOffset.UtcNow);
+
+        return Task.FromResult(Result<PixGatewayPaymentDetails>.Success(details));
+    }
+
     private static string BuildEmvPixPayload(string pixKey, string merchantName, string merchantCity, decimal amount, string txId)
     {
         var sb = new StringBuilder();

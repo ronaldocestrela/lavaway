@@ -78,6 +78,62 @@ public sealed class MercadoPagoPixGatewayProvider(
         }
     }
 
+    public async Task<Result<PixGatewayPaymentDetails>> GetPaymentDetailsAsync(
+        Guid tenantId,
+        string paymentIdOrTxId,
+        CancellationToken ct = default)
+    {
+        var accessToken = configuration["Billing:MercadoPago:AccessToken"];
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            var simulated = new SimulatedPixGatewayProvider();
+            return await simulated.GetPaymentDetailsAsync(tenantId, paymentIdOrTxId, ct);
+        }
+
+        try
+        {
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"https://api.mercadopago.com/v1/payments/{paymentIdOrTxId}");
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            var httpResponse = await httpClient.SendAsync(httpRequest, ct);
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                var errorBody = await httpResponse.Content.ReadAsStringAsync(ct);
+                logger?.LogWarning("Mercado Pago GET payment error ({StatusCode}): {Body}", httpResponse.StatusCode, errorBody);
+                return Result<PixGatewayPaymentDetails>.Failure(new Error("mercadopago.error", $"Falha ao consultar pagamento no Mercado Pago: {httpResponse.StatusCode}", ErrorType.Validation));
+            }
+
+            var responseDto = await httpResponse.Content.ReadFromJsonAsync<MercadoPagoPaymentQueryResponse>(cancellationToken: ct);
+            if (responseDto is null)
+            {
+                return Result<PixGatewayPaymentDetails>.Failure(new Error("mercadopago.invalid_response", "Resposta inválida do Mercado Pago ao consultar pagamento.", ErrorType.Validation));
+            }
+
+            DateTimeOffset? paidAt = null;
+            if (!string.IsNullOrWhiteSpace(responseDto.DateApproved) && DateTimeOffset.TryParse(responseDto.DateApproved, out var parsedPaidAt))
+            {
+                paidAt = parsedPaidAt;
+            }
+
+            return Result<PixGatewayPaymentDetails>.Success(new PixGatewayPaymentDetails(
+                responseDto.Id.ToString(),
+                responseDto.Status ?? "unknown",
+                responseDto.TransactionAmount,
+                paidAt));
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Unexpected error querying Mercado Pago payment {PaymentId}", paymentIdOrTxId);
+            return Result<PixGatewayPaymentDetails>.Failure(new Error("mercadopago.exception", ex.Message, ErrorType.Validation));
+        }
+    }
+
+    private sealed record MercadoPagoPaymentQueryResponse(
+        [property: JsonPropertyName("id")] long Id,
+        [property: JsonPropertyName("status")] string? Status,
+        [property: JsonPropertyName("transaction_amount")] decimal TransactionAmount,
+        [property: JsonPropertyName("date_approved")] string? DateApproved);
+
     private sealed record MercadoPagoPaymentRequest(
         [property: JsonPropertyName("transaction_amount")] decimal TransactionAmount,
         [property: JsonPropertyName("description")] string Description,

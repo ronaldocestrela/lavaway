@@ -137,15 +137,160 @@ public sealed class PixBillingApplicationServiceTests
         Assert.Empty(env.DispatchedMessages);
     }
 
-    private sealed class FakeBillingEnvironment : IPixChargeRepository, IPixGatewayProvider, IWorkOrderPaymentLookup, IOutboundWhatsAppDispatcher
+    [Fact]
+    public async Task ProcessPaymentWebhook_WhenPaymentApproved_ShouldMarkPaid_AndSettleWorkOrder()
+    {
+        var env = new FakeBillingEnvironment();
+        env.SetPaymentSummary(new WorkOrderPaymentSummaryDto(
+            _workOrderId,
+            _tenantId,
+            Guid.NewGuid(),
+            "Joao Santos",
+            "11988884444",
+            "ABC1D23",
+            "HatchSedan",
+            "ReadyForPickup",
+            120m,
+            DateTimeOffset.UtcNow));
+
+        var service = env.CreateService();
+        var chargeResult = await service.GetOrCreatePixChargeForWorkOrderAsync(_tenantId, _workOrderId);
+        Assert.True(chargeResult.IsSuccess);
+        var txId = chargeResult.Value!.TxId;
+
+        var payload = new PaymentWebhookPayloadDto(
+            Provider: "SimulatedPixGateway",
+            EventId: "EVT-1001",
+            Action: "payment.updated",
+            PaymentId: "PAY-1001",
+            TxId: txId,
+            Status: "approved",
+            Amount: 120m,
+            OccurredAtUtc: DateTimeOffset.UtcNow);
+
+        var result = await service.ProcessPaymentWebhookAsync(_tenantId, payload);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.Processed);
+        Assert.True(result.Value.OrderSettled);
+        Assert.Equal(PixChargeStatusConstants.Paid, result.Value.ChargeStatus);
+        Assert.True(env.SettledOrders.ContainsKey(_workOrderId));
+        Assert.Single(env.ProcessedWebhooks);
+        Assert.Contains(env.DispatchedMessages, m => m.Phone == "11988884444" && m.Message.Contains("Pagamento Pix Confirmado"));
+    }
+
+    [Fact]
+    public async Task ProcessPaymentWebhook_WhenAlreadyProcessed_ShouldBeIdempotent()
+    {
+        var env = new FakeBillingEnvironment();
+        env.SetPaymentSummary(new WorkOrderPaymentSummaryDto(
+            _workOrderId,
+            _tenantId,
+            Guid.NewGuid(),
+            "Joao Santos",
+            "11988884444",
+            "ABC1D23",
+            "HatchSedan",
+            "ReadyForPickup",
+            120m,
+            DateTimeOffset.UtcNow));
+
+        var service = env.CreateService();
+        var chargeResult = await service.GetOrCreatePixChargeForWorkOrderAsync(_tenantId, _workOrderId);
+        var txId = chargeResult.Value!.TxId;
+
+        var payload = new PaymentWebhookPayloadDto(
+            Provider: "SimulatedPixGateway",
+            EventId: "EVT-SAME",
+            Action: "payment.updated",
+            PaymentId: "PAY-1",
+            TxId: txId,
+            Status: "approved",
+            Amount: 120m,
+            OccurredAtUtc: DateTimeOffset.UtcNow);
+
+        var firstResult = await service.ProcessPaymentWebhookAsync(_tenantId, payload);
+        Assert.True(firstResult.IsSuccess);
+        var initialMessagesCount = env.DispatchedMessages.Count;
+
+        // Repetir o mesmo webhook (segundo envio pelo gateway)
+        var secondResult = await service.ProcessPaymentWebhookAsync(_tenantId, payload);
+
+        Assert.True(secondResult.IsSuccess);
+        Assert.True(secondResult.Value!.Processed);
+        Assert.Equal(initialMessagesCount, env.DispatchedMessages.Count); // não reenviou mensagem duplicada
+    }
+
+    [Fact]
+    public async Task ProcessPaymentWebhook_WhenStatusNotApproved_ShouldIgnoreWithoutSettling()
+    {
+        var env = new FakeBillingEnvironment();
+        env.SetPaymentSummary(new WorkOrderPaymentSummaryDto(
+            _workOrderId,
+            _tenantId,
+            Guid.NewGuid(),
+            "Joao Santos",
+            "11988884444",
+            "ABC1D23",
+            "HatchSedan",
+            "ReadyForPickup",
+            120m,
+            DateTimeOffset.UtcNow));
+
+        var service = env.CreateService();
+        var chargeResult = await service.GetOrCreatePixChargeForWorkOrderAsync(_tenantId, _workOrderId);
+        var txId = chargeResult.Value!.TxId;
+
+        var payload = new PaymentWebhookPayloadDto(
+            Provider: "SimulatedPixGateway",
+            EventId: "EVT-PENDING",
+            Action: "payment.updated",
+            PaymentId: "PAY-PENDING",
+            TxId: txId,
+            Status: "in_process",
+            Amount: 120m,
+            OccurredAtUtc: DateTimeOffset.UtcNow);
+
+        var result = await service.ProcessPaymentWebhookAsync(_tenantId, payload);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(env.SettledOrders);
+        Assert.Equal(PixChargeStatusConstants.Pending, env.Charges.Single().Status);
+    }
+
+    [Fact]
+    public async Task ProcessPaymentWebhook_WhenChargeNotFound_ShouldReturnNotFound()
+    {
+        var env = new FakeBillingEnvironment();
+        var service = env.CreateService();
+
+        var payload = new PaymentWebhookPayloadDto(
+            Provider: "SimulatedPixGateway",
+            EventId: "EVT-UNKNOWN",
+            Action: "payment.updated",
+            PaymentId: "PAY-UNKNOWN",
+            TxId: "NON_EXISTING_TXID",
+            Status: "approved",
+            Amount: 120m,
+            OccurredAtUtc: DateTimeOffset.UtcNow);
+
+        var result = await service.ProcessPaymentWebhookAsync(_tenantId, payload);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("billing.charge_not_found", result.Error?.Code);
+    }
+
+    private sealed class FakeBillingEnvironment : IPixChargeRepository, IPixGatewayProvider, IWorkOrderPaymentLookup, IOutboundWhatsAppDispatcher, IProcessedPaymentWebhookRepository, IWorkOrderPaymentSettlementService
     {
         public List<PixCharge> Charges { get; } = [];
         public List<(string Phone, string Message)> DispatchedMessages { get; } = [];
+        public List<ProcessedPaymentWebhook> ProcessedWebhooks { get; } = [];
+        public Dictionary<Guid, (decimal Amount, string Method)> SettledOrders { get; } = [];
         private WorkOrderPaymentSummaryDto? _summary;
 
         public void SetPaymentSummary(WorkOrderPaymentSummaryDto summary) => _summary = summary;
 
-        public PixBillingApplicationService CreateService() => new(this, this, this, this);
+        public PixBillingApplicationService CreateService() => new(this, this, this, this, this, this);
 
         // IPixChargeRepository
         public Task<PixCharge?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct = default) =>
@@ -182,6 +327,13 @@ public sealed class PixBillingApplicationServiceTests
                 DateTimeOffset.UtcNow.Add(request.Expiration));
 
             return Task.FromResult(Result<PixGatewayChargeResponse>.Success(response));
+        }
+
+        public Task<Result<PixGatewayPaymentDetails>> GetPaymentDetailsAsync(Guid tenantId, string paymentIdOrTxId, CancellationToken ct = default)
+        {
+            var status = paymentIdOrTxId.Contains("PENDING", StringComparison.OrdinalIgnoreCase) ? "in_process" : "approved";
+            var details = new PixGatewayPaymentDetails(paymentIdOrTxId, status, 120m, DateTimeOffset.UtcNow);
+            return Task.FromResult(Result<PixGatewayPaymentDetails>.Success(details));
         }
 
         // IWorkOrderPaymentLookup
@@ -229,5 +381,35 @@ public sealed class PixBillingApplicationServiceTests
 
         public Task<Result<IReadOnlyList<WhatsAppMessageDto>>> GetRecentMessagesAsync(Guid tenantId, int count = 20, CancellationToken ct = default) =>
             Task.FromResult<Result<IReadOnlyList<WhatsAppMessageDto>>>(Result<IReadOnlyList<WhatsAppMessageDto>>.Success([]));
+
+        // IProcessedPaymentWebhookRepository
+        public Task<ProcessedPaymentWebhook?> GetByEventIdAsync(Guid tenantId, string provider, string eventId, CancellationToken ct = default) =>
+            Task.FromResult(ProcessedWebhooks.FirstOrDefault(w => w.TenantId == tenantId && w.Provider == provider && w.EventId == eventId));
+
+        public Task<bool> HasBeenProcessedAsync(Guid tenantId, string provider, string eventId, CancellationToken ct = default) =>
+            Task.FromResult(ProcessedWebhooks.Any(w => w.TenantId == tenantId && w.Provider == provider && w.EventId == eventId));
+
+        public Task AddAsync(ProcessedPaymentWebhook webhook, CancellationToken ct = default)
+        {
+            ProcessedWebhooks.Add(webhook);
+            return Task.CompletedTask;
+        }
+
+        // IWorkOrderPaymentSettlementService
+        public Task<Result<WorkOrderPaymentSettlementDto>> SettlePaymentAsync(Guid tenantId, Guid workOrderId, decimal paidAmount, string paymentMethod, string transactionReference, DateTimeOffset paidAtUtc, CancellationToken ct = default)
+        {
+            SettledOrders[workOrderId] = (paidAmount, paymentMethod);
+            var dto = new WorkOrderPaymentSettlementDto(
+                workOrderId,
+                tenantId,
+                paidAmount,
+                paidAmount,
+                paymentMethod,
+                true,
+                paidAtUtc,
+                transactionReference);
+
+            return Task.FromResult(Result<WorkOrderPaymentSettlementDto>.Success(dto));
+        }
     }
 }

@@ -303,6 +303,32 @@
     box-shadow: 0 0 8px rgba(14, 165, 233, 0.3);
 }
 
+.btn-pix-settled {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.45);
+    color: #34d399;
+}
+
+.btn-pix-settled:hover {
+    background: rgba(16, 185, 129, 0.3);
+    color: #a7f3d0;
+    border-color: rgba(16, 185, 129, 0.7);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+}
+
+.payment-badge-paid {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(16, 185, 129, 0.18);
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    color: #34d399;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    margin-left: 6px;
+}
+
 /* Actions */
 .card-actions {
     display: flex;

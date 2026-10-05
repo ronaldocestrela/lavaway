@@ -41,6 +41,12 @@
         </div>
         <div class="metric-item price-metric">
             <span class="metric-price">@Card.TotalAmount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+            @if (Card.IsPaid)
+            {
+                <span class="payment-badge-paid" title="Pagamento confirmado em @(Card.PaidAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "Recebido")">
+                    💳 Pago
+                </span>
+            }
         </div>
     </div>
 
@@ -75,8 +81,8 @@
                 <span>📸 Antes/Depois</span>
             </button>
         }
-        <button type="button" class="btn-pix-trigger" @onclick="HandleOpenPix" title="Cobrança Pix da OS">
-            <span>💠 Pix</span>
+        <button type="button" class="btn-pix-trigger @(Card.IsPaid ? "btn-pix-settled" : "")" @onclick="HandleOpenPix" title="@(Card.IsPaid ? "Ver Recibo Pix" : "Cobrança Pix da OS")">
+            <span>@(Card.IsPaid ? "✅ Pix Pago" : "💠 Pix")</span>
         </button>
     </div>
 

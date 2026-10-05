@@ -45,6 +45,19 @@ public sealed class BillingApiClient(HttpClient httpClient)
         return await ReadResponseAsync<WorkOrderPixChargeDto>(response, ct);
     }
 
+    public async Task<WorkOrderPixChargeDto?> GetSettlementStatusAsync(
+        Guid workOrderId,
+        CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync($"billing/work-orders/{workOrderId}/settlement", ct);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        return await ReadResponseAsync<WorkOrderPixChargeDto>(response, ct);
+    }
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (response.IsSuccessStatusCode)

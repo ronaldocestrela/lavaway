@@ -204,6 +204,7 @@
                            Plate="_targetPixCard.Plate"
                            CustomerName="_targetPixCard.CustomerName"
                            TotalAmount="_targetPixCard.TotalAmount"
+                           OnChargeUpdated="HandleChargeUpdated"
                            OnClose="ClosePixModal" />
     }
 </div>
@@ -264,6 +265,14 @@
     {
         _isPixModalOpen = false;
         _targetPixCard = null;
+    }
+
+    private async Task HandleChargeUpdated(WorkOrderPixChargeDto charge)
+    {
+        if (charge.Status == PixChargeStatusConstants.Paid && OnRefreshRequested.HasDelegate)
+        {
+            await OnRefreshRequested.InvokeAsync();
+        }
     }
 
     private bool _isProcessingAction;

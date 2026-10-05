@@ -67,83 +67,117 @@
                 }
                 else if (_charge is not null)
                 {
-                    <div class="pix-content-grid">
-                        <div class="qr-code-box">
-                            @if (!string.IsNullOrWhiteSpace(_charge.QrCodeBase64))
-                            {
-                                var imageSrc = _charge.QrCodeBase64.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
-                                    ? _charge.QrCodeBase64
-                                    : $"data:image/svg+xml;base64,{_charge.QrCodeBase64}";
-
-                                <img src="@imageSrc" alt="QR Code Pix" class="qr-code-image" />
-                            }
-                            <span class="qr-expiration-hint">
-                                Válido até @_charge.ExpiresAtUtc.ToLocalTime().ToString("HH:mm")
-                            </span>
+                    @if (_charge.Status == PixChargeStatusConstants.Paid)
+                    {
+                        <div class="pix-settled-box" id="pix-settled-confirmation">
+                            <div class="settled-icon">✅</div>
+                            <h4 class="settled-title">Pagamento Pix Confirmado!</h4>
+                            <p class="settled-desc">A Ordem de Serviço foi baixada e conciliada financeiramente.</p>
+                            <div class="settled-details-card">
+                                <div class="settled-row">
+                                    <span class="row-label">Data da Confirmação:</span>
+                                    <span class="row-value">@(_charge.PaidAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? DateTime.Now.ToString("dd/MM/yyyy HH:mm"))</span>
+                                </div>
+                                <div class="settled-row">
+                                    <span class="row-label">Valor Quitado:</span>
+                                    <span class="row-value settled-price">@_charge.Amount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                                </div>
+                                <div class="settled-row">
+                                    <span class="row-label">Transação (TxId):</span>
+                                    <span class="row-value txid-value">@_charge.TxId</span>
+                                </div>
+                            </div>
+                            <div class="settled-badge-pill">
+                                <span>🔒 Recebimento Autenticado e Conciliado</span>
+                            </div>
                         </div>
+                    }
+                    else
+                    {
+                        <div class="pix-content-grid">
+                            <div class="qr-code-box">
+                                @if (!string.IsNullOrWhiteSpace(_charge.QrCodeBase64))
+                                {
+                                    var imageSrc = _charge.QrCodeBase64.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                                        ? _charge.QrCodeBase64
+                                        : $"data:image/svg+xml;base64,{_charge.QrCodeBase64}";
 
-                        <div class="pix-details-column">
-                            <label class="form-label" for="pix-copypaste">Código Pix Copia e Cola:</label>
-                            <div class="copypaste-input-wrapper">
-                                <textarea id="pix-copypaste"
-                                          class="copypaste-textarea"
-                                          readonly
-                                          rows="4">@_charge.CopyPasteKey</textarea>
+                                    <img src="@imageSrc" alt="QR Code Pix" class="qr-code-image" />
+                                }
+                                <span class="qr-expiration-hint">
+                                    Válido até @_charge.ExpiresAtUtc.ToLocalTime().ToString("HH:mm")
+                                </span>
                             </div>
 
-                            <button type="button"
-                                    class="btn btn-copy @(_isCopied ? "btn-copied" : "")"
-                                    @onclick="CopyPixCodeAsync">
-                                @if (_isCopied)
-                                {
-                                    <span>✅ Código Copiado!</span>
-                                }
-                                else
-                                {
-                                    <span>📋 Copiar Código Pix</span>
-                                }
-                            </button>
-
-                            <div class="whatsapp-dispatch-card">
-                                <div class="whatsapp-card-info">
-                                    <span class="whatsapp-title">📱 Envio ao Cliente</span>
-                                    @if (_charge.WhatsAppSentAtUtc.HasValue)
-                                    {
-                                        <span class="whatsapp-sent-tag">
-                                            Enviado em @_charge.WhatsAppSentAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="whatsapp-hint">Envie o QR Code e código diretamente no WhatsApp do cliente</span>
-                                    }
+                            <div class="pix-details-column">
+                                <label class="form-label" for="pix-copypaste">Código Pix Copia e Cola:</label>
+                                <div class="copypaste-input-wrapper">
+                                    <textarea id="pix-copypaste"
+                                              class="copypaste-textarea"
+                                              readonly
+                                              rows="4">@_charge.CopyPasteKey</textarea>
                                 </div>
 
                                 <button type="button"
-                                        class="btn btn-whatsapp"
-                                        disabled="@_isSendingWhatsApp"
-                                        @onclick="SendViaWhatsAppAsync">
-                                    @if (_isSendingWhatsApp)
+                                        class="btn btn-copy @(_isCopied ? "btn-copied" : "")"
+                                        @onclick="CopyPixCodeAsync">
+                                    @if (_isCopied)
                                     {
-                                        <span class="spinner-small"></span>
-                                        <span>Enviando...</span>
+                                        <span>✅ Código Copiado!</span>
                                     }
                                     else
                                     {
-                                        <span>💬 Enviar via WhatsApp</span>
+                                        <span>📋 Copiar Código Pix</span>
                                     }
                                 </button>
+
+                                <div class="whatsapp-dispatch-card">
+                                    <div class="whatsapp-card-info">
+                                        <span class="whatsapp-title">📱 Envio ao Cliente</span>
+                                        @if (_charge.WhatsAppSentAtUtc.HasValue)
+                                        {
+                                            <span class="whatsapp-sent-tag">
+                                                Enviado em @_charge.WhatsAppSentAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="whatsapp-hint">Envie o QR Code e código diretamente no WhatsApp do cliente</span>
+                                        }
+                                    </div>
+
+                                    <button type="button"
+                                            class="btn btn-whatsapp"
+                                            disabled="@_isSendingWhatsApp"
+                                            @onclick="SendViaWhatsAppAsync">
+                                        @if (_isSendingWhatsApp)
+                                        {
+                                            <span class="spinner-small"></span>
+                                            <span>Enviando...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>💬 Enviar via WhatsApp</span>
+                                        }
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    }
                 }
             </div>
 
             <div class="modal-footer">
-                @if (_charge is not null && _charge.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+                @if (_charge is not null && _charge.Status != PixChargeStatusConstants.Paid && _charge.ExpiresAtUtc <= DateTimeOffset.UtcNow)
                 {
                     <button type="button" class="btn btn-outline" @onclick="LoadOrGeneratePixAsync">
                         🔄 Gerar Nova Cobrança
+                    </button>
+                }
+                else if (_charge is not null && _charge.Status != PixChargeStatusConstants.Paid)
+                {
+                    <button type="button" class="btn btn-outline" @onclick="CheckSettlementAsync" title="Verificar se o pagamento já foi recebido">
+                        🔄 Verificar Pagamento
                     </button>
                 }
                 <button type="button" class="btn btn-secondary" @onclick="HandleClose">Fechar</button>
@@ -259,10 +293,40 @@
         await OnClose.InvokeAsync();
     }
 
+    private async Task CheckSettlementAsync()
+    {
+        if (WorkOrderId == Guid.Empty) return;
+
+        try
+        {
+            var updated = await BillingClient.GetSettlementStatusAsync(WorkOrderId);
+            if (updated is not null)
+            {
+                _charge = updated;
+                if (_charge.Status == PixChargeStatusConstants.Paid)
+                {
+                    ToastService.ShowSuccess("Pagamento confirmado com sucesso! OS baixada.");
+                    if (OnChargeUpdated.HasDelegate)
+                    {
+                        await OnChargeUpdated.InvokeAsync(_charge);
+                    }
+                }
+                else
+                {
+                    ToastService.ShowInfo("Pagamento ainda não identificado. Aguarde alguns instantes.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao verificar pagamento: {ex.Message}");
+        }
+    }
+
     private static string FormatStatus(string status) => status switch
     {
         PixChargeStatusConstants.Pending => "Aguardando Pagamento",
-        PixChargeStatusConstants.Paid => "Pago",
+        PixChargeStatusConstants.Paid => "✅ Pago / Baixado",
         PixChargeStatusConstants.Expired => "Expirado",
         PixChargeStatusConstants.Cancelled => "Cancelado",
         _ => status

@@ -57,4 +57,46 @@ public sealed class BillingPixTenantIntegrationTests(SqlServerFixture fixture)
         var activeForTenantB = await repoB.GetActiveByWorkOrderIdAsync(tenantB, workOrderId);
         Assert.Null(activeForTenantB);
     }
+
+    [Fact]
+    public async Task ProcessedPaymentWebhook_ShouldBeIsolatedByTenant_AndEnforceIdempotency()
+    {
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        var eventId = $"EVT_{Guid.NewGuid():N}";
+
+        var accessorA = new CurrentTenantAccessor();
+        accessorA.SetTenant(tenantA);
+
+        await using var dbA = new BillingDbContext(fixture.CreateBillingOptions(), accessorA);
+        var repoA = new ProcessedPaymentWebhookRepository(dbA);
+
+        var webhookA = ProcessedPaymentWebhook.Create(
+            tenantA,
+            "MercadoPago",
+            eventId,
+            "TX-999",
+            "Processed",
+            notes: "Webhook recebido para Tenant A").Value!;
+
+        await repoA.AddAsync(webhookA);
+        await repoA.SaveChangesAsync();
+
+        // 1. Tenant A deve localizar o webhook processado
+        var hasTenantA = await repoA.HasBeenProcessedAsync(tenantA, "MercadoPago", eventId);
+        Assert.True(hasTenantA);
+
+        // 2. Tenant B NÃO deve ver o webhook de Tenant A
+        var accessorB = new CurrentTenantAccessor();
+        accessorB.SetTenant(tenantB);
+
+        await using var dbB = new BillingDbContext(fixture.CreateBillingOptions(), accessorB);
+        var repoB = new ProcessedPaymentWebhookRepository(dbB);
+
+        var hasTenantB = await repoB.HasBeenProcessedAsync(tenantB, "MercadoPago", eventId);
+        Assert.False(hasTenantB);
+
+        var foundTenantB = await repoB.GetByEventIdAsync(tenantB, "MercadoPago", eventId);
+        Assert.Null(foundTenantB);
+    }
 }

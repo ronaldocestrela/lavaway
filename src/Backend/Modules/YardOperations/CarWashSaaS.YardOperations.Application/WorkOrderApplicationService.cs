@@ -14,7 +14,7 @@ public sealed class WorkOrderApplicationService(
     IYardRealtimeNotifier? realtimeNotifier = null,
     ITenantObjectStorage? tenantObjectStorage = null,
     IVehicleInspectionRepository? vehicleInspectionRepository = null,
-    IBackgroundQueue? backgroundQueue = null) : IWorkOrderPaymentLookup
+    IBackgroundQueue? backgroundQueue = null) : IWorkOrderPaymentLookup, IWorkOrderPaymentSettlementService
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -384,7 +384,13 @@ public sealed class WorkOrderApplicationService(
                 order.Notes,
                 order.Items.Select(i => i.ServiceName).ToList(),
                 order.Items.Count,
-                lastHistory?.ChangedAtUtc ?? order.CreatedAtUtc));
+                lastHistory?.ChangedAtUtc ?? order.CreatedAtUtc,
+                order.PickedUpAtUtc,
+                order.SurveySentAtUtc,
+                order.SurveyRating,
+                order.IsPaid,
+                order.PaidAtUtc,
+                order.PaymentMethod));
         }
 
         var columns = new List<YardKanbanColumnDto>(WorkOrderStatusConstants.OrderedStatuses.Count);
@@ -768,6 +774,68 @@ public sealed class WorkOrderApplicationService(
         return Result<WorkOrderPaymentSummaryDto?>.Success(summary);
     }
 
+    public async Task<Result<WorkOrderPaymentSettlementDto>> SettlePaymentAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        decimal paidAmount,
+        string paymentMethod,
+        string transactionReference,
+        DateTimeOffset paidAtUtc,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<WorkOrderPaymentSettlementDto>.Failure(new Error("tenant.required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        if (workOrderId == Guid.Empty)
+        {
+            return Result<WorkOrderPaymentSettlementDto>.Failure(new Error("work_order.required", "Ordem de serviço é obrigatória.", ErrorType.Validation));
+        }
+
+        var order = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (order is null)
+        {
+            return Result<WorkOrderPaymentSettlementDto>.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        var markResult = order.MarkPaymentConfirmed(paidAmount, paymentMethod, paidAtUtc, transactionReference);
+        if (!markResult.IsSuccess)
+        {
+            return Result<WorkOrderPaymentSettlementDto>.Failure(markResult.Error!);
+        }
+
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<WorkOrderPaymentSettlementDto>.Failure(saveResult.Error!);
+        }
+
+        if (realtimeNotifier is not null)
+        {
+            var notification = new WorkOrderMovedNotification(
+                order.Id,
+                order.Status.ToString(),
+                order.Status.ToString(),
+                order.AssignedOperatorId,
+                order.AssignedOperatorName,
+                paidAtUtc,
+                $"Pagamento confirmado ({paymentMethod}) - OS Baixada");
+
+            await realtimeNotifier.NotifyWorkOrderMovedAsync(tenantId, notification, ct);
+        }
+
+        return Result<WorkOrderPaymentSettlementDto>.Success(new WorkOrderPaymentSettlementDto(
+            order.Id,
+            order.TenantId,
+            order.TotalAmount,
+            order.PaidAmount ?? paidAmount,
+            order.PaymentMethod ?? paymentMethod,
+            order.IsPaid,
+            order.PaidAtUtc,
+            order.PaymentTransactionId));
+    }
+
     private static WorkOrderDto ToDto(WorkOrder order, string customerName, string plate, string vehicleSize) =>
         new(
             order.Id,
@@ -800,5 +868,14 @@ public sealed class WorkOrderApplicationService(
                 h.ChangedAtUtc,
                 h.ChangedByOperatorId,
                 h.ChangedByOperatorName,
-                h.Notes)).ToList());
+                h.Notes)).ToList(),
+            order.PickedUpAtUtc,
+            order.SurveySentAtUtc,
+            order.SurveyRating,
+            order.SurveyRespondedAtUtc,
+            order.IsPaid,
+            order.PaidAtUtc,
+            order.PaymentMethod,
+            order.PaidAmount,
+            order.PaymentTransactionId);
 }

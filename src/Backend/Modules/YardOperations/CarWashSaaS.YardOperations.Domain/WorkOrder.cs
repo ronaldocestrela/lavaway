@@ -55,6 +55,11 @@ public sealed class WorkOrder : IMustHaveTenant
     public int? SurveyRating { get; private set; }
     public string? SurveyFeedback { get; private set; }
     public DateTimeOffset? SurveyRespondedAtUtc { get; private set; }
+    public bool IsPaid { get; private set; }
+    public DateTimeOffset? PaidAtUtc { get; private set; }
+    public string? PaymentMethod { get; private set; }
+    public decimal? PaidAmount { get; private set; }
+    public string? PaymentTransactionId { get; private set; }
 
     public IReadOnlyCollection<WorkOrderItem> Items => _items.AsReadOnly();
     public IReadOnlyCollection<WorkOrderStatusHistory> StatusHistory => _statusHistory.AsReadOnly();
@@ -349,6 +354,56 @@ public sealed class WorkOrder : IMustHaveTenant
         SurveyRating = rating;
         SurveyFeedback = string.IsNullOrWhiteSpace(feedback) ? SurveyFeedback : feedback.Trim();
         SurveyRespondedAtUtc = respondedAtUtc ?? DateTimeOffset.UtcNow;
+        return Result<WorkOrder>.Success(this);
+    }
+
+    public Result<WorkOrder> MarkPaymentConfirmed(
+        decimal paidAmount,
+        string paymentMethod,
+        DateTimeOffset paidAtUtc,
+        string? transactionId = null)
+    {
+        if (paidAmount <= 0)
+        {
+            return Result<WorkOrder>.Failure(new Error(
+                "work_order.payment_amount_invalid",
+                "O valor do pagamento deve ser maior que zero.",
+                ErrorType.Validation));
+        }
+
+        if (string.IsNullOrWhiteSpace(paymentMethod))
+        {
+            return Result<WorkOrder>.Failure(new Error(
+                "work_order.payment_method_required",
+                "Forma de pagamento é obrigatória.",
+                ErrorType.Validation));
+        }
+
+        if (IsPaid)
+        {
+            return Result<WorkOrder>.Success(this); // Idempotente
+        }
+
+        IsPaid = true;
+        PaidAtUtc = paidAtUtc;
+        PaidAmount = paidAmount;
+        PaymentMethod = paymentMethod.Trim();
+        PaymentTransactionId = string.IsNullOrWhiteSpace(transactionId) ? null : transactionId.Trim();
+
+        var formattedAmount = paidAmount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+        var txPart = string.IsNullOrWhiteSpace(PaymentTransactionId) ? string.Empty : $" (TxId: {PaymentTransactionId})";
+
+        _statusHistory.Add(new WorkOrderStatusHistory(
+            Guid.CreateVersion7(),
+            TenantId,
+            Id,
+            Status,
+            Status,
+            paidAtUtc,
+            AssignedOperatorId,
+            AssignedOperatorName,
+            $"Pagamento confirmado via {PaymentMethod} no valor de R$ {formattedAmount}{txPart}. OS baixada financeiramente."));
+
         return Result<WorkOrder>.Success(this);
     }
 }

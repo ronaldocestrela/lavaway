@@ -20,7 +20,12 @@ public sealed record WorkOrderDto(
     DateTimeOffset? PickedUpAtUtc = null,
     DateTimeOffset? SurveySentAtUtc = null,
     int? SurveyRating = null,
-    DateTimeOffset? SurveyRespondedAtUtc = null);
+    DateTimeOffset? SurveyRespondedAtUtc = null,
+    bool IsPaid = false,
+    DateTimeOffset? PaidAtUtc = null,
+    string? PaymentMethod = null,
+    decimal? PaidAmount = null,
+    string? PaymentTransactionId = null);
 
 public sealed record WorkOrderItemDto(
     Guid Id,

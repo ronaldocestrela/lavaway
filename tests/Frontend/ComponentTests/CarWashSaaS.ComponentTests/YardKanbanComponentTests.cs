@@ -239,6 +239,40 @@ public sealed class YardKanbanComponentTests : BunitContext
     }
 
     [Fact]
+    public void YardKanbanCard_WhenPaid_ShouldRenderPaidBadge_AndPixPaidButton()
+    {
+        var card = new WorkOrderKanbanCardDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Fernanda Lima",
+            Guid.NewGuid(),
+            "XYZ1A23",
+            "Suv",
+            "InWashing",
+            180m,
+            60,
+            DateTimeOffset.UtcNow.AddMinutes(-30),
+            DateTimeOffset.UtcNow.AddMinutes(30),
+            null,
+            null,
+            null,
+            ["Polimento"],
+            1,
+            DateTimeOffset.UtcNow,
+            IsPaid: true,
+            PaidAtUtc: DateTimeOffset.UtcNow,
+            PaymentMethod: "Pix");
+
+        var cut = Render<YardKanbanCard>(parameters => parameters
+            .Add(p => p.Card, card));
+
+        Assert.Contains("💳 Pago", cut.Markup);
+        Assert.Contains("✅ Pix Pago", cut.Markup);
+        Assert.NotEmpty(cut.FindAll(".payment-badge-paid"));
+        Assert.NotEmpty(cut.FindAll(".btn-pix-settled"));
+    }
+
+    [Fact]
     public void YardKanbanBoard_ShouldExcludeCards_WhenPickedUpAtUtcIsSet()
     {
         var readyCard = CreateSampleCard("ReadyForPickup", "ABC1234");

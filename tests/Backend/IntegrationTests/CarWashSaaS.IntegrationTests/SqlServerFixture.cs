@@ -66,6 +66,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
     public DbContextOptions<BillingDbContext> CreateBillingOptions() =>
         new DbContextOptionsBuilder<BillingDbContext>()
             .UseSqlServer(_container!.GetConnectionString(), sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "billing"))
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning))
             .Options;
 
     public Task DisposeAsync() => _container is null ? Task.CompletedTask : _container.DisposeAsync().AsTask();

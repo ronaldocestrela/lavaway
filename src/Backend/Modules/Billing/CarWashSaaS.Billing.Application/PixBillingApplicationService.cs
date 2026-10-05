@@ -9,6 +9,8 @@ public sealed class PixBillingApplicationService(
     IPixChargeRepository pixChargeRepository,
     IPixGatewayProvider pixGatewayProvider,
     IWorkOrderPaymentLookup workOrderPaymentLookup,
+    IProcessedPaymentWebhookRepository? processedWebhookRepository = null,
+    IWorkOrderPaymentSettlementService? workOrderSettlementService = null,
     IOutboundWhatsAppDispatcher? whatsAppDispatcher = null,
     ILogger<PixBillingApplicationService>? logger = null) : IPixBillingLookup
 {
@@ -209,11 +211,222 @@ public sealed class PixBillingApplicationService(
         return Result<WorkOrderPixChargeDto>.Success(charge);
     }
 
+    public async Task<Result<PaymentWebhookProcessingResultDto>> ProcessPaymentWebhookAsync(
+        Guid tenantId,
+        PaymentWebhookPayloadDto payload,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<PaymentWebhookProcessingResultDto>.Failure(new Error("billing.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        if (payload is null)
+        {
+            return Result<PaymentWebhookProcessingResultDto>.Failure(new Error("billing.webhook_payload_required", "Payload do webhook é obrigatório.", ErrorType.Validation));
+        }
+
+        if (string.IsNullOrWhiteSpace(payload.Provider))
+        {
+            return Result<PaymentWebhookProcessingResultDto>.Failure(new Error("billing.webhook_provider_required", "Provedor é obrigatório.", ErrorType.Validation));
+        }
+
+        if (string.IsNullOrWhiteSpace(payload.EventId))
+        {
+            return Result<PaymentWebhookProcessingResultDto>.Failure(new Error("billing.webhook_event_id_required", "Identificador do evento é obrigatório.", ErrorType.Validation));
+        }
+
+        // 1. Idempotência: verifica se o evento já foi processado
+        if (processedWebhookRepository is not null)
+        {
+            var alreadyProcessed = await processedWebhookRepository.HasBeenProcessedAsync(tenantId, payload.Provider, payload.EventId, ct);
+            if (alreadyProcessed)
+            {
+                logger?.LogInformation(
+                    "Webhook {EventId} from provider {Provider} already processed for tenant {TenantId}. Skipping idempotently.",
+                    payload.EventId, payload.Provider, tenantId);
+
+                return Result<PaymentWebhookProcessingResultDto>.Success(new PaymentWebhookProcessingResultDto(
+                    Processed: true,
+                    Message: "Evento já processado anteriormente (idempotência).",
+                    TxId: payload.TxId));
+            }
+        }
+
+        // 2. Determinar status e dados do pagamento (consulta no gateway caso necessário)
+        var isApproved = string.Equals(payload.Status, "approved", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(payload.Status, "paid", StringComparison.OrdinalIgnoreCase);
+
+        DateTimeOffset paidAtUtc = payload.OccurredAtUtc ?? DateTimeOffset.UtcNow;
+        string? matchedTxId = payload.TxId;
+        var paymentReference = !string.IsNullOrWhiteSpace(payload.TxId) ? payload.TxId : payload.PaymentId;
+
+        if (!string.IsNullOrWhiteSpace(payload.PaymentId) && (!isApproved || string.IsNullOrWhiteSpace(matchedTxId)))
+        {
+            var queryResult = await pixGatewayProvider.GetPaymentDetailsAsync(tenantId, payload.PaymentId, ct);
+            if (queryResult.IsSuccess && queryResult.Value is not null)
+            {
+                var details = queryResult.Value;
+                isApproved = string.Equals(details.Status, "approved", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(details.Status, "paid", StringComparison.OrdinalIgnoreCase);
+
+                if (details.PaidAtUtc.HasValue)
+                {
+                    paidAtUtc = details.PaidAtUtc.Value;
+                }
+
+                if (!string.IsNullOrWhiteSpace(details.TxId))
+                {
+                    matchedTxId = details.TxId;
+                }
+            }
+        }
+
+        if (!isApproved)
+        {
+            logger?.LogInformation(
+                "Webhook {EventId} from {Provider} with status {Status} ignored (not approved/paid).",
+                payload.EventId, payload.Provider, payload.Status);
+
+            if (processedWebhookRepository is not null)
+            {
+                var ignoredRecord = ProcessedPaymentWebhook.Create(
+                    tenantId,
+                    payload.Provider,
+                    payload.EventId,
+                    matchedTxId ?? paymentReference ?? string.Empty,
+                    "Ignored",
+                    notes: $"Status não aprovado ({payload.Status}).");
+
+                if (ignoredRecord.IsSuccess)
+                {
+                    await processedWebhookRepository.AddAsync(ignoredRecord.Value!, ct);
+                    await processedWebhookRepository.SaveChangesAsync(ct);
+                }
+            }
+
+            return Result<PaymentWebhookProcessingResultDto>.Success(new PaymentWebhookProcessingResultDto(
+                Processed: true,
+                Message: $"Evento com status '{payload.Status}' recebido e registrado como não aprovado.",
+                TxId: matchedTxId ?? paymentReference));
+        }
+
+        // 3. Localizar PixCharge correspondente
+        PixCharge? charge = null;
+        if (!string.IsNullOrWhiteSpace(matchedTxId))
+        {
+            charge = await pixChargeRepository.GetByTxIdAsync(tenantId, matchedTxId, ct);
+        }
+
+        if (charge is null && !string.IsNullOrWhiteSpace(paymentReference))
+        {
+            charge = await pixChargeRepository.GetByTxIdAsync(tenantId, paymentReference, ct);
+        }
+
+        if (charge is null && !string.IsNullOrWhiteSpace(paymentReference) && Guid.TryParse(paymentReference, out var possibleWorkOrderId))
+        {
+            charge = await pixChargeRepository.GetActiveByWorkOrderIdAsync(tenantId, possibleWorkOrderId, ct);
+        }
+
+        if (charge is null)
+        {
+            logger?.LogWarning("Pix charge not found for webhook {EventId}, ref {PaymentReference}", payload.EventId, paymentReference);
+            return Result<PaymentWebhookProcessingResultDto>.Failure(new Error(
+                "billing.charge_not_found",
+                $"Cobrança Pix não encontrada para o pagamento '{paymentReference}'.",
+                ErrorType.NotFound));
+        }
+
+        // 4. Atualizar PixCharge para Paid (idempotente)
+        charge.MarkAsPaid(paidAtUtc);
+        pixChargeRepository.Update(charge);
+        await pixChargeRepository.SaveChangesAsync(ct);
+
+        // 5. Baixar e conciliar a OS no módulo YardOperations via interface pública
+        bool settled = false;
+        if (workOrderSettlementService is not null)
+        {
+            var settleResult = await workOrderSettlementService.SettlePaymentAsync(
+                tenantId,
+                charge.WorkOrderId,
+                charge.Amount,
+                "Pix",
+                charge.TxId,
+                paidAtUtc,
+                ct);
+
+            settled = settleResult.IsSuccess;
+            if (!settled)
+            {
+                logger?.LogWarning("Failed to settle work order {WorkOrderId} for Pix charge {ChargeId}: {Error}",
+                    charge.WorkOrderId, charge.Id, settleResult.Error?.Description);
+            }
+        }
+
+        // 6. Gravar auditoria de webhook processado
+        if (processedWebhookRepository is not null)
+        {
+            var processedRecord = ProcessedPaymentWebhook.Create(
+                tenantId,
+                payload.Provider,
+                payload.EventId,
+                charge.TxId,
+                "Processed",
+                payload.RawPayload != null ? (payload.RawPayload.Length > 120 ? payload.RawPayload[..120] : payload.RawPayload) : null,
+                $"Pagamento Pix conciliado com sucesso para OS {charge.WorkOrderId}.");
+
+            if (processedRecord.IsSuccess)
+            {
+                await processedWebhookRepository.AddAsync(processedRecord.Value!, ct);
+                await processedWebhookRepository.SaveChangesAsync(ct);
+            }
+        }
+
+        // 7. Notificar cliente no WhatsApp (se configurado)
+        if (whatsAppDispatcher is not null)
+        {
+            try
+            {
+                var summaryResult = await workOrderPaymentLookup.GetPaymentSummaryAsync(tenantId, charge.WorkOrderId, ct);
+                if (summaryResult.IsSuccess && summaryResult.Value is not null && !string.IsNullOrWhiteSpace(summaryResult.Value.CustomerPhone))
+                {
+                    var summary = summaryResult.Value;
+                    var confirmationMsg =
+                        $"🎉 *Pagamento Pix Confirmado!*\n\n" +
+                        $"Olá, {summary.CustomerName}! Recebemos com sucesso o pagamento de {charge.Amount.ToString("C2", PtBrCulture)} referente à sua Ordem de Serviço do veículo *{summary.Plate}*.\n\n" +
+                        $"Agradecemos a sua preferência!";
+
+                    var idempotencyKey = $"pix-confirmed-{charge.Id}";
+                    await whatsAppDispatcher.DispatchTextMessageAsync(tenantId, summary.CustomerPhone, confirmationMsg, idempotencyKey, ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Failed to dispatch WhatsApp payment confirmation for charge {ChargeId}", charge.Id);
+            }
+        }
+
+        logger?.LogInformation(
+            "Pix charge {ChargeId} and WorkOrder {WorkOrderId} settled via webhook {EventId} for tenant {TenantId}",
+            charge.Id, charge.WorkOrderId, payload.EventId, tenantId);
+
+        return Result<PaymentWebhookProcessingResultDto>.Success(new PaymentWebhookProcessingResultDto(
+            Processed: true,
+            Message: "Pagamento Pix confirmado e OS baixada com sucesso.",
+            TxId: charge.TxId,
+            WorkOrderId: charge.WorkOrderId,
+            ChargeStatus: charge.Status,
+            OrderSettled: settled));
+    }
+
     Task<Result<WorkOrderPixChargeDto>> IPixBillingLookup.GetOrCreateWorkOrderPixChargeAsync(Guid tenantId, Guid workOrderId, CancellationToken ct) =>
         GetOrCreatePixChargeForWorkOrderAsync(tenantId, workOrderId, ct: ct);
 
     Task<Result<WorkOrderPixChargeDto>> IPixBillingLookup.SendPixChargeToWhatsAppAsync(Guid tenantId, Guid workOrderId, CancellationToken ct) =>
         SendPixChargeToCustomerWhatsAppAsync(tenantId, workOrderId, ct: ct);
+
+    Task<Result<PaymentWebhookProcessingResultDto>> IPixBillingLookup.ProcessPaymentWebhookAsync(Guid tenantId, PaymentWebhookPayloadDto payload, CancellationToken ct) =>
+        ProcessPaymentWebhookAsync(tenantId, payload, ct);
 
     private static WorkOrderPixChargeDto MapToDto(PixCharge entity) =>
         new(

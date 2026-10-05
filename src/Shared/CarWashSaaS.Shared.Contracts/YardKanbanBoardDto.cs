@@ -20,7 +20,10 @@ public sealed record WorkOrderKanbanCardDto(
     DateTimeOffset LastStatusChangedAtUtc,
     DateTimeOffset? PickedUpAtUtc = null,
     DateTimeOffset? SurveySentAtUtc = null,
-    int? SurveyRating = null);
+    int? SurveyRating = null,
+    bool IsPaid = false,
+    DateTimeOffset? PaidAtUtc = null,
+    string? PaymentMethod = null);
 
 public sealed record YardKanbanColumnDto(
     string Status,

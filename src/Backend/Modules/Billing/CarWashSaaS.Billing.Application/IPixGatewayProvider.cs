@@ -17,11 +17,22 @@ public sealed record PixGatewayChargeResponse(
     string CopyPasteKey,
     DateTimeOffset ExpiresAtUtc);
 
+public sealed record PixGatewayPaymentDetails(
+    string TxId,
+    string Status,
+    decimal Amount,
+    DateTimeOffset? PaidAtUtc);
+
 public interface IPixGatewayProvider
 {
     string ProviderName { get; }
 
     Task<Result<PixGatewayChargeResponse>> CreateImmediateChargeAsync(
         PixGatewayChargeRequest request,
+        CancellationToken ct = default);
+
+    Task<Result<PixGatewayPaymentDetails>> GetPaymentDetailsAsync(
+        Guid tenantId,
+        string paymentIdOrTxId,
         CancellationToken ct = default);
 }

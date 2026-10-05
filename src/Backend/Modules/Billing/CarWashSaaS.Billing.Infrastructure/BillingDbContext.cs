@@ -12,6 +12,7 @@ public sealed class BillingDbContext(
     public Guid? TenantId => currentTenantAccessor.TenantId;
 
     public DbSet<PixCharge> PixCharges => Set<PixCharge>();
+    public DbSet<ProcessedPaymentWebhook> ProcessedPaymentWebhooks => Set<ProcessedPaymentWebhook>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

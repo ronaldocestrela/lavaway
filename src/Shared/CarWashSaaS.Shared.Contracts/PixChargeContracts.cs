@@ -40,6 +40,47 @@ public sealed record WorkOrderPaymentSummaryDto(
     decimal TotalAmount,
     DateTimeOffset CreatedAtUtc);
 
+public sealed record WorkOrderPaymentSettlementDto(
+    Guid WorkOrderId,
+    Guid TenantId,
+    decimal TotalAmount,
+    decimal PaidAmount,
+    string PaymentMethod,
+    bool IsPaid,
+    DateTimeOffset? PaidAtUtc,
+    string? TransactionReference);
+
+public sealed record PaymentWebhookPayloadDto(
+    string Provider,
+    string EventId,
+    string? Action,
+    string? PaymentId,
+    string? TxId,
+    string? Status,
+    decimal? Amount,
+    DateTimeOffset? OccurredAtUtc,
+    string? RawPayload = null);
+
+public sealed record PaymentWebhookProcessingResultDto(
+    bool Processed,
+    string Message,
+    string? TxId = null,
+    Guid? WorkOrderId = null,
+    string? ChargeStatus = null,
+    bool OrderSettled = false);
+
+public interface IWorkOrderPaymentSettlementService
+{
+    Task<Result<WorkOrderPaymentSettlementDto>> SettlePaymentAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        decimal paidAmount,
+        string paymentMethod,
+        string transactionReference,
+        DateTimeOffset paidAtUtc,
+        CancellationToken ct = default);
+}
+
 public interface IWorkOrderPaymentLookup
 {
     Task<Result<WorkOrderPaymentSummaryDto>> GetPaymentSummaryAsync(
@@ -64,4 +105,10 @@ public interface IPixBillingLookup
         Guid tenantId,
         Guid workOrderId,
         CancellationToken ct = default);
+
+    Task<Result<PaymentWebhookProcessingResultDto>> ProcessPaymentWebhookAsync(
+        Guid tenantId,
+        PaymentWebhookPayloadDto payload,
+        CancellationToken ct = default);
 }
+

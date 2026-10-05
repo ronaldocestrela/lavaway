@@ -145,6 +145,44 @@ public sealed class WorkOrderPixModalTests : BunitContext
         Assert.Contains("Enviado em", cut.Markup);
     }
 
+    [Fact]
+    public void WorkOrderPixModal_WhenPaid_ShouldRenderSettledConfirmationBox_AndHideQrCode()
+    {
+        var workOrderId = Guid.NewGuid();
+        var paidAt = DateTimeOffset.UtcNow;
+        var handler = new MockBillingHttpHandler
+        {
+            ChargeResponse = new WorkOrderPixChargeDto(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                workOrderId,
+                150.00m,
+                PixChargeStatusConstants.Paid,
+                "TX-PAID-999",
+                "PHN2Zz48L3N2Zz4=",
+                "00020126580014br.gov.bcb.pixEMVPAID",
+                DateTimeOffset.UtcNow.AddMinutes(30),
+                DateTimeOffset.UtcNow,
+                PaidAtUtc: paidAt)
+        };
+
+        SetupServices(handler);
+
+        var cut = Render<WorkOrderPixModal>(parameters => parameters
+            .Add(p => p.IsOpen, true)
+            .Add(p => p.WorkOrderId, workOrderId)
+            .Add(p => p.Plate, "BRA2E19")
+            .Add(p => p.CustomerName, "Lucas Mendes")
+            .Add(p => p.TotalAmount, 150.00m));
+
+        Assert.Contains("Pagamento Pix Confirmado!", cut.Markup);
+        Assert.Contains("A Ordem de Serviço foi baixada e conciliada financeiramente.", cut.Markup);
+        Assert.Contains("TX-PAID-999", cut.Markup);
+        Assert.Contains("✅ Pago / Baixado", cut.Markup);
+        Assert.Empty(cut.FindAll("img.qr-code-image"));
+        Assert.Empty(cut.FindAll("button.btn-copy"));
+    }
+
     private void SetupServices(HttpMessageHandler handler)
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
