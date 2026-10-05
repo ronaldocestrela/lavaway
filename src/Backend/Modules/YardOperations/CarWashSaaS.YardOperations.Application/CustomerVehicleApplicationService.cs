@@ -34,17 +34,13 @@ public sealed class CustomerVehicleApplicationService(
             return Failure<IReadOnlyCollection<CustomerVehicleMatchDto>>("customer.tenant.required", "Tenant is required.");
         }
 
-        var hasPlate = !string.IsNullOrWhiteSpace(query.Plate);
-        var hasPhone = !string.IsNullOrWhiteSpace(query.Phone);
-        if (!hasPlate && !hasPhone)
-        {
-            return Failure<IReadOnlyCollection<CustomerVehicleMatchDto>>("customer.search.required", "Plate or phone is required.");
-        }
-
         if (query.Limit is < 1 or > MaximumSearchLimit)
         {
             return Failure<IReadOnlyCollection<CustomerVehicleMatchDto>>("customer.search.limit.invalid", $"Search limit must be between 1 and {MaximumSearchLimit}.");
         }
+
+        var hasPlate = !string.IsNullOrWhiteSpace(query.Plate);
+        var hasPhone = !string.IsNullOrWhiteSpace(query.Phone);
 
         string? normalizedPlate = null;
         if (hasPlate)
@@ -66,7 +62,7 @@ public sealed class CustomerVehicleApplicationService(
             }
         }
 
-        var matches = await searchRepository.SearchAsync(tenantId, normalizedPlate, normalizedPhone, query.Limit, ct);
+        var matches = await searchRepository.SearchAsync(tenantId, normalizedPlate, normalizedPhone, query.Limit, query.Query, ct);
         return Result<IReadOnlyCollection<CustomerVehicleMatchDto>>.Success(matches);
     }
 
@@ -146,6 +142,89 @@ public sealed class CustomerVehicleApplicationService(
         var updatedCustomer = await searchRepository.GetByCustomerIdAsync(tenantId, customer.Id, ct);
         return updatedCustomer is null
             ? Result<CustomerVehicleMatchDto>.Success(ToMatch(customer, vehicleResult.Value))
+            : Result<CustomerVehicleMatchDto>.Success(updatedCustomer);
+    }
+
+    public async Task<Result<CustomerVehicleMatchDto>> UpdateCustomerAsync(
+        Guid tenantId,
+        Guid customerId,
+        UpdateCustomerCommand command,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Failure<CustomerVehicleMatchDto>("customer.tenant.required", "Tenant is required.");
+        }
+
+        var customer = await customerRepository.GetByIdAsync(tenantId, customerId, ct);
+        if (customer is null)
+        {
+            return Failure<CustomerVehicleMatchDto>("customer.not_found", "Customer was not found.", ErrorType.NotFound);
+        }
+
+        var updateResult = customer.Update(command.Name, command.Phone);
+        if (!updateResult.IsSuccess)
+        {
+            return Result<CustomerVehicleMatchDto>.Failure(updateResult.Error!);
+        }
+
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<CustomerVehicleMatchDto>.Failure(saveResult.Error!);
+        }
+
+        var updatedCustomer = await searchRepository.GetByCustomerIdAsync(tenantId, customer.Id, ct);
+        return updatedCustomer is null
+            ? Failure<CustomerVehicleMatchDto>("customer.not_found", "Customer was not found.", ErrorType.NotFound)
+            : Result<CustomerVehicleMatchDto>.Success(updatedCustomer);
+    }
+
+    public async Task<Result<CustomerVehicleMatchDto>> UpdateVehicleAsync(
+        Guid tenantId,
+        Guid customerId,
+        Guid vehicleId,
+        UpdateVehicleCommand command,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Failure<CustomerVehicleMatchDto>("customer.tenant.required", "Tenant is required.");
+        }
+
+        var customer = await customerRepository.GetByIdAsync(tenantId, customerId, ct);
+        if (customer is null)
+        {
+            return Failure<CustomerVehicleMatchDto>("customer.not_found", "Customer was not found.", ErrorType.NotFound);
+        }
+
+        var vehicle = await vehicleRepository.GetByIdAsync(tenantId, vehicleId, ct);
+        if (vehicle is null || vehicle.CustomerId != customerId)
+        {
+            return Failure<CustomerVehicleMatchDto>("vehicle.not_found", "Vehicle was not found.", ErrorType.NotFound);
+        }
+
+        var normalizedPlate = Vehicle.NormalizePlate(command.Plate);
+        if (await vehicleRepository.IsPlateRegisteredAsync(tenantId, normalizedPlate, vehicleId, ct))
+        {
+            return Failure<CustomerVehicleMatchDto>("vehicle.plate.duplicate", "A vehicle with this plate already exists for this tenant.", ErrorType.Conflict);
+        }
+
+        var updateResult = vehicle.Update(command.Plate, command.Size);
+        if (!updateResult.IsSuccess)
+        {
+            return Result<CustomerVehicleMatchDto>.Failure(updateResult.Error!);
+        }
+
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<CustomerVehicleMatchDto>.Failure(saveResult.Error!);
+        }
+
+        var updatedCustomer = await searchRepository.GetByCustomerIdAsync(tenantId, customer.Id, ct);
+        return updatedCustomer is null
+            ? Failure<CustomerVehicleMatchDto>("customer.not_found", "Customer was not found.", ErrorType.NotFound)
             : Result<CustomerVehicleMatchDto>.Success(updatedCustomer);
     }
 

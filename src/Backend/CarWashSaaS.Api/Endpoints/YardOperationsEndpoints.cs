@@ -103,6 +103,7 @@ public static class YardOperationsEndpoints
     private static void MapCustomerEndpoints(IEndpointRouteBuilder app)
     {
         app.MapGet("/customers/search", async (
+            string? query,
             string? plate,
             string? phone,
             int? limit,
@@ -114,7 +115,28 @@ public static class YardOperationsEndpoints
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var result = await service.SearchAsync(tenantId, new SearchCustomerVehiclesQuery(plate, phone, limit ?? 20));
+            var result = await service.SearchAsync(tenantId, new SearchCustomerVehiclesQuery(plate, phone, limit ?? 20, query));
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapGet("/customers", async (
+            string? query,
+            string? plate,
+            string? phone,
+            int? limit,
+            ICurrentTenantAccessor currentTenantAccessor,
+            CustomerVehicleApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.SearchAsync(tenantId, new SearchCustomerVehiclesQuery(plate, phone, limit ?? 20, query));
             return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
             {
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
@@ -166,6 +188,27 @@ public static class YardOperationsEndpoints
             };
         }).RequireAuthorization(AuthorizationPolicyNames.CreateWorkOrders);
 
+        app.MapPut("/customers/{customerId:guid}", async (
+            Guid customerId,
+            UpdateCustomerRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            CustomerVehicleApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var command = new UpdateCustomerCommand(request.Name, request.Phone);
+            var result = await service.UpdateCustomerAsync(tenantId, customerId, command);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.CreateWorkOrders);
+
         app.MapPost("/customers/{customerId:guid}/vehicles", async (
             Guid customerId,
             AddVehicleToCustomerRequest request,
@@ -184,6 +227,34 @@ public static class YardOperationsEndpoints
 
             var result = await service.AddVehicleAsync(tenantId, customerId, new AddVehicleToCustomerCommand(request.Plate, size));
             return result.IsSuccess ? Results.Created($"/customers/{customerId}", result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(AuthorizationPolicyNames.CreateWorkOrders);
+
+        app.MapPut("/customers/{customerId:guid}/vehicles/{vehicleId:guid}", async (
+            Guid customerId,
+            Guid vehicleId,
+            UpdateVehicleRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            CustomerVehicleApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            if (!Enum.TryParse<VehicleSize>(request.Size, true, out var size) || !Enum.IsDefined(size))
+            {
+                return Results.BadRequest(new { Code = "vehicle.size.invalid", Description = "Vehicle size is invalid." });
+            }
+
+            var command = new UpdateVehicleCommand(request.Plate, size);
+            var result = await service.UpdateVehicleAsync(tenantId, customerId, vehicleId, command);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
             {
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),

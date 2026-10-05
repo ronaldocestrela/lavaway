@@ -1,0 +1,635 @@
+@page "/customers"
+@attribute [Authorize(Roles = "Administrator,Receptionist")]
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject CustomerVehicleApiClient CustomerApi
+@inject IToastService ToastService
+@inject NavigationManager Navigation
+@inject ReceptionSessionState ReceptionState
+
+<div class="customers-page">
+    <header class="page-heading">
+        <div>
+            <div class="eyebrow">
+                <span class="eyebrow-mark"></span>
+                <span>GESTÃO DE CLIENTES &amp; VEÍCULOS</span>
+            </div>
+            <h1>Clientes e Veículos</h1>
+            <p class="page-subtitle">Consulte o histórico, atualize dados de contato como telefone e gerencie os veículos associados.</p>
+        </div>
+
+        <button class="button button-primary" type="button" @onclick="OpenCreateCustomerModal" id="btn-open-create-customer">
+            <span class="button-plus">+</span>
+            <span>Novo Cliente</span>
+        </button>
+    </header>
+
+    <div class="customers-layout">
+        <!-- Coluna da Esquerda: Busca e Lista de Clientes -->
+        <section class="customers-list-column">
+            <div class="search-box">
+                <div class="search-input-wrapper">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input type="text"
+                           class="search-input"
+                           placeholder="Buscar por nome, telefone ou placa..."
+                           value="@_searchTerm"
+                           @oninput="OnSearchInput"
+                           @onkeydown="OnSearchKeyDown"
+                           id="customer-search-input" />
+                    @if (!string.IsNullOrWhiteSpace(_searchTerm))
+                    {
+                        <button type="button" class="clear-search-btn" @onclick="ClearSearch" aria-label="Limpar busca">×</button>
+                    }
+                </div>
+                <button type="button" class="button button-secondary btn-search" @onclick="SearchCustomersAsync" disabled="@_isLoading">
+                    <span>@(_isLoading ? "Buscando..." : "Buscar")</span>
+                </button>
+            </div>
+
+            <div class="list-meta">
+                <span class="counter-badge">@_customers.Count @(_customers.Count == 1 ? "cliente" : "clientes")</span>
+                @if (!string.IsNullOrWhiteSpace(_searchTerm))
+                {
+                    <span class="filter-notice">Filtrado por: "<strong>@_searchTerm</strong>"</span>
+                }
+            </div>
+
+            <div class="customers-list" role="list">
+                @if (_isLoading && _customers.Count == 0)
+                {
+                    <div class="list-loading">
+                        <div class="spinner"></div>
+                        <p>Carregando clientes...</p>
+                    </div>
+                }
+                else if (_customers.Count == 0)
+                {
+                    <div class="list-empty">
+                        <div class="empty-icon">👥</div>
+                        <h3>Nenhum cliente encontrado</h3>
+                        <p>Não encontramos clientes com os filtros informados. Você pode iniciar um novo cadastro.</p>
+                        <button type="button" class="button button-secondary mt-2" @onclick="OpenCreateCustomerModal">
+                            Cadastrar Cliente
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var customer in _customers)
+                    {
+                        var isSelected = _selectedCustomer?.CustomerId == customer.CustomerId;
+                        <div class="customer-card @(isSelected ? "is-selected" : "")"
+                             role="listitem"
+                             @onclick="() => SelectCustomer(customer)"
+                             id="customer-card-@customer.CustomerId">
+                            <div class="card-avatar">
+                                @GetInitials(customer.CustomerName)
+                            </div>
+                            <div class="card-info">
+                                <div class="card-header-row">
+                                    <h3 class="card-name">@customer.CustomerName</h3>
+                                    <span class="vehicle-count-badge">
+                                        @customer.Vehicles.Count @(customer.Vehicles.Count == 1 ? "veículo" : "veículos")
+                                    </span>
+                                </div>
+                                <div class="card-phone">
+                                    <span class="phone-icon">📞</span>
+                                    <span>@customer.Phone</span>
+                                </div>
+                                @if (customer.Vehicles.Count > 0)
+                                {
+                                    <div class="card-plates">
+                                        @foreach (var v in customer.Vehicles.Take(3))
+                                        {
+                                            <span class="plate-mini-tag">@v.Plate</span>
+                                        }
+                                        @if (customer.Vehicles.Count > 3)
+                                        {
+                                            <span class="plate-more-tag">+@(customer.Vehicles.Count - 3)</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <span class="select-indicator" aria-hidden="true">›</span>
+                        </div>
+                    }
+                }
+            </div>
+        </section>
+
+        <!-- Coluna da Direita: Detalhes do Cliente Selecionado -->
+        <section class="customer-detail-column">
+            @if (_selectedCustomer is not null)
+            {
+                <div class="detail-card">
+                    <!-- Hero do Cliente -->
+                    <div class="detail-header">
+                        <div class="detail-avatar">
+                            @GetInitials(_selectedCustomer.CustomerName)
+                        </div>
+                        <div class="detail-title-area">
+                            <div class="detail-eyebrow">CADASTRO DE CLIENTE</div>
+                            <h2>@_selectedCustomer.CustomerName</h2>
+                            <div class="detail-contact-row">
+                                <span class="detail-phone-val">📞 @_selectedCustomer.Phone</span>
+                                <a href="https://wa.me/@GetWhatsAppLink(_selectedCustomer.Phone)"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="whatsapp-link"
+                                   title="Abrir WhatsApp">
+                                    <span class="wa-icon">💬</span>
+                                    <span>Conversar no WhatsApp</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="detail-actions">
+                            <button type="button"
+                                    class="button button-secondary"
+                                    @onclick="OpenEditCustomerModal"
+                                    id="btn-edit-customer">
+                                <span>✏️ Editar Dados</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Seção de Veículos Associados -->
+                    <div class="vehicles-section">
+                        <div class="section-header">
+                            <div>
+                                <h3>Veículos Associados</h3>
+                                <p class="section-sub">Automóveis vinculados a este cliente para ordens de serviço e agendamentos.</p>
+                            </div>
+                            <button type="button"
+                                    class="button button-secondary btn-add-vehicle"
+                                    @onclick="OpenAddVehicleModal"
+                                    id="btn-add-vehicle">
+                                <span>+ Adicionar Veículo</span>
+                            </button>
+                        </div>
+
+                        @if (_selectedCustomer.Vehicles.Count == 0)
+                        {
+                            <div class="empty-vehicles">
+                                <p>Este cliente não possui veículos cadastrados no momento.</p>
+                                <button type="button" class="button button-secondary mt-1" @onclick="OpenAddVehicleModal">
+                                    Cadastrar Primeiro Veículo
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="vehicles-grid">
+                                @foreach (var vehicle in _selectedCustomer.Vehicles)
+                                {
+                                    <div class="vehicle-card" id="vehicle-card-@vehicle.Id">
+                                        <div class="mercosul-plate">
+                                            <div class="mercosul-top">
+                                                <span class="mercosul-flag">🇧🇷</span>
+                                                <span class="mercosul-country">BRASIL</span>
+                                            </div>
+                                            <div class="mercosul-code">@vehicle.Plate</div>
+                                        </div>
+
+                                        <div class="vehicle-details">
+                                            <span class="vehicle-size-badge">
+                                                @VehicleSizeConstants.GetDisplayName(vehicle.Size)
+                                            </span>
+                                            <span class="vehicle-hint">Porte para tabela de serviços</span>
+                                        </div>
+
+                                        <div class="vehicle-actions">
+                                            <button type="button"
+                                                    class="action-btn"
+                                                    title="Editar Placa e Porte"
+                                                    @onclick="() => OpenEditVehicleModal(vehicle)"
+                                                    id="btn-edit-vehicle-@vehicle.Id">
+                                                <span>✏️ Editar</span>
+                                            </button>
+                                            <button type="button"
+                                                    class="action-btn action-primary"
+                                                    title="Abrir Ordem de Serviço para este veículo"
+                                                    @onclick="() => StartWorkOrder(vehicle)"
+                                                    id="btn-new-wo-@vehicle.Id">
+                                                <span>⚡ Nova OS</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Rodapé de Ações Rápidas -->
+                    <div class="detail-footer">
+                        <div class="quick-nav-note">
+                            <span>Ações Rápidas:</span>
+                            <button type="button" class="link-btn" @onclick="GoToReceptionWithCustomer">
+                                Recepcionar no Balcão
+                            </button>
+                            <span>·</span>
+                            <button type="button" class="link-btn" @onclick="GoToScheduling">
+                                Agendar Horário
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="no-selection-card">
+                    <div class="no-selection-icon">📋</div>
+                    <h3>Nenhum cliente selecionado</h3>
+                    <p>Selecione um cliente na lista ao lado para visualizar os detalhes, atualizar o número de telefone e gerenciar a frota de veículos associados.</p>
+                </div>
+            }
+        </section>
+    </div>
+</div>
+
+<!-- Modal de Edição de Cliente -->
+<EditCustomerModal IsVisible="@_showEditCustomerModal"
+                   Name="@_editCustomerName"
+                   NameChanged="@(val => _editCustomerName = val)"
+                   Phone="@_editCustomerPhone"
+                   PhoneChanged="@(val => _editCustomerPhone = val)"
+                   IsBusy="@_isSavingCustomer"
+                   ErrorMessage="@_editCustomerError"
+                   OnSave="SaveCustomerAsync"
+                   OnCancel="CloseEditCustomerModal" />
+
+<!-- Modal de Edição de Veículo -->
+<EditVehicleModal IsVisible="@_showEditVehicleModal"
+                  VehicleId="@_editVehicleId"
+                  Plate="@_editVehiclePlate"
+                  PlateChanged="@(val => _editVehiclePlate = val)"
+                  Size="@_editVehicleSize"
+                  SizeChanged="@(val => _editVehicleSize = val)"
+                  IsBusy="@_isSavingVehicle"
+                  ErrorMessage="@_editVehicleError"
+                  OnSave="SaveVehicleAsync"
+                  OnCancel="CloseEditVehicleModal" />
+
+<!-- Modal de Adicionar Novo Veículo -->
+<EditVehicleModal IsVisible="@_showAddVehicleModal"
+                  VehicleId="null"
+                  Plate="@_newVehiclePlate"
+                  PlateChanged="@(val => _newVehiclePlate = val)"
+                  Size="@_newVehicleSize"
+                  SizeChanged="@(val => _newVehicleSize = val)"
+                  IsBusy="@_isSavingNewVehicle"
+                  ErrorMessage="@_addVehicleError"
+                  OnSave="SaveNewVehicleAsync"
+                  OnCancel="CloseAddVehicleModal" />
+
+<!-- Modal de Novo Cadastro de Cliente -->
+<CreateCustomerModal IsVisible="@_showCreateCustomerModal"
+                     CustomerName="@_newCustName"
+                     CustomerNameChanged="@(val => _newCustName = val)"
+                     Phone="@_newCustPhone"
+                     PhoneChanged="@(val => _newCustPhone = val)"
+                     Plate="@_newCustPlate"
+                     PlateChanged="@(val => _newCustPlate = val)"
+                     Size="@_newCustSize"
+                     SizeChanged="@(val => _newCustSize = val)"
+                     IsBusy="@_isCreatingCustomer"
+                     ErrorMessage="@_createCustError"
+                     OnSave="SaveNewCustomerAsync"
+                     OnCancel="CloseCreateCustomerModal" />
+
+@code {
+    private List<CustomerVehicleMatchDto> _customers = [];
+    private CustomerVehicleMatchDto? _selectedCustomer;
+    private string _searchTerm = string.Empty;
+    private bool _isLoading = false;
+
+    // Edit customer modal state
+    private bool _showEditCustomerModal = false;
+    private string _editCustomerName = string.Empty;
+    private string _editCustomerPhone = string.Empty;
+    private string? _editCustomerError;
+    private bool _isSavingCustomer = false;
+
+    // Edit vehicle modal state
+    private bool _showEditVehicleModal = false;
+    private Guid? _editVehicleId;
+    private string _editVehiclePlate = string.Empty;
+    private string _editVehicleSize = VehicleSizeConstants.HatchSedan;
+    private string? _editVehicleError;
+    private bool _isSavingVehicle = false;
+
+    // Add vehicle modal state
+    private bool _showAddVehicleModal = false;
+    private string _newVehiclePlate = string.Empty;
+    private string _newVehicleSize = VehicleSizeConstants.HatchSedan;
+    private string? _addVehicleError;
+    private bool _isSavingNewVehicle = false;
+
+    // Create customer modal state
+    private bool _showCreateCustomerModal = false;
+    private string _newCustName = string.Empty;
+    private string _newCustPhone = string.Empty;
+    private string _newCustPlate = string.Empty;
+    private string _newCustSize = VehicleSizeConstants.HatchSedan;
+    private string? _createCustError;
+    private bool _isCreatingCustomer = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomersAsync();
+    }
+
+    private async Task LoadCustomersAsync(string? query = null)
+    {
+        try
+        {
+            _isLoading = true;
+            var results = await CustomerApi.SearchAsync(query: query, limit: 50);
+            _customers = results.ToList();
+
+            if (_selectedCustomer is not null)
+            {
+                _selectedCustomer = _customers.FirstOrDefault(c => c.CustomerId == _selectedCustomer.CustomerId)
+                                    ?? _customers.FirstOrDefault();
+            }
+            else if (_customers.Count > 0)
+            {
+                _selectedCustomer = _customers.First();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao carregar clientes: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchCustomersAsync();
+        }
+    }
+
+    private async Task SearchCustomersAsync()
+    {
+        await LoadCustomersAsync(string.IsNullOrWhiteSpace(_searchTerm) ? null : _searchTerm.Trim());
+    }
+
+    private async Task ClearSearch()
+    {
+        _searchTerm = string.Empty;
+        await LoadCustomersAsync();
+    }
+
+    private void SelectCustomer(CustomerVehicleMatchDto customer)
+    {
+        _selectedCustomer = customer;
+    }
+
+    // Edit customer methods
+    private void OpenEditCustomerModal()
+    {
+        if (_selectedCustomer is null) return;
+        _editCustomerName = _selectedCustomer.CustomerName;
+        _editCustomerPhone = _selectedCustomer.Phone;
+        _editCustomerError = null;
+        _showEditCustomerModal = true;
+    }
+
+    private void CloseEditCustomerModal()
+    {
+        _showEditCustomerModal = false;
+        _editCustomerError = null;
+    }
+
+    private async Task SaveCustomerAsync(UpdateCustomerRequest request)
+    {
+        if (_selectedCustomer is null) return;
+
+        try
+        {
+            _isSavingCustomer = true;
+            _editCustomerError = null;
+
+            var updated = await CustomerApi.UpdateCustomerAsync(_selectedCustomer.CustomerId, request);
+
+            UpdateCustomerInList(updated);
+            _selectedCustomer = updated;
+            _showEditCustomerModal = false;
+            ToastService.ShowSuccess("Dados do cliente atualizados com sucesso!");
+        }
+        catch (CustomerVehicleApiException apiEx)
+        {
+            _editCustomerError = apiEx.Message;
+        }
+        catch (Exception ex)
+        {
+            _editCustomerError = ex.Message;
+        }
+        finally
+        {
+            _isSavingCustomer = false;
+        }
+    }
+
+    // Edit vehicle methods
+    private void OpenEditVehicleModal(VehicleSummaryDto vehicle)
+    {
+        _editVehicleId = vehicle.Id;
+        _editVehiclePlate = vehicle.Plate;
+        _editVehicleSize = vehicle.Size;
+        _editVehicleError = null;
+        _showEditVehicleModal = true;
+    }
+
+    private void CloseEditVehicleModal()
+    {
+        _showEditVehicleModal = false;
+        _editVehicleError = null;
+    }
+
+    private async Task SaveVehicleAsync()
+    {
+        if (_selectedCustomer is null || !_editVehicleId.HasValue) return;
+
+        try
+        {
+            _isSavingVehicle = true;
+            _editVehicleError = null;
+
+            var updated = await CustomerApi.UpdateVehicleAsync(
+                _selectedCustomer.CustomerId,
+                _editVehicleId.Value,
+                new UpdateVehicleRequest(_editVehiclePlate, _editVehicleSize));
+
+            UpdateCustomerInList(updated);
+            _selectedCustomer = updated;
+            _showEditVehicleModal = false;
+            ToastService.ShowSuccess($"Veículo {_editVehiclePlate.ToUpperInvariant()} atualizado com sucesso!");
+        }
+        catch (CustomerVehicleApiException apiEx)
+        {
+            _editVehicleError = apiEx.Message;
+        }
+        catch (Exception ex)
+        {
+            _editVehicleError = ex.Message;
+        }
+        finally
+        {
+            _isSavingVehicle = false;
+        }
+    }
+
+    // Add vehicle methods
+    private void OpenAddVehicleModal()
+    {
+        _newVehiclePlate = string.Empty;
+        _newVehicleSize = VehicleSizeConstants.HatchSedan;
+        _addVehicleError = null;
+        _showAddVehicleModal = true;
+    }
+
+    private void CloseAddVehicleModal()
+    {
+        _showAddVehicleModal = false;
+        _addVehicleError = null;
+    }
+
+    private async Task SaveNewVehicleAsync()
+    {
+        if (_selectedCustomer is null) return;
+
+        try
+        {
+            _isSavingNewVehicle = true;
+            _addVehicleError = null;
+
+            var updated = await CustomerApi.AddVehicleAsync(
+                _selectedCustomer.CustomerId,
+                new AddVehicleToCustomerRequest(_newVehiclePlate, _newVehicleSize));
+
+            UpdateCustomerInList(updated);
+            _selectedCustomer = updated;
+            _showAddVehicleModal = false;
+            ToastService.ShowSuccess($"Veículo {_newVehiclePlate.ToUpperInvariant()} associado com sucesso!");
+        }
+        catch (CustomerVehicleApiException apiEx)
+        {
+            _addVehicleError = apiEx.Message;
+        }
+        catch (Exception ex)
+        {
+            _addVehicleError = ex.Message;
+        }
+        finally
+        {
+            _isSavingNewVehicle = false;
+        }
+    }
+
+    // Create customer methods
+    private void OpenCreateCustomerModal()
+    {
+        _newCustName = string.Empty;
+        _newCustPhone = string.Empty;
+        _newCustPlate = string.Empty;
+        _newCustSize = VehicleSizeConstants.HatchSedan;
+        _createCustError = null;
+        _showCreateCustomerModal = true;
+    }
+
+    private void CloseCreateCustomerModal()
+    {
+        _showCreateCustomerModal = false;
+        _createCustError = null;
+    }
+
+    private async Task SaveNewCustomerAsync(CreateCustomerWithVehicleRequest request)
+    {
+        try
+        {
+            _isCreatingCustomer = true;
+            _createCustError = null;
+
+            var created = await CustomerApi.CreateAsync(request);
+
+            _customers.Insert(0, created);
+            _selectedCustomer = created;
+            _showCreateCustomerModal = false;
+            ToastService.ShowSuccess($"Cliente {created.CustomerName} cadastrado com sucesso!");
+        }
+        catch (CustomerVehicleApiException apiEx)
+        {
+            _createCustError = apiEx.Message;
+        }
+        catch (Exception ex)
+        {
+            _createCustError = ex.Message;
+        }
+        finally
+        {
+            _isCreatingCustomer = false;
+        }
+    }
+
+    private void UpdateCustomerInList(CustomerVehicleMatchDto updated)
+    {
+        var idx = _customers.FindIndex(c => c.CustomerId == updated.CustomerId);
+        if (idx >= 0)
+        {
+            _customers[idx] = updated;
+        }
+        else
+        {
+            _customers.Insert(0, updated);
+        }
+    }
+
+    private void StartWorkOrder(VehicleSummaryDto vehicle)
+    {
+        if (_selectedCustomer is null) return;
+        ReceptionState.SelectCustomer(_selectedCustomer);
+        Navigation.NavigateTo($"work-orders/new?customerId={_selectedCustomer.CustomerId}&vehicleId={vehicle.Id}");
+    }
+
+    private void GoToReceptionWithCustomer()
+    {
+        if (_selectedCustomer is null) return;
+        ReceptionState.SelectCustomer(_selectedCustomer);
+        Navigation.NavigateTo("reception");
+    }
+
+    private void GoToScheduling()
+    {
+        Navigation.NavigateTo("scheduling");
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "CL";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[^1][0])}";
+    }
+
+    private static string GetWhatsAppLink(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return string.Empty;
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("55")) return digits;
+        return $"55{digits}";
+    }
+}

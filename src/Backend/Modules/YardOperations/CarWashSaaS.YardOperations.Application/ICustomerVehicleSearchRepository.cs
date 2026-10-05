@@ -11,4 +11,12 @@ public interface ICustomerVehicleSearchRepository
         string? normalizedPhone,
         int limit,
         CancellationToken ct = default);
+    Task<IReadOnlyCollection<CustomerVehicleMatchDto>> SearchAsync(
+        Guid tenantId,
+        string? normalizedPlate,
+        string? normalizedPhone,
+        int limit,
+        string? query,
+        CancellationToken ct = default) =>
+        SearchAsync(tenantId, normalizedPlate, normalizedPhone, limit, ct);
 }

@@ -73,4 +73,54 @@ public sealed class CustomerAndVehicleTests
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.Validation, result.Error!.Type);
     }
+
+    [Fact]
+    public void Customer_Update_ShouldUpdateNameAndPhoneProperly()
+    {
+        var customer = Customer.Create(Guid.CreateVersion7(), "Maria Silva", "+5511999999999").Value!;
+
+        var updateResult = customer.Update("Maria Santos", "11 98888-7777");
+
+        Assert.True(updateResult.IsSuccess);
+        Assert.Equal("Maria Santos", customer.Name);
+        Assert.Equal("11 98888-7777", customer.Phone);
+        Assert.Equal("11988887777", customer.NormalizedPhone);
+    }
+
+    [Fact]
+    public void Customer_Update_ShouldRejectInvalidData()
+    {
+        var customer = Customer.Create(Guid.CreateVersion7(), "Maria Silva", "+5511999999999").Value!;
+
+        var invalidNameResult = customer.Update("", "+5511999999999");
+        var invalidPhoneResult = customer.Update("Maria Santos", "---");
+
+        Assert.False(invalidNameResult.IsSuccess);
+        Assert.Equal(ErrorType.Validation, invalidNameResult.Error!.Type);
+        Assert.False(invalidPhoneResult.IsSuccess);
+        Assert.Equal(ErrorType.Validation, invalidPhoneResult.Error!.Type);
+    }
+
+    [Fact]
+    public void Vehicle_Update_ShouldUpdatePlateAndSizeProperly()
+    {
+        var vehicle = Vehicle.Create(Guid.CreateVersion7(), Guid.CreateVersion7(), "ABC1D23", VehicleSize.HatchSedan).Value!;
+
+        var updateResult = vehicle.Update("xyz-9999", VehicleSize.Suv);
+
+        Assert.True(updateResult.IsSuccess);
+        Assert.Equal("XYZ9999", vehicle.Plate);
+        Assert.Equal(VehicleSize.Suv, vehicle.Size);
+    }
+
+    [Fact]
+    public void Vehicle_Update_ShouldRejectInvalidPlate()
+    {
+        var vehicle = Vehicle.Create(Guid.CreateVersion7(), Guid.CreateVersion7(), "ABC1D23", VehicleSize.HatchSedan).Value!;
+
+        var updateResult = vehicle.Update("invalid-plate", VehicleSize.PickupVan);
+
+        Assert.False(updateResult.IsSuccess);
+        Assert.Equal(ErrorType.Validation, updateResult.Error!.Type);
+    }
 }

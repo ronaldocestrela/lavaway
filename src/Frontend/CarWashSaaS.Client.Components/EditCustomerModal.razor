@@ -1,0 +1,141 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="modal-title" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">DADOS CADASTRAIS</span>
+                    <h2 id="modal-title">Editar Cliente</h2>
+                </div>
+                <button type="button" class="close-btn" @onclick="HandleCancel" aria-label="Fechar">×</button>
+            </header>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="feedback feedback-error" role="alert">
+                        <span class="feedback-symbol">!</span>
+                        <div class="feedback-text">@ErrorMessage</div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="customer-name" class="form-label">Nome Completo *</label>
+                    <input id="customer-name"
+                           type="text"
+                           class="form-control"
+                           placeholder="Ex.: Maria de Souza"
+                           maxlength="200"
+                           value="@Name"
+                           @oninput="OnNameInput" />
+                </div>
+
+                <div class="form-group">
+                    <label for="customer-phone" class="form-label">Telefone / WhatsApp *</label>
+                    <input id="customer-phone"
+                           type="tel"
+                           class="form-control"
+                           placeholder="Ex.: (11) 98888-7777"
+                           maxlength="32"
+                           value="@Phone"
+                           @oninput="OnPhoneInput" />
+                    <span class="form-hint">O número é utilizado para envio de status via WhatsApp e pesquisa de satisfação.</span>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-outline" @onclick="HandleCancel" disabled="@IsBusy">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@(IsBusy || !CanSave)" id="btn-save-customer">
+                    <span>@(IsBusy ? "Salvando..." : "Salvar Alterações")</span>
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> NameChanged { get; set; }
+
+    [Parameter]
+    public string Phone { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> PhoneChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<UpdateCustomerRequest> OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    private bool CanSave =>
+        !string.IsNullOrWhiteSpace(Name) &&
+        !string.IsNullOrWhiteSpace(Phone) &&
+        Phone.Any(char.IsDigit);
+
+    private async Task OnNameInput(ChangeEventArgs e)
+    {
+        Name = e.Value?.ToString() ?? string.Empty;
+        await NameChanged.InvokeAsync(Name);
+    }
+
+    private async Task OnPhoneInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? string.Empty;
+        var digits = new string(raw.Where(char.IsDigit).ToArray());
+        var formatted = FormatPhone(digits);
+        Phone = formatted;
+        await PhoneChanged.InvokeAsync(Phone);
+    }
+
+    private static string FormatPhone(string digits)
+    {
+        if (digits.Length == 0) return string.Empty;
+        if (digits.StartsWith("55") && digits.Length > 10)
+        {
+            digits = digits[2..];
+        }
+
+        if (digits.Length <= 2)
+        {
+            return $"({digits}";
+        }
+        if (digits.Length <= 6)
+        {
+            return $"({digits[..2]}) {digits[2..]}";
+        }
+        if (digits.Length <= 10)
+        {
+            return $"({digits[..2]}) {digits[2..6]}-{digits[6..]}";
+        }
+        return $"({digits[..2]}) {digits[2..7]}-{digits[7..Math.Min(11, digits.Length)]}";
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleSave()
+    {
+        if (!CanSave) return;
+        await OnSave.InvokeAsync(new UpdateCustomerRequest(Name.Trim(), Phone.Trim()));
+    }
+}

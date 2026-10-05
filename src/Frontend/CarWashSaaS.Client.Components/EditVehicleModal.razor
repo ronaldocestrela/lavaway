@@ -1,0 +1,147 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="vehicle-modal-title" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">VEÍCULO ASSOCIADO</span>
+                    <h2 id="vehicle-modal-title">@(VehicleId.HasValue ? "Editar Veículo" : "Novo Veículo")</h2>
+                </div>
+                <button type="button" class="close-btn" @onclick="HandleCancel" aria-label="Fechar">×</button>
+            </header>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="feedback feedback-error" role="alert">
+                        <span class="feedback-symbol">!</span>
+                        <div class="feedback-text">@ErrorMessage</div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="vehicle-plate" class="form-label">Placa do Veículo *</label>
+                    <div class="plate-input-wrapper">
+                        <input id="vehicle-plate"
+                               type="text"
+                               class="form-control plate-input"
+                               placeholder="ABC1D23"
+                               maxlength="8"
+                               value="@Plate"
+                               @oninput="OnPlateInput" />
+                        <span class="plate-preview">@FormattedPlate</span>
+                    </div>
+                    <span class="form-hint">Formatos aceitos: Padrão Mercosul (ABC1D23) ou padrão anterior (ABC-1234).</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Porte do Veículo *</label>
+                    <div class="size-options">
+                        @foreach (var sizeKey in VehicleSizeConstants.All)
+                        {
+                            var isSelected = string.Equals(Size, sizeKey, StringComparison.OrdinalIgnoreCase);
+                            <button type="button"
+                                    class="size-card @(isSelected ? "is-selected" : "")"
+                                    @onclick="() => SelectSize(sizeKey)">
+                                <div class="size-card-check">@(isSelected ? "✓" : "")</div>
+                                <div class="size-card-info">
+                                    <span class="size-card-title">@VehicleSizeConstants.GetDisplayName(sizeKey)</span>
+                                    <span class="size-card-sub">@GetSizeDescription(sizeKey)</span>
+                                </div>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-outline" @onclick="HandleCancel" disabled="@IsBusy">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@(IsBusy || !CanSave)" id="btn-save-vehicle">
+                    <span>@(IsBusy ? "Salvando..." : (VehicleId.HasValue ? "Salvar Veículo" : "Adicionar Veículo"))</span>
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public Guid? VehicleId { get; set; }
+
+    [Parameter]
+    public string Plate { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> PlateChanged { get; set; }
+
+    [Parameter]
+    public string Size { get; set; } = VehicleSizeConstants.HatchSedan;
+
+    [Parameter]
+    public EventCallback<string> SizeChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    private string NormalizedPlate => new string((Plate ?? string.Empty).Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+
+    private string FormattedPlate => NormalizedPlate.Length switch
+    {
+        7 => $"{NormalizedPlate[..3]}-{NormalizedPlate[3..]}",
+        _ => NormalizedPlate
+    };
+
+    private bool CanSave =>
+        NormalizedPlate.Length == 7 &&
+        !string.IsNullOrWhiteSpace(Size);
+
+    private async Task OnPlateInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? string.Empty;
+        var clean = new string(raw.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).Take(7).ToArray());
+        Plate = clean;
+        await PlateChanged.InvokeAsync(Plate);
+    }
+
+    private async Task SelectSize(string sizeKey)
+    {
+        Size = sizeKey;
+        await SizeChanged.InvokeAsync(Size);
+    }
+
+    private static string GetSizeDescription(string sizeKey) => sizeKey switch
+    {
+        VehicleSizeConstants.HatchSedan => "Carros de passeio comuns, hatches e sedans",
+        VehicleSizeConstants.Suv => "Utilitários esportivos, crossovers e vans leves",
+        VehicleSizeConstants.PickupVan => "Picapes médias e grandes, furgões e utilitários",
+        VehicleSizeConstants.Motorcycle => "Motos e ciclomotores de todas as cilindradas",
+        _ => string.Empty
+    };
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleSave()
+    {
+        if (!CanSave) return;
+        await OnSave.InvokeAsync();
+    }
+}

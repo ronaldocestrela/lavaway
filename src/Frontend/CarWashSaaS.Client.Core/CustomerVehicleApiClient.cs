@@ -8,23 +8,29 @@ namespace CarWashSaaS.Client.Core;
 public sealed class CustomerVehicleApiClient(HttpClient httpClient)
 {
     public async Task<IReadOnlyCollection<CustomerVehicleMatchDto>> SearchAsync(
-        string? plate,
-        string? phone,
+        string? plate = null,
+        string? phone = null,
         int limit = 20,
+        string? query = null,
         CancellationToken ct = default)
     {
-        var query = new List<string> { $"limit={limit}" };
+        var queryParams = new List<string> { $"limit={limit}" };
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            queryParams.Add($"query={Uri.EscapeDataString(query)}");
+        }
+
         if (!string.IsNullOrWhiteSpace(plate))
         {
-            query.Add($"plate={Uri.EscapeDataString(plate)}");
+            queryParams.Add($"plate={Uri.EscapeDataString(plate)}");
         }
 
         if (!string.IsNullOrWhiteSpace(phone))
         {
-            query.Add($"phone={Uri.EscapeDataString(phone)}");
+            queryParams.Add($"phone={Uri.EscapeDataString(phone)}");
         }
 
-        using var response = await httpClient.GetAsync($"customers/search?{string.Join('&', query)}", ct);
+        using var response = await httpClient.GetAsync($"customers/search?{string.Join('&', queryParams)}", ct);
         return await ReadResponseAsync<IReadOnlyCollection<CustomerVehicleMatchDto>>(response, ct);
     }
 
@@ -40,12 +46,31 @@ public sealed class CustomerVehicleApiClient(HttpClient httpClient)
         return await ReadResponseAsync<CustomerVehicleMatchDto>(response, ct);
     }
 
+    public async Task<CustomerVehicleMatchDto> UpdateCustomerAsync(
+        Guid customerId,
+        UpdateCustomerRequest request,
+        CancellationToken ct = default)
+    {
+        using var response = await httpClient.PutAsJsonAsync($"customers/{customerId}", request, ct);
+        return await ReadResponseAsync<CustomerVehicleMatchDto>(response, ct);
+    }
+
     public async Task<CustomerVehicleMatchDto> AddVehicleAsync(
         Guid customerId,
         AddVehicleToCustomerRequest request,
         CancellationToken ct = default)
     {
         using var response = await httpClient.PostAsJsonAsync($"customers/{customerId}/vehicles", request, ct);
+        return await ReadResponseAsync<CustomerVehicleMatchDto>(response, ct);
+    }
+
+    public async Task<CustomerVehicleMatchDto> UpdateVehicleAsync(
+        Guid customerId,
+        Guid vehicleId,
+        UpdateVehicleRequest request,
+        CancellationToken ct = default)
+    {
+        using var response = await httpClient.PutAsJsonAsync($"customers/{customerId}/vehicles/{vehicleId}", request, ct);
         return await ReadResponseAsync<CustomerVehicleMatchDto>(response, ct);
     }
 

@@ -1,0 +1,184 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="create-customer-title" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">NOVO CADASTRO</span>
+                    <h2 id="create-customer-title">Novo Cliente &amp; Veículo</h2>
+                </div>
+                <button type="button" class="close-btn" @onclick="HandleCancel" aria-label="Fechar">×</button>
+            </header>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="feedback feedback-error" role="alert">
+                        <span class="feedback-symbol">!</span>
+                        <div class="feedback-text">@ErrorMessage</div>
+                    </div>
+                }
+
+                <div class="form-section-title">Dados do Cliente</div>
+
+                <div class="form-group">
+                    <label for="new-customer-name" class="form-label">Nome Completo *</label>
+                    <input id="new-customer-name"
+                           type="text"
+                           class="form-control"
+                           placeholder="Ex.: João da Silva"
+                           maxlength="200"
+                           value="@CustomerName"
+                           @oninput="OnCustomerNameInput" />
+                </div>
+
+                <div class="form-group">
+                    <label for="new-customer-phone" class="form-label">Telefone / WhatsApp *</label>
+                    <input id="new-customer-phone"
+                           type="tel"
+                           class="form-control"
+                           placeholder="Ex.: (11) 99999-8888"
+                           maxlength="32"
+                           value="@Phone"
+                           @oninput="OnPhoneInput" />
+                </div>
+
+                <div class="form-section-title mt-2">Primeiro Veículo</div>
+
+                <div class="form-group">
+                    <label for="new-vehicle-plate" class="form-label">Placa do Veículo *</label>
+                    <input id="new-vehicle-plate"
+                           type="text"
+                           class="form-control plate-input"
+                           placeholder="ABC1D23"
+                           maxlength="8"
+                           value="@Plate"
+                           @oninput="OnPlateInput" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Porte do Veículo *</label>
+                    <select class="form-control" value="@Size" @onchange="OnSizeChange">
+                        @foreach (var sizeKey in VehicleSizeConstants.All)
+                        {
+                            <option value="@sizeKey">@VehicleSizeConstants.GetDisplayName(sizeKey)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-outline" @onclick="HandleCancel" disabled="@IsBusy">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@(IsBusy || !CanSave)" id="btn-create-customer">
+                    <span>@(IsBusy ? "Cadastrando..." : "Cadastrar Cliente")</span>
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public string CustomerName { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> CustomerNameChanged { get; set; }
+
+    [Parameter]
+    public string Phone { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> PhoneChanged { get; set; }
+
+    [Parameter]
+    public string Plate { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> PlateChanged { get; set; }
+
+    [Parameter]
+    public string Size { get; set; } = VehicleSizeConstants.HatchSedan;
+
+    [Parameter]
+    public EventCallback<string> SizeChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<CreateCustomerWithVehicleRequest> OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    private string NormalizedPlate => new string((Plate ?? string.Empty).Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+
+    private bool CanSave =>
+        !string.IsNullOrWhiteSpace(CustomerName) &&
+        !string.IsNullOrWhiteSpace(Phone) &&
+        Phone.Any(char.IsDigit) &&
+        NormalizedPlate.Length == 7;
+
+    private async Task OnCustomerNameInput(ChangeEventArgs e)
+    {
+        CustomerName = e.Value?.ToString() ?? string.Empty;
+        await CustomerNameChanged.InvokeAsync(CustomerName);
+    }
+
+    private async Task OnPhoneInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? string.Empty;
+        var digits = new string(raw.Where(char.IsDigit).ToArray());
+        Phone = FormatPhone(digits);
+        await PhoneChanged.InvokeAsync(Phone);
+    }
+
+    private static string FormatPhone(string digits)
+    {
+        if (digits.Length == 0) return string.Empty;
+        if (digits.StartsWith("55") && digits.Length > 10)
+        {
+            digits = digits[2..];
+        }
+
+        if (digits.Length <= 2) return $"({digits}";
+        if (digits.Length <= 6) return $"({digits[..2]}) {digits[2..]}";
+        if (digits.Length <= 10) return $"({digits[..2]}) {digits[2..6]}-{digits[6..]}";
+        return $"({digits[..2]}) {digits[2..7]}-{digits[7..Math.Min(11, digits.Length)]}";
+    }
+
+    private async Task OnPlateInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? string.Empty;
+        Plate = new string(raw.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).Take(7).ToArray());
+        await PlateChanged.InvokeAsync(Plate);
+    }
+
+    private async Task OnSizeChange(ChangeEventArgs e)
+    {
+        Size = e.Value?.ToString() ?? VehicleSizeConstants.HatchSedan;
+        await SizeChanged.InvokeAsync(Size);
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleSave()
+    {
+        if (!CanSave) return;
+        var request = new CreateCustomerWithVehicleRequest(CustomerName.Trim(), Phone.Trim(), NormalizedPlate, Size);
+        await OnSave.InvokeAsync(request);
+    }
+}

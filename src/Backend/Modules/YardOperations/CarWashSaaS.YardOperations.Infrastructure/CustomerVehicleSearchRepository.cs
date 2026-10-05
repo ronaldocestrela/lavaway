@@ -30,11 +30,20 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
         return ToMatch(customer, vehicles);
     }
 
+    public Task<IReadOnlyCollection<CustomerVehicleMatchDto>> SearchAsync(
+        Guid tenantId,
+        string? normalizedPlate,
+        string? normalizedPhone,
+        int limit,
+        CancellationToken ct = default) =>
+        SearchAsync(tenantId, normalizedPlate, normalizedPhone, limit, null, ct);
+
     public async Task<IReadOnlyCollection<CustomerVehicleMatchDto>> SearchAsync(
         Guid tenantId,
         string? normalizedPlate,
         string? normalizedPhone,
         int limit,
+        string? query,
         CancellationToken ct = default)
     {
         var customersQuery = dbContext.Customers
@@ -52,6 +61,20 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
                 vehicle.TenantId == tenantId &&
                 vehicle.CustomerId == customer.Id &&
                 vehicle.Plate == normalizedPlate));
+        }
+
+        var trimmedQuery = query?.Trim();
+        if (!string.IsNullOrWhiteSpace(trimmedQuery))
+        {
+            var qPlate = Vehicle.NormalizePlate(trimmedQuery);
+            var qPhone = Customer.NormalizePhone(trimmedQuery);
+            customersQuery = customersQuery.Where(customer =>
+                customer.Name.Contains(trimmedQuery) ||
+                (qPhone.Length > 0 && customer.NormalizedPhone.Contains(qPhone)) ||
+                (qPlate.Length > 0 && dbContext.Vehicles.Any(vehicle =>
+                    vehicle.TenantId == tenantId &&
+                    vehicle.CustomerId == customer.Id &&
+                    vehicle.Plate.Contains(qPlate))));
         }
 
         var customers = await customersQuery

@@ -76,6 +76,100 @@ public sealed class CustomerVehicleApplicationServiceTests
         Assert.Contains(result.Value.Vehicles, vehicle => vehicle.Plate == "XYZ9Z99");
     }
 
+    [Fact]
+    public async Task UpdateCustomerAsync_ShouldUpdateCustomerAndSave()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var customer = Customer.Create(tenantId, "Maria Silva", "5511999999999").Value!;
+        var repository = new FakeRepository();
+        repository.Customers.Add(customer);
+        var service = CreateService(repository);
+
+        var result = await service.UpdateCustomerAsync(tenantId, customer.Id,
+            new UpdateCustomerCommand("Maria dos Santos", "11 98888-7777"));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Maria dos Santos", result.Value!.CustomerName);
+        Assert.Equal("11 98888-7777", result.Value.Phone);
+        Assert.Equal(1, repository.SaveChangesCount);
+    }
+
+    [Fact]
+    public async Task UpdateCustomerAsync_ShouldReturnNotFound_WhenCustomerDoesNotExist()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var repository = new FakeRepository();
+        var service = CreateService(repository);
+
+        var result = await service.UpdateCustomerAsync(tenantId, Guid.CreateVersion7(),
+            new UpdateCustomerCommand("Maria dos Santos", "11 98888-7777"));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.NotFound, result.Error!.Type);
+    }
+
+    [Fact]
+    public async Task UpdateVehicleAsync_ShouldUpdateVehicleAndSave()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var customer = Customer.Create(tenantId, "Maria Silva", "5511999999999").Value!;
+        var vehicle = Vehicle.Create(tenantId, customer.Id, "ABC1D23", VehicleSize.HatchSedan).Value!;
+        var repository = new FakeRepository();
+        repository.Customers.Add(customer);
+        repository.Vehicles.Add(vehicle);
+        var service = CreateService(repository);
+
+        var result = await service.UpdateVehicleAsync(tenantId, customer.Id, vehicle.Id,
+            new UpdateVehicleCommand("XYZ9Z99", VehicleSize.Suv));
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value!.Vehicles);
+        Assert.Equal("XYZ9Z99", result.Value.Vehicles.Single().Plate);
+        Assert.Equal(VehicleSize.Suv.ToString(), result.Value.Vehicles.Single().Size);
+        Assert.Equal(1, repository.SaveChangesCount);
+    }
+
+    [Fact]
+    public async Task UpdateVehicleAsync_ShouldRejectDuplicatePlateFromAnotherVehicle()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var customer = Customer.Create(tenantId, "Maria Silva", "5511999999999").Value!;
+        var vehicle1 = Vehicle.Create(tenantId, customer.Id, "ABC1D23", VehicleSize.HatchSedan).Value!;
+        var vehicle2 = Vehicle.Create(tenantId, customer.Id, "XYZ9Z99", VehicleSize.Suv).Value!;
+        var repository = new FakeRepository();
+        repository.Customers.Add(customer);
+        repository.Vehicles.Add(vehicle1);
+        repository.Vehicles.Add(vehicle2);
+        var service = CreateService(repository);
+
+        var result = await service.UpdateVehicleAsync(tenantId, customer.Id, vehicle1.Id,
+            new UpdateVehicleCommand("XYZ9Z99", VehicleSize.HatchSedan));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, result.Error!.Type);
+        Assert.Equal(0, repository.SaveChangesCount);
+    }
+
+    [Fact]
+    public async Task UpdateVehicleAsync_ShouldAllowSamePlateOnSameVehicle()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var customer = Customer.Create(tenantId, "Maria Silva", "5511999999999").Value!;
+        var vehicle = Vehicle.Create(tenantId, customer.Id, "ABC1D23", VehicleSize.HatchSedan).Value!;
+        var repository = new FakeRepository();
+        repository.Customers.Add(customer);
+        repository.Vehicles.Add(vehicle);
+        var service = CreateService(repository);
+
+        var result = await service.UpdateVehicleAsync(tenantId, customer.Id, vehicle.Id,
+            new UpdateVehicleCommand("abc-1d23", VehicleSize.Suv));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("ABC1D23", result.Value!.Vehicles.Single().Plate);
+        Assert.Equal(VehicleSize.Suv.ToString(), result.Value.Vehicles.Single().Size);
+        Assert.Equal(1, repository.SaveChangesCount);
+    }
+
     private static CustomerVehicleApplicationService CreateService(FakeRepository repository) =>
         new(repository, repository, repository, repository);
 
@@ -122,6 +216,9 @@ public sealed class CustomerVehicleApplicationServiceTests
 
         public Task<bool> IsPlateRegisteredAsync(Guid tenantId, string normalizedPlate, CancellationToken ct = default) =>
             Task.FromResult(Vehicles.Any(vehicle => vehicle.TenantId == tenantId && vehicle.Plate == normalizedPlate));
+
+        public Task<bool> IsPlateRegisteredAsync(Guid tenantId, string normalizedPlate, Guid? excludeVehicleId, CancellationToken ct = default) =>
+            Task.FromResult(Vehicles.Any(vehicle => vehicle.TenantId == tenantId && vehicle.Plate == normalizedPlate && (!excludeVehicleId.HasValue || vehicle.Id != excludeVehicleId.Value)));
 
         Task<Vehicle?> IVehicleRepository.GetByIdAsync(Guid tenantId, Guid vehicleId, CancellationToken ct) =>
             Task.FromResult(Vehicles.SingleOrDefault(vehicle => vehicle.TenantId == tenantId && vehicle.Id == vehicleId));

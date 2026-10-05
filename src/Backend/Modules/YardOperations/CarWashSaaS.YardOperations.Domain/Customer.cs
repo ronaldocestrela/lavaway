@@ -60,4 +60,23 @@ public sealed class Customer : IMustHaveTenant
 
         return Result<Customer>.Success(new Customer(Guid.CreateVersion7(), tenantId, name.Trim(), phone.Trim(), normalizedPhone));
     }
+
+    public Result Update(string name, string phone)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
+        {
+            return Result.Failure(new Error("customer.name.invalid", "A customer name of up to 200 characters is required.", ErrorType.Validation));
+        }
+
+        var normalizedPhone = NormalizePhone(phone);
+        if (string.IsNullOrWhiteSpace(phone) || phone.Trim().Length > 32 || normalizedPhone.Length == 0)
+        {
+            return Result.Failure(new Error("customer.phone.invalid", "A customer phone number of up to 32 characters is required.", ErrorType.Validation));
+        }
+
+        Name = name.Trim();
+        Phone = phone.Trim();
+        NormalizedPhone = normalizedPhone;
+        return Result.Success();
+    }
 }

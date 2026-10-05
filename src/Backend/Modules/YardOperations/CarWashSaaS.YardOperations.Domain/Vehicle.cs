@@ -55,4 +55,22 @@ public sealed class Vehicle : IMustHaveTenant
 
         return Result<Vehicle>.Success(new Vehicle(Guid.CreateVersion7(), tenantId, customerId, normalizedPlate, size));
     }
+
+    public Result Update(string plate, VehicleSize size)
+    {
+        if (!Enum.IsDefined(size))
+        {
+            return Result.Failure(new Error("vehicle.size.invalid", "Vehicle size is invalid.", ErrorType.Validation));
+        }
+
+        var normalizedPlate = NormalizePlate(plate);
+        if (normalizedPlate.Length != 7)
+        {
+            return Result.Failure(new Error("vehicle.plate.invalid", "Vehicle plate must contain seven letters or digits.", ErrorType.Validation));
+        }
+
+        Plate = normalizedPlate;
+        Size = size;
+        return Result.Success();
+    }
 }
