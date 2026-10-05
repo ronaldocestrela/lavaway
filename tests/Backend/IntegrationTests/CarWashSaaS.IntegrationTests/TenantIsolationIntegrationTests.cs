@@ -118,6 +118,34 @@ public sealed class TenantIsolationIntegrationTests(SqlServerFixture fixture)
         await Assert.ThrowsAsync<InvalidOperationException>(() => tenantBContext.SaveChangesAsync());
     }
 
+    [Fact]
+    public async Task TenantB_ShouldNotReadOrModifyTenantA_AfterSalesAndReactivationCampaigns()
+    {
+        var tenantA = await CreateTenantAsync("AfterSales Yard A");
+        var tenantB = await CreateTenantAsync("AfterSales Yard B");
+
+        var rule = ReactivationCampaignRule.Create(tenantA, 15, "Régua 15 dias", "Olá {nome}, seu {veiculo} sente sua falta!", true, "10OFF").Value!;
+        var log = ReactivationCampaignLog.Create(tenantA, rule.Id, Guid.NewGuid(), "11999998888", 15, "IDEMP-15-1").Value!;
+
+        await using (var context = CreateYardContext(tenantA))
+        {
+            context.ReactivationCampaignRules.Add(rule);
+            context.ReactivationCampaignLogs.Add(log);
+            await context.SaveChangesAsync();
+        }
+
+        await using var tenantBContext = CreateYardContext(tenantB);
+        Assert.Null(await tenantBContext.ReactivationCampaignRules.SingleOrDefaultAsync(value => value.Id == rule.Id));
+        Assert.Null(await tenantBContext.ReactivationCampaignLogs.SingleOrDefaultAsync(value => value.Id == log.Id));
+
+        var tamperedRule = ReactivationCampaignRule.Create(tenantA, 15, "Régua 15 dias", "Olá {nome}!", true, "10OFF").Value!;
+        tenantBContext.ReactivationCampaignRules.Attach(tamperedRule);
+        tenantBContext.Entry(tamperedRule).Property(value => value.Title).CurrentValue = "Tampered";
+        tenantBContext.Entry(tamperedRule).Property(value => value.Title).IsModified = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => tenantBContext.SaveChangesAsync());
+    }
+
     private async Task<Guid> CreateTenantAsync(string name)
     {
         await using var context = new CarWashSaaS.Tenants.Infrastructure.TenantsDbContext(fixture.CreateTenantsOptions(), new CurrentTenantAccessor());

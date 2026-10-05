@@ -185,4 +185,57 @@ public sealed class YardKanbanComponentTests : BunitContext
         Assert.NotNull(notifiedCard);
         Assert.Equal(card.Id, notifiedCard.Id);
     }
+
+    [Fact]
+    public void YardKanbanCard_InReadyForPickupStatus_WithoutPickup_ShouldOfferPickupButton_AndTriggerCallback()
+    {
+        var card = CreateSampleCard("ReadyForPickup", "ABC1D23");
+        WorkOrderKanbanCardDto? pickedUpCard = null;
+
+        var cut = Render<YardKanbanCard>(parameters => parameters
+            .Add(p => p.Card, card)
+            .Add(p => p.OnPickupClicked, c => pickedUpCard = c));
+
+        var pickupBtn = cut.Find("button.btn-pickup");
+        Assert.NotNull(pickupBtn);
+        Assert.Contains("Retirada", pickupBtn.TextContent);
+
+        pickupBtn.Click();
+        Assert.NotNull(pickedUpCard);
+        Assert.Equal(card.Id, pickedUpCard.Id);
+    }
+
+    [Fact]
+    public void YardKanbanCard_WhenAlreadyPickedUp_ShouldRenderPickupBadge_AndSurveyStatus()
+    {
+        var card = new WorkOrderKanbanCardDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Lucas Mendes",
+            Guid.NewGuid(),
+            "ABC1D23",
+            "Suv",
+            "ReadyForPickup",
+            120m,
+            45,
+            DateTimeOffset.UtcNow.AddMinutes(-60),
+            DateTimeOffset.UtcNow.AddMinutes(-30),
+            null,
+            null,
+            null,
+            ["Lavagem Completa"],
+            1,
+            DateTimeOffset.UtcNow.AddMinutes(-30),
+            DateTimeOffset.UtcNow.AddMinutes(-20),
+            DateTimeOffset.UtcNow.AddMinutes(-10),
+            5);
+
+        var cut = Render<YardKanbanCard>(parameters => parameters
+            .Add(p => p.Card, card));
+
+        Assert.Contains("Retirado", cut.Markup);
+        Assert.Contains("⭐ 5/5", cut.Markup);
+        Assert.Empty(cut.FindAll("button.btn-pickup"));
+    }
 }
+

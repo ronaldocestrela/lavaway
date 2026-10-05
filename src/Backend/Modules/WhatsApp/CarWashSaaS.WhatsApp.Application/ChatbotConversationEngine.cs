@@ -8,7 +8,9 @@ public sealed class ChatbotConversationEngine(
     IChatbotSessionRepository sessionRepository,
     ISchedulingBookingLookup schedulingLookup,
     ITenantStoreProfileLookup storeProfileLookup,
-    IOutboundWhatsAppDispatcher messageDispatcher)
+    IOutboundWhatsAppDispatcher messageDispatcher,
+    ICustomerCommunicationPreferenceRepository? preferenceRepository = null,
+    IAfterSalesLookup? afterSalesLookup = null)
 {
     private static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(30);
 
@@ -47,6 +49,77 @@ public sealed class ChatbotConversationEngine(
         }
 
         var lower = text.ToLowerInvariant().Trim();
+
+        // 1. Interceptação de Opt-Out conversacional (LGPD & Anti-Spam)
+        if (IsOptOutKeyword(lower))
+        {
+            if (preferenceRepository is not null)
+            {
+                var cleanPhone = OutboundWhatsAppMessage.CleanPhoneNumber(senderPhone);
+                var pref = await preferenceRepository.GetByPhoneAsync(tenantId, cleanPhone, ct);
+                if (pref is null)
+                {
+                    var newPref = CustomerCommunicationPreference.Create(tenantId, cleanPhone, false, "Solicitado via WhatsApp").Value!;
+                    await preferenceRepository.AddAsync(newPref, ct);
+                }
+                else
+                {
+                    pref.OptOut("Solicitado via WhatsApp");
+                }
+                await preferenceRepository.SaveChangesAsync(ct);
+            }
+
+            session.Reset();
+            await sessionRepository.UpdateAsync(session, ct);
+            var optOutReply = "Você foi descadastrado de nossas comunicações promocionais e lembretes de retorno. 🛑\n\nCaso queira voltar a receber nossas mensagens a qualquer momento, basta enviar a palavra *QUERO*. Obrigado!";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, optOutReply, ct);
+        }
+
+        // 2. Interceptação de Opt-In conversacional
+        if (IsOptInKeyword(lower))
+        {
+            if (preferenceRepository is not null)
+            {
+                var cleanPhone = OutboundWhatsAppMessage.CleanPhoneNumber(senderPhone);
+                var pref = await preferenceRepository.GetByPhoneAsync(tenantId, cleanPhone, ct);
+                if (pref is null)
+                {
+                    var newPref = CustomerCommunicationPreference.Create(tenantId, cleanPhone, true).Value!;
+                    await preferenceRepository.AddAsync(newPref, ct);
+                }
+                else
+                {
+                    pref.OptIn();
+                }
+                await preferenceRepository.SaveChangesAsync(ct);
+            }
+
+            session.Reset();
+            await sessionRepository.UpdateAsync(session, ct);
+            var optInReply = "Suas preferências de comunicação foram reativadas com sucesso! 🎉\n\nVocê voltará a receber nossas novidades e ofertas exclusivas.";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, optInReply, ct);
+        }
+
+        // 3. Interceptação de Pesquisa de Satisfação (1 a 5 estrelas)
+        if (session.CurrentStep is ChatbotStep.Greeting or ChatbotStep.Menu && afterSalesLookup is not null && TryExtractRating(text, out var rating))
+        {
+            var pendingSurveyResult = await afterSalesLookup.GetPendingSurveyForCustomerAsync(tenantId, senderPhone, ct);
+            if (pendingSurveyResult.IsSuccess && pendingSurveyResult.Value is not null)
+            {
+                await afterSalesLookup.SubmitSurveyRatingAsync(tenantId, senderPhone, rating, text, ct);
+                session.Reset();
+                await sessionRepository.UpdateAsync(session, ct);
+
+                var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
+                var storeName = storeProfile.Value?.TradeName ?? "Lavaway";
+
+                var surveyReply = rating >= 4
+                    ? $"Muito obrigado pela sua avaliação de {rating} estrelas! 🌟\n\nFicamos extremamente felizes que tenha apreciado o serviço no *{storeName}*. Esperamos você em breve para a próxima lavagem!"
+                    : $"Agradecemos seu retorno sincero ({rating} estrelas). 🙏\n\nLamentamos que sua experiência não tenha sido impecável. Nosso time de atendimento entrará em contato para acolher suas observações e melhorar continuamente.";
+
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, surveyReply, ct);
+            }
+        }
 
         // Intercepta respostas contextuais a lembretes
         if (session.CurrentStep is ChatbotStep.Greeting or ChatbotStep.Menu)
@@ -668,7 +741,7 @@ public sealed class ChatbotConversationEngine(
     private static bool IsResetCommand(string text)
     {
         var lower = text.Trim().ToLowerInvariant();
-        return lower is "menu" or "sair" or "voltar" or "inicio" or "início" or "começar" or "comecar";
+        return lower is "menu" or "voltar" or "inicio" or "início" or "começar" or "comecar";
     }
 
     private static bool TryParseDate(string text, out DateOnly date)
@@ -695,6 +768,31 @@ public sealed class ChatbotConversationEngine(
             }
         }
 
+        return false;
+    }
+
+    private static bool IsOptOutKeyword(string lower) =>
+        lower is "parar" or "sair" or "stop" or "cancelar mensagens" or "não quero" or "nao quero" or "descadastrar" or "bloquear" or "optout" or "opt-out";
+
+    private static bool IsOptInKeyword(string lower) =>
+        lower is "quero" or "sim quero" or "ativar" or "voltar a receber" or "reativar" or "optin" or "opt-in";
+
+    private static bool TryExtractRating(string text, out int rating)
+    {
+        var trimmed = text.Trim().ToLowerInvariant();
+        if (trimmed is "1" or "1 estrela" or "⭐" or "pessimo" or "péssimo") { rating = 1; return true; }
+        if (trimmed is "2" or "2 estrelas" or "⭐⭐" or "ruim") { rating = 2; return true; }
+        if (trimmed is "3" or "3 estrelas" or "⭐⭐⭐" or "regular") { rating = 3; return true; }
+        if (trimmed is "4" or "4 estrelas" or "⭐⭐⭐⭐" or "bom") { rating = 4; return true; }
+        if (trimmed is "5" or "5 estrelas" or "⭐⭐⭐⭐⭐" or "excelente" or "otimo" or "ótimo") { rating = 5; return true; }
+
+        if (int.TryParse(trimmed, out var num) && num >= 1 && num <= 5)
+        {
+            rating = num;
+            return true;
+        }
+
+        rating = 0;
         return false;
     }
 }

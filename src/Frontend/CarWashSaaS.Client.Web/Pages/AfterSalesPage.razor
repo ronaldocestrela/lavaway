@@ -1,0 +1,865 @@
+@page "/after-sales"
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrator,Receptionist")]
+@implements IDisposable
+@inject AfterSalesApiClient AfterSalesApi
+
+<PageTitle>Pós-Venda &amp; Retenção | Lavaway</PageTitle>
+
+<section class="after-sales-page">
+    <div class="page-heading">
+        <div>
+            <div class="eyebrow">
+                <span class="eyebrow-mark"></span>
+                <span>PÓS-VENDA &amp; RETENÇÃO</span>
+            </div>
+            <h1>Satisfação do Cliente &amp; Reativação</h1>
+            <p class="page-subtitle">
+                Acompanhe o CSAT em tempo real das pesquisas enviadas via WhatsApp (1h pós-retirada), automatize réguas de retenção inteligentes (15, 30 e 45 dias) e controle opt-out anti-spam.
+            </p>
+        </div>
+        <div class="heading-actions">
+            <button type="button" class="btn-refresh" @onclick="LoadAllDataAsync" disabled="@_isLoading">
+                <span class="@(_isLoading ? "spinning" : "")">&#8635;</span>
+                <span>Atualizar Dados</span>
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_successMessage))
+    {
+        <div class="feedback feedback-success" role="status">
+            <span class="feedback-symbol">✓</span>
+            <div class="feedback-text">@_successMessage</div>
+            <button type="button" class="btn-close-feedback" @onclick="() => _successMessage = null">✕</button>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="feedback feedback-error" role="alert">
+            <span class="feedback-symbol">!</span>
+            <div class="feedback-text">@_errorMessage</div>
+            <button type="button" class="btn-close-feedback" @onclick="() => _errorMessage = null">✕</button>
+        </div>
+    }
+
+    <!-- Tabs Navigation -->
+    <div class="tabs-bar">
+        <button type="button" class="tab-btn @(_activeTab == "surveys" ? "active" : "")" @onclick="@(() => SetTab("surveys"))">
+            <span class="tab-icon">⭐</span>
+            <span>Pesquisas &amp; CSAT</span>
+            @if (_metrics?.TotalSurveysResponded > 0)
+            {
+                <span class="tab-badge">@_metrics.TotalSurveysResponded</span>
+            }
+        </button>
+        <button type="button" class="tab-btn @(_activeTab == "campaigns" ? "active" : "")" @onclick="@(() => SetTab("campaigns"))">
+            <span class="tab-icon">📢</span>
+            <span>Campanhas de Reativação</span>
+            <span class="tab-badge-accent">15 / 30 / 45d</span>
+        </button>
+        <button type="button" class="tab-btn @(_activeTab == "preferences" ? "active" : "")" @onclick="@(() => SetTab("preferences"))">
+            <span class="tab-icon">🛡️</span>
+            <span>Anti-Spam &amp; Opt-Out</span>
+            @if (_preferences.Count > 0)
+            {
+                <span class="tab-badge">@_preferences.Count</span>
+            }
+        </button>
+    </div>
+
+    @if (_isLoading && _metrics == null)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <span>Carregando dados de pós-venda...</span>
+        </div>
+    }
+    else
+    {
+        <!-- Tab 1: Pesquisas e Satisfação -->
+        @if (_activeTab == "surveys")
+        {
+            <div class="tab-content">
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card highlight-card">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Média de Satisfação</span>
+                            <span class="kpi-badge">1 a 5 ⭐</span>
+                        </div>
+                        <div class="kpi-value-row">
+                            <span class="kpi-value">@(_metrics?.AverageRating > 0 ? _metrics.AverageRating.ToString("F1") : "—")</span>
+                            <span class="kpi-stars">@RenderStars(_metrics?.AverageRating ?? 0)</span>
+                        </div>
+                        <span class="kpi-subtext">Baseado em @(_metrics?.TotalSurveysResponded ?? 0) avaliações respondidas</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Taxa de Resposta</span>
+                            <span class="kpi-icon">📊</span>
+                        </div>
+                        <div class="kpi-value-row">
+                            <span class="kpi-value">@(_metrics?.ResponseRatePercentage.ToString("F1") ?? "0.0")%</span>
+                        </div>
+                        <span class="kpi-subtext">@(_metrics?.TotalSurveysResponded ?? 0) respostas de @(_metrics?.TotalSurveysSent ?? 0) enviadas</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-title">CSAT Promotores</span>
+                            <span class="kpi-icon">❤️</span>
+                        </div>
+                        <div class="kpi-value-row">
+                            <span class="kpi-value">@GetCsatPercent().ToString("F1")%</span>
+                        </div>
+                        <span class="kpi-subtext">Clientes avaliando com 4 ou 5 estrelas</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Total Disparos</span>
+                            <span class="kpi-icon">💬</span>
+                        </div>
+                        <div class="kpi-value-row">
+                            <span class="kpi-value">@(_metrics?.TotalSurveysSent ?? 0)</span>
+                        </div>
+                        <span class="kpi-subtext">Disparadas 1h após retirada do veículo</span>
+                    </div>
+                </div>
+
+                <!-- Star Distribution Breakdown -->
+                <div class="section-box">
+                    <div class="box-header">
+                        <h3>Distribuição das Notas</h3>
+                        <span class="box-sub">Frequência por estrela recebida</span>
+                    </div>
+                    <div class="stars-distribution-grid">
+                        @for (int star = 5; star >= 1; star--)
+                        {
+                            var count = GetStarCount(star);
+                            var pct = (_metrics?.TotalSurveysResponded ?? 0) > 0
+                                ? (count * 100.0 / _metrics!.TotalSurveysResponded)
+                                : 0.0;
+                            <div class="distribution-row">
+                                <div class="star-label">
+                                    <span>@star</span>
+                                    <span class="star-icon">★</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill star-fill-@star" style="width: @pct.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                </div>
+                                <div class="distribution-stats">
+                                    <span class="dist-count">@count</span>
+                                    <span class="dist-pct">(@pct.ToString("F0")%)</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Recent Surveys Table -->
+                <div class="section-box">
+                    <div class="box-header">
+                        <h3>Últimas Pesquisas &amp; Avaliações</h3>
+                        <span class="box-sub">Registros recebidos via WhatsApp pós-retirada</span>
+                    </div>
+
+                    @if (_surveys.Count == 0)
+                    {
+                        <div class="empty-state">
+                            <span class="empty-icon">⭐</span>
+                            <p>Nenhuma pesquisa registrada ainda.</p>
+                            <span class="empty-sub">Assim que um veículo for marcado como "Retirado" no Pátio, uma pesquisa será enviada após 1 hora.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Veículo</th>
+                                        <th>Retirada</th>
+                                        <th>Status Envio</th>
+                                        <th>Nota</th>
+                                        <th>Comentário</th>
+                                        <th>Respondido em</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in _surveys)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="customer-cell">
+                                                    <strong>@s.CustomerName</strong>
+                                                    <span class="cell-sub">@FormatPhone(s.CustomerPhone)</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="plate-pill">@s.VehiclePlate</span>
+                                            </td>
+                                            <td>
+                                                @s.PickedUpAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            </td>
+                                            <td>
+                                                @if (s.SurveySentAtUtc.HasValue)
+                                                {
+                                                    <span class="status-badge sent">Enviada</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="status-badge pending">Aguardando 1h</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (s.Rating.HasValue)
+                                                {
+                                                    <span class="rating-badge rating-@s.Rating.Value">
+                                                        @s.Rating.Value ★
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="feedback-text-cell" title="@s.FeedbackComment">
+                                                    @(string.IsNullOrWhiteSpace(s.FeedbackComment) ? "—" : s.FeedbackComment)
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @(s.RespondedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Tab 2: Campanhas de Reativação -->
+        @if (_activeTab == "campaigns")
+        {
+            <div class="tab-content">
+                <div class="banner-info">
+                    <span class="banner-icon">🛡️</span>
+                    <div>
+                        <strong>Filtro Anti-Spam &amp; Frequência Ativos:</strong>
+                        <span>O sistema aplica cooling-off de no mínimo 7 dias entre campanhas e respeita preferências de opt-out ("PARAR"). Clientes com serviços ativos no pátio ou reservas futuras são excluídos automaticamente.</span>
+                    </div>
+                </div>
+
+                <div class="campaign-rules-grid">
+                    @foreach (var rule in _campaignRules.OrderBy(r => r.DaysInactive))
+                    {
+                        <div class="rule-card @(rule.IsEnabled ? "rule-card-active" : "rule-card-inactive")">
+                            <div class="rule-card-header">
+                                <div class="rule-title-group">
+                                    <span class="rule-tier-badge tier-@rule.DaysInactive">@rule.DaysInactive DIAS</span>
+                                    <h3 class="rule-title">@rule.Title</h3>
+                                </div>
+                                <div class="rule-toggle-wrapper">
+                                    <label class="toggle-switch" title="@(rule.IsEnabled ? "Desativar régua" : "Ativar régua")">
+                                        <input type="checkbox" checked="@rule.IsEnabled" @onchange="e => ToggleRuleActiveAsync(rule, (bool)(e.Value ?? false))" />
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <span class="toggle-status-label">@(rule.IsEnabled ? "Ativa" : "Pausada")</span>
+                                </div>
+                            </div>
+
+                            <div class="rule-card-body">
+                                <div class="form-group">
+                                    <label class="form-label">Template da Mensagem WhatsApp</label>
+                                    <textarea class="form-textarea" rows="4"
+                                              value="@GetEditingTemplate(rule)"
+                                              @oninput="e => UpdateLocalTemplate(rule.Id, e.Value?.ToString() ?? string.Empty)"></textarea>
+                                    <div class="template-variables-hint">
+                                        <span>Variáveis disponíveis:</span>
+                                        <code @onclick="@(() => AppendVariable(rule.Id, "{nome}"))">{nome}</code>
+                                        <code @onclick="@(() => AppendVariable(rule.Id, "{veiculo}"))">{veiculo}</code>
+                                        <code @onclick="@(() => AppendVariable(rule.Id, "{dias}"))">{dias}</code>
+                                    </div>
+                                </div>
+
+                                <!-- Live Preview Simulation of WhatsApp Bubble -->
+                                <div class="whatsapp-preview-box">
+                                    <div class="preview-bubble">
+                                        <span class="preview-header">📱 Pré-visualização WhatsApp:</span>
+                                        <p class="preview-text">@RenderPreviewText(GetEditingTemplate(rule))</p>
+                                        <span class="preview-time">12:00 ✓✓</span>
+                                    </div>
+                                </div>
+
+                                <div class="rule-execution-meta">
+                                    <span>Elegíveis calculados: @rule.EligibleAudienceCount</span>
+                                    <span>Bloqueados (Anti-spam / Opt-out): @(rule.FrequencyCappedCount + rule.OptedOutCount)</span>
+                                </div>
+                            </div>
+
+                            <div class="rule-card-footer">
+                                <button type="button" class="btn-rule-save"
+                                        @onclick="() => SaveRuleTemplateAsync(rule)"
+                                        disabled="@_isProcessing">
+                                    <span>💾 Salvar Template</span>
+                                </button>
+                                <button type="button" class="btn-rule-audience"
+                                        @onclick="() => CheckAudienceAsync(rule)"
+                                        disabled="@_isProcessing">
+                                    <span>👥 Ver Audiência (@rule.EligibleAudienceCount)</span>
+                                </button>
+                                <button type="button" class="btn-rule-dispatch"
+                                        @onclick="() => DispatchCampaignAsync(rule)"
+                                        disabled="@(!rule.IsEnabled || _isProcessing)">
+                                    <span>🚀 Disparar Agora</span>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Audience Modal -->
+                @if (_selectedAudienceRule != null)
+                {
+                    <div class="modal-backdrop" @onclick="CloseAudienceModal">
+                        <div class="modal-dialog" @onclick:stopPropagation="true">
+                            <div class="modal-header">
+                                <h3>Audiência — @_selectedAudienceRule.Title (@_selectedAudienceRule.DaysInactive Dias)</h3>
+                                <button type="button" class="btn-close-modal" @onclick="CloseAudienceModal">✕</button>
+                            </div>
+                            <div class="modal-body">
+                                @if (_isLoadingAudience)
+                                {
+                                    <div class="loading-state">
+                                        <div class="spinner"></div>
+                                        <span>Consultando base de clientes inativos...</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="audience-summary-banner">
+                                        <div class="summary-stat">
+                                            <span class="stat-number">@_audienceList.Count</span>
+                                            <span class="stat-desc">Total Avaliado</span>
+                                        </div>
+                                        <div class="summary-stat stat-eligible">
+                                            <span class="stat-number">@_audienceList.Count(c => c.IsEligible)</span>
+                                            <span class="stat-desc">Prontos p/ Envio</span>
+                                        </div>
+                                        <div class="summary-stat stat-blocked">
+                                            <span class="stat-number">@_audienceList.Count(c => !c.IsEligible)</span>
+                                            <span class="stat-desc">Bloqueados</span>
+                                        </div>
+                                    </div>
+
+                                    @if (_audienceList.Count == 0)
+                                    {
+                                        <div class="empty-state">
+                                            <p>Nenhum cliente atinge a faixa de @_selectedAudienceRule.DaysInactive dias sem serviços no momento.</p>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="table-responsive modal-table">
+                                            <table class="data-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Cliente</th>
+                                                        <th>Telefone</th>
+                                                        <th>Último Serviço</th>
+                                                        <th>Dias Inativo</th>
+                                                        <th>Status Elegibilidade</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var c in _audienceList)
+                                                    {
+                                                        <tr>
+                                                            <td><strong>@c.CustomerName</strong></td>
+                                                            <td>@FormatPhone(c.CustomerPhone)</td>
+                                                            <td>@c.LastVisitAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                                            <td><span class="days-badge">@c.DaysSinceLastVisit dias</span></td>
+                                                            <td>
+                                                                @if (c.IsEligible)
+                                                                {
+                                                                    <span class="status-badge eligible">✓ Elegível</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="status-badge blocked" title="@c.EligibilityStatus">
+                                                                        ✕ @c.EligibilityStatus
+                                                                    </span>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn-modal btn-cancel" @onclick="CloseAudienceModal">Fechar</button>
+                                @if (_audienceList.Any(c => c.IsEligible))
+                                {
+                                    <button type="button" class="btn-modal btn-confirm-dispatch"
+                                            @onclick="() => DispatchCampaignAsync(_selectedAudienceRule)"
+                                            disabled="@_isProcessing">
+                                        <span>Disparar para @_audienceList.Count(c => c.IsEligible) elegíveis</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Tab 3: Preferências e Opt-Out -->
+        @if (_activeTab == "preferences")
+        {
+            <div class="tab-content">
+                <div class="banner-info">
+                    <span class="banner-icon">⚖️</span>
+                    <div>
+                        <strong>Conformidade LGPD &amp; Política Anti-Ban WhatsApp:</strong>
+                        <span>O cliente pode enviar <code>PARAR</code>, <code>SAIR</code> ou <code>STOP</code> a qualquer momento no WhatsApp para interromper mensagens promocionais. Para reativar, basta enviar <code>QUERO</code> ou você pode gerenciar abaixo.</span>
+                    </div>
+                </div>
+
+                <div class="preferences-toolbar">
+                    <div class="search-input-group">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" placeholder="Filtrar por telefone ou motivo..."
+                               value="@_preferenceSearchQuery" @oninput="e => _preferenceSearchQuery = e.Value?.ToString() ?? string.Empty" />
+                    </div>
+                    <div class="manual-opt-group">
+                        <input type="text" class="phone-input" placeholder="(11) 99999-9999" @bind="_manualOptPhone" />
+                        <button type="button" class="btn-manual-toggle" @onclick="HandleManualOptOutAsync" disabled="@string.IsNullOrWhiteSpace(_manualOptPhone)">
+                            <span>Registrar Opt-Out Manual</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section-box">
+                    <div class="box-header">
+                        <h3>Lista de Preferências Registradas</h3>
+                        <span class="box-sub">Registros de consentimento e bloqueios no canal</span>
+                    </div>
+
+                    @if (FilteredPreferences.Count == 0)
+                    {
+                        <div class="empty-state">
+                            <span class="empty-icon">🛡️</span>
+                            <p>Nenhuma preferência específica registrada ainda.</p>
+                            <span class="empty-sub">Todos os clientes ativos recebem comunicações até manifestarem opt-out.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Telefone</th>
+                                        <th>Status Comunicação</th>
+                                        <th>Origem / Motivo</th>
+                                        <th>Última Atualização</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var p in FilteredPreferences)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong class="phone-cell">@FormatPhone(p.NormalizedPhone)</strong>
+                                            </td>
+                                            <td>
+                                                @if (p.IsOptedIn)
+                                                {
+                                                    <span class="status-badge eligible">✓ Permitido (Opt-In)</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="status-badge blocked">✕ Bloqueado (Opt-Out)</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="reason-cell">@(p.Reason ?? "Opt-in ativo")</span>
+                                            </td>
+                                            <td>
+                                                @p.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn-toggle-pref @(p.IsOptedIn ? "btn-opt-out" : "btn-opt-in")"
+                                                        @onclick="() => ToggleCustomerPreferenceAsync(p)"
+                                                        disabled="@_isProcessing">
+                                                    @(p.IsOptedIn ? "Bloquear (Opt-Out)" : "Reativar (Opt-In)")
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private string _activeTab = "surveys";
+    private bool _isLoading = true;
+    private bool _isProcessing;
+    private string? _successMessage;
+    private string? _errorMessage;
+
+    private AfterSalesMetricsDto? _metrics;
+    private List<SatisfactionSurveyDto> _surveys = [];
+    private List<ReactivationCampaignRuleDto> _campaignRules = [];
+    private List<CustomerCommunicationPreferenceDto> _preferences = [];
+
+    // Local edits for campaign templates
+    private readonly Dictionary<Guid, string> _localTemplates = new();
+
+    // Audience modal state
+    private ReactivationCampaignRuleDto? _selectedAudienceRule;
+    private bool _isLoadingAudience;
+    private List<InactiveCustomerSummaryDto> _audienceList = [];
+
+    // Preferences filter & manual opt
+    private string _preferenceSearchQuery = string.Empty;
+    private string _manualOptPhone = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllDataAsync();
+    }
+
+    private void SetTab(string tab)
+    {
+        _activeTab = tab;
+        _successMessage = null;
+        _errorMessage = null;
+    }
+
+    private async Task LoadAllDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var metricsTask = AfterSalesApi.GetMetricsAsync();
+            var surveysTask = AfterSalesApi.ListSurveysAsync(50);
+            var rulesTask = AfterSalesApi.ListCampaignRulesAsync();
+            var prefsTask = AfterSalesApi.ListPreferencesAsync();
+
+            await Task.WhenAll(metricsTask, surveysTask, rulesTask, prefsTask);
+
+            _metrics = await metricsTask;
+            _surveys = (await surveysTask).ToList();
+            _campaignRules = (await rulesTask).ToList();
+            _preferences = (await prefsTask).ToList();
+
+            foreach (var rule in _campaignRules)
+            {
+                _localTemplates[rule.Id] = rule.MessageTemplate;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao carregar dados de pós-venda: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private int GetStarCount(int star)
+    {
+        if (_metrics == null) return 0;
+        return star switch
+        {
+            5 => _metrics.FiveStarCount,
+            4 => _metrics.FourStarCount,
+            3 => _metrics.ThreeStarCount,
+            2 => _metrics.TwoStarCount,
+            1 => _metrics.OneStarCount,
+            _ => 0
+        };
+    }
+
+    private double GetCsatPercent()
+    {
+        if (_metrics == null || _metrics.TotalSurveysResponded == 0) return 0.0;
+        var promoters = _metrics.FiveStarCount + _metrics.FourStarCount;
+        return (promoters * 100.0) / _metrics.TotalSurveysResponded;
+    }
+
+    private static string RenderStars(decimal rating)
+    {
+        var rounded = (int)Math.Round((double)rating, MidpointRounding.AwayFromZero);
+        return new string('★', Math.Clamp(rounded, 0, 5)) + new string('☆', Math.Max(0, 5 - rounded));
+    }
+
+    private string GetEditingTemplate(ReactivationCampaignRuleDto rule)
+    {
+        return _localTemplates.TryGetValue(rule.Id, out var val) ? val : rule.MessageTemplate;
+    }
+
+    private void UpdateLocalTemplate(Guid ruleId, string text)
+    {
+        _localTemplates[ruleId] = text;
+    }
+
+    private void AppendVariable(Guid ruleId, string variable)
+    {
+        if (!_localTemplates.TryGetValue(ruleId, out var current))
+        {
+            current = string.Empty;
+        }
+        _localTemplates[ruleId] = current + " " + variable;
+    }
+
+    private static string RenderPreviewText(string template)
+    {
+        if (string.IsNullOrWhiteSpace(template)) return "Mensagem vazia.";
+        return template
+            .Replace("{nome}", "Carlos Silva")
+            .Replace("{veiculo}", "Corolla (BRA2E19)")
+            .Replace("{dias}", "30")
+            .Replace("{link}", "https://lavaway.com/agendar");
+    }
+
+    private async Task ToggleRuleActiveAsync(ReactivationCampaignRuleDto rule, bool isEnabled)
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+        try
+        {
+            var updated = await AfterSalesApi.UpdateCampaignRuleAsync(rule.Id, new UpdateReactivationCampaignRuleRequest(
+                rule.Title,
+                GetEditingTemplate(rule),
+                isEnabled,
+                rule.PromotionalOffer));
+
+            var idx = _campaignRules.FindIndex(r => r.Id == rule.Id);
+            if (idx >= 0)
+            {
+                _campaignRules[idx] = updated;
+            }
+            _successMessage = $"Régua {rule.DaysInactive} dias {(isEnabled ? "ativada" : "pausada")} com sucesso!";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao alterar status da régua: {ex.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveRuleTemplateAsync(ReactivationCampaignRuleDto rule)
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+        try
+        {
+            var newTemplate = GetEditingTemplate(rule);
+            var updated = await AfterSalesApi.UpdateCampaignRuleAsync(rule.Id, new UpdateReactivationCampaignRuleRequest(
+                rule.Title,
+                newTemplate,
+                rule.IsEnabled,
+                rule.PromotionalOffer));
+
+            var idx = _campaignRules.FindIndex(r => r.Id == rule.Id);
+            if (idx >= 0)
+            {
+                _campaignRules[idx] = updated;
+            }
+            _successMessage = $"Template da régua {rule.DaysInactive} dias salvo com sucesso!";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao salvar template: {ex.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CheckAudienceAsync(ReactivationCampaignRuleDto rule)
+    {
+        _selectedAudienceRule = rule;
+        _isLoadingAudience = true;
+        _audienceList = [];
+        StateHasChanged();
+
+        try
+        {
+            var list = await AfterSalesApi.GetCampaignAudienceAsync(rule.Id);
+            _audienceList = list.ToList();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao consultar audiência: {ex.Message}";
+            _selectedAudienceRule = null;
+        }
+        finally
+        {
+            _isLoadingAudience = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseAudienceModal()
+    {
+        _selectedAudienceRule = null;
+        _audienceList = [];
+    }
+
+    private async Task DispatchCampaignAsync(ReactivationCampaignRuleDto rule)
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+        CloseAudienceModal();
+
+        try
+        {
+            var result = await AfterSalesApi.DispatchCampaignRuleAsync(rule.Id);
+            _successMessage = $"Campanha {rule.DaysInactive} dias executada! Disparados: {result.TotalDispatched} mensagens via WhatsApp. Bloqueados por anti-spam: {result.TotalSkippedFrequencyCap}. Opt-outs respeitados: {result.TotalSkippedOptOut}.";
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao disparar campanha: {ex.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private List<CustomerCommunicationPreferenceDto> FilteredPreferences
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_preferenceSearchQuery))
+            {
+                return _preferences;
+            }
+            var q = _preferenceSearchQuery.Trim().ToLowerInvariant();
+            return _preferences.Where(p => p.NormalizedPhone.Contains(q) || (p.Reason?.ToLowerInvariant().Contains(q) ?? false)).ToList();
+        }
+    }
+
+    private async Task ToggleCustomerPreferenceAsync(CustomerCommunicationPreferenceDto pref)
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+        try
+        {
+            var targetOptIn = !pref.IsOptedIn;
+            var reason = targetOptIn ? "Opt-in reativado manualmente pelo operador no painel" : "Opt-out manual solicitado pelo cliente";
+            var updated = await AfterSalesApi.TogglePreferenceAsync(new UpdateCustomerPreferenceRequest(pref.NormalizedPhone, targetOptIn, reason));
+
+            var idx = _preferences.FindIndex(p => p.NormalizedPhone == pref.NormalizedPhone);
+            if (idx >= 0)
+            {
+                _preferences[idx] = updated;
+            }
+            _successMessage = $"Preferência do telefone {FormatPhone(pref.NormalizedPhone)} alterada para {(targetOptIn ? "Permitido" : "Bloqueado")}.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao alterar preferência: {ex.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleManualOptOutAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_manualOptPhone)) return;
+        _isProcessing = true;
+        _errorMessage = null;
+        try
+        {
+            var updated = await AfterSalesApi.TogglePreferenceAsync(new UpdateCustomerPreferenceRequest(
+                _manualOptPhone.Trim(),
+                false,
+                "Opt-out registrado manualmente pelo operador"));
+
+            var idx = _preferences.FindIndex(p => p.NormalizedPhone == updated.NormalizedPhone);
+            if (idx >= 0)
+            {
+                _preferences[idx] = updated;
+            }
+            else
+            {
+                _preferences.Insert(0, updated);
+            }
+
+            _successMessage = $"Opt-Out para {_manualOptPhone} registrado com sucesso.";
+            _manualOptPhone = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Falha ao registrar opt-out manual: {ex.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatPhone(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return "—";
+        var clean = new string(phone.Where(char.IsDigit).ToArray());
+        if (clean.StartsWith("55") && clean.Length == 13)
+        {
+            clean = clean[2..];
+        }
+        if (clean.Length == 11)
+        {
+            return $"({clean[..2]}) {clean.Substring(2, 5)}-{clean.Substring(7)}";
+        }
+        if (clean.Length == 10)
+        {
+            return $"({clean[..2]}) {clean.Substring(2, 4)}-{clean.Substring(6)}";
+        }
+        return phone;
+    }
+
+    public void Dispose()
+    {
+    }
+}

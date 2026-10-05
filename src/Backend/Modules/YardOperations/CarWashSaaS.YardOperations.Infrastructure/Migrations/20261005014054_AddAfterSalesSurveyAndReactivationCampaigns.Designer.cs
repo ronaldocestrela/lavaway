@@ -4,6 +4,7 @@ using CarWashSaaS.YardOperations.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
 {
     [DbContext(typeof(YardOperationsDbContext))]
-    partial class YardOperationsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005014054_AddAfterSalesSurveyAndReactivationCampaigns")]
+    partial class AddAfterSalesSurveyAndReactivationCampaigns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

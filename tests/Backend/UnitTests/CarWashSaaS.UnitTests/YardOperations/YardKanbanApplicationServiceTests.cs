@@ -179,6 +179,15 @@ public sealed class YardKanbanApplicationServiceTests
         public Task<IReadOnlyCollection<WorkOrder>> ListActiveAsync(Guid tenantId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyCollection<WorkOrder>>(WorkOrders.Where(w => w.TenantId == tenantId).ToList());
 
+        public Task<IReadOnlyCollection<WorkOrder>> GetWorkOrdersPendingSurveyAsync(Guid tenantId, DateTimeOffset cutoff, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
+
+        public Task<WorkOrder?> GetLatestCompletedOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default) =>
+            Task.FromResult<WorkOrder?>(null);
+
+        public Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
+
         Task IWorkOrderRepository.AddAsync(WorkOrder workOrder, CancellationToken ct)
         {
             WorkOrders.Add(workOrder);

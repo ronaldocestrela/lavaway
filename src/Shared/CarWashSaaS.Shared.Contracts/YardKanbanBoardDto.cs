@@ -17,7 +17,10 @@ public sealed record WorkOrderKanbanCardDto(
     string? Notes,
     IReadOnlyList<string> ServiceNames,
     int ItemsCount,
-    DateTimeOffset LastStatusChangedAtUtc);
+    DateTimeOffset LastStatusChangedAtUtc,
+    DateTimeOffset? PickedUpAtUtc = null,
+    DateTimeOffset? SurveySentAtUtc = null,
+    int? SurveyRating = null);
 
 public sealed record YardKanbanColumnDto(
     string Status,

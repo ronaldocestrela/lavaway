@@ -10,6 +10,8 @@ public sealed class ChatbotConversationEngineTests
     private readonly FakeSchedulingBookingLookup _schedulingLookup = new();
     private readonly FakeTenantStoreProfileLookup _storeProfileLookup = new();
     private readonly FakeOutboundWhatsAppDispatcher _dispatcher = new();
+    private readonly FakeCustomerCommunicationPreferenceRepository _preferenceRepo = new();
+    private readonly FakeAfterSalesLookup _afterSalesLookup = new();
     private readonly ChatbotConversationEngine _sut;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly string _customerPhone = "11999998888";
@@ -20,7 +22,9 @@ public sealed class ChatbotConversationEngineTests
             _sessionRepo,
             _schedulingLookup,
             _storeProfileLookup,
-            _dispatcher);
+            _dispatcher,
+            _preferenceRepo,
+            _afterSalesLookup);
     }
 
     [Fact]
@@ -427,5 +431,131 @@ public sealed class ChatbotConversationEngineTests
         {
             return Task.FromResult(Result<IReadOnlyList<WhatsAppMessageDto>>.Success([]));
         }
+    }
+
+    private sealed class FakeCustomerCommunicationPreferenceRepository : ICustomerCommunicationPreferenceRepository
+    {
+        public readonly Dictionary<string, CustomerCommunicationPreference> Preferences = new();
+
+        public Task<CustomerCommunicationPreference?> GetByPhoneAsync(Guid tenantId, string normalizedPhone, CancellationToken ct = default)
+        {
+            Preferences.TryGetValue(normalizedPhone, out var pref);
+            return Task.FromResult(pref);
+        }
+
+        public Task<IReadOnlyList<CustomerCommunicationPreference>> ListPreferencesAsync(Guid tenantId, CancellationToken ct = default)
+        {
+            return Task.FromResult<IReadOnlyList<CustomerCommunicationPreference>>(Preferences.Values.ToList());
+        }
+
+        public Task AddAsync(CustomerCommunicationPreference preference, CancellationToken ct = default)
+        {
+            Preferences[preference.NormalizedPhone] = preference;
+            return Task.CompletedTask;
+        }
+
+        public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class FakeAfterSalesLookup : IAfterSalesLookup
+    {
+        public SatisfactionSurveyDto? PendingSurvey { get; set; }
+        public (int Rating, string? Comment)? LastSubmittedRating { get; private set; }
+
+        public Task<Result<WorkOrderDto>> RegisterPickupAsync(Guid tenantId, Guid workOrderId, DateTimeOffset? pickedUpAtUtc = null, string? notes = null, CancellationToken ct = default)
+        {
+            return Task.FromResult(Result<WorkOrderDto>.Failure(new Error("not_impl", "Not implemented", ErrorType.Validation)));
+        }
+
+        public Task<Result> SubmitSurveyRatingAsync(Guid tenantId, string customerPhone, int rating, string? feedbackComment = null, CancellationToken ct = default)
+        {
+            LastSubmittedRating = (rating, feedbackComment);
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result<SatisfactionSurveyDto?>> GetPendingSurveyForCustomerAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
+        {
+            return Task.FromResult(Result<SatisfactionSurveyDto?>.Success(PendingSurvey));
+        }
+    }
+
+    [Theory]
+    [InlineData("PARAR")]
+    [InlineData("sair")]
+    [InlineData("STOP")]
+    [InlineData("descadastrar")]
+    [InlineData("não quero")]
+    public async Task ProcessIncomingMessage_When_OptOut_Keyword_Received_Should_Register_OptOut_And_Send_Confirmation(string keyword)
+    {
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", keyword);
+
+        Assert.True(result.IsSuccess);
+        var normalized = OutboundWhatsAppMessage.CleanPhoneNumber(_customerPhone);
+        Assert.True(_preferenceRepo.Preferences.TryGetValue(normalized, out var pref));
+        Assert.False(pref.IsOptedIn);
+        Assert.NotNull(pref.OptedOutAtUtc);
+
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("descadastrado", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("QUERO", _dispatcher.SentMessages[0].Text);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_When_OptIn_Keyword_Received_Should_Register_OptIn_And_Send_Confirmation()
+    {
+        // Pré-cadastra como opted out
+        var normalized = OutboundWhatsAppMessage.CleanPhoneNumber(_customerPhone);
+        var initialPref = CustomerCommunicationPreference.Create(_tenantId, normalized, isOptedIn: false).Value!;
+        await _preferenceRepo.AddAsync(initialPref);
+
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "QUERO");
+
+        Assert.True(result.IsSuccess);
+        Assert.True(initialPref.IsOptedIn);
+        Assert.Null(initialPref.OptedOutAtUtc);
+
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("reativadas com sucesso", _dispatcher.SentMessages[0].Text);
+    }
+
+    [Theory]
+    [InlineData("5", 5)]
+    [InlineData("⭐⭐⭐⭐⭐", 5)]
+    [InlineData("Excelente", 5)]
+    [InlineData("4", 4)]
+    public async Task ProcessIncomingMessage_When_Survey_Pending_And_High_Rating_Received_Should_Submit_And_Thank(string input, int expectedRating)
+    {
+        _afterSalesLookup.PendingSurvey = new SatisfactionSurveyDto(
+            Guid.NewGuid(), Guid.NewGuid(), "João", _customerPhone, "ABC1D23", "Corolla", DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow.AddMinutes(-30), null, null, null, "Pendente");
+
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", input);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(_afterSalesLookup.LastSubmittedRating);
+        Assert.Equal(expectedRating, _afterSalesLookup.LastSubmittedRating.Value.Rating);
+
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("Muito obrigado pela sua avaliação", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("estrelas", _dispatcher.SentMessages[0].Text);
+    }
+
+    [Theory]
+    [InlineData("1", 1)]
+    [InlineData("2", 2)]
+    [InlineData("3", 3)]
+    public async Task ProcessIncomingMessage_When_Survey_Pending_And_Low_Rating_Received_Should_Submit_And_Empathize(string input, int expectedRating)
+    {
+        _afterSalesLookup.PendingSurvey = new SatisfactionSurveyDto(
+            Guid.NewGuid(), Guid.NewGuid(), "João", _customerPhone, "ABC1D23", "Corolla", DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow.AddMinutes(-30), null, null, null, "Pendente");
+
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", input);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(_afterSalesLookup.LastSubmittedRating);
+        Assert.Equal(expectedRating, _afterSalesLookup.LastSubmittedRating.Value.Rating);
+
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("retorno sincero", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("Lamentamos que sua experiência não tenha sido impecável", _dispatcher.SentMessages[0].Text);
     }
 }

@@ -86,6 +86,11 @@ builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<BookingApplicationService>();
 builder.Services.AddScoped<ISchedulingBookingLookup>(sp => sp.GetRequiredService<BookingApplicationService>());
 builder.Services.AddScoped<BookingReminderApplicationService>();
+builder.Services.AddScoped<IReactivationCampaignRepository, ReactivationCampaignRepository>();
+builder.Services.AddScoped<IFrequencyCappingService, FrequencyCappingService>();
+builder.Services.AddScoped<AfterSalesApplicationService>();
+builder.Services.AddScoped<IAfterSalesLookup>(sp => sp.GetRequiredService<AfterSalesApplicationService>());
+builder.Services.AddScoped<ReactivationCampaignApplicationService>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
@@ -106,6 +111,8 @@ builder.Services.AddSingleton<IBackgroundQueue, RabbitMqBackgroundQueue>();
 builder.Services.AddScoped<ITenantQueueMessageHandler, TenantBrandingAuditQueueHandler>();
 builder.Services.AddHostedService<TenantQueueWorker>();
 builder.Services.AddHostedService<BookingReminderHostedService>();
+builder.Services.AddHostedService<AfterSalesSurveyHostedService>();
+builder.Services.AddHostedService<ReactivationCampaignHostedService>();
 builder.Services.AddHttpClient<IWhatsAppPairingProvider, EvolutionApiWhatsAppPairingProvider>((serviceProvider, client) =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -124,6 +131,7 @@ builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepo
 builder.Services.AddScoped<IOutboundWhatsAppMessageRepository, OutboundWhatsAppMessageRepository>();
 builder.Services.AddScoped<ITenantWhatsAppQuotaRepository, TenantWhatsAppQuotaRepository>();
 builder.Services.AddScoped<ICustomerCommunicationPreferenceRepository, CustomerCommunicationPreferenceRepository>();
+builder.Services.AddScoped<ICustomerCommunicationPreferenceLookup, CustomerCommunicationPreferenceLookupService>();
 builder.Services.AddScoped<IChatbotSessionRepository, ChatbotSessionRepository>();
 builder.Services.AddScoped<WhatsAppConnectionApplicationService>();
 builder.Services.AddScoped<WhatsAppMessageApplicationService>();
@@ -230,6 +238,7 @@ app.MapWhatsAppEndpoints();
 app.MapTenantEndpoints();
 app.MapYardOperationsEndpoints();
 app.MapSchedulingEndpoints();
+app.MapAfterSalesEndpoints();
 app.MapHub<YardHub>("/hubs/yard").RequireCors("Client");
 
 app.Run();

@@ -353,3 +353,53 @@
     background: #1eb857;
     transform: translateY(-1px);
 }
+
+.btn-pickup {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.3);
+    flex: 0.85;
+}
+
+.btn-pickup:hover {
+    background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    transform: translateY(-1px);
+}
+
+.pickup-info-badge {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.pickup-tag {
+    color: #4ade80;
+}
+
+.rating-tag {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.15);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.survey-tag {
+    color: #60a5fa;
+    background: rgba(96, 165, 250, 0.15);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.pending-survey-tag {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.12);
+    padding: 1px 5px;
+    border-radius: 4px;
+}

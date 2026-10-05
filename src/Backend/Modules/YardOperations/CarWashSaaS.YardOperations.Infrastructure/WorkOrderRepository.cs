@@ -35,6 +35,45 @@ public sealed class WorkOrderRepository(YardOperationsDbContext dbContext) : IWo
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyCollection<WorkOrder>> GetWorkOrdersPendingSurveyAsync(Guid tenantId, DateTimeOffset cutoff, CancellationToken ct = default) =>
+        await dbContext.WorkOrders
+            .Include(order => order.Items)
+            .Include(order => order.StatusHistory)
+            .Include(order => order.PostServicePhotos)
+            .Where(order => order.TenantId == tenantId &&
+                            order.PickedUpAtUtc.HasValue &&
+                            order.PickedUpAtUtc.Value <= cutoff &&
+                            !order.SurveySentAtUtc.HasValue)
+            .OrderBy(order => order.PickedUpAtUtc)
+            .ToListAsync(ct);
+
+    public async Task<WorkOrder?> GetLatestCompletedOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
+    {
+        var normalized = Customer.NormalizePhone(customerPhone);
+        var customer = await dbContext.Customers
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && (c.NormalizedPhone == normalized || c.Phone == customerPhone), ct);
+
+        if (customer is null) return null;
+
+        return await dbContext.WorkOrders
+            .Include(order => order.Items)
+            .Include(order => order.StatusHistory)
+            .Include(order => order.PostServicePhotos)
+            .Where(order => order.TenantId == tenantId && order.CustomerId == customer.Id && order.PickedUpAtUtc.HasValue)
+            .OrderByDescending(order => order.PickedUpAtUtc)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default) =>
+        await dbContext.WorkOrders
+            .Include(order => order.Items)
+            .Include(order => order.StatusHistory)
+            .Include(order => order.PostServicePhotos)
+            .Where(order => order.TenantId == tenantId && order.SurveySentAtUtc.HasValue)
+            .OrderByDescending(order => order.SurveySentAtUtc)
+            .Take(limit)
+            .ToListAsync(ct);
+
     public async Task AddAsync(WorkOrder workOrder, CancellationToken ct = default) =>
         await dbContext.WorkOrders.AddAsync(workOrder, ct);
 

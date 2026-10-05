@@ -19,6 +19,11 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.Property(order => order.Notes).HasMaxLength(500);
         builder.Property(order => order.AssignedOperatorId);
         builder.Property(order => order.AssignedOperatorName).HasMaxLength(200);
+        builder.Property(order => order.PickedUpAtUtc).HasColumnType("datetimeoffset");
+        builder.Property(order => order.SurveySentAtUtc).HasColumnType("datetimeoffset");
+        builder.Property(order => order.SurveyRating);
+        builder.Property(order => order.SurveyFeedback).HasMaxLength(1000);
+        builder.Property(order => order.SurveyRespondedAtUtc).HasColumnType("datetimeoffset");
 
         builder.Ignore(order => order.TotalAmount);
         builder.Ignore(order => order.EstimatedDurationMinutes);
@@ -27,6 +32,7 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.HasAlternateKey(order => new { order.TenantId, order.Id });
         builder.HasIndex(order => new { order.TenantId, order.CreatedAtUtc });
         builder.HasIndex(order => new { order.TenantId, order.Status });
+        builder.HasIndex(order => new { order.TenantId, order.PickedUpAtUtc, order.SurveySentAtUtc });
 
         builder.HasOne<Customer>()
             .WithMany()

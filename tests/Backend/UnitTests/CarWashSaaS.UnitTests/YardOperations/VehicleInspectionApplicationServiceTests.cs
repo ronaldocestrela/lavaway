@@ -169,6 +169,15 @@ public sealed class VehicleInspectionApplicationServiceTests
             return Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
         }
 
+        public Task<IReadOnlyCollection<WorkOrder>> GetWorkOrdersPendingSurveyAsync(Guid tenantId, DateTimeOffset cutoff, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
+
+        public Task<WorkOrder?> GetLatestCompletedOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default) =>
+            Task.FromResult<WorkOrder?>(null);
+
+        public Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
+
         Task IWorkOrderRepository.AddAsync(WorkOrder workOrder, CancellationToken ct) => Task.CompletedTask;
         void IWorkOrderRepository.Update(WorkOrder workOrder) { }
 

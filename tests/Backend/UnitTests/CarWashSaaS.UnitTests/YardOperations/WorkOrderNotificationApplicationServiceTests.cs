@@ -233,6 +233,9 @@ public sealed class WorkOrderNotificationApplicationServiceTests
         public Task<WorkOrder?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct = default) => Task.FromResult(_orders.FirstOrDefault(o => o.TenantId == tenantId && o.Id == id));
         public Task<IReadOnlyCollection<WorkOrder>> ListRecentAsync(Guid tenantId, int limit = 20, CancellationToken ct = default) => Task.FromResult<IReadOnlyCollection<WorkOrder>>(_orders.Where(o => o.TenantId == tenantId).Take(limit).ToList());
         public Task<IReadOnlyCollection<WorkOrder>> ListActiveAsync(Guid tenantId, CancellationToken ct = default) => Task.FromResult<IReadOnlyCollection<WorkOrder>>(_orders.Where(o => o.TenantId == tenantId && o.Status != WorkOrderStatus.ReadyForPickup).ToList());
+        public Task<IReadOnlyCollection<WorkOrder>> GetWorkOrdersPendingSurveyAsync(Guid tenantId, DateTimeOffset cutoff, CancellationToken ct = default) => Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
+        public Task<WorkOrder?> GetLatestCompletedOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default) => Task.FromResult<WorkOrder?>(null);
+        public Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default) => Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
         public void Update(WorkOrder workOrder) { }
     }
 

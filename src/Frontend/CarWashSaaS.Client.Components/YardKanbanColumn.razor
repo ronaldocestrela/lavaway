@@ -34,7 +34,8 @@
                                 OnAssignOperatorClicked="OnCardAssignOperator"
                                 OnViewHistoryClicked="OnCardViewHistory"
                                 OnComparisonGalleryClicked="OnCardComparisonGallery"
-                                OnNotifyReadyClicked="OnCardNotifyReady" />
+                                OnNotifyReadyClicked="OnCardNotifyReady"
+                                OnPickupClicked="OnCardPickup" />
             }
         }
     </div>
@@ -50,6 +51,7 @@
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardViewHistory { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardComparisonGallery { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardNotifyReady { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnCardPickup { get; set; }
 
     private bool _isDragOver;
 

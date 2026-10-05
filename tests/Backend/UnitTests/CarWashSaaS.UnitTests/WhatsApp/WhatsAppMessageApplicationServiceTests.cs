@@ -172,6 +172,9 @@ public sealed class WhatsAppMessageApplicationServiceTests
         public Task<CustomerCommunicationPreference?> GetByPhoneAsync(Guid tenantId, string normalizedPhone, CancellationToken ct = default)
             => Task.FromResult(pref);
 
+        public Task<IReadOnlyList<CustomerCommunicationPreference>> ListPreferencesAsync(Guid tenantId, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<CustomerCommunicationPreference>>(pref is not null ? [pref] : []);
+
         public Task AddAsync(CustomerCommunicationPreference preference, CancellationToken ct = default) => Task.CompletedTask;
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }

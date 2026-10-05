@@ -99,6 +99,30 @@
             <button type="button" class="btn-step btn-notify-ready" @onclick="HandleNotifyReady" title="Enviar aviso de retirada via WhatsApp">
                 <span>💬 Notificar</span>
             </button>
+            @if (Card.PickedUpAtUtc == null)
+            {
+                <button type="button" class="btn-step btn-pickup" @onclick="HandlePickup" title="Registrar retirada do veículo">
+                    <span>🚗 Retirada</span>
+                </button>
+            }
+            else
+            {
+                <div class="pickup-info-badge" title="Retirado em @Card.PickedUpAtUtc.Value.ToLocalTime().ToString("g")">
+                    <span class="pickup-tag">✅ Retirado</span>
+                    @if (Card.SurveyRating.HasValue)
+                    {
+                        <span class="rating-tag">⭐ @Card.SurveyRating.Value/5</span>
+                    }
+                    else if (Card.SurveySentAtUtc.HasValue)
+                    {
+                        <span class="survey-tag">📩 Enviado</span>
+                    }
+                    else
+                    {
+                        <span class="pending-survey-tag">⏳ Pesquisa 1h</span>
+                    }
+                </div>
+            }
         }
     </div>
 </div>
@@ -112,6 +136,7 @@
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnViewHistoryClicked { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnComparisonGalleryClicked { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnNotifyReadyClicked { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnPickupClicked { get; set; }
 
     private bool IsEligibleForPhotos =>
         Card.ServiceNames.Any(name =>
@@ -217,4 +242,5 @@
     };
 
     private void HandleNotifyReady() => OnNotifyReadyClicked.InvokeAsync(Card);
+    private void HandlePickup() => OnPickupClicked.InvokeAsync(Card);
 }

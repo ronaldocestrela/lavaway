@@ -6,6 +6,7 @@
 @implements IDisposable
 @inject WorkOrderApiClient WorkOrderApi
 @inject YardSetupApiClient YardSetupApi
+@inject AfterSalesApiClient AfterSalesApi
 @inject NavigationManager Navigation
 
 <PageTitle>Pátio &amp; Kanban — Lava-Jato SaaS</PageTitle>
@@ -65,6 +66,7 @@
                          OnOperatorAssignRequested="HandleOperatorAssignAsync"
                          OnComparisonGalleryRequested="HandleComparisonGalleryRequested"
                          OnNotifyReadyClicked="HandleNotifyReadyAsync"
+                         OnPickupClicked="HandlePickupAsync"
                          OnFetchHistory="FetchHistoryAsync" />
     }
 
@@ -233,6 +235,23 @@
         catch (Exception ex)
         {
             _actionError = $"Falha ao enviar notificação de retirada: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandlePickupAsync(WorkOrderKanbanCardDto card)
+    {
+        _actionError = null;
+        _actionSuccess = null;
+        try
+        {
+            await AfterSalesApi.RegisterPickupAsync(card.Id);
+            _actionSuccess = $"Retirada do veículo {card.Plate} ({card.CustomerName}) registrada com sucesso! Pesquisa de satisfação agendada para 1h após a retirada.";
+            await RefreshBoardAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = $"Falha ao registrar retirada: {ex.Message}";
         }
         StateHasChanged();
     }

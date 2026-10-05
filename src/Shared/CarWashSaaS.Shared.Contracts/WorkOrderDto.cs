@@ -16,7 +16,11 @@ public sealed record WorkOrderDto(
     IReadOnlyCollection<WorkOrderItemDto> Items,
     Guid? AssignedOperatorId = null,
     string? AssignedOperatorName = null,
-    IReadOnlyCollection<WorkOrderStatusHistoryDto>? StatusHistory = null);
+    IReadOnlyCollection<WorkOrderStatusHistoryDto>? StatusHistory = null,
+    DateTimeOffset? PickedUpAtUtc = null,
+    DateTimeOffset? SurveySentAtUtc = null,
+    int? SurveyRating = null,
+    DateTimeOffset? SurveyRespondedAtUtc = null);
 
 public sealed record WorkOrderItemDto(
     Guid Id,

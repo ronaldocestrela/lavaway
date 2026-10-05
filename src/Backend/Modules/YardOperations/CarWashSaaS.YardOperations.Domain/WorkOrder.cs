@@ -50,6 +50,11 @@ public sealed class WorkOrder : IMustHaveTenant
     public string? Notes { get; private set; }
     public Guid? AssignedOperatorId { get; private set; }
     public string? AssignedOperatorName { get; private set; }
+    public DateTimeOffset? PickedUpAtUtc { get; private set; }
+    public DateTimeOffset? SurveySentAtUtc { get; private set; }
+    public int? SurveyRating { get; private set; }
+    public string? SurveyFeedback { get; private set; }
+    public DateTimeOffset? SurveyRespondedAtUtc { get; private set; }
 
     public IReadOnlyCollection<WorkOrderItem> Items => _items.AsReadOnly();
     public IReadOnlyCollection<WorkOrderStatusHistory> StatusHistory => _statusHistory.AsReadOnly();
@@ -260,5 +265,90 @@ public sealed class WorkOrder : IMustHaveTenant
 
         _postServicePhotos.Remove(photo);
         return Result.Success();
+    }
+
+    public Result<WorkOrder> RegisterPickup(DateTimeOffset? pickedUpAtUtc = null, string? notes = null)
+    {
+        if (Status != WorkOrderStatus.ReadyForPickup)
+        {
+            return Result<WorkOrder>.Failure(new Error(
+                "work_order.not_ready_for_pickup",
+                "A retirada só pode ser registrada quando a ordem de serviço estiver pronta para retirada.",
+                ErrorType.Conflict));
+        }
+
+        if (PickedUpAtUtc.HasValue)
+        {
+            return Result<WorkOrder>.Failure(new Error(
+                "work_order.already_picked_up",
+                "A retirada do veículo já foi registrada para esta ordem de serviço.",
+                ErrorType.Conflict));
+        }
+
+        var timestamp = pickedUpAtUtc ?? DateTimeOffset.UtcNow;
+        PickedUpAtUtc = timestamp;
+
+        _statusHistory.Add(new WorkOrderStatusHistory(
+            Guid.CreateVersion7(),
+            TenantId,
+            Id,
+            WorkOrderStatus.ReadyForPickup,
+            WorkOrderStatus.ReadyForPickup,
+            timestamp,
+            AssignedOperatorId,
+            AssignedOperatorName,
+            string.IsNullOrWhiteSpace(notes) ? "Veículo entregue ao cliente (Retirada registrada)" : notes.Trim()));
+
+        return Result<WorkOrder>.Success(this);
+    }
+
+    public Result<WorkOrder> RecordSatisfactionSurveySent(DateTimeOffset sentAtUtc)
+    {
+        if (!PickedUpAtUtc.HasValue)
+        {
+            return Result<WorkOrder>.Failure(new Error(
+                "work_order.survey_before_pickup",
+                "A pesquisa de satisfação só pode ser enviada após a retirada do veículo.",
+                ErrorType.Validation));
+        }
+
+        if (SurveySentAtUtc.HasValue)
+        {
+            return Result<WorkOrder>.Failure(new Error(
+                "work_order.survey_already_sent",
+                "A pesquisa de satisfação já foi enviada para esta ordem de serviço.",
+                ErrorType.Conflict));
+        }
+
+        SurveySentAtUtc = sentAtUtc;
+        return Result<WorkOrder>.Success(this);
+    }
+
+    public Result<WorkOrder> MarkSurveySkippedOptOut()
+    {
+        if (SurveySentAtUtc.HasValue)
+        {
+            return Result<WorkOrder>.Success(this);
+        }
+
+        SurveySentAtUtc = DateTimeOffset.UtcNow;
+        SurveyFeedback = "[Ignorado: Cliente com Opt-out ativo]";
+        return Result<WorkOrder>.Success(this);
+    }
+
+    public Result<WorkOrder> RecordSatisfactionRating(int rating, string? feedback = null, DateTimeOffset? respondedAtUtc = null)
+    {
+        if (rating < 1 || rating > 5)
+        {
+            return Result<WorkOrder>.Failure(new Error(
+                "work_order.survey_rating_invalid",
+                "A avaliação deve ser entre 1 e 5 estrelas.",
+                ErrorType.Validation));
+        }
+
+        SurveyRating = rating;
+        SurveyFeedback = string.IsNullOrWhiteSpace(feedback) ? SurveyFeedback : feedback.Trim();
+        SurveyRespondedAtUtc = respondedAtUtc ?? DateTimeOffset.UtcNow;
+        return Result<WorkOrder>.Success(this);
     }
 }
