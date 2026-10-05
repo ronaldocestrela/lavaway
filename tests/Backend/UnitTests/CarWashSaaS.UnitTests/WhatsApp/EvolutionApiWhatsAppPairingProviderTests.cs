@@ -32,6 +32,24 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
     }
 
     [Fact]
+    public async Task GeneratePairingAsync_Should_Return_Fallback_When_Network_Fails()
+    {
+        var handler = new ExceptionHttpMessageHandler(new HttpRequestException("Connection refused"));
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:8080/")
+        };
+
+        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+        var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        var result = await provider.GeneratePairingAsync(tenantId);
+
+        Assert.Equal("lavaway-11111111111111111111111111111111", result.ProviderSessionId);
+        Assert.StartsWith("evolution:lavaway-11111111111111111111111111111111:", result.QrCodeValue);
+    }
+
+    [Fact]
     public void DependencyInjection_Should_Resolve_EvolutionApiWhatsAppPairingProvider_Without_Ambiguity()
     {
         var services = new ServiceCollection();
@@ -70,6 +88,12 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromResult(response);
+    }
+
+    private sealed class ExceptionHttpMessageHandler(Exception exception) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromException<HttpResponseMessage>(exception);
     }
 }
 

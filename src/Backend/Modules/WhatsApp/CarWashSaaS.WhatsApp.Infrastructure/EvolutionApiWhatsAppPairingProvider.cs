@@ -44,17 +44,30 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
         request.Headers.Add("apikey", _apiKey);
         request.Content = new StringContent("{\"webhook\":false}", Encoding.UTF8, "application/json");
 
-        using var response = await _httpClient.SendAsync(request, ct);
-        var responseBody = await response.Content.ReadAsStringAsync(ct);
-
-        if (!response.IsSuccessStatusCode)
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(request, ct);
+        }
+        catch (HttpRequestException)
         {
             var fallbackQr = $"evolution:{instanceName}:{DateTime.UtcNow:O}";
             return (instanceName, fallbackQr);
         }
 
-        var qrCodeValue = ExtractQrCodeValue(responseBody, instanceName);
-        return (instanceName, qrCodeValue);
+        using (response)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var fallbackQr = $"evolution:{instanceName}:{DateTime.UtcNow:O}";
+                return (instanceName, fallbackQr);
+            }
+
+            var qrCodeValue = ExtractQrCodeValue(responseBody, instanceName);
+            return (instanceName, qrCodeValue);
+        }
     }
 
     private string BuildInstanceName(Guid tenantId)

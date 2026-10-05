@@ -120,15 +120,22 @@ O arquivo `.env` já vem pré-configurado com as credenciais padrões de desenvo
 - String de conexão para o SQL Server local.
 - Credenciais e portas para MinIO e RabbitMQ.
 - Chave de assinatura e emissores para JWT (`Authentication__*`).
+- **Integração WhatsApp (Evolution API)**:
+  - `EVOLUTION_API_KEY`: Chave mestre de autenticação da Evolution API (`CHANGE_ME`).
+  - `EVOLUTION_API_PORT`: Porta HTTP exposta do container (`8080`).
+  - `WhatsApp__EvolutionApi__BaseUrl`: URL consumida pela API backend (`http://localhost:8080/`).
+  - `WhatsApp__EvolutionApi__ApiKey`: Chave enviada no cabeçalho `apikey` (`CHANGE_ME`).
+  - `WhatsApp__EvolutionApi__InstanceNamePrefix`: Prefixo identificador das instâncias por tenant (`lavaway`).
+  - `WhatsApp__EvolutionApi__WebhookSecret`: Segredo para validação de callbacks via `X-Webhook-Secret` (`LavawayEvolutionWebhookSecretDev2026!`).
 
 > [!NOTE]
-> Mantenha a senha do SQL Server consistente entre `MSSQL_SA_PASSWORD` e o parâmetro `Password` da variável `ConnectionStrings__CarWashSaaS`.
+> Mantenha a senha do SQL Server consistente entre `MSSQL_SA_PASSWORD` e o parâmetro `Password` da variável `ConnectionStrings__CarWashSaaS`. Garanta também que `WhatsApp__EvolutionApi__ApiKey` coincida com `EVOLUTION_API_KEY`.
 
 ---
 
 ### 2. Subir os serviços de infraestrutura (Docker)
 
-Inicie os containers do SQL Server 2022, MinIO e RabbitMQ:
+Inicie os containers do SQL Server 2022, MinIO, RabbitMQ e Evolution API:
 
 ```sh
 docker compose up -d
@@ -227,6 +234,8 @@ dotnet run --project src/Frontend/CarWashSaaS.Client.Web
 | **RabbitMQ Dashboard** | Painel de filas e mensageria | `http://localhost:15672` | Usuário: `lavaway`<br>Senha: `LavawayRabbitDev2026` |
 | **RabbitMQ AMQP** | Porta do broker de mensagens | `localhost:5672` | Idem |
 | **SQL Server 2022** | Banco de dados relacional | `localhost:1433` | Usuário: `sa`<br>Senha: `LavawaySqlDev2026!` |
+| **Evolution API** | API WhatsApp / Provedor | `http://localhost:8080` | Header `apikey`: `CHANGE_ME` |
+| **Evolution Manager** | Painel Web de Instâncias | `http://localhost:8080/manager` | Token / Chave: `CHANGE_ME` |
 
 ---
 

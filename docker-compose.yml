@@ -52,7 +52,22 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  evolution-api:
+    image: evoapicloud/evolution-api:v1.8.2
+    environment:
+      SERVER_PORT: "8080"
+      SERVER_URL: "http://localhost:8080"
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-CHANGE_ME}
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
+      DATABASE_ENABLED: "false"
+    ports:
+      - "127.0.0.1:${EVOLUTION_API_PORT:-8080}:8080"
+    volumes:
+      - evolution-instances:/evolution/instances
+    restart: unless-stopped
+
 volumes:
   sqlserver-data:
   minio-data:
   rabbitmq-data:
+  evolution-instances:
