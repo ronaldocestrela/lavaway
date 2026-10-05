@@ -520,3 +520,171 @@
         transition: none;
     }
 }
+
+.kanban-toolbar {
+    background: #ffffff;
+    border-color: #e1e9e3;
+    box-shadow: 0 2px 8px rgba(30, 53, 43, 0.03);
+}
+
+.capacity-indicator {
+    background: #f8fafc;
+    border-color: #e1e9e3;
+}
+
+.capacity-header {
+    color: #64748b;
+}
+
+.capacity-numbers {
+    color: #334155;
+}
+
+.capacity-numbers strong {
+    color: #059669;
+}
+
+.capacity-bar {
+    background: #e2e8f0;
+}
+
+.search-input-group,
+.operator-filter-select {
+    background: #ffffff;
+    border-color: #dce5de;
+    color: #365148;
+}
+
+.search-input {
+    color: #283c34;
+}
+
+.search-input::placeholder,
+.btn-clear-search {
+    color: #94a3b8;
+}
+
+.operator-filter-select option {
+    background: #ffffff;
+    color: #283c34;
+}
+
+.live-active,
+.live-polling {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+}
+
+.btn-refresh {
+    background: #ffffff;
+    border-color: #d8e3db;
+    color: #365148;
+}
+
+.btn-refresh:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #a9c2b0;
+}
+
+.search-input:focus-visible,
+.operator-filter-select:focus-visible,
+.btn-clear-search:focus-visible,
+.btn-refresh:focus-visible,
+.btn-dismiss-alert:focus-visible,
+.form-select:focus-visible,
+.form-textarea:focus-visible,
+.btn-modal:focus-visible,
+.operator-choice-btn:focus-visible {
+    outline-color: #dfa449;
+}
+
+.error-alert {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.modal-dialog {
+    background: #ffffff;
+    border-color: #e1e9e3;
+    box-shadow: 0 20px 40px rgba(30, 53, 43, 0.18);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: #e1e9e3;
+}
+
+.modal-eyebrow {
+    color: #6c8075;
+}
+
+.modal-title,
+.operator-choice-info strong {
+    color: #20352f;
+}
+
+.modal-plate-tag {
+    background: #f8fafc;
+    border-color: #d8e3db;
+    color: #365148;
+}
+
+.modal-desc,
+.operator-choice-info small {
+    color: #77867f;
+}
+
+.form-label {
+    color: #365148;
+}
+
+.form-select,
+.form-textarea {
+    background: #ffffff;
+    border-color: #dce5de;
+    color: #283c34;
+}
+
+.form-select option {
+    background: #ffffff;
+    color: #283c34;
+}
+
+.form-textarea:focus,
+.form-select:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+.btn-cancel {
+    background: #f1f5f9;
+    color: #365148;
+}
+
+.btn-cancel:hover {
+    background: #e2e8f0;
+}
+
+.operator-choice-btn {
+    background: #ffffff;
+    border-color: #e1e9e3;
+    color: #365148;
+}
+
+.operator-choice-btn:hover {
+    background: #f8fafc;
+    border-color: #b9d1c1;
+}
+
+.operator-choice-btn.selected {
+    background: #f0fdf4;
+    border-color: #10b981;
+}
+
+.operator-choice-avatar {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+}

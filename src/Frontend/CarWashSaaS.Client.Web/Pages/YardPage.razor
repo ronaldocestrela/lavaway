@@ -13,18 +13,20 @@
 <PageTitle>Pátio &amp; Kanban — Lava-Jato SaaS</PageTitle>
 
 <div class="yard-page-container">
-    <div class="page-header">
-        <div class="header-titles">
-            <span class="eyebrow">FLUXO OPERACIONAL</span>
+    <header class="page-heading">
+        <div>
+            <div class="eyebrow">
+                <span class="eyebrow-mark"></span>
+                <span>FLUXO OPERACIONAL</span>
+            </div>
             <h1 class="page-title">Quadro do Pátio &amp; Kanban</h1>
             <p class="page-subtitle">Acompanhamento e transição de veículos em atendimento em tempo real.</p>
         </div>
-        <div class="header-actions">
-            <button id="btn-header-new-reception" type="button" class="btn-primary-action" @onclick="NavigateToReception">
-                <span>+ Novo Check-in</span>
-            </button>
-        </div>
-    </div>
+        <button id="btn-header-new-reception" type="button" class="button button-primary" @onclick="NavigateToReception">
+            <span class="button-plus">+</span>
+            <span>Novo Check-in</span>
+        </button>
+    </header>
 
     @if (_isLoading)
     {

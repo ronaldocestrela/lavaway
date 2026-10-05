@@ -513,3 +513,199 @@
         transform: none;
     }
 }
+
+.kanban-card {
+    background: #ffffff;
+    border-color: #e1e9e3;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(30, 53, 43, 0.02);
+    color: #243631;
+}
+
+.kanban-card:hover {
+    box-shadow: 0 4px 12px rgba(30, 53, 43, 0.08);
+}
+
+.card-ready {
+    background: #f0fdf4;
+}
+
+.plate-box {
+    background: #f8fafc;
+    border-color: #b9d1c1;
+    box-shadow: 0 2px 4px rgba(30, 53, 43, 0.08);
+}
+
+.plate-number {
+    color: #20352f;
+}
+
+.size-badge {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.customer-name {
+    color: #1e293b;
+}
+
+.order-id {
+    color: #77867f;
+}
+
+.service-chip {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+.service-chip-more {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.card-metrics {
+    border-top-color: #e1e9e3;
+    border-bottom-color: #e1e9e3;
+}
+
+.metric-item {
+    color: #64748b;
+}
+
+.metric-price {
+    color: #059669;
+}
+
+.card-notes {
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.operator-badge {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+.operator-avatar {
+    background: #059669;
+}
+
+.operator-name {
+    color: #365148;
+}
+
+.btn-assign-operator {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+
+.btn-assign-operator:hover {
+    background: #f8fafc;
+    color: #20352f;
+    border-color: #a9c2b0;
+}
+
+.btn-history-trigger {
+    color: #64748b;
+}
+
+.btn-history-trigger:hover {
+    color: #365148;
+}
+
+.btn-gallery-trigger {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+}
+
+.btn-gallery-trigger:hover {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
+}
+
+.btn-pix-trigger,
+.btn-pay-trigger {
+    background: #f0fdf4;
+    border-color: #b5e466;
+    color: #365148;
+}
+
+.btn-pix-trigger:hover,
+.btn-pay-trigger:hover {
+    background: #dcfce7;
+    color: #17332c;
+    border-color: #a3d856;
+}
+
+.btn-pix-settled,
+.payment-badge-paid {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+}
+
+.payment-badge-subscription {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+.btn-advance {
+    background: #c6f277;
+    color: #17332c;
+}
+
+.btn-advance:hover {
+    background: #b6e564;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.14);
+}
+
+.btn-rewind {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
+}
+
+.btn-rewind:hover {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.ready-stamp {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+}
+
+.pickup-info-badge {
+    background: #ffffff;
+    border-color: #e1e9e3;
+    color: #365148;
+}
+
+.pickup-tag {
+    color: #047857;
+}
+
+.survey-tag {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.pending-survey-tag {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.btn-assign-operator:focus-visible,
+.btn-history-trigger:focus-visible,
+.btn-gallery-trigger:focus-visible,
+.btn-pix-trigger:focus-visible,
+.btn-pay-trigger:focus-visible,
+.btn-step:focus-visible {
+    outline-color: #dfa449;
+}
