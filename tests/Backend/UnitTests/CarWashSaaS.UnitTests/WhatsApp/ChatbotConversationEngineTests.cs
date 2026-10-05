@@ -12,6 +12,7 @@ public sealed class ChatbotConversationEngineTests
     private readonly FakeOutboundWhatsAppDispatcher _dispatcher = new();
     private readonly FakeCustomerCommunicationPreferenceRepository _preferenceRepo = new();
     private readonly FakeAfterSalesLookup _afterSalesLookup = new();
+    private readonly FakeLoyaltyLookup _loyaltyLookup = new();
     private readonly ChatbotConversationEngine _sut;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly string _customerPhone = "11999998888";
@@ -24,7 +25,8 @@ public sealed class ChatbotConversationEngineTests
             _storeProfileLookup,
             _dispatcher,
             _preferenceRepo,
-            _afterSalesLookup);
+            _afterSalesLookup,
+            loyaltyLookup: _loyaltyLookup);
     }
 
     [Fact]
@@ -557,5 +559,74 @@ public sealed class ChatbotConversationEngineTests
         Assert.Single(_dispatcher.SentMessages);
         Assert.Contains("retorno sincero", _dispatcher.SentMessages[0].Text);
         Assert.Contains("Lamentamos que sua experiência não tenha sido impecável", _dispatcher.SentMessages[0].Text);
+    }
+
+    [Theory]
+    [InlineData("FIDELIDADE")]
+    [InlineData("pontos")]
+    [InlineData("selos")]
+    [InlineData("meus pontos")]
+    [InlineData("quantos selos eu tenho?")]
+    public async Task ProcessIncomingMessage_When_Loyalty_Keyword_Received_Should_Return_Progress(string keyword)
+    {
+        _loyaltyLookup.Summary = new CustomerLoyaltySummaryDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Carlos Eduardo",
+            _customerPhone,
+            Balance: 9,
+            TargetStamps: 10,
+            RemainingStamps: 1,
+            RewardTitle: "Lavagem Completa Grátis",
+            IsReadyForRedemption: false,
+            IsNearRedemption: true,
+            LastAccrualAtUtc: DateTimeOffset.UtcNow);
+
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", keyword);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        var reply = _dispatcher.SentMessages[0].Text;
+        Assert.Contains("Cartão Fidelidade", reply);
+        Assert.Contains("9/10 selos", reply);
+        Assert.Contains("Falta apenas 1 serviço", reply);
+        Assert.Contains("Lavagem Completa Grátis", reply);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_When_Loyalty_Target_Reached_Should_Inform_Reward_Ready()
+    {
+        _loyaltyLookup.Summary = new CustomerLoyaltySummaryDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Carlos Eduardo",
+            _customerPhone,
+            Balance: 10,
+            TargetStamps: 10,
+            RemainingStamps: 0,
+            RewardTitle: "Lavagem Completa Grátis",
+            IsReadyForRedemption: true,
+            IsNearRedemption: false,
+            LastAccrualAtUtc: DateTimeOffset.UtcNow);
+
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "fidelidade");
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        var reply = _dispatcher.SentMessages[0].Text;
+        Assert.Contains("Parabéns!", reply);
+        Assert.Contains("Recompensa Disponível", reply);
+        Assert.Contains("10/10 selos", reply);
+    }
+
+    private sealed class FakeLoyaltyLookup : ILoyaltyLookup
+    {
+        public CustomerLoyaltySummaryDto? Summary { get; set; }
+
+        public Task<Result<CustomerLoyaltySummaryDto?>> GetLoyaltySummaryByPhoneAsync(Guid tenantId, string phone, CancellationToken ct = default) =>
+            Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Success(Summary));
+
+        public Task<Result<CustomerLoyaltySummaryDto?>> GetLoyaltySummaryByCustomerIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
+            Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Success(Summary));
     }
 }

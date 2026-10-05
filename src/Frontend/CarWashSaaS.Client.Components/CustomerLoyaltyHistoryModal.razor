@@ -1,0 +1,91 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-card" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <h3 class="modal-title">🏷️ Extrato do Cartão Fidelidade</h3>
+                    <p class="modal-subtitle">@CustomerName &bull; Saldo Atual: <strong>@Balance / @TargetStamps selos</strong></p>
+                </div>
+                <button class="btn-close" type="button" @onclick="HandleClose" aria-label="Fechar">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                @if (IsLoading)
+                {
+                    <div class="loading-state">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <p>Carregando histórico de fidelidade...</p>
+                    </div>
+                }
+                else if (Transactions.Count == 0)
+                {
+                    <div class="empty-state">
+                        <p>Nenhuma transação de fidelidade registrada para este cliente até o momento.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-container">
+                        <table class="loyalty-table">
+                            <thead>
+                                <tr>
+                                    <th>Data / Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Selos</th>
+                                    <th>Saldo</th>
+                                    <th>Descrição / OS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var tx in Transactions)
+                                {
+                                    <tr>
+                                        <td>@tx.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>
+                                            @if (tx.Type == "Accrual")
+                                            {
+                                                <span class="badge badge-accrual">+ Crédito OS</span>
+                                            }
+                                            else if (tx.Type == "Redemption")
+                                            {
+                                                <span class="badge badge-redemption">🎁 Resgate</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-adjustment">⚙️ Ajuste</span>
+                                            }
+                                        </td>
+                                        <td class="@(tx.Amount > 0 ? "amount-positive" : "amount-negative")">
+                                            @(tx.Amount > 0 ? $"+{tx.Amount}" : tx.Amount.ToString())
+                                        </td>
+                                        <td><strong>@tx.BalanceAfter</strong></td>
+                                        <td>@(string.IsNullOrWhiteSpace(tx.WorkOrderNumber) ? tx.Description : $"{tx.WorkOrderNumber} - {tx.Description}")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                <button class="btn btn-secondary" type="button" @onclick="HandleClose">Fechar</button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string CustomerName { get; set; } = string.Empty;
+    [Parameter] public int Balance { get; set; }
+    [Parameter] public int TargetStamps { get; set; }
+    [Parameter] public IReadOnlyList<CustomerLoyaltyTransactionDto> Transactions { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private Task HandleClose() => OnClose.InvokeAsync();
+}

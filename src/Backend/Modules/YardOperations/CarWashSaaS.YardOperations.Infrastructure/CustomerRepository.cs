@@ -10,6 +10,10 @@ public sealed class CustomerRepository(YardOperationsDbContext dbContext) : ICus
         dbContext.Customers
             .FirstOrDefaultAsync(customer => customer.TenantId == tenantId && customer.Id == customerId, ct);
 
+    public Task<Customer?> GetByNormalizedPhoneAsync(Guid tenantId, string normalizedPhone, CancellationToken ct = default) =>
+        dbContext.Customers
+            .FirstOrDefaultAsync(customer => customer.TenantId == tenantId && customer.NormalizedPhone == normalizedPhone, ct);
+
     public async Task AddAsync(Customer customer, CancellationToken ct = default) =>
         await dbContext.Customers.AddAsync(customer, ct);
 }

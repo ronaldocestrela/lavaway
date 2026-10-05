@@ -14,7 +14,8 @@ public sealed class WorkOrderApplicationService(
     IYardRealtimeNotifier? realtimeNotifier = null,
     ITenantObjectStorage? tenantObjectStorage = null,
     IVehicleInspectionRepository? vehicleInspectionRepository = null,
-    IBackgroundQueue? backgroundQueue = null) : IWorkOrderPaymentLookup, IWorkOrderPaymentSettlementService
+    IBackgroundQueue? backgroundQueue = null,
+    LoyaltyApplicationService? loyaltyApplicationService = null) : IWorkOrderPaymentLookup, IWorkOrderPaymentSettlementService
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -243,6 +244,11 @@ public sealed class WorkOrderApplicationService(
         {
             var payload = System.Text.Json.JsonSerializer.Serialize(new WorkOrderReadyEventPayload(workOrder.Id));
             await backgroundQueue.EnqueueAsync(new TenantQueueMessage(tenantId, WorkOrderNotificationEvents.ReadyForPickup, payload, workOrder.Id), ct);
+        }
+
+        if (targetStatus == WorkOrderStatus.ReadyForPickup && loyaltyApplicationService is not null)
+        {
+            await loyaltyApplicationService.ProcessWorkOrderLoyaltyAccrualAsync(tenantId, workOrder.Id, ct);
         }
 
         var customer = await customerRepository.GetByIdAsync(tenantId, workOrder.CustomerId, ct);
@@ -823,6 +829,11 @@ public sealed class WorkOrderApplicationService(
                 $"Pagamento confirmado ({paymentMethod}) - OS Baixada");
 
             await realtimeNotifier.NotifyWorkOrderMovedAsync(tenantId, notification, ct);
+        }
+
+        if (loyaltyApplicationService is not null)
+        {
+            await loyaltyApplicationService.ProcessWorkOrderLoyaltyAccrualAsync(tenantId, workOrderId, ct);
         }
 
         return Result<WorkOrderPaymentSettlementDto>.Success(new WorkOrderPaymentSettlementDto(

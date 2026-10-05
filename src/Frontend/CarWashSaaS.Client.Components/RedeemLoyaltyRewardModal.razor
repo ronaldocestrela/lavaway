@@ -1,0 +1,126 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-card" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <h3 class="modal-title">🎁 Resgate de Recompensa de Fidelidade</h3>
+                    <p class="modal-subtitle">@CustomerName</p>
+                </div>
+                <button class="btn-close" type="button" @onclick="HandleCancel" aria-label="Fechar">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <div class="reward-highlight-box">
+                    <span class="reward-icon">🏆</span>
+                    <div class="reward-info">
+                        <div class="reward-title">@RewardTitle</div>
+                        <div class="reward-cost">Custo: <strong>@TargetStamps selos</strong> &bull; Saldo Atual: <strong>@Balance selos</strong></div>
+                    </div>
+                </div>
+
+                @if (Balance < TargetStamps)
+                {
+                    <div class="alert alert-warning">
+                        ⚠️ Saldo insuficiente para resgate. O cliente possui @Balance selos, mas são necessários @TargetStamps selos.
+                    </div>
+                }
+                else
+                {
+                    <div class="balance-preview">
+                        <div class="preview-item">
+                            <span>Saldo Atual</span>
+                            <strong>@Balance selos</strong>
+                        </div>
+                        <div class="preview-arrow">➔</div>
+                        <div class="preview-item text-danger">
+                            <span>Débito</span>
+                            <strong>-@TargetStamps selos</strong>
+                        </div>
+                        <div class="preview-arrow">➔</div>
+                        <div class="preview-item text-success">
+                            <span>Novo Saldo</span>
+                            <strong>@(Balance - TargetStamps) selos</strong>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="notes">Observações do Resgate (Opcional):</label>
+                        <input id="notes" class="form-input" type="text" placeholder="Ex: Utilizado na OS #1042 ou cortesia balcão" @bind="_notes" />
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        @_errorMessage
+                    </div>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                <button class="btn btn-secondary" type="button" @onclick="HandleCancel" disabled="@_isSubmitting">Cancelar</button>
+                <button class="btn btn-primary" type="button" @onclick="HandleConfirm" disabled="@(_isSubmitting || Balance < TargetStamps)">
+                    @if (_isSubmitting)
+                    {
+                        <span class="spinner-sm" aria-hidden="true"></span>
+                        <span>Processando...</span>
+                    }
+                    else
+                    {
+                        <span>Confirmar Resgate</span>
+                    }
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public Guid CustomerId { get; set; }
+    [Parameter] public string CustomerName { get; set; } = string.Empty;
+    [Parameter] public int Balance { get; set; }
+    [Parameter] public int TargetStamps { get; set; }
+    [Parameter] public string RewardTitle { get; set; } = string.Empty;
+    [Parameter] public EventCallback<RedeemLoyaltyRewardRequest> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string _notes = string.Empty;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            _notes = string.Empty;
+            _errorMessage = null;
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleConfirm()
+    {
+        if (Balance < TargetStamps) return;
+
+        try
+        {
+            _isSubmitting = true;
+            _errorMessage = null;
+            await OnConfirm.InvokeAsync(new RedeemLoyaltyRewardRequest(CustomerId, string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim()));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private Task HandleCancel() => OnCancel.InvokeAsync();
+}

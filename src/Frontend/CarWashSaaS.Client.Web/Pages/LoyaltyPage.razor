@@ -1,0 +1,496 @@
+@page "/loyalty"
+@attribute [Authorize(Roles = "Administrator,Receptionist")]
+@using CarWashSaaS.Shared.Contracts
+@inject LoyaltyApiClient LoyaltyApi
+@inject IToastService ToastService
+
+<PageTitle>Fidelidade &amp; Selos - Lavaway</PageTitle>
+
+<div class="loyalty-page-container">
+    <header class="page-header">
+        <div class="header-titles">
+            <h1 class="page-title">🏷️ Programa de Fidelidade</h1>
+            <p class="page-subtitle">Acompanhe o acúmulo de selos, resgates e engajamento dos seus clientes.</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" type="button" @onclick="OpenConfigModal">
+                ⚙️ Configurar Regras
+            </button>
+            <button class="btn btn-secondary" type="button" @onclick="LoadDataAsync" disabled="@_isLoading">
+                🔄 Atualizar
+            </button>
+        </div>
+    </header>
+
+    @if (_isLoading && _accounts.Count == 0)
+    {
+        <div class="loading-state">
+            <span class="spinner" aria-hidden="true"></span>
+            <p>Carregando dados de fidelidade...</p>
+        </div>
+    }
+    else
+    {
+        <!-- KPI Cards -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon icon-blue">👥</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Clientes no Programa</span>
+                    <strong class="kpi-value">@_accounts.Count</strong>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon icon-green">🏷️</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Selos Ativos em Saldo</span>
+                    <strong class="kpi-value">@_accounts.Sum(a => a.Balance)</strong>
+                </div>
+            </div>
+            <div class="kpi-card highlight-card">
+                <div class="kpi-icon icon-orange">🔥</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Falta Apenas 1 Serviço</span>
+                    <strong class="kpi-value">@_accounts.Count(a => a.IsNearRedemption)</strong>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon icon-purple">🏆</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Prontos para Resgate</span>
+                    <strong class="kpi-value">@_accounts.Count(a => a.IsReadyForRedemption)</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filtros e Busca -->
+        <section class="filter-bar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input class="search-input"
+                       type="text"
+                       placeholder="Buscar por cliente ou telefone..."
+                       @bind="_searchQuery"
+                       @bind:event="oninput" />
+            </div>
+
+            <div class="filter-chips">
+                <button class="chip @(_filterStatus == "all" ? "active" : "")" type="button" @onclick='() => _filterStatus = "all"'>
+                    Todos (@_accounts.Count)
+                </button>
+                <button class="chip @(_filterStatus == "ready" ? "active" : "")" type="button" @onclick='() => _filterStatus = "ready"'>
+                    🎁 Prontos para Resgate (@_accounts.Count(a => a.IsReadyForRedemption))
+                </button>
+                <button class="chip @(_filterStatus == "near" ? "active" : "")" type="button" @onclick='() => _filterStatus = "near"'>
+                    🔥 Falta 1 Serviço (@_accounts.Count(a => a.IsNearRedemption))
+                </button>
+                <button class="chip @(_filterStatus == "progress" ? "active" : "")" type="button" @onclick='() => _filterStatus = "progress"'>
+                    🏷️ Em Progresso (@_accounts.Count(a => !a.IsReadyForRedemption && !a.IsNearRedemption && a.Balance > 0))
+                </button>
+            </div>
+        </section>
+
+        <!-- Tabela de Clientes -->
+        <section class="table-card">
+            @if (FilteredAccounts.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>Nenhum cliente encontrado para os critérios selecionados.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="loyalty-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Telefone</th>
+                                <th>Progresso de Selos</th>
+                                <th>Status</th>
+                                <th>Recompensa Alvo</th>
+                                <th>Último Acúmulo</th>
+                                <th class="text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var acc in FilteredAccounts)
+                            {
+                                var pct = acc.TargetStamps > 0 ? Math.Clamp((acc.Balance * 100) / acc.TargetStamps, 0, 100) : 0;
+                                <tr>
+                                    <td>
+                                        <div class="customer-name">@acc.CustomerName</div>
+                                    </td>
+                                    <td>@acc.CustomerPhone</td>
+                                    <td>
+                                        <div class="progress-cell">
+                                            <div class="progress-bar-bg">
+                                                <div class="progress-bar-fill @(acc.IsReadyForRedemption ? "fill-complete" : (acc.IsNearRedemption ? "fill-near" : ""))"
+                                                     style="width: @(pct)%"></div>
+                                            </div>
+                                            <span class="progress-label"><strong>@acc.Balance</strong> / @acc.TargetStamps selos</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (acc.IsReadyForRedemption)
+                                        {
+                                            <span class="badge badge-ready">🏆 Apto para Resgate</span>
+                                        }
+                                        else if (acc.IsNearRedemption)
+                                        {
+                                            <span class="badge badge-near">🔥 Falta 1 Serviço</span>
+                                        }
+                                        else if (acc.Balance > 0)
+                                        {
+                                            <span class="badge badge-progress">🏷️ @acc.RemainingStamps restantes</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-neutral">Novo</span>
+                                        }
+                                    </td>
+                                    <td><span class="reward-tag">🎁 @acc.RewardTitle</span></td>
+                                    <td>@(acc.LastAccrualAtUtc.HasValue ? acc.LastAccrualAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                    <td class="text-right">
+                                        <div class="action-buttons">
+                                            <button class="btn-action btn-history" type="button" title="Ver Extrato" @onclick="() => OpenHistoryModal(acc)">
+                                                📜 Extrato
+                                            </button>
+                                            @if (acc.IsReadyForRedemption)
+                                            {
+                                                <button class="btn-action btn-redeem" type="button" title="Resgatar Recompensa" @onclick="() => OpenRedeemModal(acc)">
+                                                    🎁 Resgatar
+                                                </button>
+                                            }
+                                            <AuthorizeView Roles="Administrator">
+                                                <Authorized>
+                                                    <button class="btn-action btn-adjust" type="button" title="Ajuste Manual" @onclick="() => OpenAdjustModal(acc)">
+                                                        ⚙️
+                                                    </button>
+                                                </Authorized>
+                                            </AuthorizeView>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+<!-- Modal: Extrato de Transações -->
+<CustomerLoyaltyHistoryModal
+    IsOpen="@_isHistoryOpen"
+    IsLoading="@_isLoadingHistory"
+    CustomerName="@_selectedAccount?.CustomerName"
+    Balance="@(_selectedAccount?.Balance ?? 0)"
+    TargetStamps="@(_selectedAccount?.TargetStamps ?? 10)"
+    Transactions="@_selectedTransactions"
+    OnClose="() => _isHistoryOpen = false" />
+
+<!-- Modal: Resgate de Recompensa -->
+<RedeemLoyaltyRewardModal
+    IsOpen="@_isRedeemOpen"
+    CustomerId="@(_selectedAccount?.CustomerId ?? Guid.Empty)"
+    CustomerName="@_selectedAccount?.CustomerName"
+    Balance="@(_selectedAccount?.Balance ?? 0)"
+    TargetStamps="@(_selectedAccount?.TargetStamps ?? 10)"
+    RewardTitle="@(_selectedAccount?.RewardTitle ?? string.Empty)"
+    OnConfirm="HandleRedeemConfirm"
+    OnCancel="() => _isRedeemOpen = false" />
+
+<!-- Modal: Configuração de Regras do Programa -->
+@if (_isConfigOpen && _programConfig is not null)
+{
+    <div class="modal-backdrop" @onclick="() => _isConfigOpen = false">
+        <div class="modal-card config-modal" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <h3 class="modal-title">⚙️ Regras do Programa de Fidelidade</h3>
+                    <p class="modal-subtitle">Defina a meta de selos, recompensa e elegibilidade de serviços do seu estabelecimento.</p>
+                </div>
+                <button class="btn-close" type="button" @onclick="() => _isConfigOpen = false">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_configIsEnabled" />
+                        <span><strong>Ativar Programa de Fidelidade</strong> (acumula selos automaticamente)</span>
+                    </label>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label class="form-label" for="cfgTarget">Meta de Selos para Resgate:</label>
+                        <input id="cfgTarget" class="form-input" type="number" min="1" max="100" @bind="_configTargetStamps" />
+                        <span class="form-hint">Padrão recomendado: 10 selos</span>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label class="form-label" for="cfgProximity">Avisar quando faltar:</label>
+                        <input id="cfgProximity" class="form-input" type="number" min="1" max="5" @bind="_configProximityThreshold" />
+                        <span class="form-hint">1 serviço restante</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="cfgReward">Título da Recompensa:</label>
+                    <input id="cfgReward" class="form-input" type="text" placeholder="Ex: Lavagem Completa Grátis" @bind="_configRewardTitle" />
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_configAllServicesEligible" />
+                        <span>Todos os serviços concedem selos</span>
+                    </label>
+                </div>
+
+                @if (!_configAllServicesEligible)
+                {
+                    <div class="form-group">
+                        <label class="form-label" for="cfgCategories">Categorias Elegíveis (separadas por vírgula):</label>
+                        <input id="cfgCategories" class="form-input" type="text" placeholder="Ex: Lavagem, Estética, Detalhamento" @bind="_configEligibleCategoryFilter" />
+                    </div>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                <button class="btn btn-secondary" type="button" @onclick="() => _isConfigOpen = false">Cancelar</button>
+                <button class="btn btn-primary" type="button" @onclick="SaveProgramConfigAsync" disabled="@_isSavingConfig">
+                    @if (_isSavingConfig)
+                    {
+                        <span>Salvando...</span>
+                    }
+                    else
+                    {
+                        <span>Salvar Configurações</span>
+                    }
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+<!-- Modal: Ajuste Manual de Saldo -->
+@if (_isAdjustOpen && _selectedAccount is not null)
+{
+    <div class="modal-backdrop" @onclick="() => _isAdjustOpen = false">
+        <div class="modal-card adjust-modal" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <h3 class="modal-title">⚙️ Ajuste Manual de Selos</h3>
+                    <p class="modal-subtitle">@_selectedAccount.CustomerName &bull; Saldo Atual: @_selectedAccount.Balance selos</p>
+                </div>
+                <button class="btn-close" type="button" @onclick="() => _isAdjustOpen = false">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="adjDelta">Quantidade de Selos (+ para crédito, - para débito):</label>
+                    <input id="adjDelta" class="form-input" type="number" @bind="_adjustDelta" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="adjReason">Motivo do Ajuste (Obrigatório para Auditoria):</label>
+                    <input id="adjReason" class="form-input" type="text" placeholder="Ex: Bonificação cortesia ou correção de lançamento" @bind="_adjustReason" />
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button class="btn btn-secondary" type="button" @onclick="() => _isAdjustOpen = false">Cancelar</button>
+                <button class="btn btn-primary" type="button" @onclick="HandleAdjustConfirm" disabled="@(_adjustDelta == 0 || string.IsNullOrWhiteSpace(_adjustReason))">
+                    Confirmar Ajuste
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private List<CustomerLoyaltySummaryDto> _accounts = [];
+    private string _searchQuery = string.Empty;
+    private string _filterStatus = "all";
+
+    private LoyaltyProgramDto? _programConfig;
+    private bool _configIsEnabled = true;
+    private int _configTargetStamps = 10;
+    private int _configProximityThreshold = 1;
+    private string _configRewardTitle = "Lavagem Completa Grátis";
+    private bool _configAllServicesEligible = true;
+    private string? _configEligibleCategoryFilter;
+    private bool _isConfigOpen;
+    private bool _isSavingConfig;
+
+    private CustomerLoyaltySummaryDto? _selectedAccount;
+    private List<CustomerLoyaltyTransactionDto> _selectedTransactions = [];
+    private bool _isHistoryOpen;
+    private bool _isLoadingHistory;
+
+    private bool _isRedeemOpen;
+    private bool _isAdjustOpen;
+    private int _adjustDelta = 1;
+    private string _adjustReason = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            var accountsTask = LoyaltyApi.ListAccountsAsync();
+            var programTask = LoyaltyApi.GetProgramAsync();
+
+            await Task.WhenAll(accountsTask, programTask);
+
+            _accounts = (await accountsTask).ToList();
+            _programConfig = await programTask;
+            SyncConfigFields(_programConfig);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao carregar dados de fidelidade: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void SyncConfigFields(LoyaltyProgramDto config)
+    {
+        _configIsEnabled = config.IsEnabled;
+        _configTargetStamps = config.TargetStamps;
+        _configProximityThreshold = config.ProximityThreshold;
+        _configRewardTitle = config.RewardTitle;
+        _configAllServicesEligible = config.AllServicesEligible;
+        _configEligibleCategoryFilter = config.EligibleCategoryFilter;
+    }
+
+    private List<CustomerLoyaltySummaryDto> FilteredAccounts => _accounts
+        .Where(a => string.IsNullOrWhiteSpace(_searchQuery) ||
+                    a.CustomerName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    a.CustomerPhone.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+        .Where(a => _filterStatus switch
+        {
+            "ready" => a.IsReadyForRedemption,
+            "near" => a.IsNearRedemption,
+            "progress" => !a.IsReadyForRedemption && !a.IsNearRedemption && a.Balance > 0,
+            _ => true
+        })
+        .ToList();
+
+    private void OpenConfigModal()
+    {
+        if (_programConfig is not null)
+        {
+            SyncConfigFields(_programConfig);
+        }
+        _isConfigOpen = true;
+    }
+
+    private async Task SaveProgramConfigAsync()
+    {
+        try
+        {
+            _isSavingConfig = true;
+            var request = new UpdateLoyaltyProgramRequest(
+                _configIsEnabled,
+                _configTargetStamps,
+                _configRewardTitle,
+                _configProximityThreshold,
+                _configAllServicesEligible,
+                _configEligibleCategoryFilter);
+
+            _programConfig = await LoyaltyApi.UpdateProgramAsync(request);
+            ToastService.ShowSuccess("Configurações do programa de fidelidade salvas com sucesso!");
+            _isConfigOpen = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao salvar configurações: {ex.Message}");
+        }
+        finally
+        {
+            _isSavingConfig = false;
+        }
+    }
+
+    private async Task OpenHistoryModal(CustomerLoyaltySummaryDto account)
+    {
+        _selectedAccount = account;
+        _selectedTransactions.Clear();
+        _isHistoryOpen = true;
+        _isLoadingHistory = true;
+
+        try
+        {
+            var txs = await LoyaltyApi.GetCustomerTransactionsAsync(account.CustomerId);
+            _selectedTransactions = txs.ToList();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao carregar extrato: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingHistory = false;
+        }
+    }
+
+    private void OpenRedeemModal(CustomerLoyaltySummaryDto account)
+    {
+        _selectedAccount = account;
+        _isRedeemOpen = true;
+    }
+
+    private async Task HandleRedeemConfirm(RedeemLoyaltyRewardRequest request)
+    {
+        try
+        {
+            await LoyaltyApi.RedeemRewardAsync(request);
+            ToastService.ShowSuccess($"Recompensa resgatada com sucesso para {_selectedAccount?.CustomerName}!");
+            _isRedeemOpen = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Falha no resgate: {ex.Message}");
+        }
+    }
+
+    private void OpenAdjustModal(CustomerLoyaltySummaryDto account)
+    {
+        _selectedAccount = account;
+        _adjustDelta = 1;
+        _adjustReason = string.Empty;
+        _isAdjustOpen = true;
+    }
+
+    private async Task HandleAdjustConfirm()
+    {
+        if (_selectedAccount is null || _adjustDelta == 0 || string.IsNullOrWhiteSpace(_adjustReason)) return;
+
+        try
+        {
+            var request = new ManualLoyaltyAdjustmentRequest(_selectedAccount.CustomerId, _adjustDelta, _adjustReason.Trim());
+            await LoyaltyApi.AdjustBalanceAsync(request);
+            ToastService.ShowSuccess("Ajuste manual aplicado com sucesso!");
+            _isAdjustOpen = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Falha no ajuste: {ex.Message}");
+        }
+    }
+}

@@ -177,7 +177,10 @@ public sealed class ModuleBoundaryTests
             typeof(PostServicePhoto),
             typeof(Booking),
             typeof(ChatbotConversationSession),
-            typeof(PixCharge)
+            typeof(PixCharge),
+            typeof(LoyaltyProgram),
+            typeof(CustomerLoyaltyAccount),
+            typeof(LoyaltyTransaction)
         };
 
         Assert.All(tenantOwnedTypes, type =>
@@ -204,7 +207,9 @@ public sealed class ModuleBoundaryTests
             typeof(VehicleInspection),
             typeof(Booking),
             typeof(ChatbotConversationSession),
-            typeof(PixCharge)
+            typeof(PixCharge),
+            typeof(LoyaltyProgram),
+            typeof(CustomerLoyaltyAccount)
         };
 
         Assert.All(aggregateRoots, type =>

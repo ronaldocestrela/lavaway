@@ -70,7 +70,15 @@ public sealed class RabbitMqBackgroundQueueIntegrationTests(RabbitMqQueueFixture
 
         await using var connection = await connectionFactory.CreateConnectionAsync();
         await using var channel = await connection.CreateChannelAsync();
-        var deadLetter = await channel.BasicGetAsync($"{queueName}.dead", false);
+        BasicGetResult? deadLetter = null;
+        for (var i = 0; i < 20 && deadLetter is null; i++)
+        {
+            deadLetter = await channel.BasicGetAsync($"{queueName}.dead", false);
+            if (deadLetter is null)
+            {
+                await Task.Delay(100);
+            }
+        }
 
         Assert.NotNull(deadLetter);
         Assert.Equal(message.MessageId.ToString("D"), deadLetter!.BasicProperties.MessageId);

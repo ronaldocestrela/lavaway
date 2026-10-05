@@ -12,7 +12,8 @@ public sealed class ChatbotConversationEngine(
     ICustomerCommunicationPreferenceRepository? preferenceRepository = null,
     IAfterSalesLookup? afterSalesLookup = null,
     IWorkOrderPaymentLookup? workOrderPaymentLookup = null,
-    IPixBillingLookup? pixBillingLookup = null)
+    IPixBillingLookup? pixBillingLookup = null,
+    ILoyaltyLookup? loyaltyLookup = null)
 {
     private static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(30);
 
@@ -148,6 +149,48 @@ public sealed class ChatbotConversationEngine(
                     await sessionRepository.UpdateAsync(session, ct);
                     return await SendBotReplyAsync(tenantId, session.CustomerPhone, pixReply, ct);
                 }
+            }
+        }
+
+        // 5. Interceptação de Consulta de Fidelidade ("FIDELIDADE", "PONTOS", "SELOS", "MEUS PONTOS", "CARTAO FIDELIDADE")
+        if (IsLoyaltyKeyword(lower) && loyaltyLookup is not null)
+        {
+            var loyaltyResult = await loyaltyLookup.GetLoyaltySummaryByPhoneAsync(tenantId, senderPhone, ct);
+            if (loyaltyResult.IsSuccess && loyaltyResult.Value is not null)
+            {
+                var loyalty = loyaltyResult.Value;
+                var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
+                var storeName = storeProfile.Value?.TradeName ?? "Lavaway";
+                var progressBar = FormatProgressBar(loyalty.Balance, loyalty.TargetStamps);
+
+                string loyaltyReply;
+                if (loyalty.IsReadyForRedemption)
+                {
+                    loyaltyReply =
+                        $"🏷️ *Cartão Fidelidade - {storeName}*\n\n" +
+                        $"Olá, *{loyalty.CustomerName}*!\n\n" +
+                        $"🏆 *Parabéns!* Seu cartão está completo com *{loyalty.Balance}/{loyalty.TargetStamps} selos*!\n\n" +
+                        $"🎁 *Recompensa Disponível:* *{loyalty.RewardTitle}*\n\n" +
+                        $"Você já pode resgatar sua recompensa na sua próxima visita ao nosso estabelecimento! 🚗✨";
+                }
+                else
+                {
+                    var remainingText = loyalty.RemainingStamps == 1
+                        ? "🔥 *Falta apenas 1 serviço* para você resgatar sua recompensa!"
+                        : $"Faltam apenas *{loyalty.RemainingStamps} serviços* para você resgatar sua recompensa.";
+
+                    loyaltyReply =
+                        $"🏷️ *Cartão Fidelidade - {storeName}*\n\n" +
+                        $"Olá, *{loyalty.CustomerName}*!\n\n" +
+                        $"*Seu Progresso:* {progressBar} ({loyalty.Balance}/{loyalty.TargetStamps} selos)\n" +
+                        $"{remainingText}\n\n" +
+                        $"🎁 *Recompensa:* *{loyalty.RewardTitle}*\n\n" +
+                        $"A cada serviço elegível concluído você ganha +1 selo!";
+                }
+
+                session.Reset();
+                await sessionRepository.UpdateAsync(session, ct);
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, loyaltyReply, ct);
             }
         }
 
@@ -829,5 +872,20 @@ public sealed class ChatbotConversationEngine(
 
         rating = 0;
         return false;
+    }
+
+    private static bool IsLoyaltyKeyword(string lower) =>
+        lower is "fidelidade" or "selos" or "selo" or "pontos" or "meus pontos" or "meu saldo" or "cartao fidelidade" or "cartão fidelidade" ||
+        lower.Contains("fidelidade", StringComparison.Ordinal) ||
+        lower.Contains("quantos selos", StringComparison.Ordinal) ||
+        lower.Contains("quantos pontos", StringComparison.Ordinal);
+
+    private static string FormatProgressBar(int current, int target)
+    {
+        if (target <= 0) return string.Empty;
+        var ratio = Math.Clamp((double)current / target, 0.0, 1.0);
+        var filledCount = (int)Math.Round(ratio * 10);
+        var emptyCount = 10 - filledCount;
+        return "[" + new string('■', filledCount) + new string('□', emptyCount) + "]";
     }
 }

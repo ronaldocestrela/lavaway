@@ -110,6 +110,10 @@ builder.Services.AddScoped<IDailyCashClosingRepository, DailyCashClosingReposito
 builder.Services.AddScoped<CashRegisterApplicationService>();
 builder.Services.AddScoped<CommissionApplicationService>();
 builder.Services.AddScoped<ICommissionCalculationLookup>(sp => sp.GetRequiredService<CommissionApplicationService>());
+builder.Services.AddScoped<ILoyaltyProgramRepository, LoyaltyProgramRepository>();
+builder.Services.AddScoped<ICustomerLoyaltyRepository, CustomerLoyaltyRepository>();
+builder.Services.AddScoped<LoyaltyApplicationService>();
+builder.Services.AddScoped<ILoyaltyLookup>(sp => sp.GetRequiredService<LoyaltyApplicationService>());
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
@@ -262,6 +266,7 @@ app.MapSchedulingEndpoints();
 app.MapAfterSalesEndpoints();
 app.MapBillingEndpoints();
 app.MapCashierEndpoints();
+app.MapLoyaltyEndpoints();
 app.MapHub<YardHub>("/hubs/yard").RequireCors("Client");
 
 app.Run();

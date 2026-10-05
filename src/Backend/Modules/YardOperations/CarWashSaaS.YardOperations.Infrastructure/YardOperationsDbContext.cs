@@ -22,6 +22,9 @@ public sealed class YardOperationsDbContext(
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<ReactivationCampaignRule> ReactivationCampaignRules => Set<ReactivationCampaignRule>();
     public DbSet<ReactivationCampaignLog> ReactivationCampaignLogs => Set<ReactivationCampaignLog>();
+    public DbSet<LoyaltyProgram> LoyaltyPrograms => Set<LoyaltyProgram>();
+    public DbSet<CustomerLoyaltyAccount> CustomerLoyaltyAccounts => Set<CustomerLoyaltyAccount>();
+    public DbSet<LoyaltyTransaction> LoyaltyTransactions => Set<LoyaltyTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
