@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\CarWashSaaS.YardOperations.Application\CarWashSaaS.YardOperations.Application.csproj" />
