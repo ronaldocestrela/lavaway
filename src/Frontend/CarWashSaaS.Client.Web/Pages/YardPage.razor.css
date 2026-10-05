@@ -5,61 +5,79 @@
     width: 100%;
     max-width: 1680px;
     margin: 0 auto;
-    padding: 0 4px;
+    padding: 0 24px;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .page-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
-    gap: 16px;
+    align-items: center;
+    gap: 24px;
     flex-wrap: wrap;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding-bottom: 16px;
+    padding: 22px 24px;
+    background: #122421;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+
+.header-titles {
+    min-width: 0;
 }
 
 .eyebrow {
-    font-size: 0.72rem;
-    font-weight: 800;
-    color: #38bdf8;
-    letter-spacing: 1.5px;
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 5px 8px;
+    font: 700 0.72rem/1 'IBM Plex Mono', monospace;
+    color: #c6f277;
+    letter-spacing: 1px;
     text-transform: uppercase;
+    background: rgba(198, 242, 119, 0.08);
+    border: 1px solid rgba(198, 242, 119, 0.18);
+    border-radius: 4px;
 }
 
 .page-title {
-    margin: 4px 0;
-    font-size: 1.8rem;
-    font-weight: 800;
-    color: #f8fafc;
-    letter-spacing: -0.5px;
+    margin: 10px 0 6px;
+    font: 800 clamp(1.6rem, 3vw, 2rem)/1.15 'Manrope', sans-serif;
+    color: #ffffff;
+    letter-spacing: -0.6px;
 }
 
 .page-subtitle {
     margin: 0;
     font-size: 0.92rem;
-    color: #94a3b8;
+    color: #9cb2a7;
 }
 
 .btn-primary-action {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: #ffffff;
+    background: #c6f277;
+    color: #122421;
     font-size: 0.88rem;
     font-weight: 700;
     padding: 10px 18px;
-    border-radius: 10px;
+    min-height: 44px;
+    border-radius: 7px;
     border: none;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
-    transition: all 0.2s ease;
+    transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .btn-primary-action:hover {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    background: #d4f88e;
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    box-shadow: 0 4px 18px rgba(198, 242, 119, 0.35);
+}
+
+.btn-primary-action:focus-visible,
+.btn-retry:focus-visible {
+    outline: 2px solid #e8ffd0;
+    outline-offset: 3px;
 }
 
 .page-loading {
@@ -69,15 +87,15 @@
     justify-content: center;
     min-height: 400px;
     gap: 16px;
-    color: #94a3b8;
+    color: #9cb2a7;
     font-size: 1rem;
 }
 
 .spinner-large {
     width: 44px;
     height: 44px;
-    border: 4px solid rgba(56, 189, 248, 0.2);
-    border-top-color: #38bdf8;
+    border: 4px solid rgba(198, 242, 119, 0.2);
+    border-top-color: #c6f277;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -125,6 +143,10 @@
     cursor: pointer;
 }
 
+.btn-retry:hover {
+    background: #dc2626;
+}
+
 .gallery-modal-backdrop {
     position: fixed;
     inset: 0;
@@ -143,4 +165,47 @@
     max-height: 90vh;
     overflow-y: auto;
     border-radius: 1rem;
+}
+
+@media (max-width: 768px) {
+    .yard-page-container {
+        padding: 0 16px;
+    }
+
+    .page-header {
+        align-items: flex-start;
+        gap: 18px;
+        padding: 18px;
+    }
+
+    .page-title {
+        font-size: clamp(1.45rem, 7vw, 1.8rem);
+    }
+
+    .header-actions,
+    .btn-primary-action {
+        width: 100%;
+    }
+
+    .btn-primary-action {
+        justify-content: center;
+    }
+
+    .error-banner {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        padding: 16px;
+    }
+
+    .btn-retry {
+        margin-left: 2.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spinner-large,
+    .btn-primary-action {
+        animation: none;
+        transition: none;
+    }
 }
