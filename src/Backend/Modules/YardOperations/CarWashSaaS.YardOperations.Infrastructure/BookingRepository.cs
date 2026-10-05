@@ -65,4 +65,82 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
     {
         dbContext.Bookings.Update(booking);
     }
+
+    public async Task<IReadOnlyList<Booking>> GetBookingsPending24hReminderAsync(
+        Guid tenantId,
+        DateTimeOffset referenceTime,
+        CancellationToken ct = default)
+    {
+        var targetStart = referenceTime.AddHours(23);
+        var targetEnd = referenceTime.AddHours(25);
+        var minDate = DateOnly.FromDateTime(targetStart.LocalDateTime);
+        var maxDate = DateOnly.FromDateTime(targetEnd.LocalDateTime);
+
+        var candidates = await dbContext.Bookings
+            .Where(b => b.TenantId == tenantId &&
+                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed) &&
+                        b.Reminder24hSentAt == null &&
+                        b.ScheduledDate >= minDate &&
+                        b.ScheduledDate <= maxDate)
+            .ToListAsync(ct);
+
+        return candidates
+            .Where(b =>
+            {
+                var dt = b.ScheduledDate.ToDateTime(b.ScheduledTime);
+                return dt >= targetStart.LocalDateTime && dt <= targetEnd.LocalDateTime;
+            })
+            .OrderBy(b => b.ScheduledDate)
+            .ThenBy(b => b.ScheduledTime)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<Booking>> GetBookingsPending2hReminderAsync(
+        Guid tenantId,
+        DateTimeOffset referenceTime,
+        CancellationToken ct = default)
+    {
+        var targetStart = referenceTime.AddMinutes(105);
+        var targetEnd = referenceTime.AddMinutes(135);
+        var minDate = DateOnly.FromDateTime(targetStart.LocalDateTime);
+        var maxDate = DateOnly.FromDateTime(targetEnd.LocalDateTime);
+
+        var candidates = await dbContext.Bookings
+            .Where(b => b.TenantId == tenantId &&
+                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed) &&
+                        b.Reminder2hSentAt == null &&
+                        b.ScheduledDate >= minDate &&
+                        b.ScheduledDate <= maxDate)
+            .ToListAsync(ct);
+
+        return candidates
+            .Where(b =>
+            {
+                var dt = b.ScheduledDate.ToDateTime(b.ScheduledTime);
+                return dt >= targetStart.LocalDateTime && dt <= targetEnd.LocalDateTime;
+            })
+            .OrderBy(b => b.ScheduledDate)
+            .ThenBy(b => b.ScheduledTime)
+            .ToList();
+    }
+
+    public async Task<Booking?> GetUpcomingActiveBookingByPhoneAsync(
+        Guid tenantId,
+        string customerPhone,
+        CancellationToken ct = default)
+    {
+        var normalizedPhone = new string(customerPhone.Where(char.IsDigit).ToArray());
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        var activeBookings = await dbContext.Bookings
+            .Where(b => b.TenantId == tenantId &&
+                        b.CustomerPhone == normalizedPhone &&
+                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed) &&
+                        b.ScheduledDate >= today)
+            .OrderBy(b => b.ScheduledDate)
+            .ThenBy(b => b.ScheduledTime)
+            .ToListAsync(ct);
+
+        return activeBookings.FirstOrDefault();
+    }
 }

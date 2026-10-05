@@ -267,3 +267,78 @@
     font-size: 0.8rem;
     font-weight: 500;
 }
+
+.reminder-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: default;
+}
+
+.reminder-badge.reminder-2h {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.confirmed-badge {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: default;
+}
+
+.btn-action-icon {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s, transform 0.1s;
+    border: 1px solid transparent;
+}
+
+.btn-action-icon:hover {
+    transform: scale(1.05);
+}
+
+.btn-confirm {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.btn-confirm:hover {
+    background: rgba(16, 185, 129, 0.3);
+}
+
+.btn-reschedule {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.btn-reschedule:hover {
+    background: rgba(99, 102, 241, 0.3);
+}
+
+.btn-reminder {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.btn-reminder:hover {
+    background: rgba(245, 158, 11, 0.3);
+}

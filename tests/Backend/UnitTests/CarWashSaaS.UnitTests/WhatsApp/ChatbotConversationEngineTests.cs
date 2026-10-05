@@ -103,6 +103,124 @@ public sealed class ChatbotConversationEngineTests
         Assert.Contains("Como podemos te ajudar hoje?", _dispatcher.SentMessages[0].Text);
     }
 
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerConfirmsUpcomingBooking_ShouldConfirmAndSendSuccess()
+    {
+        var bookingId = Guid.NewGuid();
+        _schedulingLookup.UpcomingBookingToReturn = new BookingSummaryDto(
+            bookingId,
+            _tenantId,
+            "BK-CONF-7777",
+            null,
+            "João",
+            _customerPhone,
+            "BRA2E19",
+            "Civic",
+            VehicleSizeConstants.HatchSedan,
+            Guid.NewGuid(),
+            "Lavagem Completa",
+            70m,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            new TimeOnly(14, 0),
+            60,
+            BookingStatusConstants.Scheduled,
+            BookingOriginConstants.WhatsAppBot,
+            null,
+            null,
+            DateTimeOffset.UtcNow);
+
+        _dispatcher.SentMessages.Clear();
+
+        // Cliente responde "1" ou "confirmar"
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "confirmar");
+
+        Assert.True(result.IsSuccess);
+        Assert.True(_schedulingLookup.ConfirmBookingCalled);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("Presença Confirmada com Sucesso", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("BRA2E19", _dispatcher.SentMessages[0].Text);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerCancelsUpcomingBooking_ShouldCancelAndSendSuccess()
+    {
+        var bookingId = Guid.NewGuid();
+        _schedulingLookup.UpcomingBookingToReturn = new BookingSummaryDto(
+            bookingId,
+            _tenantId,
+            "BK-CANC-8888",
+            null,
+            "João",
+            _customerPhone,
+            "XYZ-9999",
+            "Corolla",
+            VehicleSizeConstants.HatchSedan,
+            Guid.NewGuid(),
+            "Lavagem Completa",
+            70m,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            new TimeOnly(10, 0),
+            60,
+            BookingStatusConstants.Scheduled,
+            BookingOriginConstants.WhatsAppBot,
+            null,
+            null,
+            DateTimeOffset.UtcNow);
+
+        _dispatcher.SentMessages.Clear();
+
+        // Cliente responde "cancelar"
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "cancelar");
+
+        Assert.True(result.IsSuccess);
+        Assert.True(_schedulingLookup.CancelBookingCalled);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("Agendamento Cancelado com Sucesso", _dispatcher.SentMessages[0].Text);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerReschedules_ShouldGuideAndReschedule()
+    {
+        var bookingId = Guid.NewGuid();
+        _schedulingLookup.UpcomingBookingToReturn = new BookingSummaryDto(
+            bookingId,
+            _tenantId,
+            "BK-RESCH-9999",
+            null,
+            "João",
+            _customerPhone,
+            "ABC-1234",
+            "Onix",
+            VehicleSizeConstants.HatchSedan,
+            Guid.NewGuid(),
+            "Lavagem Completa",
+            70m,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            new TimeOnly(10, 0),
+            60,
+            BookingStatusConstants.Scheduled,
+            BookingOriginConstants.WhatsAppBot,
+            null,
+            null,
+            DateTimeOffset.UtcNow);
+
+        // 1: Cliente diz "remarcar"
+        var r1 = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "remarcar");
+        Assert.True(r1.IsSuccess);
+        Assert.Contains("Remarcação de Agendamento", _dispatcher.SentMessages.Last().Text);
+
+        // 2: Escolhe data (1: Hoje)
+        var r2 = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "1");
+        Assert.True(r2.IsSuccess);
+        Assert.Contains("Horários disponíveis", _dispatcher.SentMessages.Last().Text);
+
+        // 3: Escolhe horário (1: 10:00)
+        var r3 = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "1");
+        Assert.True(r3.IsSuccess);
+        Assert.True(_schedulingLookup.RescheduleBookingCalled);
+        Assert.Contains("Agendamento Remarcado com Sucesso", _dispatcher.SentMessages.Last().Text);
+    }
+
     private sealed class InMemoryChatbotSessionRepository : IChatbotSessionRepository
     {
         private readonly List<ChatbotConversationSession> _sessions = [];
@@ -167,6 +285,103 @@ public sealed class ChatbotConversationEngineTests
         public Task<Result<IReadOnlyList<BookingSummaryDto>>> GetCustomerActiveBookingsAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
         {
             return Task.FromResult<Result<IReadOnlyList<BookingSummaryDto>>>(Result<IReadOnlyList<BookingSummaryDto>>.Success([]));
+        }
+
+        public BookingSummaryDto? UpcomingBookingToReturn { get; set; }
+        public bool ConfirmBookingCalled { get; private set; }
+        public bool CancelBookingCalled { get; private set; }
+        public bool RescheduleBookingCalled { get; private set; }
+
+        public Task<Result<BookingSummaryDto>> ConfirmBookingAsync(Guid tenantId, Guid bookingId, CancellationToken ct = default)
+        {
+            ConfirmBookingCalled = true;
+            var summary = UpcomingBookingToReturn ?? new BookingSummaryDto(
+                bookingId,
+                tenantId,
+                "BK-CONF-1234",
+                null,
+                "Cliente Teste",
+                "11999998888",
+                "ABC1234",
+                "Civic",
+                VehicleSizeConstants.HatchSedan,
+                Guid.NewGuid(),
+                "Lavagem",
+                60m,
+                DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+                new TimeOnly(10, 0),
+                60,
+                BookingStatusConstants.Confirmed,
+                BookingOriginConstants.WhatsAppBot,
+                null,
+                null,
+                DateTimeOffset.UtcNow,
+                null,
+                null,
+                DateTimeOffset.UtcNow);
+
+            return Task.FromResult(Result<BookingSummaryDto>.Success(summary));
+        }
+
+        public Task<Result<BookingSummaryDto>> CancelBookingAsync(Guid tenantId, Guid bookingId, string? reason, CancellationToken ct = default)
+        {
+            CancelBookingCalled = true;
+            var summary = UpcomingBookingToReturn ?? new BookingSummaryDto(
+                bookingId,
+                tenantId,
+                "BK-CANC-1234",
+                null,
+                "Cliente Teste",
+                "11999998888",
+                "ABC1234",
+                "Civic",
+                VehicleSizeConstants.HatchSedan,
+                Guid.NewGuid(),
+                "Lavagem",
+                60m,
+                DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+                new TimeOnly(10, 0),
+                60,
+                BookingStatusConstants.Cancelled,
+                BookingOriginConstants.WhatsAppBot,
+                null,
+                reason,
+                DateTimeOffset.UtcNow);
+
+            return Task.FromResult(Result<BookingSummaryDto>.Success(summary));
+        }
+
+        public Task<Result<BookingSummaryDto>> RescheduleBookingAsync(Guid tenantId, Guid bookingId, DateOnly newDate, TimeOnly newTime, CancellationToken ct = default)
+        {
+            RescheduleBookingCalled = true;
+            var summary = UpcomingBookingToReturn ?? new BookingSummaryDto(
+                bookingId,
+                tenantId,
+                "BK-RESCH-1234",
+                null,
+                "Cliente Teste",
+                "11999998888",
+                "ABC1234",
+                "Civic",
+                VehicleSizeConstants.HatchSedan,
+                Guid.NewGuid(),
+                "Lavagem",
+                60m,
+                newDate,
+                newTime,
+                60,
+                BookingStatusConstants.Confirmed,
+                BookingOriginConstants.WhatsAppBot,
+                null,
+                null,
+                DateTimeOffset.UtcNow);
+
+            return Task.FromResult(Result<BookingSummaryDto>.Success(summary));
+        }
+
+        public Task<Result<BookingSummaryDto?>> GetUpcomingBookingForCustomerAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
+        {
+            return Task.FromResult<Result<BookingSummaryDto?>>(Result<BookingSummaryDto?>.Success(UpcomingBookingToReturn));
         }
     }
 

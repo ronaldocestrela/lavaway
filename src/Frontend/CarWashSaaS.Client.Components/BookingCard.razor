@@ -9,6 +9,24 @@
             <span class="duration-text">(@Booking.EstimatedDurationMinutes min)</span>
         </div>
         <div class="header-badges">
+            @if (Booking.Reminder24hSentAt.HasValue)
+            {
+                <span class="reminder-badge reminder-24h" title="Lembrete de 24h enviado em @Booking.Reminder24hSentAt.Value.ToLocalTime().ToString("dd/MM HH:mm")">
+                    🔔 24h
+                </span>
+            }
+            @if (Booking.Reminder2hSentAt.HasValue)
+            {
+                <span class="reminder-badge reminder-2h" title="Lembrete de 2h enviado em @Booking.Reminder2hSentAt.Value.ToLocalTime().ToString("dd/MM HH:mm")">
+                    ⏳ 2h
+                </span>
+            }
+            @if (Booking.ConfirmedAtUtc.HasValue)
+            {
+                <span class="confirmed-badge" title="Confirmado pelo cliente em @Booking.ConfirmedAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")">
+                    ✅ Confirmado
+                </span>
+            }
             <span class="origin-badge @(Booking.Origin == BookingOriginConstants.WhatsAppBot ? "origin-whatsapp" : "origin-manual")"
                   title="Origem do Agendamento">
                 @(Booking.Origin == BookingOriginConstants.WhatsAppBot ? "💬 WhatsApp Bot" : "🏢 Recepção")
@@ -58,6 +76,18 @@
         <div class="booking-actions">
             @if (Booking.Status is BookingStatusConstants.Scheduled or BookingStatusConstants.Confirmed)
             {
+                @if (Booking.Status == BookingStatusConstants.Scheduled)
+                {
+                    <button type="button" class="btn-action-icon btn-confirm" @onclick="HandleConfirm" title="Confirmar agendamento manualmente">
+                        <span>&#10003;</span>
+                    </button>
+                }
+                <button type="button" class="btn-action-icon btn-reschedule" @onclick="HandleReschedule" title="Remarcar agendamento">
+                    <span>&#8635;</span>
+                </button>
+                <button type="button" class="btn-action-icon btn-reminder" @onclick="HandleSendReminder" title="Enviar lembrete via WhatsApp">
+                    <span>&#128276;</span>
+                </button>
                 <button type="button" class="btn-checkin" @onclick="HandleCheckIn" title="Fazer check-in e abrir OS na recepção">
                     <span>&#9654; Iniciar Atendimento</span>
                 </button>
@@ -85,6 +115,15 @@
     [Parameter]
     public EventCallback<BookingSummaryDto> OnCancel { get; set; }
 
+    [Parameter]
+    public EventCallback<BookingSummaryDto> OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback<BookingSummaryDto> OnReschedule { get; set; }
+
+    [Parameter]
+    public EventCallback<BookingSummaryDto> OnSendReminder { get; set; }
+
     private async Task HandleCheckIn()
     {
         if (OnCheckIn.HasDelegate)
@@ -98,6 +137,30 @@
         if (OnCancel.HasDelegate)
         {
             await OnCancel.InvokeAsync(Booking);
+        }
+    }
+
+    private async Task HandleConfirm()
+    {
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync(Booking);
+        }
+    }
+
+    private async Task HandleReschedule()
+    {
+        if (OnReschedule.HasDelegate)
+        {
+            await OnReschedule.InvokeAsync(Booking);
+        }
+    }
+
+    private async Task HandleSendReminder()
+    {
+        if (OnSendReminder.HasDelegate)
+        {
+            await OnSendReminder.InvokeAsync(Booking);
         }
     }
 

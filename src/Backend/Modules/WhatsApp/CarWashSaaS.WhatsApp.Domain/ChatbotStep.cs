@@ -10,5 +10,8 @@ public enum ChatbotStep
     SelectingTimeSlot,
     CollectingPlate,
     AwaitingConfirmation,
+    AwaitingReminderAction,
+    ReschedulingDate,
+    ReschedulingTimeSlot,
     Completed
 }

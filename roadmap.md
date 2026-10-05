@@ -207,9 +207,11 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 4.4 Confirmação e prevenção de faltas
 
-- [ ] Enviar lembretes 24h e 2h antes do horário agendado.
-- [ ] Processar ações *Confirmar*, *Remarcar* e *Cancelar* e atualizar a reserva.
-- [ ] **Entrega:** respostas do cliente atualizam o agendamento sem intervenção manual.
+- [x] Enviar lembretes 24h e 2h antes do horário agendado.
+- [x] Processar ações *Confirmar*, *Remarcar* e *Cancelar* e atualizar a reserva.
+- [x] **Entrega:** respostas do cliente atualizam o agendamento sem intervenção manual.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): mecanismo proativo de prevenção de faltas e no-show com disparo automatizado de lembretes ativos via WhatsApp com 24h e 2h de antecedência em relação ao horário agendado da reserva (`BookingReminderHostedService` executando varredura multi-tenant a cada 5 minutos através do `BookingReminderApplicationService`, com chaves determinísticas de idempotência `reminder-24h-{id}` e `reminder-2h-{id}`). A entidade de domínio `Booking` no schema `yard` foi estendida com os carimbos `Reminder24hSentAt`, `Reminder2hSentAt` e `ConfirmedAtUtc`, além dos métodos `Confirm()`, `Reschedule(DateOnly, TimeOnly)` e marcação de envio de lembretes (migração EF Core `AddBookingRemindersAndConfirmation`). O motor do chatbot conversacional (`ChatbotConversationEngine` com migração `AddTargetBookingIdToChatbotSession`) processa as respostas interativas do cliente diretamente no WhatsApp: opção 1 confirma presença e atualiza status para `Confirmed` (`ConfirmBookingAsync`); opção 2 orienta a escolha de nova data e novos horários vagos com validação estrita de capacidade física de boxes (`RescheduleBookingAsync`); e opção 3 cancela o agendamento (`CancelBookingAsync`), liberando imediatamente a vaga do box no pátio sem qualquer intervenção manual da equipe. A API expõe endpoints autenticados sob `/scheduling/bookings/{id}/confirm`, `/scheduling/bookings/{id}/reschedule` e `/scheduling/bookings/{id}/reminders/send`. No frontend Blazor WebAssembly, a tela operacional `SchedulingPage` e o componente `BookingCard` foram enriquecidos com selos visuais em tempo real (`✅ Confirmado`, `🔔 24h`, `⏳ 2h`), ações para confirmação e reenvio de lembrete pontual via WhatsApp, e o modal `RescheduleBookingModal` para remarcações manuais no balcão. Suite completa com 359 testes aprovados (100% de sucesso em testes unitários, testes de arquitetura NetArchTest, integração Testcontainers SQL Server e testes de componentes bUnit). Decisão formalizada na [ADR-0010](docs/architecture/ADR-0010-confirmacao-prevencao-faltas-e-lembretes-whatsapp.md) e documentação viva em [docs/living-docs/confirmacao-prevencao-faltas-4.4.md](docs/living-docs/confirmacao-prevencao-faltas-4.4.md).
 
 ### 4.5 Pós-venda e reativação
 

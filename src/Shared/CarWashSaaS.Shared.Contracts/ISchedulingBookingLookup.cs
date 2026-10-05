@@ -22,4 +22,27 @@ public interface ISchedulingBookingLookup
         Guid tenantId,
         string customerPhone,
         CancellationToken ct = default);
+
+    Task<Result<BookingSummaryDto>> ConfirmBookingAsync(
+        Guid tenantId,
+        Guid bookingId,
+        CancellationToken ct = default);
+
+    Task<Result<BookingSummaryDto>> CancelBookingAsync(
+        Guid tenantId,
+        Guid bookingId,
+        string? reason,
+        CancellationToken ct = default);
+
+    Task<Result<BookingSummaryDto>> RescheduleBookingAsync(
+        Guid tenantId,
+        Guid bookingId,
+        DateOnly newDate,
+        TimeOnly newTime,
+        CancellationToken ct = default);
+
+    Task<Result<BookingSummaryDto?>> GetUpcomingBookingForCustomerAsync(
+        Guid tenantId,
+        string customerPhone,
+        CancellationToken ct = default);
 }

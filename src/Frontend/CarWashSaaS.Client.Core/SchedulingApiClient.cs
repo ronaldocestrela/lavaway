@@ -63,6 +63,30 @@ public sealed class SchedulingApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<BookingSummaryDto> ConfirmBookingAsync(Guid id, CancellationToken ct = default)
+    {
+        using var response = await httpClient.PostAsync($"scheduling/bookings/{id}/confirm", null, ct);
+        return await ReadResponseAsync<BookingSummaryDto>(response, ct);
+    }
+
+    public async Task<BookingSummaryDto> RescheduleBookingAsync(Guid id, DateOnly newDate, TimeOnly newTime, CancellationToken ct = default)
+    {
+        var request = new RescheduleBookingRequest(newDate, newTime);
+        using var response = await httpClient.PostAsJsonAsync($"scheduling/bookings/{id}/reschedule", request, ct);
+        return await ReadResponseAsync<BookingSummaryDto>(response, ct);
+    }
+
+    public async Task SendReminderAsync(Guid id, string reminderType, CancellationToken ct = default)
+    {
+        var request = new SendBookingReminderRequest(reminderType);
+        using var response = await httpClient.PostAsJsonAsync($"scheduling/bookings/{id}/reminders/send", request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = await ReadErrorMessageAsync(response, ct);
+            throw new SchedulingApiException(response.StatusCode, message);
+        }
+    }
+
     public async Task<IReadOnlyList<AvailableTimeSlotDto>> GetAvailableSlotsAsync(
         DateOnly date,
         Guid serviceId,

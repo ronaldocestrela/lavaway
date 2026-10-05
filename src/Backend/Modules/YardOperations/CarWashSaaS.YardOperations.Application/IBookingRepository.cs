@@ -11,4 +11,7 @@ public interface IBookingRepository
     Task<int> CountActiveBookingsInSlotAsync(Guid tenantId, DateOnly date, TimeOnly startTime, TimeOnly endTime, CancellationToken ct = default);
     Task AddAsync(Booking booking, CancellationToken ct = default);
     void Update(Booking booking);
+    Task<IReadOnlyList<Booking>> GetBookingsPending24hReminderAsync(Guid tenantId, DateTimeOffset referenceTime, CancellationToken ct = default);
+    Task<IReadOnlyList<Booking>> GetBookingsPending2hReminderAsync(Guid tenantId, DateTimeOffset referenceTime, CancellationToken ct = default);
+    Task<Booking?> GetUpcomingActiveBookingByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default);
 }

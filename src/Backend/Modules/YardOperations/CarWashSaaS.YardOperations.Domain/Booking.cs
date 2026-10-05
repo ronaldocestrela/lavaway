@@ -77,6 +77,9 @@ public sealed partial class Booking : IMustHaveTenant
     public Guid? WorkOrderId { get; private set; }
     public string? Notes { get; private set; }
     public string? CancellationReason { get; private set; }
+    public DateTimeOffset? Reminder24hSentAt { get; private set; }
+    public DateTimeOffset? Reminder2hSentAt { get; private set; }
+    public DateTimeOffset? ConfirmedAtUtc { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -162,6 +165,42 @@ public sealed partial class Booking : IMustHaveTenant
         }
 
         Status = BookingStatus.Confirmed;
+        ConfirmedAtUtc = DateTimeOffset.UtcNow;
+        UpdatedAt = DateTimeOffset.UtcNow;
+        return Result<Booking>.Success(this);
+    }
+
+    public Result<Booking> Reschedule(DateOnly newDate, TimeOnly newTime)
+    {
+        if (Status == BookingStatus.Cancelled)
+        {
+            return Result<Booking>.Failure(new Error("booking.cancelled", "Cancelled bookings cannot be rescheduled.", ErrorType.Conflict));
+        }
+
+        if (Status == BookingStatus.Completed || Status == BookingStatus.Arrived)
+        {
+            return Result<Booking>.Failure(new Error("booking.invalid_status", "Bookings in execution or completed cannot be rescheduled.", ErrorType.Validation));
+        }
+
+        ScheduledDate = newDate;
+        ScheduledTime = newTime;
+        Status = BookingStatus.Confirmed;
+        Reminder24hSentAt = null;
+        Reminder2hSentAt = null;
+        UpdatedAt = DateTimeOffset.UtcNow;
+        return Result<Booking>.Success(this);
+    }
+
+    public Result<Booking> MarkReminder24hSent(DateTimeOffset? sentAt = null)
+    {
+        Reminder24hSentAt = sentAt ?? DateTimeOffset.UtcNow;
+        UpdatedAt = DateTimeOffset.UtcNow;
+        return Result<Booking>.Success(this);
+    }
+
+    public Result<Booking> MarkReminder2hSent(DateTimeOffset? sentAt = null)
+    {
+        Reminder2hSentAt = sentAt ?? DateTimeOffset.UtcNow;
         UpdatedAt = DateTimeOffset.UtcNow;
         return Result<Booking>.Success(this);
     }

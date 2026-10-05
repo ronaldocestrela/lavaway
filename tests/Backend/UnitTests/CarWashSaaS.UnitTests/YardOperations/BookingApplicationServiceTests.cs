@@ -148,6 +148,106 @@ public sealed class BookingApplicationServiceTests
         Assert.Equal(1, _unitOfWork.SaveCount);
     }
 
+    [Fact]
+    public async Task ConfirmBooking_ShouldSucceedAndRecordTimestamp()
+    {
+        var booking = Booking.Create(
+            _tenantId,
+            "Carlos",
+            "11988887777",
+            "ABC-1234",
+            null,
+            VehicleSize.HatchSedan,
+            _serviceId,
+            "Lavagem",
+            50m,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            new TimeOnly(10, 0)).Value!;
+
+        await _bookingRepo.AddAsync(booking);
+
+        var result = await _sut.ConfirmBookingAsync(_tenantId, booking.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(BookingStatus.Confirmed, booking.Status);
+        Assert.NotNull(booking.ConfirmedAtUtc);
+        Assert.Equal(1, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task RescheduleBooking_WithAvailableCapacity_ShouldSucceed()
+    {
+        var booking = Booking.Create(
+            _tenantId,
+            "Carlos",
+            "11988887777",
+            "ABC-1234",
+            null,
+            VehicleSize.HatchSedan,
+            _serviceId,
+            "Lavagem",
+            50m,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            new TimeOnly(10, 0),
+            60).Value!;
+
+        await _bookingRepo.AddAsync(booking);
+
+        var newDate = DateOnly.FromDateTime(DateTime.Today.AddDays(2));
+        var newTime = new TimeOnly(14, 0);
+
+        var result = await _sut.RescheduleBookingAsync(_tenantId, booking.Id, newDate, newTime);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(newDate, booking.ScheduledDate);
+        Assert.Equal(newTime, booking.ScheduledTime);
+        Assert.Equal(BookingStatus.Confirmed, booking.Status);
+        Assert.Equal(1, _unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task RescheduleBooking_WhenCapacityExceeded_ShouldReturnConflict()
+    {
+        // Capacidade de 1 box já preenchida
+        await _capacityRepo.AddAsync(YardCapacity.Create(_tenantId, 1, "Box 1").Value!);
+
+        var existingBooking = Booking.Create(
+            _tenantId,
+            "Cliente 1",
+            "11999991111",
+            "AAA-1111",
+            null,
+            VehicleSize.HatchSedan,
+            _serviceId,
+            "Lavagem",
+            50m,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(2)),
+            new TimeOnly(14, 0),
+            60).Value!;
+        existingBooking.Confirm();
+        await _bookingRepo.AddAsync(existingBooking);
+
+        var bookingToReschedule = Booking.Create(
+            _tenantId,
+            "Cliente 2",
+            "11999992222",
+            "BBB-2222",
+            null,
+            VehicleSize.HatchSedan,
+            _serviceId,
+            "Lavagem",
+            50m,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            new TimeOnly(10, 0),
+            60).Value!;
+        await _bookingRepo.AddAsync(bookingToReschedule);
+
+        var result = await _sut.RescheduleBookingAsync(_tenantId, bookingToReschedule.Id, DateOnly.FromDateTime(DateTime.Today.AddDays(2)), new TimeOnly(14, 0));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("booking.capacity.exceeded", result.Error!.Code);
+    }
+
     private sealed class InMemoryBookingRepository : IBookingRepository
     {
         public readonly List<Booking> Bookings = [];
@@ -184,6 +284,44 @@ public sealed class BookingApplicationServiceTests
         {
             var idx = Bookings.FindIndex(b => b.Id == booking.Id);
             if (idx >= 0) Bookings[idx] = booking;
+        }
+
+        public Task<IReadOnlyList<Booking>> GetBookingsPending24hReminderAsync(Guid tenantId, DateTimeOffset referenceTime, CancellationToken ct = default)
+        {
+            var targetStart = referenceTime.AddHours(23);
+            var targetEnd = referenceTime.AddHours(25);
+            var list = Bookings.Where(b => b.TenantId == tenantId &&
+                                           b.Status is BookingStatus.Scheduled or BookingStatus.Confirmed &&
+                                           b.Reminder24hSentAt == null &&
+                                           b.ScheduledDate.ToDateTime(b.ScheduledTime) >= targetStart.LocalDateTime &&
+                                           b.ScheduledDate.ToDateTime(b.ScheduledTime) <= targetEnd.LocalDateTime).ToList();
+            return Task.FromResult<IReadOnlyList<Booking>>(list);
+        }
+
+        public Task<IReadOnlyList<Booking>> GetBookingsPending2hReminderAsync(Guid tenantId, DateTimeOffset referenceTime, CancellationToken ct = default)
+        {
+            var targetStart = referenceTime.AddMinutes(105);
+            var targetEnd = referenceTime.AddMinutes(135);
+            var list = Bookings.Where(b => b.TenantId == tenantId &&
+                                           b.Status is BookingStatus.Scheduled or BookingStatus.Confirmed &&
+                                           b.Reminder2hSentAt == null &&
+                                           b.ScheduledDate.ToDateTime(b.ScheduledTime) >= targetStart.LocalDateTime &&
+                                           b.ScheduledDate.ToDateTime(b.ScheduledTime) <= targetEnd.LocalDateTime).ToList();
+            return Task.FromResult<IReadOnlyList<Booking>>(list);
+        }
+
+        public Task<Booking?> GetUpcomingActiveBookingByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var booking = Bookings
+                .Where(b => b.TenantId == tenantId &&
+                            b.CustomerPhone == customerPhone &&
+                            b.Status is BookingStatus.Scheduled or BookingStatus.Confirmed &&
+                            b.ScheduledDate >= today)
+                .OrderBy(b => b.ScheduledDate)
+                .ThenBy(b => b.ScheduledTime)
+                .FirstOrDefault();
+            return Task.FromResult(booking);
         }
     }
 

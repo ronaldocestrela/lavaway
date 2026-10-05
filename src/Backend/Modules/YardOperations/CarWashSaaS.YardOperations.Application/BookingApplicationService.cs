@@ -286,7 +286,34 @@ public sealed class BookingApplicationService(
         return Result<BookingConfirmationDto>.Success(dto);
     }
 
-    public async Task<Result> CancelBookingAsync(
+    public async Task<Result<BookingSummaryDto>> ConfirmBookingAsync(
+        Guid tenantId,
+        Guid bookingId,
+        CancellationToken ct = default)
+    {
+        var booking = await bookingRepository.GetByIdAsync(bookingId, ct);
+        if (booking is null || booking.TenantId != tenantId)
+        {
+            return Result<BookingSummaryDto>.Failure(new Error("booking.not_found", "Booking not found.", ErrorType.NotFound));
+        }
+
+        var result = booking.Confirm();
+        if (!result.IsSuccess)
+        {
+            return Result<BookingSummaryDto>.Failure(result.Error!);
+        }
+
+        bookingRepository.Update(booking);
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<BookingSummaryDto>.Failure(saveResult.Error!);
+        }
+
+        return Result<BookingSummaryDto>.Success(MapToSummaryDto(booking));
+    }
+
+    public async Task<Result<BookingSummaryDto>> CancelBookingAsync(
         Guid tenantId,
         Guid bookingId,
         string? reason,
@@ -295,18 +322,78 @@ public sealed class BookingApplicationService(
         var booking = await bookingRepository.GetByIdAsync(bookingId, ct);
         if (booking is null || booking.TenantId != tenantId)
         {
-            return Result.Failure(new Error("booking.not_found", "Booking not found.", ErrorType.NotFound));
+            return Result<BookingSummaryDto>.Failure(new Error("booking.not_found", "Booking not found.", ErrorType.NotFound));
         }
 
         var result = booking.Cancel(reason);
         if (!result.IsSuccess)
         {
-            return Result.Failure(result.Error!);
+            return Result<BookingSummaryDto>.Failure(result.Error!);
         }
 
         bookingRepository.Update(booking);
         var saveResult = await unitOfWork.SaveChangesAsync(ct);
-        return saveResult.IsSuccess ? Result.Success() : Result.Failure(saveResult.Error!);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<BookingSummaryDto>.Failure(saveResult.Error!);
+        }
+
+        return Result<BookingSummaryDto>.Success(MapToSummaryDto(booking));
+    }
+
+    public async Task<Result<BookingSummaryDto>> RescheduleBookingAsync(
+        Guid tenantId,
+        Guid bookingId,
+        DateOnly newDate,
+        TimeOnly newTime,
+        CancellationToken ct = default)
+    {
+        var booking = await bookingRepository.GetByIdAsync(bookingId, ct);
+        if (booking is null || booking.TenantId != tenantId)
+        {
+            return Result<BookingSummaryDto>.Failure(new Error("booking.not_found", "Booking not found.", ErrorType.NotFound));
+        }
+
+        var hasCapacity = await _capacityChecker.HasCapacityAsync(
+            tenantId,
+            newDate,
+            newTime,
+            booking.EstimatedDurationMinutes,
+            ct);
+
+        if (!hasCapacity)
+        {
+            return Result<BookingSummaryDto>.Failure(new Error("booking.capacity.exceeded", "No boxes available for the selected time slot.", ErrorType.Conflict));
+        }
+
+        var result = booking.Reschedule(newDate, newTime);
+        if (!result.IsSuccess)
+        {
+            return Result<BookingSummaryDto>.Failure(result.Error!);
+        }
+
+        bookingRepository.Update(booking);
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<BookingSummaryDto>.Failure(saveResult.Error!);
+        }
+
+        return Result<BookingSummaryDto>.Success(MapToSummaryDto(booking));
+    }
+
+    public async Task<Result<BookingSummaryDto?>> GetUpcomingBookingForCustomerAsync(
+        Guid tenantId,
+        string customerPhone,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || string.IsNullOrWhiteSpace(customerPhone))
+        {
+            return Result<BookingSummaryDto?>.Failure(new Error("booking.invalid_input", "Tenant and customer phone are required.", ErrorType.Validation));
+        }
+
+        var booking = await bookingRepository.GetUpcomingActiveBookingByPhoneAsync(tenantId, customerPhone, ct);
+        return Result<BookingSummaryDto?>.Success(booking is null ? null : MapToSummaryDto(booking));
     }
 
     public async Task<Result> MarkBookingArrivedAsync(
@@ -360,5 +447,8 @@ public sealed class BookingApplicationService(
         b.Origin.ToString(),
         b.WorkOrderId,
         b.Notes,
-        b.CreatedAt);
+        b.CreatedAt,
+        b.Reminder24hSentAt,
+        b.Reminder2hSentAt,
+        b.ConfirmedAtUtc);
 }

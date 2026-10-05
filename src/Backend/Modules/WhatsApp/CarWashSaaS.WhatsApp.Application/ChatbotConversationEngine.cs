@@ -46,6 +46,45 @@ public sealed class ChatbotConversationEngine(
             return await SendMainMenuAsync(tenantId, session, ct);
         }
 
+        var lower = text.ToLowerInvariant().Trim();
+
+        // Intercepta respostas contextuais a lembretes
+        if (session.CurrentStep is ChatbotStep.Greeting or ChatbotStep.Menu)
+        {
+            var isConfirm = IsConfirmKeyword(lower);
+            var isReschedule = IsRescheduleKeyword(lower);
+            var isCancel = IsCancelKeyword(lower);
+
+            if (isConfirm || isReschedule || isCancel)
+            {
+                var upcomingResult = await schedulingLookup.GetUpcomingBookingForCustomerAsync(tenantId, senderPhone, ct);
+                if (upcomingResult.IsSuccess && upcomingResult.Value is not null)
+                {
+                    var upcoming = upcomingResult.Value;
+                    if (isConfirm)
+                    {
+                        var confirmResult = await ExecuteConfirmationAsync(tenantId, session, upcoming, ct);
+                        await sessionRepository.UpdateAsync(session, ct);
+                        return confirmResult;
+                    }
+
+                    if (isCancel)
+                    {
+                        var cancelResult = await ExecuteCancellationAsync(tenantId, session, upcoming, ct);
+                        await sessionRepository.UpdateAsync(session, ct);
+                        return cancelResult;
+                    }
+
+                    if (isReschedule)
+                    {
+                        var rescheduleResult = await StartRescheduleFlowAsync(tenantId, session, upcoming, ct);
+                        await sessionRepository.UpdateAsync(session, ct);
+                        return rescheduleResult;
+                    }
+                }
+            }
+        }
+
         var result = session.CurrentStep switch
         {
             ChatbotStep.Greeting => await HandleGreetingAsync(tenantId, session, text, ct),
@@ -56,6 +95,9 @@ public sealed class ChatbotConversationEngine(
             ChatbotStep.SelectingTimeSlot => await HandleSelectingTimeSlotAsync(tenantId, session, text, ct),
             ChatbotStep.CollectingPlate => await HandleCollectingPlateAsync(tenantId, session, text, ct),
             ChatbotStep.AwaitingConfirmation => await HandleAwaitingConfirmationAsync(tenantId, session, text, ct),
+            ChatbotStep.AwaitingReminderAction => await HandleAwaitingReminderActionAsync(tenantId, session, text, ct),
+            ChatbotStep.ReschedulingDate => await HandleReschedulingDateAsync(tenantId, session, text, ct),
+            ChatbotStep.ReschedulingTimeSlot => await HandleReschedulingTimeSlotAsync(tenantId, session, text, ct),
             _ => await SendMainMenuAsync(tenantId, session, ct)
         };
 
@@ -351,12 +393,246 @@ public sealed class ChatbotConversationEngine(
             return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
         }
 
+        session.SetTargetBooking(bookings[0].Id);
+        session.MoveToStep(ChatbotStep.AwaitingReminderAction);
+
         var lines = bookings.Select(b => $"• *{b.Protocol}*: {b.ServiceName} ({b.VehiclePlate}) em {b.ScheduledDate:dd/MM} às {b.ScheduledTime:HH\\:mm} - Status: *{BookingStatusConstants.GetDisplayName(b.Status)}*");
         var message = "🕒 *Seus Próximos Agendamentos:*\n\n" +
                       string.Join("\n\n", lines) + "\n\n" +
-                      "Digite *1* para agendar outro serviço ou *menu* para voltar.";
+                      "Deseja gerenciar seu agendamento? Digite:\n" +
+                      "1️⃣ para *Confirmar presença*\n" +
+                      "2️⃣ para *Remarcar horário*\n" +
+                      "3️⃣ para *Cancelar agendamento*\n\n" +
+                      "Ou digite *menu* para voltar.";
 
         return await SendBotReplyAsync(tenantId, session.CustomerPhone, message, ct);
+    }
+
+    private async Task<Result> HandleAwaitingReminderActionAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
+    {
+        var lower = text.Trim().ToLowerInvariant();
+
+        BookingSummaryDto? targetBooking = null;
+        if (session.TargetBookingId.HasValue)
+        {
+            var activeResult = await schedulingLookup.GetCustomerActiveBookingsAsync(tenantId, session.CustomerPhone, ct);
+            targetBooking = activeResult.Value?.FirstOrDefault(b => b.Id == session.TargetBookingId.Value);
+        }
+
+        if (targetBooking is null)
+        {
+            var upcomingResult = await schedulingLookup.GetUpcomingBookingForCustomerAsync(tenantId, session.CustomerPhone, ct);
+            targetBooking = upcomingResult.Value;
+        }
+
+        if (targetBooking is null)
+        {
+            session.Reset();
+            var reply = "Nenhum agendamento ativo encontrado para gerenciar. Digite *menu* para voltar ao início.";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
+        if (lower is "1" || IsConfirmKeyword(lower))
+        {
+            return await ExecuteConfirmationAsync(tenantId, session, targetBooking, ct);
+        }
+
+        if (lower is "2" || IsRescheduleKeyword(lower))
+        {
+            return await StartRescheduleFlowAsync(tenantId, session, targetBooking, ct);
+        }
+
+        if (lower is "3" || IsCancelKeyword(lower))
+        {
+            return await ExecuteCancellationAsync(tenantId, session, targetBooking, ct);
+        }
+
+        var prompt = "Opção inválida. Digite:\n*1* para Confirmar presença\n*2* para Remarcar horário\n*3* para Cancelar agendamento\nOu *menu* para voltar.";
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, prompt, ct);
+    }
+
+    private async Task<Result> HandleReschedulingDateAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        DateOnly targetDate;
+
+        if (text is "1") targetDate = today;
+        else if (text is "2") targetDate = today.AddDays(1);
+        else if (text is "3") targetDate = today.AddDays(2);
+        else if (TryParseDate(text, out var parsedDate)) targetDate = parsedDate;
+        else
+        {
+            var reply = "Data inválida. Digite 1 para Hoje, 2 para Amanhã ou a data no formato DD/MM (Ex: 15/10):";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
+        if (targetDate < today)
+        {
+            var reply = "Não é possível remarcar para uma data no passado. Por favor, escolha a partir de hoje:";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
+        var slotsResult = await schedulingLookup.GetAvailableTimeSlotsAsync(
+            tenantId,
+            targetDate,
+            session.SelectedServiceId!.Value,
+            session.SelectedVehicleSize!,
+            ct);
+
+        if (!slotsResult.IsSuccess || slotsResult.Value!.Count == 0)
+        {
+            var reply = $"Infelizmente não há horários disponíveis para {targetDate:dd/MM}.\nPor favor, digite outra data no formato DD/MM:";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
+        session.SelectDate(targetDate);
+        session.MoveToStep(ChatbotStep.ReschedulingTimeSlot);
+
+        var slots = slotsResult.Value!;
+        var lines = slots.Select((s, i) => $"{i + 1} - {s.StartTime:HH\\:mm} ({s.AvailableBoxes} {(s.AvailableBoxes == 1 ? "vaga" : "vagas")})");
+        var message = $"🕒 *Horários disponíveis para {targetDate:dd/MM}:*\n\n" +
+                      string.Join("\n", lines) + "\n\n" +
+                      "Digite o *número do horário desejado*:";
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, message, ct);
+    }
+
+    private async Task<Result> HandleReschedulingTimeSlotAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
+    {
+        var slotsResult = await schedulingLookup.GetAvailableTimeSlotsAsync(
+            tenantId,
+            session.SelectedDate!.Value,
+            session.SelectedServiceId!.Value,
+            session.SelectedVehicleSize!,
+            ct);
+
+        var slots = slotsResult.Value ?? [];
+        if (!int.TryParse(text, out var index) || index < 1 || index > slots.Count)
+        {
+            var reply = $"Por favor, digite um número de *1 a {slots.Count}* correspondente ao horário:";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
+        var selectedSlot = slots[index - 1];
+        var bookingId = session.TargetBookingId!.Value;
+
+        var rescheduleResult = await schedulingLookup.RescheduleBookingAsync(
+            tenantId,
+            bookingId,
+            session.SelectedDate!.Value,
+            selectedSlot.StartTime,
+            ct);
+
+        if (!rescheduleResult.IsSuccess)
+        {
+            if (rescheduleResult.Error!.Code == "booking.capacity.exceeded")
+            {
+                var reply = "⚠️ Ops! Esse horário acabou de ser preenchido por outro cliente.\n" +
+                            "Por favor, digite outro número de horário vago listado acima:";
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+            }
+
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone,
+                $"Não foi possível remarcar: {rescheduleResult.Error.Description}", ct);
+        }
+
+        var updated = rescheduleResult.Value!;
+        session.Reset();
+
+        var message = "✅ *Agendamento Remarcado com Sucesso!*\n\n" +
+                      $"• Protocolo: *{updated.Protocol}*\n" +
+                      $"• Serviço: *{updated.ServiceName}*\n" +
+                      $"• Novo Horário: *{updated.ScheduledDate:dd/MM/yyyy} às {updated.ScheduledTime:HH\\:mm}*\n\n" +
+                      "Te aguardamos no novo horário! Se precisar de algo mais, digite *menu*. 🚗✨";
+
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, message, ct);
+    }
+
+    private async Task<Result> ExecuteConfirmationAsync(
+        Guid tenantId,
+        ChatbotConversationSession session,
+        BookingSummaryDto booking,
+        CancellationToken ct)
+    {
+        var confirmResult = await schedulingLookup.ConfirmBookingAsync(tenantId, booking.Id, ct);
+        if (!confirmResult.IsSuccess)
+        {
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone,
+                $"Não foi possível confirmar o agendamento: {confirmResult.Error?.Description}", ct);
+        }
+
+        session.Reset();
+        var message = "✅ *Presença Confirmada com Sucesso!*\n\n" +
+                      $"Agradecemos a confirmação, *{session.CustomerName ?? booking.CustomerName}*!\n" +
+                      $"Seu horário para o veículo *{booking.VehiclePlate}* está garantido para *{booking.ScheduledDate:dd/MM/yyyy} às {booking.ScheduledTime:HH\\:mm}*.\n\n" +
+                      "Te aguardamos com tudo pronto! Se precisar de algo mais, digite *menu*. 🚗✨";
+
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, message, ct);
+    }
+
+    private async Task<Result> ExecuteCancellationAsync(
+        Guid tenantId,
+        ChatbotConversationSession session,
+        BookingSummaryDto booking,
+        CancellationToken ct)
+    {
+        var cancelResult = await schedulingLookup.CancelBookingAsync(tenantId, booking.Id, "Cancelado pelo cliente via WhatsApp", ct);
+        if (!cancelResult.IsSuccess)
+        {
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone,
+                $"Não foi possível cancelar o agendamento: {cancelResult.Error?.Description}", ct);
+        }
+
+        session.Reset();
+        var message = "❌ *Agendamento Cancelado com Sucesso.*\n\n" +
+                      $"Sua reserva #{booking.Protocol} para o veículo *{booking.VehiclePlate}* em {booking.ScheduledDate:dd/MM/yyyy} às {booking.ScheduledTime:HH\\:mm} foi cancelada e a vaga foi liberada.\n\n" +
+                      "Caso queira realizar um novo agendamento no futuro, basta digitar *menu*. Até logo!";
+
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, message, ct);
+    }
+
+    private async Task<Result> StartRescheduleFlowAsync(
+        Guid tenantId,
+        ChatbotConversationSession session,
+        BookingSummaryDto booking,
+        CancellationToken ct)
+    {
+        session.SetTargetBooking(booking.Id);
+        session.SelectService(booking.ServiceId, booking.ServiceName);
+        session.SelectVehicleSize(booking.VehicleSize, booking.EstimatedPrice);
+        session.SetVehiclePlate(booking.VehiclePlate);
+        session.MoveToStep(ChatbotStep.ReschedulingDate);
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var tomorrow = today.AddDays(1);
+        var dayAfter = today.AddDays(2);
+
+        var message = $"🔄 *Remarcação de Agendamento (#{booking.Protocol})*\n\n" +
+                      $"Serviço: *{booking.ServiceName}* ({booking.VehiclePlate})\n\n" +
+                      "📅 *Para qual data deseja remarcar?*\n" +
+                      $"1 - Hoje ({today:dd/MM})\n" +
+                      $"2 - Amanhã ({tomorrow:dd/MM})\n" +
+                      $"3 - {dayAfter:dd/MM}\n\n" +
+                      "Ou digite a data no formato *DD/MM*:";
+
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, message, ct);
+    }
+
+    private static bool IsConfirmKeyword(string text)
+    {
+        var lower = text.Trim().ToLowerInvariant();
+        return lower is "confirmar" or "confirmo" or "confirmado" or "sim" or "ok" or "confirm";
+    }
+
+    private static bool IsRescheduleKeyword(string text)
+    {
+        var lower = text.Trim().ToLowerInvariant();
+        return lower is "remarcar" or "remarcação" or "remarcacao" or "trocar" or "mudar" or "reagendar";
+    }
+
+    private static bool IsCancelKeyword(string text)
+    {
+        var lower = text.Trim().ToLowerInvariant();
+        return lower is "cancelar" or "cancela" or "cancelamento" or "desmarcar" or "não vou" or "nao vou";
     }
 
     private async Task<Result> SendConfirmationSummaryAsync(Guid tenantId, ChatbotConversationSession session, CancellationToken ct)
@@ -392,7 +668,7 @@ public sealed class ChatbotConversationEngine(
     private static bool IsResetCommand(string text)
     {
         var lower = text.Trim().ToLowerInvariant();
-        return lower is "menu" or "sair" or "cancelar" or "voltar" or "inicio" or "início" or "começar" or "comecar";
+        return lower is "menu" or "sair" or "voltar" or "inicio" or "início" or "começar" or "comecar";
     }
 
     private static bool TryParseDate(string text, out DateOnly date)

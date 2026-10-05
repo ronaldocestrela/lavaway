@@ -119,6 +119,7 @@ public sealed class WhatsAppDbContext(
         session.Property(value => value.SelectedDate);
         session.Property(value => value.SelectedTime);
         session.Property(value => value.VehiclePlate).HasMaxLength(16);
+        session.Property(value => value.TargetBookingId);
         session.Property(value => value.LastInteractionAtUtc).HasColumnType("datetimeoffset").IsRequired();
         session.Property(value => value.IsActive).IsRequired();
         session.HasIndex(value => new { value.TenantId, value.CustomerPhone, value.IsActive });

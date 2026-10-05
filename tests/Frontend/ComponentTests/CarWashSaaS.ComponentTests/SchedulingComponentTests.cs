@@ -77,6 +77,58 @@ public sealed class SchedulingComponentTests : BunitContext
     }
 
     [Fact]
+    public void BookingCard_ShouldTriggerConfirm_Reschedule_AndSendReminder()
+    {
+        var booking = CreateSampleBooking();
+        BookingSummaryDto? confirmed = null;
+        BookingSummaryDto? rescheduled = null;
+        BookingSummaryDto? reminded = null;
+
+        var cut = Render<BookingCard>(parameters => parameters
+            .Add(p => p.Booking, booking)
+            .Add(p => p.OnConfirm, b => confirmed = b)
+            .Add(p => p.OnReschedule, b => rescheduled = b)
+            .Add(p => p.OnSendReminder, b => reminded = b));
+
+        var confirmBtn = cut.Find("button.btn-confirm");
+        confirmBtn.Click();
+        Assert.NotNull(confirmed);
+        Assert.Equal(booking.Id, confirmed.Id);
+
+        var rescheduleBtn = cut.Find("button.btn-reschedule");
+        rescheduleBtn.Click();
+        Assert.NotNull(rescheduled);
+        Assert.Equal(booking.Id, rescheduled.Id);
+
+        var reminderBtn = cut.Find("button.btn-reminder");
+        reminderBtn.Click();
+        Assert.NotNull(reminded);
+        Assert.Equal(booking.Id, reminded.Id);
+    }
+
+    [Fact]
+    public void BookingCard_ShouldRenderReminderBadges_WhenFlagsAreSet()
+    {
+        var sample = CreateSampleBooking(BookingStatusConstants.Confirmed);
+        var bookingWithBadges = sample with
+        {
+            Reminder24hSentAt = DateTimeOffset.UtcNow.AddHours(-23),
+            Reminder2hSentAt = DateTimeOffset.UtcNow.AddMinutes(-30),
+            ConfirmedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10)
+        };
+
+        var cut = Render<BookingCard>(parameters => parameters
+            .Add(p => p.Booking, bookingWithBadges));
+
+        Assert.Contains("confirmed-badge", cut.Markup);
+        Assert.Contains("Confirmado", cut.Markup);
+        Assert.Contains("reminder-24h", cut.Markup);
+        Assert.Contains("24h", cut.Markup);
+        Assert.Contains("reminder-2h", cut.Markup);
+        Assert.Contains("2h", cut.Markup);
+    }
+
+    [Fact]
     public void BookingCapacityMeter_ShouldRenderStatistics()
     {
         var cut = Render<BookingCapacityMeter>(parameters => parameters

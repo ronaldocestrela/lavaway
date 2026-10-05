@@ -29,6 +29,9 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(booking => booking.WorkOrderId);
         builder.Property(booking => booking.Notes).HasMaxLength(500);
         builder.Property(booking => booking.CancellationReason).HasMaxLength(250);
+        builder.Property(booking => booking.Reminder24hSentAt).HasColumnType("datetimeoffset");
+        builder.Property(booking => booking.Reminder2hSentAt).HasColumnType("datetimeoffset");
+        builder.Property(booking => booking.ConfirmedAtUtc).HasColumnType("datetimeoffset");
         builder.Property(booking => booking.CreatedAt).HasColumnType("datetimeoffset").IsRequired();
         builder.Property(booking => booking.UpdatedAt).HasColumnType("datetimeoffset").IsRequired();
 

@@ -64,7 +64,17 @@ public sealed record BookingSummaryDto(
     string Origin,
     Guid? WorkOrderId,
     string? Notes,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? Reminder24hSentAt = null,
+    DateTimeOffset? Reminder2hSentAt = null,
+    DateTimeOffset? ConfirmedAtUtc = null);
+
+public sealed record RescheduleBookingRequest(
+    DateOnly NewDate,
+    TimeOnly NewTime);
+
+public sealed record SendBookingReminderRequest(
+    string ReminderType);
 
 public sealed record CreateBookingFromChatbotRequest(
     string CustomerPhone,

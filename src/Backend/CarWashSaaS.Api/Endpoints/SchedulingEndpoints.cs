@@ -92,7 +92,74 @@ public static class SchedulingEndpoints
 
             var result = await service.CancelBookingAsync(tenantId, id, request?.Reason, ct);
             return result.IsSuccess
-                ? Results.NoContent()
+                ? Results.Ok(result.Value)
+                : result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.BadRequest(new { result.Error.Code, result.Error.Description })
+                };
+        }).RequireAuthorization(AuthorizationPolicyNames.Receptionist);
+
+        group.MapPost("/bookings/{id:guid}/confirm", async (
+            Guid id,
+            ICurrentTenantAccessor currentTenantAccessor,
+            BookingApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.ConfirmBookingAsync(tenantId, id, ct);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.BadRequest(new { result.Error.Code, result.Error.Description })
+                };
+        }).RequireAuthorization(AuthorizationPolicyNames.Receptionist);
+
+        group.MapPost("/bookings/{id:guid}/reschedule", async (
+            Guid id,
+            RescheduleBookingRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            BookingApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.RescheduleBookingAsync(tenantId, id, request.NewDate, request.NewTime, ct);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.BadRequest(new { result.Error.Code, result.Error.Description })
+                };
+        }).RequireAuthorization(AuthorizationPolicyNames.Receptionist);
+
+        group.MapPost("/bookings/{id:guid}/reminders/send", async (
+            Guid id,
+            SendBookingReminderRequest request,
+            ICurrentTenantAccessor currentTenantAccessor,
+            BookingReminderApplicationService reminderService,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await reminderService.SendManualReminderAsync(tenantId, id, request.ReminderType, ct);
+            return result.IsSuccess
+                ? Results.Ok(new { status = "sent" })
                 : result.Error!.Type switch
                 {
                     ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),

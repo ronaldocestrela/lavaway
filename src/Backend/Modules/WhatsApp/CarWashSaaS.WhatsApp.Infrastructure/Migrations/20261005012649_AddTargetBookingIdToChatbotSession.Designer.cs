@@ -4,6 +4,7 @@ using CarWashSaaS.WhatsApp.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CarWashSaaS.WhatsApp.Infrastructure.Migrations
 {
     [DbContext(typeof(WhatsAppDbContext))]
-    partial class WhatsAppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005012649_AddTargetBookingIdToChatbotSession")]
+    partial class AddTargetBookingIdToChatbotSession
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

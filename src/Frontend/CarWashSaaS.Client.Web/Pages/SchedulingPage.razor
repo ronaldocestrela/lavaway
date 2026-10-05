@@ -113,8 +113,63 @@
                     {
                         <BookingCard Booking="booking"
                                      OnCheckIn="HandleCheckIn"
-                                     OnCancel="HandleCancelBooking" />
+                                     OnCancel="HandleCancelBooking"
+                                     OnConfirm="HandleConfirmBooking"
+                                     OnReschedule="OpenRescheduleModal"
+                                     OnSendReminder="HandleSendReminder" />
                     }
+                </div>
+            }
+
+            <!-- Modal de Remarcação de Reserva -->
+            @if (_showRescheduleModal && _rescheduleBooking is not null)
+            {
+                <div class="modal-overlay" @onclick="CloseRescheduleModal">
+                    <div class="modal-dialog" @onclick:stopPropagation>
+                        <header class="modal-header">
+                            <h2>Remarcar Agendamento</h2>
+                            <button type="button" class="modal-close" @onclick="CloseRescheduleModal">&times;</button>
+                        </header>
+
+                        <form @onsubmit="SaveRescheduleAsync" class="modal-form">
+                            <p class="modal-subtitle" style="color: #94a3b8; font-size: 0.88rem; margin-bottom: 12px;">
+                                Reserva <strong>#@_rescheduleBooking.Protocol</strong> • @_rescheduleBooking.CustomerName (@_rescheduleBooking.VehiclePlate)
+                            </p>
+
+                            <div class="form-row">
+                                <label class="form-label">
+                                    <span>Nova Data *</span>
+                                    <input type="date" value="@_rescheduleDate.ToString("yyyy-MM-dd")" @onchange="OnRescheduleDateChanged" required min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                </label>
+
+                                <label class="form-label">
+                                    <span>Horário Disponível *</span>
+                                    <select @bind="_rescheduleTimeStr" required>
+                                        @if (_rescheduleSlots.Count == 0)
+                                        {
+                                            <option value="">Sem vagas disponíveis nesta data</option>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var slot in _rescheduleSlots)
+                                            {
+                                                <option value="@slot.StartTime.ToString("HH\\:mm")">
+                                                    @slot.StartTime.ToString("HH\\:mm") (@slot.AvailableBoxes @(slot.AvailableBoxes == 1 ? "vaga" : "vagas"))
+                                                </option>
+                                            }
+                                        }
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="modal-actions">
+                                <button type="button" class="btn-cancel-modal" @onclick="CloseRescheduleModal">Cancelar</button>
+                                <button type="submit" class="btn-primary" disabled="@(_rescheduleSlots.Count == 0 || _isSavingReschedule)">
+                                    @(_isSavingReschedule ? "Salvando..." : "Confirmar Remarcação")
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             }
 
@@ -182,7 +237,7 @@
                                 <label class="form-label">
                                     <span>Horário de Início *</span>
                                     <input type="time" value="@_manualTime.ToString("HH\\:mm")"
-                                           @onchange="(e) => _manualTime = TimeOnly.Parse(e.Value?.ToString() ?? "09:00")"
+                                           @onchange="OnManualTimeChanged"
                                            required />
                                 </label>
                             </div>
@@ -405,6 +460,126 @@
         finally
         {
             _isSavingManual = false;
+        }
+    }
+
+    private void OnManualTimeChanged(ChangeEventArgs e)
+    {
+        if (TimeOnly.TryParse(e.Value?.ToString(), out var time))
+        {
+            _manualTime = time;
+        }
+    }
+
+    // Handlers para Ações de Lembrete, Confirmação e Remarcação
+    private async Task HandleConfirmBooking(BookingSummaryDto booking)
+    {
+        try
+        {
+            await SchedulingApi.ConfirmBookingAsync(booking.Id);
+            _successMessage = $"Agendamento #{booking.Protocol} confirmado com sucesso!";
+            await LoadBookingsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erro ao confirmar agendamento: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSendReminder(BookingSummaryDto booking)
+    {
+        try
+        {
+            var reminderType = booking.ScheduledDate == _today ? "2h" : "24h";
+            await SchedulingApi.SendReminderAsync(booking.Id, reminderType);
+            _successMessage = $"Lembrete ({reminderType}) enviado com sucesso via WhatsApp para {booking.CustomerName}!";
+            await LoadBookingsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erro ao enviar lembrete: {ex.Message}";
+        }
+    }
+
+    // Modal de Remarcação State
+    private bool _showRescheduleModal;
+    private bool _isSavingReschedule;
+    private BookingSummaryDto? _rescheduleBooking;
+    private DateOnly _rescheduleDate = DateOnly.FromDateTime(DateTime.Today);
+    private string _rescheduleTimeStr = string.Empty;
+    private List<AvailableTimeSlotDto> _rescheduleSlots = [];
+
+    private async Task OpenRescheduleModal(BookingSummaryDto booking)
+    {
+        _rescheduleBooking = booking;
+        _rescheduleDate = booking.ScheduledDate < _today ? _today : booking.ScheduledDate;
+        _showRescheduleModal = true;
+        await LoadRescheduleSlotsAsync();
+    }
+
+    private void CloseRescheduleModal()
+    {
+        _showRescheduleModal = false;
+        _rescheduleBooking = null;
+    }
+
+    private async Task OnRescheduleDateChanged(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var parsedDate))
+        {
+            _rescheduleDate = parsedDate;
+            await LoadRescheduleSlotsAsync();
+        }
+    }
+
+    private async Task LoadRescheduleSlotsAsync()
+    {
+        if (_rescheduleBooking is null) return;
+
+        try
+        {
+            var slots = await SchedulingApi.GetAvailableSlotsAsync(
+                _rescheduleDate,
+                _rescheduleBooking.ServiceId,
+                _rescheduleBooking.VehicleSize);
+
+            _rescheduleSlots = slots.Where(s => s.AvailableBoxes > 0).ToList();
+            _rescheduleTimeStr = _rescheduleSlots.FirstOrDefault()?.StartTime.ToString("HH\\:mm") ?? string.Empty;
+        }
+        catch
+        {
+            _rescheduleSlots = [];
+            _rescheduleTimeStr = string.Empty;
+        }
+    }
+
+    private async Task SaveRescheduleAsync()
+    {
+        if (_rescheduleBooking is null || !TimeOnly.TryParse(_rescheduleTimeStr, out var newTime))
+        {
+            _errorMessage = "Selecione um horário válido para remarcar.";
+            return;
+        }
+
+        _isSavingReschedule = true;
+        _errorMessage = null;
+
+        try
+        {
+            var updated = await SchedulingApi.RescheduleBookingAsync(_rescheduleBooking.Id, _rescheduleDate, newTime);
+            _successMessage = $"Agendamento #{updated.Protocol} remarcado com sucesso para {_rescheduleDate:dd/MM} às {newTime:HH\\:mm}!";
+            _showRescheduleModal = false;
+            _rescheduleBooking = null;
+            _selectedDate = _rescheduleDate;
+            await LoadBookingsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erro ao remarcar: {ex.Message}";
+        }
+        finally
+        {
+            _isSavingReschedule = false;
         }
     }
 }

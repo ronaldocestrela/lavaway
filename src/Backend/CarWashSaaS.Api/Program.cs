@@ -85,6 +85,7 @@ builder.Services.AddScoped<YardSetupApplicationService>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<BookingApplicationService>();
 builder.Services.AddScoped<ISchedulingBookingLookup>(sp => sp.GetRequiredService<BookingApplicationService>());
+builder.Services.AddScoped<BookingReminderApplicationService>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
@@ -104,6 +105,7 @@ builder.Services.AddSingleton<IConnectionFactory>(_ => new ConnectionFactory
 builder.Services.AddSingleton<IBackgroundQueue, RabbitMqBackgroundQueue>();
 builder.Services.AddScoped<ITenantQueueMessageHandler, TenantBrandingAuditQueueHandler>();
 builder.Services.AddHostedService<TenantQueueWorker>();
+builder.Services.AddHostedService<BookingReminderHostedService>();
 builder.Services.AddHttpClient<IWhatsAppPairingProvider, EvolutionApiWhatsAppPairingProvider>((serviceProvider, client) =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();

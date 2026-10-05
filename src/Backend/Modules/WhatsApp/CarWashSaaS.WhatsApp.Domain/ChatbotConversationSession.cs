@@ -41,6 +41,7 @@ public sealed class ChatbotConversationSession : IMustHaveTenant
     public DateOnly? SelectedDate { get; private set; }
     public TimeOnly? SelectedTime { get; private set; }
     public string? VehiclePlate { get; private set; }
+    public Guid? TargetBookingId { get; private set; }
     public DateTimeOffset LastInteractionAtUtc { get; private set; }
     public bool IsActive { get; private set; }
 
@@ -114,6 +115,12 @@ public sealed class ChatbotConversationSession : IMustHaveTenant
         Touch();
     }
 
+    public void SetTargetBooking(Guid bookingId)
+    {
+        TargetBookingId = bookingId;
+        Touch();
+    }
+
     public void Complete()
     {
         CurrentStep = ChatbotStep.Completed;
@@ -131,6 +138,7 @@ public sealed class ChatbotConversationSession : IMustHaveTenant
         SelectedDate = null;
         SelectedTime = null;
         VehiclePlate = null;
+        TargetBookingId = null;
         IsActive = true;
         Touch();
     }
