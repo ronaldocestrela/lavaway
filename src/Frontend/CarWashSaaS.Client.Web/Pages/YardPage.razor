@@ -53,13 +53,14 @@
             <button type="button" style="background: transparent; border: none; color: inherit; font-size: 16px; cursor: pointer;" @onclick="@(() => _actionSuccess = null)">&times;</button>
         </div>
     }
-    else if (_board is not null)
+
+    @if (_board is not null)
     {
         <YardKanbanBoard Board="_board"
                          AvailableOperators="_operators"
                          IsRefreshing="_isRefreshing"
                          IsLiveConnected="true"
-                         ErrorMessage="_actionError"
+                         ErrorMessage="@_actionError"
                          OnRefreshRequested="RefreshBoardAsync"
                          OnErrorDismissed="HandleErrorDismissed"
                          OnStatusChangeRequested="HandleStatusChangeAsync"
@@ -247,6 +248,22 @@
         {
             await AfterSalesApi.RegisterPickupAsync(card.Id);
             _actionSuccess = $"Retirada do veículo {card.Plate} ({card.CustomerName}) registrada com sucesso! Pesquisa de satisfação agendada para 1h após a retirada.";
+            if (_board is not null)
+            {
+                var newCols = _board.Columns.Select(col =>
+                    new YardKanbanColumnDto(
+                        col.Status,
+                        col.Title,
+                        col.Cards.Count(c => c.Id != card.Id),
+                        col.Cards.Where(c => c.Id != card.Id).ToList())).ToList();
+
+                _board = new YardKanbanBoardDto(
+                    newCols,
+                    Math.Max(0, _board.TotalActiveOrders - 1),
+                    _board.CapacityTotalBoxes,
+                    _board.OccupiedBoxes);
+                StateHasChanged();
+            }
             await RefreshBoardAsync();
         }
         catch (Exception ex)

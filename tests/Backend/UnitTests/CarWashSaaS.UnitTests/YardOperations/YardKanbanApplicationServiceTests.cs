@@ -104,6 +104,34 @@ public sealed class YardKanbanApplicationServiceTests
     }
 
     [Fact]
+    public async Task GetKanbanBoardAsync_ShouldExcludeOrders_WhenVehicleIsPickedUp()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var env = new FakeYardOperationsEnvironment(tenantId);
+
+        var wo1 = env.CreateWorkOrder("AAA1111");
+        var wo2 = env.CreateWorkOrder("BBB2222");
+
+        // Advance wo2 to ReadyForPickup and register pickup
+        wo2.ChangeStatus(WorkOrderStatus.InWashing);
+        wo2.ChangeStatus(WorkOrderStatus.Finishing);
+        wo2.ChangeStatus(WorkOrderStatus.QualityControl);
+        wo2.ChangeStatus(WorkOrderStatus.ReadyForPickup);
+        wo2.RegisterPickup();
+
+        var appService = env.CreateApplicationService();
+        var result = await appService.GetKanbanBoardAsync(tenantId);
+
+        Assert.True(result.IsSuccess);
+        var board = result.Value!;
+        Assert.Equal(1, board.TotalActiveOrders);
+
+        var readyCol = board.Columns.First(c => c.Status == "ReadyForPickup");
+        Assert.Equal(0, readyCol.Count);
+        Assert.DoesNotContain(board.Columns.SelectMany(c => c.Cards), c => c.Plate == "BBB2222");
+    }
+
+    [Fact]
     public async Task GetStatusHistoryAsync_ShouldReturnChronologicalHistory()
     {
         var tenantId = Guid.CreateVersion7();
@@ -177,7 +205,7 @@ public sealed class YardKanbanApplicationServiceTests
             Task.FromResult<IReadOnlyCollection<WorkOrder>>(WorkOrders.Where(w => w.TenantId == tenantId).Take(limit).ToList());
 
         public Task<IReadOnlyCollection<WorkOrder>> ListActiveAsync(Guid tenantId, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyCollection<WorkOrder>>(WorkOrders.Where(w => w.TenantId == tenantId).ToList());
+            Task.FromResult<IReadOnlyCollection<WorkOrder>>(WorkOrders.Where(w => w.TenantId == tenantId && !w.PickedUpAtUtc.HasValue).ToList());
 
         public Task<IReadOnlyCollection<WorkOrder>> GetWorkOrdersPendingSurveyAsync(Guid tenantId, DateTimeOffset cutoff, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);

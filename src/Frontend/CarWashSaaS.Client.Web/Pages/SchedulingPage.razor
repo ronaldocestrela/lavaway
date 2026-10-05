@@ -1,4 +1,5 @@
 @page "/scheduling"
+@attribute [Authorize(Roles = "Administrator,Receptionist")]
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Client.Components
 @using CarWashSaaS.Shared.Contracts
@@ -9,9 +10,7 @@
 
 <PageTitle>Agenda &amp; Reservas | Lavaway</PageTitle>
 
-<AuthorizeView Roles="Administrator,Receptionist">
-    <Authorized>
-        <section class="scheduling-page">
+<section class="scheduling-page">
             <header class="scheduling-header">
                 <div>
                     <div class="eyebrow"><span class="eyebrow-mark"></span> CONTROLE OPERACIONAL</div>
@@ -267,13 +266,6 @@
                 </div>
             }
         </section>
-    </Authorized>
-    <NotAuthorized>
-        <section class="auth-required">
-            <p>Acesso restrito para administradores e recepcionistas.</p>
-        </section>
-    </NotAuthorized>
-</AuthorizeView>
 
 @code {
     private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);

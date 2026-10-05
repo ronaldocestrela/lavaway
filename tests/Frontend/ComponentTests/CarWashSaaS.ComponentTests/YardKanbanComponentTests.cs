@@ -237,5 +237,47 @@ public sealed class YardKanbanComponentTests : BunitContext
         Assert.Contains("⭐ 5/5", cut.Markup);
         Assert.Empty(cut.FindAll("button.btn-pickup"));
     }
+
+    [Fact]
+    public void YardKanbanBoard_ShouldExcludeCards_WhenPickedUpAtUtcIsSet()
+    {
+        var readyCard = CreateSampleCard("ReadyForPickup", "ABC1234");
+        var pickedUpCard = new WorkOrderKanbanCardDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Cliente Entregue",
+            Guid.NewGuid(),
+            "XYZ9999",
+            "Suv",
+            "ReadyForPickup",
+            100m,
+            30,
+            DateTimeOffset.UtcNow.AddMinutes(-50),
+            DateTimeOffset.UtcNow.AddMinutes(-20),
+            null,
+            null,
+            null,
+            ["Ducha"],
+            1,
+            DateTimeOffset.UtcNow.AddMinutes(-20),
+            DateTimeOffset.UtcNow.AddMinutes(-10));
+
+        var columns = new List<YardKanbanColumnDto>
+        {
+            new("Waiting", "Aguardando", 0, []),
+            new("InWashing", "Em Lavagem", 0, []),
+            new("Finishing", "Secagem / Acabamento", 0, []),
+            new("QualityControl", "Controle de Qualidade", 0, []),
+            new("ReadyForPickup", "Pronto para Retirada", 2, [readyCard, pickedUpCard])
+        };
+
+        var board = new YardKanbanBoardDto(columns, 1, 6, 0);
+
+        var cut = Render<YardKanbanBoard>(parameters => parameters
+            .Add(p => p.Board, board));
+
+        Assert.Contains("ABC-1234", cut.Markup);
+        Assert.DoesNotContain("XYZ-9999", cut.Markup);
+    }
 }
 

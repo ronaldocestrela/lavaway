@@ -249,7 +249,7 @@ public sealed class AfterSalesApplicationServiceTests
             Task.FromResult<IReadOnlyCollection<WorkOrder>>(_orders.Where(o => o.TenantId == tenantId).Take(limit).ToList());
 
         public Task<IReadOnlyCollection<WorkOrder>> ListActiveAsync(Guid tenantId, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyCollection<WorkOrder>>(_orders.Where(o => o.TenantId == tenantId && (!o.PickedUpAtUtc.HasValue || o.Status != WorkOrderStatus.ReadyForPickup)).ToList());
+            Task.FromResult<IReadOnlyCollection<WorkOrder>>(_orders.Where(o => o.TenantId == tenantId && !o.PickedUpAtUtc.HasValue).ToList());
 
         public Task<IReadOnlyCollection<WorkOrder>> GetWorkOrdersPendingSurveyAsync(Guid tenantId, DateTimeOffset cutoff, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyCollection<WorkOrder>>(_orders

@@ -1,4 +1,5 @@
 @page "/work-orders/new"
+@attribute [Authorize(Roles = "Administrator,Receptionist")]
 @using CarWashSaaS.Client.Components
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
@@ -10,9 +11,7 @@
 
 <PageTitle>Abertura de OS | Lavaway</PageTitle>
 
-<AuthorizeView Roles="Administrator,Receptionist">
-    <Authorized>
-        <section class="workorder-page">
+<section class="workorder-page">
             @if (_isLoading)
             {
                 <div class="loading-state">
@@ -67,13 +66,6 @@
                 }
             }
         </section>
-    </Authorized>
-    <NotAuthorized>
-        <div class="feedback feedback-error">
-            <span>Acesso restrito. Somente Administradores e Recepcionistas podem abrir Ordens de Serviço.</span>
-        </div>
-    </NotAuthorized>
-</AuthorizeView>
 
 @code {
     [SupplyParameterFromQuery(Name = "customerId")]

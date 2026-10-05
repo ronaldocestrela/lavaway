@@ -358,6 +358,11 @@ public sealed class WorkOrderApplicationService(
         var cards = new List<WorkOrderKanbanCardDto>(activeOrders.Count);
         foreach (var order in activeOrders)
         {
+            if (order.PickedUpAtUtc.HasValue)
+            {
+                continue;
+            }
+
             var customer = await customerRepository.GetByIdAsync(tenantId, order.CustomerId, ct);
             var vehicle = await vehicleRepository.GetByIdAsync(tenantId, order.VehicleId, ct);
             var lastHistory = order.StatusHistory.OrderByDescending(h => h.ChangedAtUtc).FirstOrDefault();

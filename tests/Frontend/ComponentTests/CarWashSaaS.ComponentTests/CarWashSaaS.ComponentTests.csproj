@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Frontend\CarWashSaaS.Client.Components\CarWashSaaS.Client.Components.csproj" />
     <ProjectReference Include="..\..\..\..\src\Frontend\CarWashSaaS.Client.Core\CarWashSaaS.Client.Core.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Frontend\CarWashSaaS.Client.Web\CarWashSaaS.Client.Web.csproj" />
     <ProjectReference Include="..\..\..\..\src\Shared\CarWashSaaS.Shared.Contracts\CarWashSaaS.Shared.Contracts.csproj" />
   </ItemGroup>
 

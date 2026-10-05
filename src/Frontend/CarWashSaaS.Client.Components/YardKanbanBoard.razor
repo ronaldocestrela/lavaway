@@ -250,6 +250,11 @@
             {
                 var filteredCards = col.Cards.Where(card =>
                 {
+                    if (card.PickedUpAtUtc.HasValue)
+                    {
+                        return false;
+                    }
+
                     if (!string.IsNullOrWhiteSpace(query))
                     {
                         var plate = card.Plate.Replace("-", "").ToUpperInvariant();

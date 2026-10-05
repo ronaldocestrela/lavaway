@@ -1,4 +1,5 @@
 @page "/reception"
+@attribute [Authorize(Roles = "Administrator,Receptionist")]
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
@@ -9,25 +10,23 @@
 
 <PageTitle>Recepção | Lavaway</PageTitle>
 
-<AuthorizeView>
-    <Authorized>
-        <section class="reception-page">
-            <div class="page-heading">
-                <div>
-                    <div class="eyebrow"><span class="eyebrow-mark"></span> ATENDIMENTO DO DIA</div>
-                    <h1>Recepção</h1>
-                    <p class="page-subtitle">Localize o cliente e o veículo para começar.</p>
-                </div>
-                <AuthorizeView Roles="Administrator,Receptionist">
-                    <Authorized Context="createAuthState">
-                        <button class="button button-secondary new-customer-button" type="button" @onclick="OpenCreateForm">
-                            <span class="button-plus" aria-hidden="true">+</span> Novo cliente
-                        </button>
-                    </Authorized>
-                </AuthorizeView>
-            </div>
+<section class="reception-page">
+    <div class="page-heading">
+        <div>
+            <div class="eyebrow"><span class="eyebrow-mark"></span> ATENDIMENTO DO DIA</div>
+            <h1>Recepção</h1>
+            <p class="page-subtitle">Localize o cliente e o veículo para começar.</p>
+        </div>
+        <AuthorizeView Roles="Administrator,Receptionist">
+            <Authorized Context="createAuthState">
+                <button class="button button-secondary new-customer-button" type="button" @onclick="OpenCreateForm">
+                    <span class="button-plus" aria-hidden="true">+</span> Novo cliente
+                </button>
+            </Authorized>
+        </AuthorizeView>
+    </div>
 
-            <div class="reception-grid">
+    <div class="reception-grid">
                 <section class="search-column" aria-label="Busca de clientes e veículos">
                     <form class="search-panel" @onsubmit="SearchAsync" @onsubmit:preventDefault>
                         <div class="panel-heading">
@@ -199,29 +198,6 @@
                 </aside>
             </div>
         </section>
-    </Authorized>
-    <NotAuthorized>
-        @if (string.IsNullOrWhiteSpace(Configuration["Authentication:Authority"]))
-        {
-            <section class="auth-state">
-                <div class="auth-stamp">LW</div>
-                <div class="eyebrow"><span class="eyebrow-mark"></span> LAVAWAY / ACESSO</div>
-                <h1>Conecte sua sessão</h1>
-                <p>Configure <code>Authentication:Authority</code> e <code>Authentication:ClientId</code> em <code>wwwroot/appsettings.json</code> para habilitar o acesso do estabelecimento.</p>
-            </section>
-        }
-        else
-        {
-            <section class="auth-state">
-                <div class="auth-stamp">LW</div>
-                <div class="eyebrow"><span class="eyebrow-mark"></span> LAVAWAY / ACESSO</div>
-                <h1>Sessão necessária</h1>
-                <p>Entre com a conta da unidade para acessar os cadastros.</p>
-                <a class="button button-primary auth-button" href="authentication/login">Entrar na conta <span aria-hidden="true">&#8594;</span></a>
-            </section>
-        }
-    </NotAuthorized>
-</AuthorizeView>
 
 @code {
     [SupplyParameterFromQuery(Name = "plate")]

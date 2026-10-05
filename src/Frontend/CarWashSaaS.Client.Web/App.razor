@@ -1,8 +1,31 @@
-﻿<CascadingAuthenticationState>
+<CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
         <Found Context="routeData">
-            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated == true)
+                    {
+                        <div class="auth-unauthorized-box" style="max-width: 560px; margin: 4rem auto; padding: 2.5rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);">
+                            <div style="font-size: 2.5rem; margin-bottom: 1rem;">🔒</div>
+                            <h2 style="font-size: 1.35rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem;">Acesso Restrito</h2>
+                            <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">Seu perfil não possui permissão para acessar esta área do sistema.</p>
+                            <a href="reception" class="btn-primary" style="display: inline-block; padding: 0.65rem 1.25rem; background: #2563eb; color: #fff; border-radius: 8px; font-weight: 600; text-decoration: none;">Voltar para Recepção</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <RedirectToLogin />
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="auth-loading-state" style="display: flex; justify-content: center; align-items: center; min-height: 50vh; color: #64748b; gap: 0.75rem;">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <p style="margin: 0; font-size: 0.95rem;">Verificando credenciais...</p>
+                    </div>
+                </Authorizing>
+            </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
     </Router>
 </CascadingAuthenticationState>
+

@@ -30,7 +30,9 @@ public sealed class WorkOrderRepository(YardOperationsDbContext dbContext) : IWo
             .Include(order => order.Items)
             .Include(order => order.StatusHistory)
             .Include(order => order.PostServicePhotos)
-            .Where(order => order.TenantId == tenantId && (order.Status != WorkOrderStatus.ReadyForPickup || order.CreatedAtUtc >= cutoff))
+            .Where(order => order.TenantId == tenantId &&
+                            !order.PickedUpAtUtc.HasValue &&
+                            (order.Status != WorkOrderStatus.ReadyForPickup || order.CreatedAtUtc >= cutoff))
             .OrderBy(order => order.CreatedAtUtc)
             .ToListAsync(ct);
     }

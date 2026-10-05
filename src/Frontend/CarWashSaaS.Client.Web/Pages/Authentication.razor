@@ -152,6 +152,9 @@
     [Parameter]
     public string? Action { get; set; }
 
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
     private string _email = string.Empty;
     private string _password = string.Empty;
     private bool _showPassword;
@@ -169,6 +172,16 @@
         if (string.Equals(Action, "logout", StringComparison.OrdinalIgnoreCase))
         {
             await ProcessLogoutAsync();
+            return;
+        }
+
+        // Se o usuário já está logado com token válido e acessou /login diretamente,
+        // redireciona para a página de destino solicitada ou recepção
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true && !IsLogoutAction)
+        {
+            var destination = GetSafeReturnUrl();
+            Navigation.NavigateTo(destination, replace: true);
         }
     }
 
@@ -178,6 +191,23 @@
         {
             await ProcessLogoutAsync();
         }
+    }
+
+    private string GetSafeReturnUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(ReturnUrl))
+        {
+            var trimmed = ReturnUrl.Trim();
+            if (!trimmed.StartsWith("login", StringComparison.OrdinalIgnoreCase) &&
+                !trimmed.StartsWith("authentication", StringComparison.OrdinalIgnoreCase) &&
+                !trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                return trimmed;
+            }
+        }
+
+        return "reception";
     }
 
     private void FillCredentials(string email, string password)
@@ -214,9 +244,10 @@
 
                 AuthStateProvider.NotifyUserAuthentication(result.Value.AccessToken);
 
-                _successMessage = "Autenticação realizada! Redirecionando para a recepção...";
+                var targetUrl = GetSafeReturnUrl();
+                _successMessage = "Autenticação realizada! Redirecionando...";
                 await Task.Delay(300);
-                Navigation.NavigateTo("reception");
+                Navigation.NavigateTo(targetUrl);
             }
             else
             {

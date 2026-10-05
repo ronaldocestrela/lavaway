@@ -1,0 +1,23 @@
+@inject NavigationManager Navigation
+
+@code {
+    [Parameter]
+    public string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized()
+    {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var targetReturnUrl = !string.IsNullOrWhiteSpace(ReturnUrl) ? ReturnUrl : relativePath;
+
+        if (string.IsNullOrWhiteSpace(targetReturnUrl) ||
+            targetReturnUrl.StartsWith("login", StringComparison.OrdinalIgnoreCase) ||
+            targetReturnUrl.StartsWith("authentication", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("login", replace: true);
+        }
+        else
+        {
+            Navigation.NavigateTo($"login?returnUrl={Uri.EscapeDataString(targetReturnUrl)}", replace: true);
+        }
+    }
+}
