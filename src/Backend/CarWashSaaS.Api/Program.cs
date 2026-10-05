@@ -82,6 +82,9 @@ builder.Services.AddScoped<IYardCapacityRepository, YardCapacityRepository>();
 builder.Services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
 builder.Services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
 builder.Services.AddScoped<YardSetupApplicationService>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<BookingApplicationService>();
+builder.Services.AddScoped<ISchedulingBookingLookup>(sp => sp.GetRequiredService<BookingApplicationService>());
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
@@ -119,10 +122,13 @@ builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepo
 builder.Services.AddScoped<IOutboundWhatsAppMessageRepository, OutboundWhatsAppMessageRepository>();
 builder.Services.AddScoped<ITenantWhatsAppQuotaRepository, TenantWhatsAppQuotaRepository>();
 builder.Services.AddScoped<ICustomerCommunicationPreferenceRepository, CustomerCommunicationPreferenceRepository>();
+builder.Services.AddScoped<IChatbotSessionRepository, ChatbotSessionRepository>();
 builder.Services.AddScoped<WhatsAppConnectionApplicationService>();
 builder.Services.AddScoped<WhatsAppMessageApplicationService>();
+builder.Services.AddScoped<ChatbotConversationEngine>();
 builder.Services.AddScoped<IOutboundWhatsAppDispatcher>(sp => sp.GetRequiredService<WhatsAppMessageApplicationService>());
 builder.Services.AddScoped<ITenantQueueMessageHandler, OutboundWhatsAppMessageQueueHandler>();
+builder.Services.AddScoped<ITenantQueueMessageHandler, InboundWhatsAppMessageHandler>();
 builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReadyNotificationQueueHandler>();
 builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReceiptNotificationQueueHandler>();
 
@@ -221,6 +227,7 @@ app.MapIdentityEndpoints();
 app.MapWhatsAppEndpoints();
 app.MapTenantEndpoints();
 app.MapYardOperationsEndpoints();
+app.MapSchedulingEndpoints();
 app.MapHub<YardHub>("/hubs/yard").RequireCors("Client");
 
 app.Run();

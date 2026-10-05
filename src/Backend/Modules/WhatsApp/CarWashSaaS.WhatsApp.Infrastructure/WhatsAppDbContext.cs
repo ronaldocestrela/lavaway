@@ -16,6 +16,7 @@ public sealed class WhatsAppDbContext(
     public DbSet<WhatsAppDeliveryAttempt> WhatsAppDeliveryAttempts => Set<WhatsAppDeliveryAttempt>();
     public DbSet<TenantWhatsAppQuota> TenantWhatsAppQuotas => Set<TenantWhatsAppQuota>();
     public DbSet<CustomerCommunicationPreference> CustomerCommunicationPreferences => Set<CustomerCommunicationPreference>();
+    public DbSet<ChatbotConversationSession> ChatbotSessions => Set<ChatbotConversationSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -98,8 +99,29 @@ public sealed class WhatsAppDbContext(
         pref.Property(value => value.IsOptedIn).IsRequired();
         pref.Property(value => value.OptedOutAtUtc).HasColumnType("datetimeoffset");
         pref.Property(value => value.Reason).HasMaxLength(512);
-        pref.Property(value => value.UpdatedAt).HasColumnType("datetimeoffset").IsRequired();
         pref.HasIndex(value => new { value.TenantId, value.NormalizedPhone }).IsUnique();
+
+        var session = modelBuilder.Entity<ChatbotConversationSession>();
+        session.ToTable("ChatbotSessions", "whatsapp");
+        session.HasKey(value => value.Id);
+        session.Property(value => value.Id).ValueGeneratedNever();
+        session.Property(value => value.TenantId).IsRequired();
+        session.Property(value => value.CustomerPhone).HasMaxLength(32).IsRequired();
+        session.Property(value => value.CustomerName).HasMaxLength(200);
+        session.Property(value => value.CurrentStep)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired();
+        session.Property(value => value.SelectedServiceId);
+        session.Property(value => value.SelectedServiceName).HasMaxLength(200);
+        session.Property(value => value.SelectedVehicleSize).HasMaxLength(32);
+        session.Property(value => value.SelectedPrice).HasPrecision(18, 2);
+        session.Property(value => value.SelectedDate);
+        session.Property(value => value.SelectedTime);
+        session.Property(value => value.VehiclePlate).HasMaxLength(16);
+        session.Property(value => value.LastInteractionAtUtc).HasColumnType("datetimeoffset").IsRequired();
+        session.Property(value => value.IsActive).IsRequired();
+        session.HasIndex(value => new { value.TenantId, value.CustomerPhone, value.IsActive });
 
         modelBuilder.ApplyTenantQueryFilters(this);
     }

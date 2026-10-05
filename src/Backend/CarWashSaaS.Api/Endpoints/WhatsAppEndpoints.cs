@@ -21,6 +21,7 @@ public static class WhatsAppEndpoints
             CurrentTenantAccessor currentTenantAccessor,
             WhatsAppConnectionApplicationService connectionService,
             WhatsAppMessageApplicationService messageService,
+            IBackgroundQueue backgroundQueue,
             CancellationToken ct) =>
         {
             var expectedSecret = configuration["WhatsApp:EvolutionApi:WebhookSecret"];
@@ -110,6 +111,69 @@ public static class WhatsAppEndpoints
                         if (!string.IsNullOrWhiteSpace(providerMessageId) && !string.IsNullOrWhiteSpace(status))
                         {
                             await messageService.ProcessDeliveryWebhookAsync(tenantId, providerMessageId, status, ct);
+                        }
+                    }
+
+                    return Results.NoContent();
+                }
+
+                if (normalizedEvent is "messages_upsert" or "messages.upsert")
+                {
+                    if (root.TryGetProperty("data", out var data) && data.TryGetProperty("key", out var key))
+                    {
+                        var isFromMe = key.TryGetProperty("fromMe", out var fromMeProp) && fromMeProp.GetBoolean();
+                        if (isFromMe)
+                        {
+                            return Results.NoContent();
+                        }
+
+                        if (TryGetJsonString(key, "remoteJid", out var remoteJid) && !remoteJid.EndsWith("@g.us", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var senderPhone = remoteJid.Split('@')[0];
+                            var pushName = TryGetJsonString(data, "pushName", out var name) ? name : null;
+                            var messageId = TryGetJsonString(key, "id", out var id) ? id : Guid.NewGuid().ToString("N");
+                            var messageText = string.Empty;
+
+                            if (data.TryGetProperty("message", out var msgElement))
+                            {
+                                if (TryGetJsonString(msgElement, "conversation", out var conv))
+                                {
+                                    messageText = conv;
+                                }
+                                else if (msgElement.TryGetProperty("extendedTextMessage", out var ext) && TryGetJsonString(ext, "text", out var extText))
+                                {
+                                    messageText = extText;
+                                }
+                                else if (msgElement.TryGetProperty("buttonsResponseMessage", out var btn) && TryGetJsonString(btn, "selectedButtonId", out var btnId))
+                                {
+                                    messageText = btnId;
+                                }
+                                else if (msgElement.TryGetProperty("listResponseMessage", out var listMsg) &&
+                                         listMsg.TryGetProperty("singleSelectReply", out var selectReply) &&
+                                         TryGetJsonString(selectReply, "selectedRowId", out var rowId))
+                                {
+                                    messageText = rowId;
+                                }
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(messageText))
+                            {
+                                var inboundEvent = new InboundWhatsAppReceivedEvent(
+                                    tenantId,
+                                    senderPhone,
+                                    pushName,
+                                    messageText,
+                                    messageId,
+                                    DateTimeOffset.UtcNow);
+
+                                var queueMessage = new TenantQueueMessage(
+                                    tenantId,
+                                    InboundWhatsAppMessageHandler.InboundWhatsAppDispatchEventType,
+                                    JsonSerializer.Serialize(inboundEvent),
+                                    Guid.NewGuid());
+
+                                await backgroundQueue.EnqueueAsync(queueMessage, ct);
+                            }
                         }
                     }
 

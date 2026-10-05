@@ -1,0 +1,128 @@
+@using CarWashSaaS.Shared.Contracts
+@using System.Globalization
+
+<div class="booking-card @GetStatusClass(Booking.Status)" id="booking-@Booking.Id">
+    <div class="booking-header">
+        <div class="time-badge">
+            <span class="time-icon">&#128337;</span>
+            <span class="time-text">@Booking.ScheduledTime.ToString("HH\\:mm")</span>
+            <span class="duration-text">(@Booking.EstimatedDurationMinutes min)</span>
+        </div>
+        <div class="header-badges">
+            <span class="origin-badge @(Booking.Origin == BookingOriginConstants.WhatsAppBot ? "origin-whatsapp" : "origin-manual")"
+                  title="Origem do Agendamento">
+                @(Booking.Origin == BookingOriginConstants.WhatsAppBot ? "💬 WhatsApp Bot" : "🏢 Recepção")
+            </span>
+            <span class="status-badge @GetStatusClass(Booking.Status)">
+                @BookingStatusConstants.GetDisplayName(Booking.Status)
+            </span>
+        </div>
+    </div>
+
+    <div class="booking-vehicle-row">
+        <div class="plate-box">
+            <span class="plate-brazil-bar"></span>
+            <span class="plate-number">@FormatPlate(Booking.VehiclePlate)</span>
+        </div>
+        <div class="vehicle-details">
+            @if (!string.IsNullOrWhiteSpace(Booking.VehicleModel))
+            {
+                <span class="vehicle-model">@Booking.VehicleModel</span>
+            }
+            <span class="size-tag">@VehicleSizeConstants.GetDisplayName(Booking.VehicleSize)</span>
+        </div>
+    </div>
+
+    <div class="booking-customer-row">
+        <span class="customer-name" title="@Booking.CustomerName">@Booking.CustomerName</span>
+        <a class="customer-phone" href="https://wa.me/@FormatPhoneLink(Booking.CustomerPhone)" target="_blank" rel="noopener noreferrer" title="Conversar no WhatsApp">
+            <span>&#128222; @Booking.CustomerPhone</span>
+        </a>
+    </div>
+
+    <div class="booking-service-row">
+        <span class="service-name">@Booking.ServiceName</span>
+        <span class="service-price">@Booking.EstimatedPrice.ToString("C2", PtBr)</span>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Booking.Notes))
+    {
+        <div class="booking-notes" title="@Booking.Notes">
+            <span class="notes-icon">&#9998;</span>
+            <span class="notes-text">@Booking.Notes</span>
+        </div>
+    }
+
+    <div class="booking-footer">
+        <span class="booking-protocol">#@Booking.Protocol</span>
+        <div class="booking-actions">
+            @if (Booking.Status is BookingStatusConstants.Scheduled or BookingStatusConstants.Confirmed)
+            {
+                <button type="button" class="btn-checkin" @onclick="HandleCheckIn" title="Fazer check-in e abrir OS na recepção">
+                    <span>&#9654; Iniciar Atendimento</span>
+                </button>
+                <button type="button" class="btn-cancel" @onclick="HandleCancel" title="Cancelar este agendamento">
+                    <span>&#10005;</span>
+                </button>
+            }
+            else if (Booking.Status == BookingStatusConstants.Arrived)
+            {
+                <span class="badge-in-progress">&#10003; Atendimento Aberto</span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+
+    [Parameter, EditorRequired]
+    public BookingSummaryDto Booking { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<BookingSummaryDto> OnCheckIn { get; set; }
+
+    [Parameter]
+    public EventCallback<BookingSummaryDto> OnCancel { get; set; }
+
+    private async Task HandleCheckIn()
+    {
+        if (OnCheckIn.HasDelegate)
+        {
+            await OnCheckIn.InvokeAsync(Booking);
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync(Booking);
+        }
+    }
+
+    private static string GetStatusClass(string status) => status switch
+    {
+        BookingStatusConstants.Scheduled => "status-scheduled",
+        BookingStatusConstants.Confirmed => "status-confirmed",
+        BookingStatusConstants.Arrived => "status-arrived",
+        BookingStatusConstants.Completed => "status-completed",
+        BookingStatusConstants.Cancelled => "status-cancelled",
+        BookingStatusConstants.NoShow => "status-noshow",
+        _ => "status-default"
+    };
+
+    private static string FormatPlate(string? plate)
+    {
+        if (string.IsNullOrWhiteSpace(plate)) return string.Empty;
+        var clean = plate.Trim().ToUpperInvariant();
+        return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
+    }
+
+    private static string FormatPhoneLink(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return string.Empty;
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        return digits.StartsWith("55") ? digits : $"55{digits}";
+    }
+}

@@ -1,0 +1,410 @@
+@page "/scheduling"
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Shared.Contracts
+@using System.Globalization
+@inject SchedulingApiClient SchedulingApi
+@inject ServiceCatalogApiClient ServiceApi
+@inject NavigationManager Navigation
+
+<PageTitle>Agenda &amp; Reservas | Lavaway</PageTitle>
+
+<AuthorizeView Roles="Administrator,Receptionist">
+    <Authorized>
+        <section class="scheduling-page">
+            <header class="scheduling-header">
+                <div>
+                    <div class="eyebrow"><span class="eyebrow-mark"></span> CONTROLE OPERACIONAL</div>
+                    <h1>Agenda &amp; Reservas</h1>
+                    <p class="subtitle">Acompanhe os agendamentos realizados via WhatsApp e crie novas reservas.</p>
+                </div>
+
+                <div class="header-actions">
+                    <button type="button" class="btn-primary" @onclick="OpenNewBookingModal">
+                        <span>+ Nova Reserva Manual</span>
+                    </button>
+                </div>
+            </header>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="alert alert-error">
+                    <span>@_errorMessage</span>
+                    <button type="button" class="alert-close" @onclick="() => _errorMessage = null">&times;</button>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_successMessage))
+            {
+                <div class="alert alert-success">
+                    <span>@_successMessage</span>
+                    <button type="button" class="alert-close" @onclick="() => _successMessage = null">&times;</button>
+                </div>
+            }
+
+            <!-- Barra de Capacidade do Dia -->
+            <BookingCapacityMeter BookingsCount="@_bookings.Count"
+                                  OccupiedBoxes="@CalculatePeakOccupiedBoxes()"
+                                  TotalBoxes="@_totalBoxes" />
+
+            <!-- Barra de Filtros e Busca -->
+            <div class="scheduling-toolbar">
+                <div class="date-pills">
+                    <button type="button" class="date-pill @(_selectedDate == _today ? "active" : "")"
+                            @onclick="() => ChangeDate(_today)">
+                        Hoje (@_today.ToString("dd/MM"))
+                    </button>
+                    <button type="button" class="date-pill @(_selectedDate == _tomorrow ? "active" : "")"
+                            @onclick="() => ChangeDate(_tomorrow)">
+                        Amanhã (@_tomorrow.ToString("dd/MM"))
+                    </button>
+                    <div class="date-picker-wrapper">
+                        <input type="date" value="@_selectedDate.ToString("yyyy-MM-dd")"
+                               @onchange="OnCustomDateChanged"
+                               class="date-input" />
+                    </div>
+                </div>
+
+                <div class="search-filter-row">
+                    <div class="search-box">
+                        <input type="text"
+                               placeholder="Buscar por placa, cliente ou código..."
+                               @bind="_searchQuery"
+                               @bind:event="oninput"
+                               @bind:after="ApplyFilters" />
+                    </div>
+
+                    <div class="status-select">
+                        <select @bind="_selectedStatus" @bind:after="ApplyFilters">
+                            <option value="">Todos os status</option>
+                            <option value="@BookingStatusConstants.Scheduled">Agendados</option>
+                            <option value="@BookingStatusConstants.Confirmed">Confirmados</option>
+                            <option value="@BookingStatusConstants.Arrived">Em Atendimento</option>
+                            <option value="@BookingStatusConstants.Completed">Concluídos</option>
+                            <option value="@BookingStatusConstants.Cancelled">Cancelados</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Agendamentos -->
+            @if (_isLoading)
+            {
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Carregando agendamentos...</p>
+                </div>
+            }
+            else if (_filteredBookings.Count == 0)
+            {
+                <div class="empty-state">
+                    <div class="empty-icon">&#128197;</div>
+                    <h3>Nenhum agendamento encontrado</h3>
+                    <p>Não há reservas para <strong>@_selectedDate.ToString("dd/MM/yyyy")</strong> com os filtros selecionados.</p>
+                    <button type="button" class="btn-secondary" @onclick="OpenNewBookingModal">
+                        Criar Agendamento Manual
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="bookings-grid">
+                    @foreach (var booking in _filteredBookings)
+                    {
+                        <BookingCard Booking="booking"
+                                     OnCheckIn="HandleCheckIn"
+                                     OnCancel="HandleCancelBooking" />
+                    }
+                </div>
+            }
+
+            <!-- Modal de Criação Manual de Reserva -->
+            @if (_showCreateModal)
+            {
+                <div class="modal-overlay" @onclick="CloseCreateModal">
+                    <div class="modal-dialog" @onclick:stopPropagation>
+                        <header class="modal-header">
+                            <h2>Novo Agendamento Manual</h2>
+                            <button type="button" class="modal-close" @onclick="CloseCreateModal">&times;</button>
+                        </header>
+
+                        <form @onsubmit="SaveManualBookingAsync" class="modal-form">
+                            <div class="form-row">
+                                <label class="form-label">
+                                    <span>Nome do Cliente *</span>
+                                    <input type="text" @bind="_manualName" required placeholder="Ex: Roberto Silva" />
+                                </label>
+
+                                <label class="form-label">
+                                    <span>Telefone / WhatsApp *</span>
+                                    <input type="tel" @bind="_manualPhone" required placeholder="(11) 99999-9999" />
+                                </label>
+                            </div>
+
+                            <div class="form-row">
+                                <label class="form-label">
+                                    <span>Placa do Veículo *</span>
+                                    <input type="text" @bind="_manualPlate" required maxlength="10" placeholder="ABC-1234" />
+                                </label>
+
+                                <label class="form-label">
+                                    <span>Porte do Veículo *</span>
+                                    <select @bind="_manualSize">
+                                        <option value="@VehicleSizeConstants.HatchSedan">Hatch / Sedan</option>
+                                        <option value="@VehicleSizeConstants.Suv">SUV</option>
+                                        <option value="@VehicleSizeConstants.PickupVan">Picape / Van</option>
+                                        <option value="@VehicleSizeConstants.Motorcycle">Moto</option>
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="form-row">
+                                <label class="form-label full-width">
+                                    <span>Serviço *</span>
+                                    <select @bind="_manualServiceId" required>
+                                        <option value="">Selecione um serviço...</option>
+                                        @foreach (var s in _availableServices)
+                                        {
+                                            <option value="@s.Id">@s.Name (@s.Category)</option>
+                                        }
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="form-row">
+                                <label class="form-label">
+                                    <span>Data *</span>
+                                    <input type="date" value="@_manualDate.ToString("yyyy-MM-dd")"
+                                           @onchange="(e) => _manualDate = DateOnly.Parse(e.Value?.ToString() ?? _today.ToString())"
+                                           required />
+                                </label>
+
+                                <label class="form-label">
+                                    <span>Horário de Início *</span>
+                                    <input type="time" value="@_manualTime.ToString("HH\\:mm")"
+                                           @onchange="(e) => _manualTime = TimeOnly.Parse(e.Value?.ToString() ?? "09:00")"
+                                           required />
+                                </label>
+                            </div>
+
+                            <div class="form-row">
+                                <label class="form-label full-width">
+                                    <span>Observações (opcional)</span>
+                                    <textarea @bind="_manualNotes" rows="2" placeholder="Instruções adicionais..."></textarea>
+                                </label>
+                            </div>
+
+                            <footer class="modal-footer">
+                                <button type="button" class="btn-secondary" @onclick="CloseCreateModal">Cancelar</button>
+                                <button type="submit" class="btn-primary" disabled="@_isSavingManual">
+                                    @if (_isSavingManual)
+                                    {
+                                        <span>Salvando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Salvar Agendamento</span>
+                                    }
+                                </button>
+                            </footer>
+                        </form>
+                    </div>
+                </div>
+            }
+        </section>
+    </Authorized>
+    <NotAuthorized>
+        <section class="auth-required">
+            <p>Acesso restrito para administradores e recepcionistas.</p>
+        </section>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
+    private readonly DateOnly _tomorrow = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+    private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
+
+    private List<BookingSummaryDto> _bookings = [];
+    private List<BookingSummaryDto> _filteredBookings = [];
+    private IReadOnlyCollection<ServiceDto> _availableServices = [];
+
+    private string _searchQuery = string.Empty;
+    private string _selectedStatus = string.Empty;
+    private bool _isLoading = true;
+    private int _totalBoxes = 2;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    // Modal state
+    private bool _showCreateModal;
+    private bool _isSavingManual;
+    private string _manualName = string.Empty;
+    private string _manualPhone = string.Empty;
+    private string _manualPlate = string.Empty;
+    private string _manualSize = VehicleSizeConstants.HatchSedan;
+    private string _manualServiceId = string.Empty;
+    private DateOnly _manualDate = DateOnly.FromDateTime(DateTime.Today);
+    private TimeOnly _manualTime = new(9, 0);
+    private string? _manualNotes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServicesAsync();
+        await LoadBookingsAsync();
+    }
+
+    private async Task LoadServicesAsync()
+    {
+        try
+        {
+            _availableServices = await ServiceApi.GetServicesAsync();
+        }
+        catch
+        {
+            // Silencioso se catálogo ainda não tiver serviços cadastrados
+        }
+    }
+
+    private async Task LoadBookingsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            var result = await SchedulingApi.GetBookingsAsync(_selectedDate);
+            _bookings = result.ToList();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erro ao carregar agendamentos: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var query = _bookings.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_selectedStatus))
+        {
+            query = query.Where(b => b.Status.Equals(_selectedStatus, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            var term = _searchQuery.Trim();
+            query = query.Where(b =>
+                b.CustomerName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                b.VehiclePlate.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                b.Protocol.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        _filteredBookings = query.OrderBy(b => b.ScheduledTime).ToList();
+    }
+
+    private async Task ChangeDate(DateOnly newDate)
+    {
+        _selectedDate = newDate;
+        await LoadBookingsAsync();
+    }
+
+    private async Task OnCustomDateChanged(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var date))
+        {
+            await ChangeDate(date);
+        }
+    }
+
+    private void HandleCheckIn(BookingSummaryDto booking)
+    {
+        // Redireciona para a recepção com placa e telefone pré-preenchidos para abertura imediata da OS
+        Navigation.NavigateTo($"reception?plate={Uri.EscapeDataString(booking.VehiclePlate)}&phone={Uri.EscapeDataString(booking.CustomerPhone)}");
+    }
+
+    private async Task HandleCancelBooking(BookingSummaryDto booking)
+    {
+        try
+        {
+            await SchedulingApi.CancelBookingAsync(booking.Id, "Cancelado pela equipe operacional");
+            _successMessage = $"Agendamento {booking.Protocol} cancelado com sucesso.";
+            await LoadBookingsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Não foi possível cancelar o agendamento: {ex.Message}";
+        }
+    }
+
+    private int CalculatePeakOccupiedBoxes()
+    {
+        if (_bookings.Count == 0) return 0;
+        var active = _bookings.Where(b => b.Status is BookingStatusConstants.Scheduled or BookingStatusConstants.Confirmed or BookingStatusConstants.Arrived).ToList();
+        if (active.Count == 0) return 0;
+
+        return active.GroupBy(b => b.ScheduledTime).Max(g => g.Count());
+    }
+
+    private void OpenNewBookingModal()
+    {
+        _manualName = string.Empty;
+        _manualPhone = string.Empty;
+        _manualPlate = string.Empty;
+        _manualSize = VehicleSizeConstants.HatchSedan;
+        _manualServiceId = _availableServices.FirstOrDefault()?.Id.ToString() ?? string.Empty;
+        _manualDate = _selectedDate;
+        _manualTime = new TimeOnly(10, 0);
+        _manualNotes = null;
+        _showCreateModal = true;
+    }
+
+    private void CloseCreateModal()
+    {
+        _showCreateModal = false;
+    }
+
+    private async Task SaveManualBookingAsync()
+    {
+        if (!Guid.TryParse(_manualServiceId, out var serviceId))
+        {
+            _errorMessage = "Selecione um serviço válido.";
+            return;
+        }
+
+        _isSavingManual = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new CreateManualBookingRequest(
+                _manualName,
+                _manualPhone,
+                _manualPlate,
+                null,
+                _manualSize,
+                serviceId,
+                _manualDate,
+                _manualTime,
+                _manualNotes);
+
+            var created = await SchedulingApi.CreateBookingAsync(request);
+            _successMessage = $"Reserva {created.Protocol} criada com sucesso para {_manualDate:dd/MM} às {_manualTime:HH\\:mm}!";
+            _showCreateModal = false;
+            _selectedDate = _manualDate;
+            await LoadBookingsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSavingManual = false;
+        }
+    }
+}

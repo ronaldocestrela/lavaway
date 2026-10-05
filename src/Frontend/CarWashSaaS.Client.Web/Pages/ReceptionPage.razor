@@ -224,6 +224,12 @@
 </AuthorizeView>
 
 @code {
+    [SupplyParameterFromQuery(Name = "plate")]
+    public string? QueryPlate { get; set; }
+
+    [SupplyParameterFromQuery(Name = "phone")]
+    public string? QueryPhone { get; set; }
+
     private string _plateQuery = string.Empty;
     private string _phoneQuery = string.Empty;
     private string _newCustomerName = string.Empty;
@@ -235,6 +241,16 @@
     private Guid? SelectedVehicleId { get; set; }
     private bool _hasSearched;
     private bool _isSearching;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(QueryPlate) || !string.IsNullOrWhiteSpace(QueryPhone))
+        {
+            _plateQuery = QueryPlate ?? string.Empty;
+            _phoneQuery = QueryPhone ?? string.Empty;
+            await SearchAsync();
+        }
+    }
     private bool _isSaving;
     private bool _showCreateForm;
     private bool _showAddVehicleForm;

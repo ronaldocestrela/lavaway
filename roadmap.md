@@ -199,9 +199,11 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 4.3 Agendamento conversacional
 
-- [ ] Disponibilizar catálogo de serviços e horários vagos pelo menu do chatbot.
-- [ ] Criar a reserva na agenda operacional após confirmação e evitar conflito de capacidade.
-- [ ] **Entrega:** cliente agenda pelo WhatsApp e a reserva aparece para a equipe.
+- [x] Disponibilizar catálogo de serviços e horários vagos pelo menu do chatbot.
+- [x] Criar a reserva na agenda operacional após confirmação e evitar conflito de capacidade.
+- [x] **Entrega:** cliente agenda pelo WhatsApp e a reserva aparece para a equipe.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): motor de chatbot conversacional baseado em máquina de estados finitos (`ChatbotConversationEngine` e agregado `ChatbotConversationSession` no schema `whatsapp`), processando mensagens recebidas via webhook da Evolution API (`POST /whatsapp/webhooks/evolution` com evento `messages_upsert` e descarte de loops com `fromMe == true`), enfileiradas assincronamente via RabbitMQ (`InboundWhatsAppMessageHandler` sob `whatsapp.inbound.dispatch`). O cliente consulta catálogo de serviços, seleciona o porte do veículo, escolhe a data e os horários vagos calculados dinamicamente com base na capacidade de boxes do pátio (`BookingCapacityChecker` consumindo `YardCapacity.TotalBoxes`). A confirmação é atômica e previne conflitos de lotação concorrente (`booking.capacity.exceeded`), persistindo o agregado `Booking` com protocolo exclusivo `#BK-YYMM-XXXX` e isolamento multi-tenant (`IMustHaveTenant`). A integração entre os módulos WhatsApp e YardOperations opera com desacoplamento absoluto via interface pública `ISchedulingBookingLookup` em `Shared.Contracts`. A API expõe endpoints autenticados para a equipe em `/scheduling/bookings`, `/scheduling/bookings/{id}`, `/scheduling/slots` e `/scheduling/bookings/{id}/cancel`. No frontend Blazor WebAssembly, a nova tela operacional `SchedulingPage` (`/scheduling`, integrada como item `03` no `NavMenu`) exibe o medidor de pico de boxes ocupados (`BookingCapacityMeter`), filtros rápidos por data ("Hoje", "Amanhã") e status, cards detalhados com padrão de placa Mercosul (`BookingCard`) com destaque para agendamentos via WhatsApp Bot, criação de agendamento manual e botão "Iniciar Atendimento" que redireciona diretamente para a `ReceptionPage` com placa e telefone pré-preenchidos para abertura imediata de OS. Total conformidade nos 344 testes da solução (testes unitários, testes de arquitetura NetArchTest, integração Testcontainers SQL Server e testes de componentes bUnit). Decisão formalizada na [ADR-0009](docs/architecture/ADR-0009-agendamento-conversacional-whatsapp-capacidade.md) e documentação viva em [docs/living-docs/agendamento-conversacional-4.3.md](docs/living-docs/agendamento-conversacional-4.3.md).
 
 ### 4.4 Confirmação e prevenção de faltas
 

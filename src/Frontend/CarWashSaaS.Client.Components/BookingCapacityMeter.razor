@@ -1,0 +1,32 @@
+<div class="capacity-meter">
+    <div class="meter-info">
+        <span class="meter-title">Capacidade Operacional</span>
+        <span class="meter-stats">
+            <strong>@BookingsCount</strong> agendamentos hoje &bull; 
+            <strong>@OccupiedBoxes / @TotalBoxes</strong> boxes ocupados no pico
+        </span>
+    </div>
+    <div class="meter-progress-track">
+        <div class="meter-progress-bar @GetBarColorClass()" style="width: @(Percentage)%;"></div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int BookingsCount { get; set; }
+
+    [Parameter]
+    public int OccupiedBoxes { get; set; }
+
+    [Parameter]
+    public int TotalBoxes { get; set; } = 2;
+
+    private int Percentage => TotalBoxes > 0 ? Math.Clamp((int)Math.Round((double)OccupiedBoxes / TotalBoxes * 100), 0, 100) : 0;
+
+    private string GetBarColorClass() => Percentage switch
+    {
+        >= 90 => "progress-full",
+        >= 70 => "progress-warning",
+        _ => "progress-normal"
+    };
+}
