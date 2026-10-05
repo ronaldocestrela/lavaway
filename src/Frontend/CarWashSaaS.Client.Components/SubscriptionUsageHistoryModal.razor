@@ -1,0 +1,85 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-card" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <h3 class="modal-title">📑 Extrato de Utilização de Créditos</h3>
+                    <p class="modal-subtitle">@CustomerName &bull; @PlanName</p>
+                </div>
+                <button class="btn-close" type="button" @onclick="HandleClose" aria-label="Fechar">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                @if (IsLoading)
+                {
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Carregando histórico de utilizações...</span>
+                    </div>
+                }
+                else if (Usages.Count == 0)
+                {
+                    <div class="empty-state">
+                        <span class="empty-icon">ℹ️</span>
+                        <p>Nenhuma utilização registrada para esta assinatura até o momento.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-container">
+                        <table class="usage-table">
+                            <thead>
+                                <tr>
+                                    <th>Data / Hora</th>
+                                    <th>Placa</th>
+                                    <th>Serviço</th>
+                                    <th>OS Vinculada</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var usage in Usages)
+                                {
+                                    <tr>
+                                        <td>@usage.ConsumedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td><span class="plate-badge">@usage.Plate</span></td>
+                                        <td>@(usage.ServiceName ?? "Lavagem Inclusa")</td>
+                                        <td>
+                                            @if (usage.WorkOrderId.HasValue)
+                                            {
+                                                <span class="os-code">#@usage.WorkOrderId.Value.ToString()[..8]</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td>@(usage.Notes ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                <button class="btn btn-secondary" type="button" @onclick="HandleClose">Fechar</button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public string CustomerName { get; set; } = string.Empty;
+    [Parameter] public string PlanName { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<SubscriptionUsageDto> Usages { get; set; } = [];
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private Task HandleClose() => OnClose.InvokeAsync();
+}

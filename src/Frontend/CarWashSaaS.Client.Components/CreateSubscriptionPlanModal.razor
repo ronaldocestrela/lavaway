@@ -1,0 +1,181 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-card" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <h3 class="modal-title">📋 @(PlanToEdit is null ? "Novo Plano de Assinatura" : "Editar Plano de Assinatura")</h3>
+                    <p class="modal-subtitle">Defina o valor mensal, limite de créditos e regras de veículos</p>
+                </div>
+                <button class="btn-close" type="button" @onclick="HandleCancel" aria-label="Fechar">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="plan-name">Nome do Plano *</label>
+                    <input id="plan-name" class="form-input" type="text" placeholder="Ex: Clube Vip 4 Lavagens" @bind="_name" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="plan-desc">Descrição / Benefícios</label>
+                    <textarea id="plan-desc" class="form-textarea" rows="2" placeholder="Ex: Inclui 4 lavagens completas e cera líquida mensal" @bind="_description"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-price">Mensalidade (R$) *</label>
+                        <input id="plan-price" class="form-input" type="number" step="0.01" min="1" @bind="_price" />
+                    </div>
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-credits">Créditos por Ciclo *</label>
+                        <input id="plan-credits" class="form-input" type="number" min="1" max="100" @bind="_credits" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-plates">Limite de Placas Autorizadas *</label>
+                        <input id="plan-plates" class="form-input" type="number" min="1" max="10" @bind="_allowedPlates" />
+                    </div>
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-interval">Intervalo de Cobrança (Dias)</label>
+                        <input id="plan-interval" class="form-input" type="number" min="1" @bind="_intervalDays" />
+                    </div>
+                </div>
+
+                @if (PlanToEdit is not null)
+                {
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" @bind="_isActive" />
+                            <span>Plano Ativo para Novas Assinaturas</span>
+                        </label>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        @_errorMessage
+                    </div>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                <button class="btn btn-secondary" type="button" @onclick="HandleCancel">Cancelar</button>
+                <button class="btn btn-primary" type="button" @onclick="HandleSave" disabled="@_isSaving">
+                    @if (_isSaving)
+                    {
+                        <span>Salvando...</span>
+                    }
+                    else
+                    {
+                        <span>@(PlanToEdit is null ? "Criar Plano" : "Salvar Alterações")</span>
+                    }
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public SubscriptionPlanDto? PlanToEdit { get; set; }
+    [Parameter] public EventCallback<CreateSubscriptionPlanRequest> OnCreate { get; set; }
+    [Parameter] public EventCallback<UpdateSubscriptionPlanRequest> OnUpdate { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _name = string.Empty;
+    private string? _description;
+    private decimal _price = 99.90m;
+    private int _credits = 4;
+    private int _allowedPlates = 1;
+    private int _intervalDays = 30;
+    private bool _isActive = true;
+    private bool _isSaving;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (PlanToEdit is not null)
+        {
+            _name = PlanToEdit.Name;
+            _description = PlanToEdit.Description;
+            _price = PlanToEdit.MonthlyPrice;
+            _credits = PlanToEdit.CreditsPerCycle;
+            _allowedPlates = PlanToEdit.AllowedPlatesLimit;
+            _intervalDays = PlanToEdit.BillingIntervalDays;
+            _isActive = PlanToEdit.IsActive;
+        }
+        else
+        {
+            _name = string.Empty;
+            _description = null;
+            _price = 99.90m;
+            _credits = 4;
+            _allowedPlates = 1;
+            _intervalDays = 30;
+            _isActive = true;
+        }
+        _errorMessage = null;
+    }
+
+    private async Task HandleSave()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _errorMessage = "Nome do plano é obrigatório.";
+            return;
+        }
+
+        if (_price <= 0)
+        {
+            _errorMessage = "O valor da mensalidade deve ser maior que zero.";
+            return;
+        }
+
+        if (_credits <= 0)
+        {
+            _errorMessage = "A quantidade de créditos deve ser de no mínimo 1.";
+            return;
+        }
+
+        if (_allowedPlates <= 0)
+        {
+            _errorMessage = "O limite de placas deve ser de no mínimo 1 veículo.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (PlanToEdit is null)
+            {
+                var req = new CreateSubscriptionPlanRequest(_name.Trim(), _description, _price, _credits, _allowedPlates, _intervalDays);
+                await OnCreate.InvokeAsync(req);
+            }
+            else
+            {
+                var req = new UpdateSubscriptionPlanRequest(_name.Trim(), _description, _price, _credits, _allowedPlates, _isActive);
+                await OnUpdate.InvokeAsync(req);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private Task HandleCancel()
+    {
+        return OnClose.InvokeAsync();
+    }
+}

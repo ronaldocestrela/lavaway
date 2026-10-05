@@ -1,0 +1,456 @@
+@page "/subscriptions"
+@attribute [Authorize(Roles = "Administrator,Receptionist")]
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject SubscriptionApiClient SubscriptionApi
+@inject IToastService Toast
+
+<div class="subscriptions-page-container">
+    <header class="page-header">
+        <div>
+            <h1 class="page-title">⭐ Assinaturas e Créditos Recorrentes</h1>
+            <p class="page-subtitle">Gestão de planos de recorrência, créditos mensais e controle por placa de veículo</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" type="button" @onclick="OpenNewPlanModal">
+                <span>➕ Novo Plano</span>
+            </button>
+            <button class="btn btn-primary" type="button" @onclick="OpenNewSubscriptionModal">
+                <span>💳 Nova Assinatura</span>
+            </button>
+        </div>
+    </header>
+
+    @if (_isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando dados das assinaturas...</p>
+        </div>
+    }
+    else
+    {
+        <!-- KPI Cards -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-icon">👥</span>
+                <div class="kpi-content">
+                    <span class="kpi-title">Assinaturas Ativas</span>
+                    <strong class="kpi-value">@(_dashboard?.ActiveSubscriptionsCount ?? 0)</strong>
+                    <span class="kpi-subtext">Clientes recorrentes</span>
+                </div>
+            </div>
+
+            <div class="kpi-card highlight-green">
+                <span class="kpi-icon">💰</span>
+                <div class="kpi-content">
+                    <span class="kpi-title">MRR Estimado</span>
+                    <strong class="kpi-value">R$ @((_dashboard?.MonthlyRecurringRevenue ?? 0).ToString("N2"))</strong>
+                    <span class="kpi-subtext">Faturamento mensal fixo</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-icon">🎟️</span>
+                <div class="kpi-content">
+                    <span class="kpi-title">Créditos Disponíveis</span>
+                    <strong class="kpi-value">@(_dashboard?.TotalCreditsInActiveCycles ?? 0)</strong>
+                    <span class="kpi-subtext">Em ciclos vigentes</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="kpi-icon">🚗</span>
+                <div class="kpi-content">
+                    <span class="kpi-title">Usos no Mês</span>
+                    <strong class="kpi-value">@(_dashboard?.TotalUsagesCurrentMonth ?? 0)</strong>
+                    <span class="kpi-subtext">Serviços executados</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tabs -->
+        <div class="tabs-nav">
+            <button class="tab-btn @(_activeTab == "subs" ? "active" : "")" type="button" @onclick='() => _activeTab = "subs"'>
+                <span>Assinantes (@_subscriptions.Count)</span>
+            </button>
+            <button class="tab-btn @(_activeTab == "plans" ? "active" : "")" type="button" @onclick='() => _activeTab = "plans"'>
+                <span>Planos Mensais (@_plans.Count)</span>
+            </button>
+        </div>
+
+        @if (_activeTab == "subs")
+        {
+            <section class="tab-content">
+                <div class="search-bar">
+                    <input class="search-input" type="text" placeholder="Buscar por cliente ou placa autorizada..." @bind="_searchTerm" @bind:event="oninput" />
+                </div>
+
+                @if (FilteredSubscriptions.Count == 0)
+                {
+                    <div class="empty-state">
+                        <span class="empty-icon">📭</span>
+                        <p>Nenhuma assinatura encontrada.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Plano</th>
+                                    <th>Placas Autorizadas</th>
+                                    <th>Créditos do Ciclo</th>
+                                    <th>Vigência do Ciclo</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sub in FilteredSubscriptions)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="customer-info">
+                                                <strong>@sub.CustomerName</strong>
+                                                <small class="text-muted">@sub.CustomerPhone</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="plan-badge">@sub.PlanName</span>
+                                        </td>
+                                        <td>
+                                            <div class="plates-wrapper">
+                                                @foreach (var plate in sub.AuthorizedPlates)
+                                                {
+                                                    <span class="plate-chip">@plate</span>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="credit-progress-box">
+                                                <div class="credit-labels">
+                                                    <span><strong>@sub.AvailableCredits</strong> disponíveis</span>
+                                                    <span class="text-muted">@sub.UsedCreditsInCycle/@sub.TotalCreditsInCycle usados</span>
+                                                </div>
+                                                <div class="progress-track">
+                                                    <div class="progress-fill" style="width: @CalculateUsagePercentage(sub)%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="period-info">
+                                                <span>Até @sub.CurrentPeriodEndUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                                @if (sub.CardLastFourDigits is not null)
+                                                {
+                                                    <small class="text-muted">💳 final @sub.CardLastFourDigits (@sub.CardBrand)</small>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge status-@sub.Status.ToLowerInvariant()">
+                                                @SubscriptionStatusConstants.ToDisplayName(sub.Status)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="actions-group">
+                                                <button class="btn-action" title="Ver Extrato de Usos" type="button" @onclick="() => OpenHistoryModal(sub)">
+                                                    📑 Extrato
+                                                </button>
+                                                <button class="btn-action" title="Gerenciar Placas" type="button" @onclick="() => OpenPlatesModal(sub)">
+                                                    🚗 Placas
+                                                </button>
+                                                @if (sub.Status == SubscriptionStatusConstants.Active)
+                                                {
+                                                    <button class="btn-action text-danger" title="Cancelar Assinatura" type="button" @onclick="() => HandleCancelSubscription(sub)">
+                                                        ❌ Cancelar
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+        else
+        {
+            <section class="tab-content">
+                <div class="plans-grid">
+                    @foreach (var plan in _plans)
+                    {
+                        <div class="plan-card @(plan.IsActive ? "" : "plan-inactive")">
+                            <div class="plan-card-header">
+                                <h3 class="plan-title">@plan.Name</h3>
+                                <span class="plan-price">R$ @plan.MonthlyPrice.ToString("N2")<small>/mês</small></span>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(plan.Description))
+                            {
+                                <p class="plan-description">@plan.Description</p>
+                            }
+
+                            <ul class="plan-features">
+                                <li>✨ <strong>@plan.CreditsPerCycle</strong> lavagens / créditos por mês</li>
+                                <li>🚗 Até <strong>@plan.AllowedPlatesLimit</strong> placa(s) autorizada(s)</li>
+                                <li>🔄 Intervalo de <strong>@plan.BillingIntervalDays</strong> dias</li>
+                                <li>
+                                    Status:
+                                    <span class="badge @(plan.IsActive ? "badge-success" : "badge-secondary")">
+                                        @(plan.IsActive ? "Ativo" : "Inativo")
+                                    </span>
+                                </li>
+                            </ul>
+
+                            <button class="btn btn-outline w-100" type="button" @onclick="() => OpenEditPlanModal(plan)">
+                                ✏️ Editar Plano
+                            </button>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+    }
+</div>
+
+<!-- Modais -->
+<CreateSubscriptionPlanModal
+    IsOpen="_isPlanModalOpen"
+    PlanToEdit="_planToEdit"
+    OnCreate="HandleCreatePlan"
+    OnUpdate="HandleUpdatePlan"
+    OnClose="() => _isPlanModalOpen = false" />
+
+<SubscribeCustomerModal
+    IsOpen="_isSubscribeModalOpen"
+    AvailablePlans="_plans.Where(p => p.IsActive).ToList()"
+    OnSubscribed="HandleSubscribeCustomer"
+    OnClose="() => _isSubscribeModalOpen = false" />
+
+<SubscriptionUsageHistoryModal
+    IsOpen="_isHistoryModalOpen"
+    CustomerName="@_selectedSubForModal?.CustomerName"
+    PlanName="@_selectedSubForModal?.PlanName"
+    Usages="_selectedUsages"
+    IsLoading="_isLoadingUsages"
+    OnClose="() => _isHistoryModalOpen = false" />
+
+<ManageSubscriptionPlatesModal
+    IsOpen="_isPlatesModalOpen"
+    SubscriptionId="@(_selectedSubForModal?.Id ?? Guid.Empty)"
+    CustomerName="@_selectedSubForModal?.CustomerName"
+    AllowedLimit="@GetPlanAllowedLimit(_selectedSubForModal?.PlanId)"
+    AuthorizedPlates="@(_selectedSubForModal?.AuthorizedPlates ?? [])"
+    OnAddPlate="HandleAddPlateToSub"
+    OnRemovePlate="HandleRemovePlateFromSub"
+    OnClose="() => _isPlatesModalOpen = false" />
+
+@code {
+    private bool _isLoading = true;
+    private string _activeTab = "subs";
+    private string _searchTerm = string.Empty;
+
+    private SubscriptionDashboardSummaryDto? _dashboard;
+    private List<CustomerSubscriptionDto> _subscriptions = [];
+    private List<SubscriptionPlanDto> _plans = [];
+
+    // Modal state
+    private bool _isPlanModalOpen;
+    private SubscriptionPlanDto? _planToEdit;
+    private bool _isSubscribeModalOpen;
+    private bool _isHistoryModalOpen;
+    private bool _isPlatesModalOpen;
+    private CustomerSubscriptionDto? _selectedSubForModal;
+    private IReadOnlyList<SubscriptionUsageDto> _selectedUsages = [];
+    private bool _isLoadingUsages;
+
+    private IReadOnlyList<CustomerSubscriptionDto> FilteredSubscriptions =>
+        string.IsNullOrWhiteSpace(_searchTerm)
+            ? _subscriptions
+            : _subscriptions.Where(s =>
+                s.CustomerName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                s.AuthorizedPlates.Any(p => p.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var plansTask = SubscriptionApi.ListPlansAsync();
+            var subsTask = SubscriptionApi.ListSubscriptionsAsync();
+            var dashTask = SubscriptionApi.GetDashboardSummaryAsync();
+
+            await Task.WhenAll(plansTask, subsTask, dashTask);
+
+            _plans = (await plansTask).ToList();
+            _subscriptions = (await subsTask).ToList();
+            _dashboard = await dashTask;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Erro ao carregar assinaturas: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenNewPlanModal()
+    {
+        _planToEdit = null;
+        _isPlanModalOpen = true;
+    }
+
+    private void OpenEditPlanModal(SubscriptionPlanDto plan)
+    {
+        _planToEdit = plan;
+        _isPlanModalOpen = true;
+    }
+
+    private void OpenNewSubscriptionModal()
+    {
+        _isSubscribeModalOpen = true;
+    }
+
+    private async Task OpenHistoryModal(CustomerSubscriptionDto sub)
+    {
+        _selectedSubForModal = sub;
+        _isHistoryModalOpen = true;
+        _isLoadingUsages = true;
+        try
+        {
+            _selectedUsages = await SubscriptionApi.ListUsagesAsync(sub.Id);
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Erro ao carregar histórico: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingUsages = false;
+        }
+    }
+
+    private void OpenPlatesModal(CustomerSubscriptionDto sub)
+    {
+        _selectedSubForModal = sub;
+        _isPlatesModalOpen = true;
+    }
+
+    private async Task HandleCreatePlan(CreateSubscriptionPlanRequest req)
+    {
+        try
+        {
+            await SubscriptionApi.CreatePlanAsync(req);
+            Toast.ShowSuccess("Plano de assinatura criado com sucesso!");
+            _isPlanModalOpen = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError(ex.Message);
+        }
+    }
+
+    private async Task HandleUpdatePlan(UpdateSubscriptionPlanRequest req)
+    {
+        if (_planToEdit is null) return;
+        try
+        {
+            await SubscriptionApi.UpdatePlanAsync(_planToEdit.Id, req);
+            Toast.ShowSuccess("Plano atualizado com sucesso!");
+            _isPlanModalOpen = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError(ex.Message);
+        }
+    }
+
+    private async Task HandleSubscribeCustomer(SubscribeCustomerRequest req)
+    {
+        try
+        {
+            await SubscriptionApi.SubscribeCustomerAsync(req);
+            Toast.ShowSuccess("Assinatura contratada com sucesso!");
+            _isSubscribeModalOpen = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError(ex.Message);
+        }
+    }
+
+    private async Task HandleAddPlateToSub(string plate)
+    {
+        if (_selectedSubForModal is null) return;
+        try
+        {
+            var updated = await SubscriptionApi.AddPlateAsync(_selectedSubForModal.Id, plate);
+            _selectedSubForModal = updated;
+            Toast.ShowSuccess($"Placa {plate} autorizada com sucesso!");
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError(ex.Message);
+        }
+    }
+
+    private async Task HandleRemovePlateFromSub(string plate)
+    {
+        if (_selectedSubForModal is null) return;
+        try
+        {
+            var updated = await SubscriptionApi.RemovePlateAsync(_selectedSubForModal.Id, plate);
+            _selectedSubForModal = updated;
+            Toast.ShowSuccess($"Placa {plate} removida com sucesso.");
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError(ex.Message);
+        }
+    }
+
+    private async Task HandleCancelSubscription(CustomerSubscriptionDto sub)
+    {
+        try
+        {
+            await SubscriptionApi.CancelSubscriptionAsync(sub.Id, "Cancelado no painel operacional");
+            Toast.ShowSuccess("Assinatura cancelada.");
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError(ex.Message);
+        }
+    }
+
+    private int GetPlanAllowedLimit(Guid? planId)
+    {
+        if (!planId.HasValue) return 1;
+        var plan = _plans.FirstOrDefault(p => p.Id == planId.Value);
+        return plan?.AllowedPlatesLimit ?? 1;
+    }
+
+    private static double CalculateUsagePercentage(CustomerSubscriptionDto sub)
+    {
+        if (sub.TotalCreditsInCycle == 0) return 0;
+        return Math.Min(100.0, (double)sub.UsedCreditsInCycle / sub.TotalCreditsInCycle * 100.0);
+    }
+}

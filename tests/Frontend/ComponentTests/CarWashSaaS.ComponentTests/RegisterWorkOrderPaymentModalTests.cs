@@ -46,6 +46,7 @@ public sealed class RegisterWorkOrderPaymentModalTests : BunitContext
     {
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.test/") };
         Services.AddSingleton(new CashierApiClient(httpClient));
+        Services.AddSingleton(new SubscriptionApiClient(httpClient));
         Services.AddSingleton<IToastService, ToastService>();
     }
 

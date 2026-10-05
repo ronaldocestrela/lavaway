@@ -114,6 +114,12 @@ builder.Services.AddScoped<ILoyaltyProgramRepository, LoyaltyProgramRepository>(
 builder.Services.AddScoped<ICustomerLoyaltyRepository, CustomerLoyaltyRepository>();
 builder.Services.AddScoped<LoyaltyApplicationService>();
 builder.Services.AddScoped<ILoyaltyLookup>(sp => sp.GetRequiredService<LoyaltyApplicationService>());
+builder.Services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
+builder.Services.AddScoped<ICustomerSubscriptionRepository, CustomerSubscriptionRepository>();
+builder.Services.AddScoped<IRecurringBillingGatewayProvider, SimulatedRecurringBillingGatewayProvider>();
+builder.Services.AddScoped<SubscriptionApplicationService>();
+builder.Services.AddScoped<ISubscriptionLookup>(sp => sp.GetRequiredService<SubscriptionApplicationService>());
+builder.Services.AddScoped<ISubscriptionUsageService>(sp => sp.GetRequiredService<SubscriptionApplicationService>());
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
@@ -267,6 +273,7 @@ app.MapAfterSalesEndpoints();
 app.MapBillingEndpoints();
 app.MapCashierEndpoints();
 app.MapLoyaltyEndpoints();
+app.MapSubscriptionEndpoints();
 app.MapHub<YardHub>("/hubs/yard").RequireCors("Client");
 
 app.Run();

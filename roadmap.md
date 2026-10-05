@@ -264,11 +264,14 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 5.5 Assinaturas e créditos recorrentes
 
-- [ ] Criar planos mensais e integrar cobrança recorrente no cartão pelo gateway escolhido.
-- [ ] Controlar créditos e utilizações por placa cadastrada.
-- [ ] **Entrega:** consumo de créditos é registrado e não ultrapassa o saldo disponível.
+- [x] Criar planos mensais e integrar cobrança recorrente no cartão pelo gateway escolhido.
+- [x] Controlar créditos e utilizações por placa cadastrada.
+- [x] **Entrega:** consumo de créditos é registrado e não ultrapassa o saldo disponível.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): modelo completo de monetização recorrente previsível (MRR) baseado em clubes de assinatura e pacotes mensais de serviços com controle estrito por placa de veículo. No módulo `Billing`, foram introduzidos os agregados de domínio `SubscriptionPlan` e `CustomerSubscription`, com as entidades internas `SubscriptionVehiclePlate` e `SubscriptionUsage` (migração EF Core `AddSubscriptionsAndRecurringCredits`), mapeados no schema `billing`. A cobrança recorrente no cartão de crédito opera desacoplada via porta `IRecurringBillingGatewayProvider` e gateway simulado `SimulatedRecurringBillingGatewayProvider` (com detecção de bandeira, tokenização mascarada e simulação de recusa para testes), preparada para integração com adquirentes e gateways de mercado. O controle de consumo impõe regras invariantes no domínio: apenas placas formalmente autorizadas na assinatura podem usufruir dos benefícios, respeitando o limite do plano (`AllowedPlatesLimit`), e o consumo é estritamente limitado ao saldo disponível no ciclo (`AvailableCredits > 0`), impedindo qualquer ultrapassagem de créditos. O histórico contábil auditável registra data/hora, placa, serviço e OS vinculada, com índice exclusivo no banco de dados (`(TenantId, WorkOrderId)` onde `WorkOrderId IS NOT NULL`) que assegura proteção definitiva contra concorrência e cobranças duplicadas. Na integração intermodular, as portas públicas `ISubscriptionLookup` e `ISubscriptionUsageService` em `CarWashSaaS.Shared.Contracts` permitem ao balcão e ao caixa verificar assinaturas ativas por placa e consumir créditos na liquidação da OS sem violar o isolamento modular (`ModuleBoundaryTests`). No frontend Blazor WebAssembly, a nova página `SubscriptionsPage.razor` (`/subscriptions`, item `08` do menu lateral) oferece dashboard com KPIs consolidados (Assinaturas Ativas, MRR Estimado, Créditos Disponíveis, Usos no Mês), abas para gestão de assinantes e catálogo de planos comerciais, além dos modais `CreateSubscriptionPlanModal.razor`, `SubscribeCustomerModal.razor`, `SubscriptionUsageHistoryModal.razor` e `ManageSubscriptionPlatesModal.razor`. O modal de recebimento do caixa (`RegisterWorkOrderPaymentModal.razor`) e o Kanban (`YardKanbanCard.razor`) detectam automaticamente veículos com assinatura e exibem o badge e botão rápido de liquidação por crédito recorrente. Total conformidade com suíte expandida de testes aprovados (100% de sucesso em testes unitários, testes de arquitetura NetArchTest, integração multi-tenant com Testcontainers SQL Server e componentes bUnit). Decisão formalizada na [ADR-0016](docs/architecture/ADR-0016-assinaturas-creditos-recorrentes-placa.md) e documentação viva em [docs/living-docs/assinaturas-creditos-5.5.md](docs/living-docs/assinaturas-creditos-5.5.md).
 
 ---
+
 
 ## Fase 6: Backoffice do SaaS
 

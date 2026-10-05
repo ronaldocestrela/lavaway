@@ -15,6 +15,10 @@ public sealed class BillingDbContext(
     public DbSet<ProcessedPaymentWebhook> ProcessedPaymentWebhooks => Set<ProcessedPaymentWebhook>();
     public DbSet<CashTransaction> CashTransactions => Set<CashTransaction>();
     public DbSet<DailyCashClosing> DailyCashClosings => Set<DailyCashClosing>();
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<CustomerSubscription> CustomerSubscriptions => Set<CustomerSubscription>();
+    public DbSet<SubscriptionVehiclePlate> SubscriptionVehiclePlates => Set<SubscriptionVehiclePlate>();
+    public DbSet<SubscriptionUsage> SubscriptionUsages => Set<SubscriptionUsage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

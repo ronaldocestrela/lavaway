@@ -1,0 +1,141 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-card" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <h3 class="modal-title">🚗 Gerenciar Placas Autorizadas</h3>
+                    <p class="modal-subtitle">@CustomerName &bull; Limite do plano: <strong>@AllowedLimit veículo(s)</strong></p>
+                </div>
+                <button class="btn-close" type="button" @onclick="HandleClose" aria-label="Fechar">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <div class="plates-list-section">
+                    <div class="section-label">Placas Atualmente Autorizadas (@AuthorizedPlates.Count / @AllowedLimit):</div>
+                    @if (AuthorizedPlates.Count == 0)
+                    {
+                        <p class="text-muted">Nenhuma placa cadastrada.</p>
+                    }
+                    else
+                    {
+                        <div class="plates-tags">
+                            @foreach (var plate in AuthorizedPlates)
+                            {
+                                <div class="plate-chip">
+                                    <span class="chip-plate">@plate</span>
+                                    <button class="chip-remove" type="button" title="Remover placa" @onclick="() => HandleRemovePlate(plate)" disabled="@_isBusy">&times;</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (AuthorizedPlates.Count < AllowedLimit)
+                {
+                    <div class="add-plate-section">
+                        <div class="section-label">Adicionar Nova Placa:</div>
+                        <div class="add-plate-form">
+                            <input class="form-input plate-input" type="text" placeholder="Ex: BRA2E19" maxlength="7" @bind="_newPlate" />
+                            <button class="btn btn-primary" type="button" @onclick="HandleAddPlate" disabled="@_isBusy">Adicionar</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        ℹ️ Limite máximo de @AllowedLimit veículo(s) atingido. Para adicionar uma nova placa, remova uma das existentes.
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        @_errorMessage
+                    </div>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                <button class="btn btn-secondary" type="button" @onclick="HandleClose">Fechar</button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public Guid SubscriptionId { get; set; }
+    [Parameter] public string CustomerName { get; set; } = string.Empty;
+    [Parameter] public int AllowedLimit { get; set; } = 1;
+    [Parameter] public IReadOnlyList<string> AuthorizedPlates { get; set; } = [];
+    [Parameter] public EventCallback<string> OnAddPlate { get; set; }
+    [Parameter] public EventCallback<string> OnRemovePlate { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _newPlate = string.Empty;
+    private bool _isBusy;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        _newPlate = string.Empty;
+        _errorMessage = null;
+    }
+
+    private async Task HandleAddPlate()
+    {
+        var cleanPlate = new string((_newPlate ?? string.Empty).Where(char.IsAsciiLetterOrDigit).ToArray()).ToUpperInvariant();
+        if (cleanPlate.Length != 7)
+        {
+            _errorMessage = "A placa deve conter 7 caracteres alfanuméricos (ex: ABC1D23).";
+            return;
+        }
+
+        if (AuthorizedPlates.Contains(cleanPlate, StringComparer.OrdinalIgnoreCase))
+        {
+            _errorMessage = $"A placa {cleanPlate} já está autorizada.";
+            return;
+        }
+
+        _isBusy = true;
+        _errorMessage = null;
+
+        try
+        {
+            await OnAddPlate.InvokeAsync(cleanPlate);
+            _newPlate = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task HandleRemovePlate(string plate)
+    {
+        _isBusy = true;
+        _errorMessage = null;
+
+        try
+        {
+            await OnRemovePlate.InvokeAsync(plate);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private Task HandleClose() => OnClose.InvokeAsync();
+}

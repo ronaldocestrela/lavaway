@@ -6,7 +6,8 @@ namespace CarWashSaaS.Billing.Application;
 public sealed class CashRegisterApplicationService(
     ICashTransactionRepository cashTransactionRepository,
     IDailyCashClosingRepository dailyCashClosingRepository,
-    IWorkOrderPaymentSettlementService workOrderPaymentSettlementService)
+    IWorkOrderPaymentSettlementService workOrderPaymentSettlementService,
+    ISubscriptionUsageService? subscriptionUsageService = null)
 {
     public async Task<Result<CashTransactionDto>> RegisterWorkOrderPaymentAsync(
         Guid tenantId,
@@ -49,6 +50,22 @@ public sealed class CashRegisterApplicationService(
             : request.ReferenceNumber.Trim();
 
         var nowUtc = DateTimeOffset.UtcNow;
+
+        if (string.Equals(request.PaymentMethod, PaymentMethodConstants.SubscriptionCredit, StringComparison.OrdinalIgnoreCase) &&
+            subscriptionUsageService is not null)
+        {
+            var consumeResult = await subscriptionUsageService.ConsumeCreditForWorkOrderAsync(
+                tenantId,
+                new ConsumeSubscriptionCreditRequest(request.WorkOrderId, request.Plate ?? string.Empty, "Baixa por Crédito de Assinatura", request.Notes),
+                ct);
+
+            if (!consumeResult.IsSuccess)
+            {
+                return Result<CashTransactionDto>.Failure(consumeResult.Error!);
+            }
+
+            transactionRef = $"CRED-{consumeResult.Value!.UsageId.ToString()[..8].ToUpperInvariant()}";
+        }
 
         var settlementResult = await workOrderPaymentSettlementService.SettlePaymentAsync(
             tenantId,

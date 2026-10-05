@@ -24,6 +24,7 @@ builder.Services.AddScoped<AfterSalesApiClient>();
 builder.Services.AddScoped<BillingApiClient>();
 builder.Services.AddScoped<CashierApiClient>();
 builder.Services.AddScoped<LoyaltyApiClient>();
+builder.Services.AddScoped<SubscriptionApiClient>();
 builder.Services.AddScoped<IToastService, ToastService>();
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;

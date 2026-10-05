@@ -1,0 +1,229 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-card" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <h3 class="modal-title">💳 Nova Assinatura de Cliente</h3>
+                    <p class="modal-subtitle">Contratação de plano mensal e cadastro de veículos</p>
+                </div>
+                <button class="btn-close" type="button" @onclick="HandleCancel" aria-label="Fechar">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                @if (SelectedCustomer is null)
+                {
+                    <div class="form-row">
+                        <div class="form-group col-half">
+                            <label class="form-label" for="sub-cust-name">Nome do Cliente *</label>
+                            <input id="sub-cust-name" class="form-input" type="text" placeholder="Nome Completo" @bind="_customerName" />
+                        </div>
+                        <div class="form-group col-half">
+                            <label class="form-label" for="sub-cust-phone">WhatsApp / Telefone *</label>
+                            <input id="sub-cust-phone" class="form-input" type="text" placeholder="(11) 99999-9999" @bind="_customerPhone" />
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="customer-selected-badge">
+                        <span class="badge-icon">👤</span>
+                        <div>
+                            <strong>@SelectedCustomer.Value.Name</strong> &bull; <span>@SelectedCustomer.Value.Phone</span>
+                        </div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label" for="sub-plan">Plano de Assinatura *</label>
+                    <select id="sub-plan" class="form-select" @bind="_selectedPlanId">
+                        <option value="">Selecione um plano...</option>
+                        @foreach (var plan in AvailablePlans)
+                        {
+                            <option value="@plan.Id.ToString()">
+                                @plan.Name — R$ @plan.MonthlyPrice.ToString("N2") (@plan.CreditsPerCycle créditos/mês, até @plan.AllowedPlatesLimit placa(s))
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                @if (SelectedPlan is not null)
+                {
+                    <div class="plan-summary-box">
+                        <div class="plan-highlight">
+                            <span>Créditos mensais: <strong>@SelectedPlan.CreditsPerCycle lavagens</strong></span>
+                            <span>Valor: <strong>R$ @SelectedPlan.MonthlyPrice.ToString("N2")/mês</strong></span>
+                            <span>Limite de placas: <strong>@SelectedPlan.AllowedPlatesLimit veículo(s)</strong></span>
+                        </div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label" for="sub-plates">
+                        Placa(s) Autorizada(s) *
+                        <small class="text-muted">(Separe por vírgula se houver mais de uma)</small>
+                    </label>
+                    <input id="sub-plates" class="form-input plate-input" type="text" placeholder="Ex: ABC1D23, XYZ9876" @bind="_platesText" />
+                </div>
+
+                <div class="card-details-section">
+                    <div class="section-title">🔒 Dados do Cartão de Crédito (Recorrência)</div>
+                    <div class="form-group">
+                        <label class="form-label" for="card-num">Número do Cartão *</label>
+                        <input id="card-num" class="form-input" type="text" maxlength="19" placeholder="•••• •••• •••• ••••" @bind="_cardNumber" />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-half">
+                            <label class="form-label" for="card-holder">Nome Impresso no Cartão *</label>
+                            <input id="card-holder" class="form-input" type="text" placeholder="Como no cartão" @bind="_cardHolder" />
+                        </div>
+                        <div class="form-group col-fourth">
+                            <label class="form-label" for="card-exp">Validade (MM/AA)</label>
+                            <input id="card-exp" class="form-input" type="text" maxlength="5" placeholder="12/28" @bind="_cardExpiration" />
+                        </div>
+                        <div class="form-group col-fourth">
+                            <label class="form-label" for="card-cvv">CVV</label>
+                            <input id="card-cvv" class="form-input" type="password" maxlength="4" placeholder="123" @bind="_cardCvv" />
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        @_errorMessage
+                    </div>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                <button class="btn btn-secondary" type="button" @onclick="HandleCancel">Cancelar</button>
+                <button class="btn btn-success" type="button" @onclick="HandleSubmit" disabled="@_isProcessing">
+                    @if (_isProcessing)
+                    {
+                        <span>Processando Cobrança...</span>
+                    }
+                    else
+                    {
+                        <span>Confirmar e Ativar Plano</span>
+                    }
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public IReadOnlyList<SubscriptionPlanDto> AvailablePlans { get; set; } = [];
+    [Parameter] public (Guid Id, string Name, string Phone)? SelectedCustomer { get; set; }
+    [Parameter] public string? InitialPlate { get; set; }
+    [Parameter] public EventCallback<SubscribeCustomerRequest> OnSubscribed { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _customerName = string.Empty;
+    private string _customerPhone = string.Empty;
+    private string _selectedPlanId = string.Empty;
+    private string _platesText = string.Empty;
+    private string _cardNumber = "4532117088994242";
+    private string _cardHolder = "CLIENTE TESTE";
+    private string _cardExpiration = "12/29";
+    private string _cardCvv = "123";
+    private bool _isProcessing;
+    private string? _errorMessage;
+
+    private SubscriptionPlanDto? SelectedPlan =>
+        Guid.TryParse(_selectedPlanId, out var id)
+            ? AvailablePlans.FirstOrDefault(p => p.Id == id)
+            : null;
+
+    protected override void OnParametersSet()
+    {
+        if (SelectedCustomer.HasValue)
+        {
+            _customerName = SelectedCustomer.Value.Name;
+            _customerPhone = SelectedCustomer.Value.Phone;
+        }
+
+        if (!string.IsNullOrWhiteSpace(InitialPlate))
+        {
+            _platesText = InitialPlate.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(_selectedPlanId) && AvailablePlans.Count > 0)
+        {
+            _selectedPlanId = AvailablePlans.First().Id.ToString();
+        }
+
+        _errorMessage = null;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (!Guid.TryParse(_selectedPlanId, out var planId))
+        {
+            _errorMessage = "Selecione um plano válido.";
+            return;
+        }
+
+        var customerId = SelectedCustomer?.Id ?? Guid.NewGuid();
+        if (string.IsNullOrWhiteSpace(_customerName))
+        {
+            _errorMessage = "Nome do cliente é obrigatório.";
+            return;
+        }
+
+        var plates = (_platesText ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        if (plates.Count == 0)
+        {
+            _errorMessage = "Informe ao menos uma placa de veículo autorizada.";
+            return;
+        }
+
+        if (SelectedPlan is not null && plates.Count > SelectedPlan.AllowedPlatesLimit)
+        {
+            _errorMessage = $"O plano selecionado permite no máximo {SelectedPlan.AllowedPlatesLimit} placa(s). Você informou {plates.Count}.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_cardNumber) || _cardNumber.Length < 13)
+        {
+            _errorMessage = "Informe um número de cartão de crédito válido.";
+            return;
+        }
+
+        _isProcessing = true;
+        _errorMessage = null;
+
+        try
+        {
+            var req = new SubscribeCustomerRequest(
+                customerId,
+                _customerName.Trim(),
+                _customerPhone.Trim(),
+                planId,
+                plates,
+                _cardNumber,
+                _cardHolder,
+                _cardExpiration,
+                _cardCvv);
+
+            await OnSubscribed.InvokeAsync(req);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private Task HandleCancel() => OnClose.InvokeAsync();
+}

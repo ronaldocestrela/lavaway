@@ -43,9 +43,18 @@
             <span class="metric-price">@Card.TotalAmount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
             @if (Card.IsPaid)
             {
-                <span class="payment-badge-paid" title="Pagamento confirmado em @(Card.PaidAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "Recebido")">
-                    💳 Pago
-                </span>
+                if (Card.PaymentMethod == PaymentMethodConstants.SubscriptionCredit)
+                {
+                    <span class="payment-badge-paid" style="background: rgba(234, 179, 8, 0.2); border-color: #eab308; color: #fde047;" title="Baixado via Crédito de Assinatura">
+                        ⭐ Assinatura
+                    </span>
+                }
+                else
+                {
+                    <span class="payment-badge-paid" title="Pagamento confirmado em @(Card.PaidAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "Recebido")">
+                        💳 Pago
+                    </span>
+                }
             }
         </div>
     </div>

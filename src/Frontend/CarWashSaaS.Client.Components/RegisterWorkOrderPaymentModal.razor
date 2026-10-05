@@ -33,9 +33,29 @@
                     </div>
                 </div>
 
+                @if (_subscriptionSummary is not null && _subscriptionSummary.CanConsume)
+                {
+                    <div class="subscription-available-box">
+                        <span class="sub-icon">⭐</span>
+                        <div class="sub-info">
+                            <strong>Veículo com Assinatura Ativa: @_subscriptionSummary.PlanName</strong>
+                            <span>Saldo: <strong>@_subscriptionSummary.AvailableCredits</strong> crédito(s) restante(s) no ciclo</span>
+                        </div>
+                    </div>
+                }
+
                 <div class="form-group">
                     <label class="form-label">Forma de Pagamento</label>
                     <div class="method-grid">
+                        @if (_subscriptionSummary is not null && _subscriptionSummary.CanConsume)
+                        {
+                            <button type="button"
+                                    class="method-btn method-subscription @(_selectedMethod == PaymentMethodConstants.SubscriptionCredit ? "active" : "")"
+                                    @onclick="() => SelectMethod(PaymentMethodConstants.SubscriptionCredit)">
+                                <span class="method-icon">⭐</span>
+                                <span class="method-name">Crédito Assinatura</span>
+                            </button>
+                        }
                         <button type="button"
                                 class="method-btn @(_selectedMethod == PaymentMethodConstants.Pix ? "active" : "")"
                                 @onclick="() => SelectMethod(PaymentMethodConstants.Pix)">
@@ -159,6 +179,7 @@
     [Parameter] public decimal TotalAmount { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<CashTransactionDto> OnPaymentRegistered { get; set; }
+    [Inject] public SubscriptionApiClient? SubscriptionApi { get; set; }
 
     private string _selectedMethod = PaymentMethodConstants.Pix;
     private decimal? _cashReceived;
@@ -166,12 +187,32 @@
     private string? _notes;
     private bool _isSubmitting;
     private string? _errorMessage;
+    private SubscriptionPlateSummaryDto? _subscriptionSummary;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (IsOpen && !_cashReceived.HasValue)
+        if (IsOpen)
         {
-            _cashReceived = TotalAmount;
+            if (!_cashReceived.HasValue)
+            {
+                _cashReceived = TotalAmount;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Plate) && SubscriptionApi is not null)
+            {
+                try
+                {
+                    _subscriptionSummary = await SubscriptionApi.LookupByPlateAsync(Plate);
+                    if (_subscriptionSummary is not null && _subscriptionSummary.CanConsume)
+                    {
+                        _selectedMethod = PaymentMethodConstants.SubscriptionCredit;
+                    }
+                }
+                catch
+                {
+                    _subscriptionSummary = null;
+                }
+            }
         }
     }
 
@@ -200,7 +241,8 @@
                 _selectedMethod,
                 _selectedMethod == PaymentMethodConstants.Cash ? _cashReceived : null,
                 _referenceNumber,
-                _notes);
+                _notes,
+                Plate);
 
             var tx = await CashierClient.RegisterWorkOrderPaymentAsync(request);
             ToastService.ShowSuccess($"Pagamento de {TotalAmount:C2} registrado via {PaymentMethodConstants.ToDisplayName(_selectedMethod)} com sucesso!");

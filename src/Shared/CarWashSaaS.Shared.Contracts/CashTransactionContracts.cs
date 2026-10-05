@@ -21,7 +21,8 @@ public sealed record RegisterWorkOrderPaymentRequest(
     string PaymentMethod,
     decimal? CashReceived = null,
     string? ReferenceNumber = null,
-    string? Notes = null);
+    string? Notes = null,
+    string? Plate = null);
 
 public sealed record CreateCashMovementRequest(
     string Type,
