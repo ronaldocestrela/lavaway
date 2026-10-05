@@ -6,6 +6,7 @@
 @attribute [Authorize(Roles = "Administrator")]
 @inject YardSetupApiClient YardApi
 @inject ServiceCatalogApiClient ServiceApi
+@inject IToastService ToastService
 
 <PageTitle>Capacidade &amp; Equipe | Lavaway</PageTitle>
 
@@ -20,22 +21,6 @@
             <p class="page-subtitle">Configure o número de boxes simultâneos do pátio, cadastre colaboradores e defina regras de comissão por serviço e cargo.</p>
         </div>
     </div>
-
-    @if (!string.IsNullOrWhiteSpace(_successMessage))
-    {
-        <div class="feedback feedback-success" role="status">
-            <span class="feedback-symbol">✓</span>
-            <div class="feedback-text">@_successMessage</div>
-        </div>
-    }
-
-    @if (!string.IsNullOrWhiteSpace(_errorMessage))
-    {
-        <div class="feedback feedback-error" role="alert">
-            <span class="feedback-symbol">!</span>
-            <div class="feedback-text">@_errorMessage</div>
-        </div>
-    }
 
     @if (_isLoading)
     {
@@ -305,6 +290,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao carregar dados: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -404,6 +390,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Erro ao alterar status: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
     }
 
@@ -470,6 +457,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Erro ao excluir regra: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
     }
 
@@ -477,6 +465,7 @@
     {
         _successMessage = message;
         _errorMessage = null;
+        ToastService.ShowSuccess(message);
     }
 
     private static string GetInitials(string fullName)

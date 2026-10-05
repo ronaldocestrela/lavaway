@@ -6,6 +6,7 @@
 @attribute [Authorize(Roles = "Administrator")]
 @implements IDisposable
 @inject WhatsAppApiClient WhatsAppApi
+@inject IToastService ToastService
 
 <PageTitle>Pareamento &amp; Mensageria WhatsApp | Lavaway</PageTitle>
 
@@ -20,22 +21,6 @@
             <p class="page-subtitle">Configure o canal oficial do WhatsApp da sua loja, monitore quotas anti-ban, envie mensagens de teste e acompanhe a entrega em tempo real.</p>
         </div>
     </div>
-
-    @if (!string.IsNullOrWhiteSpace(_successMessage))
-    {
-        <div class="feedback feedback-success" role="status">
-            <span class="feedback-symbol">✓</span>
-            <div class="feedback-text">@_successMessage</div>
-        </div>
-    }
-
-    @if (!string.IsNullOrWhiteSpace(_errorMessage))
-    {
-        <div class="feedback feedback-error" role="alert">
-            <span class="feedback-symbol">!</span>
-            <div class="feedback-text">@_errorMessage</div>
-        </div>
-    }
 
     @if (_isLoading)
     {
@@ -114,6 +99,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Não foi possível consultar o status do WhatsApp: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -137,6 +123,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao carregar métricas de mensageria: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -155,12 +142,14 @@
 
             _connection = await WhatsAppApi.StartPairingAsync(_cts?.Token ?? CancellationToken.None);
             _successMessage = "Sessão iniciada! Aponte a câmera do seu celular para o QR Code.";
+            ToastService.ShowSuccess(_successMessage);
             
             StartPolling();
         }
         catch (Exception ex)
         {
             _cardErrorMessage = ex.Message;
+            ToastService.ShowError(ex.Message);
         }
         finally
         {
@@ -179,12 +168,14 @@
 
             _connection = await WhatsAppApi.RefreshPairingAsync(_cts?.Token ?? CancellationToken.None);
             _successMessage = "QR Code atualizado com sucesso.";
+            ToastService.ShowSuccess(_successMessage);
 
             StartPolling();
         }
         catch (Exception ex)
         {
             _cardErrorMessage = ex.Message;
+            ToastService.ShowError(ex.Message);
         }
         finally
         {
@@ -205,12 +196,14 @@
 
             _connection = await WhatsAppApi.DisconnectAsync(_cts?.Token ?? CancellationToken.None);
             _successMessage = "Instância desconectada com sucesso.";
+            ToastService.ShowSuccess(_successMessage);
             _quota = null;
             _messages = null;
         }
         catch (Exception ex)
         {
             _cardErrorMessage = ex.Message;
+            ToastService.ShowError(ex.Message);
         }
         finally
         {
@@ -228,6 +221,7 @@
             var result = await WhatsAppApi.SendTestMessageAsync(request, _cts?.Token ?? CancellationToken.None);
             _isTestFeedbackSuccess = true;
             _testFeedbackMessage = $"Mensagem disparada com sucesso! Status inicial: '{result.Status}'. Acompanhe no histórico abaixo.";
+            ToastService.ShowSuccess(_testFeedbackMessage);
             
             await LoadMessagesAndQuotaAsync();
         }
@@ -235,6 +229,7 @@
         {
             _isTestFeedbackSuccess = false;
             _testFeedbackMessage = $"Falha ao disparar mensagem de teste: {ex.Message}";
+            ToastService.ShowError(_testFeedbackMessage);
         }
         finally
         {
@@ -278,6 +273,7 @@
                     if (latest.IsConnected)
                     {
                         _successMessage = "WhatsApp conectado com sucesso! O canal da loja está ativo.";
+                        ToastService.ShowSuccess(_successMessage);
                         await LoadMessagesAndQuotaAsync();
                         await InvokeAsync(StateHasChanged);
                         break;

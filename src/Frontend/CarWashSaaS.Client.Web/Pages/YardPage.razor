@@ -8,6 +8,7 @@
 @inject YardSetupApiClient YardSetupApi
 @inject AfterSalesApiClient AfterSalesApi
 @inject NavigationManager Navigation
+@inject IToastService ToastService
 
 <PageTitle>Pátio &amp; Kanban — Lava-Jato SaaS</PageTitle>
 
@@ -41,16 +42,6 @@
                 <p>@_loadError</p>
             </div>
             <button type="button" class="btn-retry" @onclick="LoadBoardAsync">Tentar Novamente</button>
-        </div>
-    }
-    @if (!string.IsNullOrWhiteSpace(_actionSuccess))
-    {
-        <div class="success-banner" style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.35); color: #86efac; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span>💬</span>
-                <span>@_actionSuccess</span>
-            </div>
-            <button type="button" style="background: transparent; border: none; color: inherit; font-size: 16px; cursor: pointer;" @onclick="@(() => _actionSuccess = null)">&times;</button>
         </div>
     }
 
@@ -89,7 +80,6 @@
     private bool _isRefreshing;
     private string? _loadError;
     private string? _actionError;
-    private string? _actionSuccess;
     private Guid? _selectedGalleryWorkOrderId;
     private System.Threading.Timer? _pollTimer;
 
@@ -152,6 +142,7 @@
         catch (Exception ex)
         {
             _actionError = $"Erro ao atualizar o quadro: {ex.Message}";
+            ToastService.ShowError(_actionError);
         }
         finally
         {
@@ -180,11 +171,13 @@
         {
             var request = new ChangeWorkOrderStatusRequest(args.TargetStatus, args.OperatorId, args.Notes);
             await WorkOrderApi.ChangeWorkOrderStatusAsync(args.WorkOrderId, request);
+            ToastService.ShowSuccess("Status da ordem de serviço atualizado.");
             await RefreshBoardAsync();
         }
         catch (Exception ex)
         {
             _actionError = ex.Message;
+            ToastService.ShowError(ex.Message);
             StateHasChanged();
         }
     }
@@ -195,11 +188,13 @@
         try
         {
             await WorkOrderApi.AssignOperatorAsync(args.WorkOrderId, args.OperatorId);
+            ToastService.ShowSuccess("Operador atribuído com sucesso.");
             await RefreshBoardAsync();
         }
         catch (Exception ex)
         {
             _actionError = ex.Message;
+            ToastService.ShowError(ex.Message);
             StateHasChanged();
         }
     }
@@ -227,15 +222,15 @@
     private async Task HandleNotifyReadyAsync(WorkOrderKanbanCardDto card)
     {
         _actionError = null;
-        _actionSuccess = null;
         try
         {
             await WorkOrderApi.SendReadyNotificationAsync(card.Id);
-            _actionSuccess = $"Notificação de retirada enviada com sucesso para {card.CustomerName} ({card.Plate}) via WhatsApp!";
+            ToastService.ShowSuccess($"Notificação de retirada enviada com sucesso para {card.CustomerName} ({card.Plate}) via WhatsApp!");
         }
         catch (Exception ex)
         {
             _actionError = $"Falha ao enviar notificação de retirada: {ex.Message}";
+            ToastService.ShowError(_actionError);
         }
         StateHasChanged();
     }
@@ -243,11 +238,10 @@
     private async Task HandlePickupAsync(WorkOrderKanbanCardDto card)
     {
         _actionError = null;
-        _actionSuccess = null;
         try
         {
             await AfterSalesApi.RegisterPickupAsync(card.Id);
-            _actionSuccess = $"Retirada do veículo {card.Plate} ({card.CustomerName}) registrada com sucesso! Pesquisa de satisfação agendada para 1h após a retirada.";
+            ToastService.ShowSuccess($"Retirada do veículo {card.Plate} ({card.CustomerName}) registrada com sucesso! Pesquisa de satisfação agendada para 1h após a retirada.");
             if (_board is not null)
             {
                 var newCols = _board.Columns.Select(col =>
@@ -269,6 +263,7 @@
         catch (Exception ex)
         {
             _actionError = $"Falha ao registrar retirada: {ex.Message}";
+            ToastService.ShowError(_actionError);
         }
         StateHasChanged();
     }

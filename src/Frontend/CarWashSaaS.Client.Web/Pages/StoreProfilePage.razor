@@ -7,6 +7,7 @@
 @attribute [Authorize(Roles = "Administrator")]
 @inject StoreProfileApiClient Api
 @inject NavigationManager Navigation
+@inject IToastService ToastService
 
 <PageTitle>Perfil do Estabelecimento | Lavaway</PageTitle>
 
@@ -40,23 +41,8 @@
             <span>Carregando dados do estabelecimento...</span>
         </div>
     }
-    else if (!string.IsNullOrWhiteSpace(_pageErrorMessage))
-    {
-        <div class="feedback feedback-error" role="alert">
-            <span class="feedback-symbol">!</span>
-            <div class="feedback-text">@_pageErrorMessage</div>
-        </div>
-    }
     else
     {
-        @if (!string.IsNullOrWhiteSpace(_successMessage))
-        {
-            <div class="feedback feedback-success" role="status">
-                <span class="feedback-symbol">✓</span>
-                <div class="feedback-text">@_successMessage</div>
-            </div>
-        }
-
         @if (_currentProfile is not null && !_isEditing)
         {
             <!-- Profile Details Card View -->
@@ -234,10 +220,12 @@
         catch (StoreProfileApiException ex)
         {
             _pageErrorMessage = ex.Message;
+            ToastService.ShowError(_pageErrorMessage);
         }
         catch (Exception)
         {
             _pageErrorMessage = "Falha ao carregar os dados cadastrais da loja. Verifique sua conexão e tente novamente.";
+            ToastService.ShowError(_pageErrorMessage);
         }
         finally
         {
@@ -268,12 +256,14 @@
                 var request = model.ToCreateRequest();
                 _currentProfile = await Api.CreateProfileAsync(request);
                 _successMessage = "Perfil do estabelecimento cadastrado com sucesso!";
+                ToastService.ShowSuccess(_successMessage);
             }
             else
             {
                 var request = model.ToUpdateRequest();
                 _currentProfile = await Api.UpdateProfileAsync(request);
                 _successMessage = "Dados cadastrais atualizados com sucesso!";
+                ToastService.ShowSuccess(_successMessage);
             }
 
             // Se o usuário selecionou uma nova logo no wizard, envia os bytes carregados
@@ -294,10 +284,12 @@
         catch (StoreProfileApiException ex)
         {
             _pageErrorMessage = ex.Message;
+            ToastService.ShowError(_pageErrorMessage);
         }
         catch (Exception)
         {
             _pageErrorMessage = "Ocorreu um erro ao salvar o perfil. Tente novamente.";
+            ToastService.ShowError(_pageErrorMessage);
         }
         finally
         {

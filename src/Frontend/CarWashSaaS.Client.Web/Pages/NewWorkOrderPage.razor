@@ -8,6 +8,7 @@
 @inject WorkOrderApiClient WorkOrderApi
 @inject ReceptionSessionState ReceptionState
 @inject NavigationManager Navigation
+@inject IToastService ToastService
 
 <PageTitle>Abertura de OS | Lavaway</PageTitle>
 
@@ -219,14 +220,17 @@
                 string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim());
 
             _createdWorkOrder = await WorkOrderApi.CreateWorkOrderAsync(request);
+            ToastService.ShowSuccess($"Ordem de Serviço criada com sucesso!");
         }
         catch (WorkOrderApiException ex)
         {
             _errorMessage = ex.Message;
+            ToastService.ShowError(_errorMessage);
         }
         catch (Exception ex)
         {
             _errorMessage = $"Ocorreu uma falha ao abrir a ordem de serviço: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {

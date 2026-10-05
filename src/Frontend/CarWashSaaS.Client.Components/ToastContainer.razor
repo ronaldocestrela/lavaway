@@ -1,0 +1,68 @@
+@using CarWashSaaS.Client.Core
+@inject IToastService ToastService
+@implements IDisposable
+
+<aside class="toast-container" aria-live="polite" aria-atomic="true" role="region" aria-label="Notificações do Sistema">
+    @foreach (var toast in ToastService.Toasts)
+    {
+        <div @key="toast.Id" class="toast-card toast-@toast.Level.ToString().ToLowerInvariant()" role="alert">
+            <div class="toast-icon-badge" aria-hidden="true">
+                @switch (toast.Level)
+                {
+                    case ToastLevel.Success:
+                        <span>&#10003;</span>
+                        break;
+                    case ToastLevel.Error:
+                        <span>!</span>
+                        break;
+                    case ToastLevel.Warning:
+                        <span>&#9888;</span>
+                        break;
+                    default:
+                        <span>&#8505;</span>
+                        break;
+                }
+            </div>
+
+            <div class="toast-content">
+                @if (!string.IsNullOrWhiteSpace(toast.Title))
+                {
+                    <strong class="toast-title">@toast.Title</strong>
+                }
+                <div class="toast-message">@toast.Message</div>
+            </div>
+
+            <button type="button"
+                    class="toast-close-btn"
+                    @onclick="() => ToastService.Dismiss(toast.Id)"
+                    title="Fechar notificação"
+                    aria-label="Fechar notificação">
+                &times;
+            </button>
+
+            @if (toast.DurationMs > 0)
+            {
+                <div class="toast-progress-track">
+                    <div class="toast-progress-fill" style="animation-duration: @(toast.DurationMs)ms;"></div>
+                </div>
+            }
+        </div>
+    }
+</aside>
+
+@code {
+    protected override void OnInitialized()
+    {
+        ToastService.OnChange += HandleChange;
+    }
+
+    private void HandleChange()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnChange -= HandleChange;
+    }
+}

@@ -5,6 +5,7 @@
 @attribute [Authorize(Roles = "Administrator,Receptionist")]
 @implements IDisposable
 @inject AfterSalesApiClient AfterSalesApi
+@inject IToastService ToastService
 
 <PageTitle>Pós-Venda &amp; Retenção | Lavaway</PageTitle>
 
@@ -27,24 +28,6 @@
             </button>
         </div>
     </div>
-
-    @if (!string.IsNullOrWhiteSpace(_successMessage))
-    {
-        <div class="feedback feedback-success" role="status">
-            <span class="feedback-symbol">✓</span>
-            <div class="feedback-text">@_successMessage</div>
-            <button type="button" class="btn-close-feedback" @onclick="() => _successMessage = null">✕</button>
-        </div>
-    }
-
-    @if (!string.IsNullOrWhiteSpace(_errorMessage))
-    {
-        <div class="feedback feedback-error" role="alert">
-            <span class="feedback-symbol">!</span>
-            <div class="feedback-text">@_errorMessage</div>
-            <button type="button" class="btn-close-feedback" @onclick="() => _errorMessage = null">✕</button>
-        </div>
-    }
 
     <!-- Tabs Navigation -->
     <div class="tabs-bar">
@@ -585,6 +568,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao carregar dados de pós-venda: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -667,10 +651,12 @@
                 _campaignRules[idx] = updated;
             }
             _successMessage = $"Régua {rule.DaysInactive} dias {(isEnabled ? "ativada" : "pausada")} com sucesso!";
+            ToastService.ShowSuccess(_successMessage);
         }
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao alterar status da régua: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -698,10 +684,12 @@
                 _campaignRules[idx] = updated;
             }
             _successMessage = $"Template da régua {rule.DaysInactive} dias salvo com sucesso!";
+            ToastService.ShowSuccess(_successMessage);
         }
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao salvar template: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -725,6 +713,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao consultar audiência: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
             _selectedAudienceRule = null;
         }
         finally
@@ -750,11 +739,13 @@
         {
             var result = await AfterSalesApi.DispatchCampaignRuleAsync(rule.Id);
             _successMessage = $"Campanha {rule.DaysInactive} dias executada! Disparados: {result.TotalDispatched} mensagens via WhatsApp. Bloqueados por anti-spam: {result.TotalSkippedFrequencyCap}. Opt-outs respeitados: {result.TotalSkippedOptOut}.";
+            ToastService.ShowSuccess(_successMessage);
             await LoadAllDataAsync();
         }
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao disparar campanha: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -792,10 +783,12 @@
                 _preferences[idx] = updated;
             }
             _successMessage = $"Preferência do telefone {FormatPhone(pref.NormalizedPhone)} alterada para {(targetOptIn ? "Permitido" : "Bloqueado")}.";
+            ToastService.ShowSuccess(_successMessage);
         }
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao alterar preferência: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -827,11 +820,13 @@
             }
 
             _successMessage = $"Opt-Out para {_manualOptPhone} registrado com sucesso.";
+            ToastService.ShowSuccess(_successMessage);
             _manualOptPhone = string.Empty;
         }
         catch (Exception ex)
         {
             _errorMessage = $"Falha ao registrar opt-out manual: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {

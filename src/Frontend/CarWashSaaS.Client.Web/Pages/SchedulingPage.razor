@@ -7,6 +7,7 @@
 @inject SchedulingApiClient SchedulingApi
 @inject ServiceCatalogApiClient ServiceApi
 @inject NavigationManager Navigation
+@inject IToastService ToastService
 
 <PageTitle>Agenda &amp; Reservas | Lavaway</PageTitle>
 
@@ -24,22 +25,6 @@
                     </button>
                 </div>
             </header>
-
-            @if (!string.IsNullOrWhiteSpace(_errorMessage))
-            {
-                <div class="alert alert-error">
-                    <span>@_errorMessage</span>
-                    <button type="button" class="alert-close" @onclick="() => _errorMessage = null">&times;</button>
-                </div>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(_successMessage))
-            {
-                <div class="alert alert-success">
-                    <span>@_successMessage</span>
-                    <button type="button" class="alert-close" @onclick="() => _successMessage = null">&times;</button>
-                </div>
-            }
 
             <!-- Barra de Capacidade do Dia -->
             <BookingCapacityMeter BookingsCount="@_bookings.Count"
@@ -326,6 +311,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Erro ao carregar agendamentos: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -380,11 +366,13 @@
         {
             await SchedulingApi.CancelBookingAsync(booking.Id, "Cancelado pela equipe operacional");
             _successMessage = $"Agendamento {booking.Protocol} cancelado com sucesso.";
+            ToastService.ShowSuccess(_successMessage);
             await LoadBookingsAsync();
         }
         catch (Exception ex)
         {
             _errorMessage = $"Não foi possível cancelar o agendamento: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
     }
 
@@ -420,6 +408,7 @@
         if (!Guid.TryParse(_manualServiceId, out var serviceId))
         {
             _errorMessage = "Selecione um serviço válido.";
+            ToastService.ShowWarning(_errorMessage);
             return;
         }
 
@@ -441,6 +430,7 @@
 
             var created = await SchedulingApi.CreateBookingAsync(request);
             _successMessage = $"Reserva {created.Protocol} criada com sucesso para {_manualDate:dd/MM} às {_manualTime:HH\\:mm}!";
+            ToastService.ShowSuccess(_successMessage);
             _showCreateModal = false;
             _selectedDate = _manualDate;
             await LoadBookingsAsync();
@@ -448,6 +438,7 @@
         catch (Exception ex)
         {
             _errorMessage = ex.Message;
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {
@@ -470,11 +461,13 @@
         {
             await SchedulingApi.ConfirmBookingAsync(booking.Id);
             _successMessage = $"Agendamento #{booking.Protocol} confirmado com sucesso!";
+            ToastService.ShowSuccess(_successMessage);
             await LoadBookingsAsync();
         }
         catch (Exception ex)
         {
             _errorMessage = $"Erro ao confirmar agendamento: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
     }
 
@@ -485,11 +478,13 @@
             var reminderType = booking.ScheduledDate == _today ? "2h" : "24h";
             await SchedulingApi.SendReminderAsync(booking.Id, reminderType);
             _successMessage = $"Lembrete ({reminderType}) enviado com sucesso via WhatsApp para {booking.CustomerName}!";
+            ToastService.ShowSuccess(_successMessage);
             await LoadBookingsAsync();
         }
         catch (Exception ex)
         {
             _errorMessage = $"Erro ao enviar lembrete: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
     }
 
@@ -550,6 +545,7 @@
         if (_rescheduleBooking is null || !TimeOnly.TryParse(_rescheduleTimeStr, out var newTime))
         {
             _errorMessage = "Selecione um horário válido para remarcar.";
+            ToastService.ShowWarning(_errorMessage);
             return;
         }
 
@@ -560,6 +556,7 @@
         {
             var updated = await SchedulingApi.RescheduleBookingAsync(_rescheduleBooking.Id, _rescheduleDate, newTime);
             _successMessage = $"Agendamento #{updated.Protocol} remarcado com sucesso para {_rescheduleDate:dd/MM} às {newTime:HH\\:mm}!";
+            ToastService.ShowSuccess(_successMessage);
             _showRescheduleModal = false;
             _rescheduleBooking = null;
             _selectedDate = _rescheduleDate;
@@ -568,6 +565,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Erro ao remarcar: {ex.Message}";
+            ToastService.ShowError(_errorMessage);
         }
         finally
         {

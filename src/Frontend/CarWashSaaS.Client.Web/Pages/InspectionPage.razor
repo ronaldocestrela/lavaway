@@ -8,6 +8,7 @@
 @inject WorkOrderApiClient WorkOrderApi
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@inject IToastService ToastService
 
 <PageTitle>Vistoria Digital de Entrada — Lavaway</PageTitle>
 
@@ -56,14 +57,6 @@
                 <span class="customer-name">@_workOrder.CustomerName</span>
             </div>
         </header>
-
-        @if (_alertMessage is not null)
-        {
-            <div class="alert-toast @(_isSuccessAlert ? "alert-success" : "alert-error")">
-                <span>@_alertMessage</span>
-                <button type="button" class="alert-close" @onclick="() => _alertMessage = null">&times;</button>
-            </div>
-        }
 
         <!-- Seletor de Abas Móveis -->
         <nav class="inspection-nav-tabs">
@@ -161,8 +154,6 @@
     private bool _isLoading = true;
     private bool _isSubmitting;
     private string? _errorMessage;
-    private string? _alertMessage;
-    private bool _isSuccessAlert;
 
     private WorkOrderDto? _workOrder;
     private VehicleInspectionDto? _inspection;
@@ -298,8 +289,14 @@
 
     private void ShowAlert(string msg, bool success)
     {
-        _alertMessage = msg;
-        _isSuccessAlert = success;
+        if (success)
+        {
+            ToastService.ShowSuccess(msg);
+        }
+        else
+        {
+            ToastService.ShowError(msg);
+        }
     }
 
     private void GoBack()

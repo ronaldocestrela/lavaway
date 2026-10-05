@@ -7,6 +7,7 @@
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
 @inject ReceptionSessionState ReceptionState
+@inject IToastService ToastService
 
 <PageTitle>Recepção | Lavaway</PageTitle>
 
@@ -64,21 +65,6 @@
                             </button>
                         </div>
                     </form>
-
-                    @if (!string.IsNullOrWhiteSpace(_error))
-                    {
-                        <div class="feedback feedback-error" role="alert">
-                            <span class="feedback-symbol" aria-hidden="true">!</span>
-                            <span>@_error</span>
-                        </div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(_notice))
-                    {
-                        <div class="feedback feedback-success" role="status">
-                            <span class="feedback-symbol" aria-hidden="true">&#10003;</span>
-                            <span>@_notice</span>
-                        </div>
-                    }
 
                     @if (_hasSearched && !_isSearching && _matches.Count == 0 && string.IsNullOrWhiteSpace(_error))
                     {
@@ -246,6 +232,7 @@
         if (string.IsNullOrWhiteSpace(_plateQuery) && string.IsNullOrWhiteSpace(_phoneQuery))
         {
             _error = "Informe a placa ou o telefone para buscar.";
+            ToastService.ShowWarning(_error);
             return;
         }
 
@@ -273,6 +260,7 @@
             SelectedVehicleId = null;
             ReceptionState.ClearSelection();
             _error = exception.Message;
+            ToastService.ShowError(_error);
         }
         catch (AccessTokenNotAvailableException exception)
         {
@@ -285,6 +273,7 @@
             SelectedVehicleId = null;
             ReceptionState.ClearSelection();
             _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
+            ToastService.ShowError(_error);
         }
         finally
         {
@@ -377,10 +366,12 @@
             _showCreateForm = false;
             _hasSearched = true;
             _notice = "Cadastro criado e pronto para a recepção.";
+            ToastService.ShowSuccess(_notice);
         }
         catch (CustomerVehicleApiException exception)
         {
             _error = exception.Message;
+            ToastService.ShowError(_error);
         }
         catch (AccessTokenNotAvailableException exception)
         {
@@ -389,6 +380,7 @@
         catch (HttpRequestException)
         {
             _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
+            ToastService.ShowError(_error);
         }
         finally
         {
@@ -419,10 +411,12 @@
             }
             _showAddVehicleForm = false;
             _notice = "Veículo adicionado ao cadastro.";
+            ToastService.ShowSuccess(_notice);
         }
         catch (CustomerVehicleApiException exception)
         {
             _error = exception.Message;
+            ToastService.ShowError(_error);
         }
         catch (AccessTokenNotAvailableException exception)
         {
@@ -431,6 +425,7 @@
         catch (HttpRequestException)
         {
             _error = "Não foi possível conectar à API. Verifique a configuração e tente novamente.";
+            ToastService.ShowError(_error);
         }
         finally
         {
