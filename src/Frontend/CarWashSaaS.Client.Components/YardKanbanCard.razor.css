@@ -316,6 +316,25 @@
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
 }
 
+.btn-pay-trigger {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #34d399;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-pay-trigger:hover {
+    background: rgba(16, 185, 129, 0.28);
+    color: #a7f3d0;
+    border-color: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
 .payment-badge-paid {
     display: inline-flex;
     align-items: center;

@@ -1,0 +1,136 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject CashierApiClient CashierClient
+@inject IToastService ToastService
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div class="header-titles">
+                    <span class="modal-eyebrow">MOVIMENTAÇÃO MANUAL</span>
+                    <h3 class="modal-title">Sangria / Aporte de Caixa</h3>
+                </div>
+                <button type="button" class="btn-close" @onclick="HandleClose" aria-label="Fechar">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Tipo de Movimentação</label>
+                    <div class="type-selector">
+                        <button type="button"
+                                class="type-btn @(_type == CashTransactionTypeConstants.Bleed ? "active bleed" : "")"
+                                @onclick="() => _type = CashTransactionTypeConstants.Bleed">
+                            <span>🔻 Sangria (Retirada)</span>
+                        </button>
+                        <button type="button"
+                                class="type-btn @(_type == CashTransactionTypeConstants.Supply ? "active supply" : "")"
+                                @onclick="() => _type = CashTransactionTypeConstants.Supply">
+                            <span>🔺 Aporte (Suprimento / Troco)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="movAmount">Valor em Espécie (R$)</label>
+                    <input id="movAmount"
+                           type="number"
+                           step="0.01"
+                           class="form-control"
+                           @bind="_amount"
+                           placeholder="0,00" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="movDesc">Motivo / Descrição Obrigatória</label>
+                    <input id="movDesc"
+                           type="text"
+                           class="form-control"
+                           @bind="_description"
+                           placeholder="Ex: Compra de insumos / Aporte de troco inicial" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger">@_errorMessage</div>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HandleClose" disabled="@_isSubmitting">Cancelar</button>
+                <button type="button"
+                        class="btn btn-primary"
+                        @onclick="HandleSubmit"
+                        disabled="@(_isSubmitting || _amount <= 0 || string.IsNullOrWhiteSpace(_description))">
+                    @if (_isSubmitting)
+                    {
+                        <span class="spinner-small"></span>
+                        <span>Registrando...</span>
+                    }
+                    else
+                    {
+                        <span>Confirmar Movimentação</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<CashTransactionDto> OnMovementRecorded { get; set; }
+
+    private string _type = CashTransactionTypeConstants.Bleed;
+    private decimal _amount;
+    private string _description = string.Empty;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private async Task HandleSubmit()
+    {
+        if (_amount <= 0 || string.IsNullOrWhiteSpace(_description)) return;
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new CreateCashMovementRequest(_type, _amount, _description);
+            var tx = await CashierClient.RecordMovementAsync(request);
+
+            var typeName = _type == CashTransactionTypeConstants.Bleed ? "Sangria" : "Aporte";
+            ToastService.ShowSuccess($"{typeName} de {_amount:C2} registrada com sucesso!");
+
+            if (OnMovementRecorded.HasDelegate)
+            {
+                await OnMovementRecorded.InvokeAsync(tx);
+            }
+
+            await HandleClose();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        _errorMessage = null;
+        _isSubmitting = false;
+        _amount = 0;
+        _description = string.Empty;
+
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

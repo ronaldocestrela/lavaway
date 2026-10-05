@@ -12,6 +12,7 @@ public sealed class PixBillingApplicationService(
     IProcessedPaymentWebhookRepository? processedWebhookRepository = null,
     IWorkOrderPaymentSettlementService? workOrderSettlementService = null,
     IOutboundWhatsAppDispatcher? whatsAppDispatcher = null,
+    ICashTransactionRepository? cashTransactionRepository = null,
     ILogger<PixBillingApplicationService>? logger = null) : IPixBillingLookup
 {
     private static readonly CultureInfo PtBrCulture = new("pt-BR");
@@ -360,6 +361,29 @@ public sealed class PixBillingApplicationService(
             {
                 logger?.LogWarning("Failed to settle work order {WorkOrderId} for Pix charge {ChargeId}: {Error}",
                     charge.WorkOrderId, charge.Id, settleResult.Error?.Description);
+            }
+        }
+
+        // 5.1. Registrar transação financeira de receita no caixa
+        if (cashTransactionRepository is not null)
+        {
+            var exists = await cashTransactionRepository.ExistsForWorkOrderAsync(tenantId, charge.WorkOrderId, CashTransactionType.Income, ct);
+            if (!exists)
+            {
+                var txResult = CashTransaction.CreateIncome(
+                    tenantId,
+                    charge.Amount,
+                    PaymentMethodConstants.Pix,
+                    $"Baixa OS #{charge.WorkOrderId.ToString()[..8]} - Pix (TxId: {charge.TxId})",
+                    paidAtUtc,
+                    charge.WorkOrderId,
+                    externalReference: charge.TxId);
+
+                if (txResult.IsSuccess)
+                {
+                    await cashTransactionRepository.AddAsync(txResult.Value!, ct);
+                    await cashTransactionRepository.SaveChangesAsync(ct);
+                }
             }
         }
 

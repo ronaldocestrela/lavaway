@@ -1,0 +1,610 @@
+@page "/cashier"
+@attribute [Authorize(Roles = "Administrator,Receptionist")]
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject CashierApiClient CashierClient
+@inject IToastService ToastService
+
+<div class="cashier-page">
+    <header class="page-header">
+        <div class="header-main">
+            <span class="page-eyebrow">GESTÃO FINANCEIRA &amp; EQUIPE</span>
+            <h1 class="page-title">Caixa &amp; Comissões</h1>
+        </div>
+
+        <div class="header-controls">
+            <div class="date-selector-group">
+                <button type="button"
+                        class="btn-date-quick @(_selectedDate == _today ? "active" : "")"
+                        @onclick="() => SetDate(_today)">
+                    Hoje
+                </button>
+                <button type="button"
+                        class="btn-date-quick @(_selectedDate == _today.AddDays(-1) ? "active" : "")"
+                        @onclick="() => SetDate(_today.AddDays(-1))">
+                    Ontem
+                </button>
+                <input type="date"
+                       class="date-input"
+                       value="@_selectedDate.ToString("yyyy-MM-dd")"
+                       @onchange="OnDateInputChanged" />
+            </div>
+
+            <div class="header-actions">
+                <button type="button" class="btn btn-action-movement" @onclick="() => _showMovementModal = true">
+                    <span>➕ Sangria / Aporte</span>
+                </button>
+                @if (_summary is not null && !_summary.IsClosed)
+                {
+                    <button type="button" class="btn btn-action-close" @onclick="() => _showCloseModal = true">
+                        <span>🔒 Fechar Caixa</span>
+                    </button>
+                }
+            </div>
+        </div>
+    </header>
+
+    @if (_summary is not null)
+    {
+        <div class="cashier-status-bar @(_summary.IsClosed ? "closed" : "open")">
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">
+                    @if (_summary.IsClosed)
+                    {
+                        <strong>Caixa Fechado</strong>
+                        <span class="status-sub"> (fechado às @(_summary.ClosedAtUtc?.ToLocalTime().ToString("HH:mm")) por @(_summary.ClosedByUserName ?? "Gestor"))</span>
+                    }
+                    else
+                    {
+                        <strong>Caixa Aberto</strong>
+                        <span class="status-sub"> — Lançamentos em tempo real para @_selectedDate.ToString("dd/MM/yyyy")</span>
+                    }
+                </span>
+            </div>
+
+            @if (_summary.IsClosed && _summary.ActualCashInDrawer.HasValue)
+            {
+                <div class="drawer-audit-badge">
+                    <span>Contado em gaveta: <strong>@(_summary.ActualCashInDrawer.Value.ToString("C2", PtBr))</strong></span>
+                    @if (_summary.CashDifference.HasValue && _summary.CashDifference.Value != 0)
+                    {
+                        <span class="diff-tag @(_summary.CashDifference > 0 ? "surplus" : "deficit")">
+                            Dif: @(_summary.CashDifference.Value.ToString("C2", PtBr))
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div class="tabs-nav">
+        <button type="button"
+                class="tab-btn @(_activeTab == "summary" ? "active" : "")"
+                @onclick="@(() => _activeTab = "summary")">
+            <span>📊 Resumo do Caixa</span>
+        </button>
+        <button type="button"
+                class="tab-btn @(_activeTab == "commissions" ? "active" : "")"
+                @onclick="SwitchToCommissionsTab">
+            <span>👥 Apuração de Comissões</span>
+        </button>
+        <button type="button"
+                class="tab-btn @(_activeTab == "history" ? "active" : "")"
+                @onclick="SwitchToHistoryTab">
+            <span>📜 Histórico de Fechamentos</span>
+        </button>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <span>Carregando dados financeiros...</span>
+        </div>
+    }
+    else if (_activeTab == "summary" && _summary is not null)
+    {
+        <div class="tab-content">
+            <section class="kpi-grid">
+                <div class="kpi-card income-card">
+                    <div class="kpi-header">
+                        <span class="kpi-icon">💰</span>
+                        <span class="kpi-label">Faturamento Total</span>
+                    </div>
+                    <div class="kpi-value">@_summary.TotalIncome.ToString("C2", PtBr)</div>
+                    <div class="kpi-breakdown">
+                        <span class="breakdown-tag pix">Pix: @_summary.TotalPix.ToString("C2", PtBr)</span>
+                        <span class="breakdown-tag cash">Dinheiro: @_summary.TotalCash.ToString("C2", PtBr)</span>
+                        <span class="breakdown-tag card">Cartões: @((_summary.TotalCreditCard + _summary.TotalDebitCard).ToString("C2", PtBr))</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card drawer-card">
+                    <div class="kpi-header">
+                        <span class="kpi-icon">💵</span>
+                        <span class="kpi-label">Saldo em Gaveta (Espécie)</span>
+                    </div>
+                    <div class="kpi-value">@_summary.ExpectedCashInDrawer.ToString("C2", PtBr)</div>
+                    <div class="kpi-breakdown">
+                        <span class="breakdown-tag supply">+ Aportes: @_summary.TotalSupplies.ToString("C2", PtBr)</span>
+                        <span class="breakdown-tag bleed">- Sangrias: @_summary.TotalBleeds.ToString("C2", PtBr)</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card commission-card">
+                    <div class="kpi-header">
+                        <span class="kpi-icon">👥</span>
+                        <span class="kpi-label">Comissões do Dia</span>
+                    </div>
+                    <div class="kpi-value">
+                        @((_dayCommissionsReport?.TotalCommission ?? 0m).ToString("C2", PtBr))
+                    </div>
+                    <div class="kpi-sub">
+                        <span>@(_dayCommissionsReport?.TotalServicesCount ?? 0) serviços comissionados</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card ticket-card">
+                    <div class="kpi-header">
+                        <span class="kpi-icon">🏷️</span>
+                        <span class="kpi-label">Atendimentos / Ticket Médio</span>
+                    </div>
+                    @{
+                        var incomeCount = _summary.Transactions.Count(t => t.Type == CashTransactionTypeConstants.Income);
+                        var avgTicket = incomeCount > 0 ? _summary.TotalIncome / incomeCount : 0m;
+                    }
+                    <div class="kpi-value">@avgTicket.ToString("C2", PtBr)</div>
+                    <div class="kpi-sub">
+                        <span>@incomeCount ordens / recebimentos hoje</span>
+                    </div>
+                </div>
+            </section>
+
+            @if (_summary.TotalIncome > 0)
+            {
+                <section class="proportion-bar-container">
+                    <span class="section-title">Distribuição por Forma de Pagamento</span>
+                    <div class="proportion-bar">
+                        @{
+                            var pixPct = _summary.TotalIncome > 0 ? (_summary.TotalPix / _summary.TotalIncome) * 100m : 0m;
+                            var cashPct = _summary.TotalIncome > 0 ? (_summary.TotalCash / _summary.TotalIncome) * 100m : 0m;
+                            var cardPct = _summary.TotalIncome > 0 ? ((_summary.TotalCreditCard + _summary.TotalDebitCard) / _summary.TotalIncome) * 100m : 0m;
+                        }
+                        @if (pixPct > 0)
+                        {
+                            <div class="prop-segment pix" style="width: @(pixPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%" title="Pix: @pixPct.ToString("F0")%">
+                                <span>Pix @pixPct.ToString("F0")%</span>
+                            </div>
+                        }
+                        @if (cashPct > 0)
+                        {
+                            <div class="prop-segment cash" style="width: @(cashPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%" title="Dinheiro: @cashPct.ToString("F0")%">
+                                <span>Dinheiro @cashPct.ToString("F0")%</span>
+                            </div>
+                        }
+                        @if (cardPct > 0)
+                        {
+                            <div class="prop-segment card" style="width: @(cardPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%" title="Cartão: @cardPct.ToString("F0")%">
+                                <span>Cartões @cardPct.ToString("F0")%</span>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            <section class="transactions-section">
+                <div class="section-header">
+                    <h2 class="section-title">Lançamentos do Dia (@_summary.Transactions.Count)</h2>
+                </div>
+
+                @if (_summary.Transactions.Count == 0)
+                {
+                    <div class="empty-state">
+                        <span class="empty-icon">📭</span>
+                        <p class="empty-title">Nenhuma movimentação registrada nesta data.</p>
+                        <p class="empty-text">Recebimentos de Ordens de Serviço (Pix, Dinheiro, Cartão) e sangrias aparecerão aqui automaticamente.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Tipo</th>
+                                    <th>Forma</th>
+                                    <th>Descrição / Referência</th>
+                                    <th>Operador</th>
+                                    <th class="text-right">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in _summary.Transactions)
+                                {
+                                    <tr>
+                                        <td>@t.OccurredAtUtc.ToLocalTime().ToString("HH:mm:ss")</td>
+                                        <td>
+                                            <span class="type-tag type-@t.Type.ToLowerInvariant()">
+                                                @CashTransactionTypeConstants.ToDisplayName(t.Type)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="method-tag method-@t.PaymentMethod.ToLowerInvariant()">
+                                                @PaymentMethodConstants.ToDisplayName(t.PaymentMethod)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="tx-desc">@t.Description</div>
+                                            @if (!string.IsNullOrWhiteSpace(t.ExternalReference))
+                                            {
+                                                <span class="tx-ref">Ref: @t.ExternalReference</span>
+                                            }
+                                        </td>
+                                        <td>@(t.RegisteredByUserName ?? "Sistema")</td>
+                                        <td class="text-right tx-amount @(t.Type == CashTransactionTypeConstants.Bleed ? "negative" : "positive")">
+                                            @(t.Type == CashTransactionTypeConstants.Bleed ? "-" : "+") @t.Amount.ToString("C2", PtBr)
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        </div>
+    }
+    else if (_activeTab == "commissions")
+    {
+        <div class="tab-content">
+            <div class="commissions-filter-bar">
+                <div class="filter-controls">
+                    <span class="filter-label">Período:</span>
+                    <button type="button"
+                            class="filter-chip @(_commRange == "today" ? "active" : "")"
+                            @onclick="() => SetCommissionRange(CommissionRangeType.Today)">
+                        Hoje
+                    </button>
+                    <button type="button"
+                            class="filter-chip @(_commRange == "week" ? "active" : "")"
+                            @onclick="() => SetCommissionRange(CommissionRangeType.ThisWeek)">
+                        Esta Semana
+                    </button>
+                    <button type="button"
+                            class="filter-chip @(_commRange == "month" ? "active" : "")"
+                            @onclick="() => SetCommissionRange(CommissionRangeType.ThisMonth)">
+                        Este Mês
+                    </button>
+                </div>
+
+                <div class="filter-dates">
+                    <input type="date" class="date-input-sm" value="@_commStartDate.ToString("yyyy-MM-dd")" @onchange="OnCommStartDateChanged" />
+                    <span>até</span>
+                    <input type="date" class="date-input-sm" value="@_commEndDate.ToString("yyyy-MM-dd")" @onchange="OnCommEndDateChanged" />
+                    <button type="button" class="btn btn-secondary-sm" @onclick="LoadCommissionsAsync">Filtrar</button>
+                </div>
+            </div>
+
+            @if (_commissionsReport is not null)
+            {
+                <div class="commissions-kpis">
+                    <div class="comm-kpi">
+                        <span class="comm-kpi-label">Volume Total Faturado</span>
+                        <span class="comm-kpi-val">@_commissionsReport.TotalRevenue.ToString("C2", PtBr)</span>
+                    </div>
+                    <div class="comm-kpi highlight">
+                        <span class="comm-kpi-label">Total de Comissões Devidas</span>
+                        <span class="comm-kpi-val">@_commissionsReport.TotalCommission.ToString("C2", PtBr)</span>
+                    </div>
+                    <div class="comm-kpi">
+                        <span class="comm-kpi-label">Serviços Executados</span>
+                        <span class="comm-kpi-val">@_commissionsReport.TotalServicesCount</span>
+                    </div>
+                </div>
+
+                @if (_commissionsReport.Collaborators.Count == 0)
+                {
+                    <div class="empty-state">
+                        <span class="empty-icon">👥</span>
+                        <p class="empty-title">Nenhum serviço comissionado localizado no período.</p>
+                        <p class="empty-text">Atribua operadores às Ordens de Serviço e cadastre regras de comissão em Capacidade &amp; Equipe.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="collaborators-list">
+                        @foreach (var collab in _commissionsReport.Collaborators)
+                        {
+                            <div class="collab-card">
+                                <div class="collab-header">
+                                    <div class="collab-info">
+                                        <div class="collab-avatar">@collab.FullName[..1].ToUpperInvariant()</div>
+                                        <div>
+                                            <div class="collab-name">@collab.FullName</div>
+                                            <span class="role-badge">@collab.Role</span>
+                                        </div>
+                                    </div>
+                                    <div class="collab-metrics">
+                                        <div class="metric-item">
+                                            <span class="m-label">Serviços:</span>
+                                            <span class="m-val">@collab.ServicesCount</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="m-label">Faturado:</span>
+                                            <span class="m-val">@collab.TotalRevenue.ToString("C2", PtBr)</span>
+                                        </div>
+                                        <div class="metric-item commission-highlight">
+                                            <span class="m-label">Comissão:</span>
+                                            <span class="m-val">@collab.TotalCommission.ToString("C2", PtBr)</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (collab.Items.Count > 0)
+                                {
+                                    <div class="collab-table-box">
+                                        <table class="collab-subtable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Data</th>
+                                                    <th>Placa</th>
+                                                    <th>Cliente</th>
+                                                    <th>Serviço</th>
+                                                    <th class="text-right">Valor</th>
+                                                    <th class="text-right">% Comissão</th>
+                                                    <th class="text-right">R$ Comissão</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var item in collab.Items)
+                                                {
+                                                    <tr>
+                                                        <td>@item.CompletedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                                        <td><span class="plate-mini">@item.LicensePlate</span></td>
+                                                        <td>@item.CustomerName</td>
+                                                        <td>@item.ServiceName</td>
+                                                        <td class="text-right">@item.ServiceAmount.ToString("C2", PtBr)</td>
+                                                        <td class="text-right">@item.CommissionPercentage.ToString("F1")%</td>
+                                                        <td class="text-right font-bold commission-val">
+                                                            @item.CommissionAmount.ToString("C2", PtBr)
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    }
+    else if (_activeTab == "history")
+    {
+        <div class="tab-content">
+            <h2 class="section-title">Histórico de Fechamentos Auditados</h2>
+
+            @if (_closingsHistory.Count == 0)
+            {
+                <div class="empty-state">
+                    <span class="empty-icon">📜</span>
+                    <p class="empty-title">Nenhum fechamento registrado no histórico recente.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Data de Referência</th>
+                                <th>Fechado em</th>
+                                <th>Responsável</th>
+                                <th class="text-right">Faturamento</th>
+                                <th class="text-right">Esperado Gaveta</th>
+                                <th class="text-right">Contado</th>
+                                <th class="text-right">Diferença</th>
+                                <th>Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in _closingsHistory)
+                            {
+                                <tr>
+                                    <td><strong>@c.ClosingDate.ToString("dd/MM/yyyy")</strong></td>
+                                    <td>@c.ClosedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                    <td>@c.ClosedByUserName</td>
+                                    <td class="text-right font-bold">@c.TotalIncome.ToString("C2", PtBr)</td>
+                                    <td class="text-right">@c.ExpectedCashInDrawer.ToString("C2", PtBr)</td>
+                                    <td class="text-right">@(c.ActualCashInDrawer?.ToString("C2", PtBr) ?? "---")</td>
+                                    <td class="text-right">
+                                        @if (c.CashDifference.HasValue && c.CashDifference.Value != 0)
+                                        {
+                                            <span class="diff-tag @(c.CashDifference > 0 ? "surplus" : "deficit")">
+                                                @c.CashDifference.Value.ToString("C2", PtBr)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">R$ 0,00</span>
+                                        }
+                                    </td>
+                                    <td class="text-muted text-sm">@(c.Notes ?? "---")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<CashMovementModal IsOpen="_showMovementModal"
+                   OnClose="() => _showMovementModal = false"
+                   OnMovementRecorded="HandleMovementRecorded" />
+
+<CloseDailyCashModal IsOpen="_showCloseModal"
+                     ClosingDate="_selectedDate"
+                     TotalIncome="@(_summary?.TotalIncome ?? 0m)"
+                     ExpectedCashInDrawer="@(_summary?.ExpectedCashInDrawer ?? 0m)"
+                     OnClose="() => _showCloseModal = false"
+                     OnClosed="HandleCashClosed" />
+
+@code {
+    private static readonly System.Globalization.CultureInfo PtBr = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+
+    private enum CommissionRangeType { Today, ThisWeek, ThisMonth }
+
+    private DateOnly _today = DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly _selectedDate;
+    private string _activeTab = "summary";
+    private bool _isLoading;
+
+    private DailyCashSummaryDto? _summary;
+    private CommissionReportDto? _dayCommissionsReport;
+
+    private string _commRange = "today";
+    private DateOnly _commStartDate;
+    private DateOnly _commEndDate;
+    private CommissionReportDto? _commissionsReport;
+
+    private IReadOnlyList<DailyCashClosingDto> _closingsHistory = [];
+
+    private bool _showMovementModal;
+    private bool _showCloseModal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selectedDate = _today;
+        _commStartDate = _today;
+        _commEndDate = _today;
+        await LoadSummaryAsync();
+    }
+
+    private async Task SetDate(DateOnly date)
+    {
+        _selectedDate = date;
+        await LoadSummaryAsync();
+    }
+
+    private async Task OnDateInputChanged(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var date))
+        {
+            _selectedDate = date;
+            await LoadSummaryAsync();
+        }
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _summary = await CashierClient.GetDailySummaryAsync(_selectedDate);
+            _dayCommissionsReport = await CashierClient.GetCommissionReportAsync(_selectedDate, _selectedDate);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao carregar resumo do caixa: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SwitchToCommissionsTab()
+    {
+        _activeTab = "commissions";
+        if (_commissionsReport is null)
+        {
+            await LoadCommissionsAsync();
+        }
+    }
+
+    private async Task SwitchToHistoryTab()
+    {
+        _activeTab = "history";
+        try
+        {
+            _closingsHistory = await CashierClient.ListRecentClosingsAsync(30);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao carregar histórico: {ex.Message}");
+        }
+    }
+
+    private async Task SetCommissionRange(CommissionRangeType range)
+    {
+        _commRange = range switch
+        {
+            CommissionRangeType.Today => "today",
+            CommissionRangeType.ThisWeek => "week",
+            CommissionRangeType.ThisMonth => "month",
+            _ => "today"
+        };
+
+        if (range == CommissionRangeType.Today)
+        {
+            _commStartDate = _today;
+            _commEndDate = _today;
+        }
+        else if (range == CommissionRangeType.ThisWeek)
+        {
+            var dayOfWeek = (int)_today.DayOfWeek;
+            _commStartDate = _today.AddDays(-dayOfWeek);
+            _commEndDate = _today;
+        }
+        else if (range == CommissionRangeType.ThisMonth)
+        {
+            _commStartDate = new DateOnly(_today.Year, _today.Month, 1);
+            _commEndDate = _today;
+        }
+
+        await LoadCommissionsAsync();
+    }
+
+    private void OnCommStartDateChanged(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var d)) _commStartDate = d;
+    }
+
+    private void OnCommEndDateChanged(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var d)) _commEndDate = d;
+    }
+
+    private async Task LoadCommissionsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _commissionsReport = await CashierClient.GetCommissionReportAsync(_commStartDate, _commEndDate);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao calcular comissões: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleMovementRecorded(CashTransactionDto tx)
+    {
+        await LoadSummaryAsync();
+    }
+
+    private async Task HandleCashClosed(DailyCashClosingDto closing)
+    {
+        await LoadSummaryAsync();
+    }
+}

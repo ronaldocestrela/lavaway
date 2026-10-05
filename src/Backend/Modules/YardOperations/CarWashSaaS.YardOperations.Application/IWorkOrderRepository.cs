@@ -11,6 +11,8 @@ public interface IWorkOrderRepository
     Task<WorkOrder?> GetLatestCompletedOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default);
     Task<WorkOrder?> GetActiveOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default);
     Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default);
+    Task<IReadOnlyCollection<WorkOrder>> ListForCommissionReportAsync(Guid tenantId, DateTimeOffset startUtc, DateTimeOffset endUtc, Guid? operatorId = null, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
     Task AddAsync(WorkOrder workOrder, CancellationToken ct = default);
     void Update(WorkOrder workOrder);
 }

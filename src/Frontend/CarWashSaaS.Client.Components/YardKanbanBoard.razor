@@ -75,7 +75,8 @@
                               OnCardComparisonGallery="HandleCardComparisonGallery"
                               OnCardNotifyReady="HandleCardNotifyReady"
                               OnCardPickup="HandleCardPickup"
-                              OnCardOpenPix="HandleCardOpenPix" />
+                              OnCardOpenPix="HandleCardOpenPix"
+                              OnCardRegisterPayment="HandleCardRegisterPayment" />
         }
     </div>
 
@@ -207,6 +208,18 @@
                            OnChargeUpdated="HandleChargeUpdated"
                            OnClose="ClosePixModal" />
     }
+
+    <!-- Modal de Recebimento no Balcão -->
+    @if (_isPaymentModalOpen && _targetPaymentCard is not null)
+    {
+        <RegisterWorkOrderPaymentModal IsOpen="_isPaymentModalOpen"
+                                       WorkOrderId="_targetPaymentCard.Id"
+                                       Plate="_targetPaymentCard.Plate"
+                                       CustomerName="_targetPaymentCard.CustomerName"
+                                       TotalAmount="_targetPaymentCard.TotalAmount"
+                                       OnPaymentRegistered="HandlePaymentRegistered"
+                                       OnClose="() => _isPaymentModalOpen = false" />
+    }
 </div>
 }
 
@@ -270,6 +283,26 @@
     private async Task HandleChargeUpdated(WorkOrderPixChargeDto charge)
     {
         if (charge.Status == PixChargeStatusConstants.Paid && OnRefreshRequested.HasDelegate)
+        {
+            await OnRefreshRequested.InvokeAsync();
+        }
+    }
+
+    // Payment modal state
+    private bool _isPaymentModalOpen;
+    private WorkOrderKanbanCardDto? _targetPaymentCard;
+
+    private void HandleCardRegisterPayment(WorkOrderKanbanCardDto card)
+    {
+        _targetPaymentCard = card;
+        _isPaymentModalOpen = true;
+    }
+
+    private async Task HandlePaymentRegistered(CashTransactionDto tx)
+    {
+        _isPaymentModalOpen = false;
+        _targetPaymentCard = null;
+        if (OnRefreshRequested.HasDelegate)
         {
             await OnRefreshRequested.InvokeAsync();
         }

@@ -84,6 +84,12 @@
         <button type="button" class="btn-pix-trigger @(Card.IsPaid ? "btn-pix-settled" : "")" @onclick="HandleOpenPix" title="@(Card.IsPaid ? "Ver Recibo Pix" : "Cobrança Pix da OS")">
             <span>@(Card.IsPaid ? "✅ Pix Pago" : "💠 Pix")</span>
         </button>
+        @if (!Card.IsPaid)
+        {
+            <button type="button" class="btn-pay-trigger" @onclick="HandleOpenPayment" title="Receber no Balcão (Dinheiro, Cartão, Pix)">
+                <span>💵 Receber</span>
+            </button>
+        }
     </div>
 
     <div class="card-actions">
@@ -147,12 +153,21 @@
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnNotifyReadyClicked { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnPickupClicked { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnOpenPixClicked { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnRegisterPaymentClicked { get; set; }
 
     private async Task HandleOpenPix()
     {
         if (OnOpenPixClicked.HasDelegate)
         {
             await OnOpenPixClicked.InvokeAsync(Card);
+        }
+    }
+
+    private async Task HandleOpenPayment()
+    {
+        if (OnRegisterPaymentClicked.HasDelegate)
+        {
+            await OnRegisterPaymentClicked.InvokeAsync(Card);
         }
     }
 

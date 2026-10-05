@@ -1,0 +1,153 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject CashierApiClient CashierClient
+@inject IToastService ToastService
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div class="header-titles">
+                    <span class="modal-eyebrow">CONTROLE DE EXPEDIENTE</span>
+                    <h3 class="modal-title">Fechamento do Caixa — @ClosingDate.ToString("dd/MM/yyyy")</h3>
+                </div>
+                <button type="button" class="btn-close" @onclick="HandleClose" aria-label="Fechar">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="financial-summary-grid">
+                    <div class="fin-card">
+                        <span class="fin-label">Total Receitas</span>
+                        <span class="fin-value">@TotalIncome.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                    </div>
+                    <div class="fin-card highlight">
+                        <span class="fin-label">Esperado na Gaveta (Dinheiro)</span>
+                        <span class="fin-value">@ExpectedCashInDrawer.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="actualCash">Valor Contado em Dinheiro na Gaveta (R$)</label>
+                    <input id="actualCash"
+                           type="number"
+                           step="0.01"
+                           class="form-control"
+                           @bind="_actualCashInDrawer"
+                           @bind:event="oninput"
+                           placeholder="@ExpectedCashInDrawer.ToString("F2")" />
+                    <span class="form-hint">Deixe em branco se desejar fechar sem conferência física detalhada.</span>
+                </div>
+
+                @if (_actualCashInDrawer.HasValue)
+                {
+                    var difference = _actualCashInDrawer.Value - ExpectedCashInDrawer;
+                    <div class="diff-banner @(difference == 0 ? "zero" : (difference > 0 ? "surplus" : "deficit"))">
+                        <span class="diff-title">
+                            @(difference == 0 ? "✅ Caixa Batendo Exato" : (difference > 0 ? "Sobrando no Caixa:" : "Faltando no Caixa:"))
+                        </span>
+                        <span class="diff-val">
+                            @(Math.Abs(difference).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")))
+                        </span>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label" for="closeNotes">Observações / Justificativa</label>
+                    <textarea id="closeNotes"
+                              class="form-control"
+                              rows="3"
+                              @bind="_notes"
+                              placeholder="Observações do expediente, justificativa de sobras ou faltas..."></textarea>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger">@_errorMessage</div>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HandleClose" disabled="@_isSubmitting">Cancelar</button>
+                <button type="button"
+                        class="btn btn-primary btn-close-cash"
+                        @onclick="HandleSubmit"
+                        disabled="@_isSubmitting">
+                    @if (_isSubmitting)
+                    {
+                        <span class="spinner-small"></span>
+                        <span>Fechando caixa...</span>
+                    }
+                    else
+                    {
+                        <span>🔒 Confirmar Fechamento do Caixa</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public DateOnly ClosingDate { get; set; }
+    [Parameter] public decimal TotalIncome { get; set; }
+    [Parameter] public decimal ExpectedCashInDrawer { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<DailyCashClosingDto> OnClosed { get; set; }
+
+    private decimal? _actualCashInDrawer;
+    private string? _notes;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && !_actualCashInDrawer.HasValue)
+        {
+            _actualCashInDrawer = ExpectedCashInDrawer;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new CloseDailyCashRequest(ClosingDate, _actualCashInDrawer, _notes);
+            var closing = await CashierClient.CloseDailyCashAsync(request);
+
+            ToastService.ShowSuccess($"Caixa do dia {ClosingDate:dd/MM/yyyy} fechado com sucesso!");
+
+            if (OnClosed.HasDelegate)
+            {
+                await OnClosed.InvokeAsync(closing);
+            }
+
+            await HandleClose();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        _errorMessage = null;
+        _isSubmitting = false;
+        _actualCashInDrawer = null;
+        _notes = null;
+
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

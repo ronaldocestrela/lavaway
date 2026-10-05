@@ -13,6 +13,8 @@ public sealed class BillingDbContext(
 
     public DbSet<PixCharge> PixCharges => Set<PixCharge>();
     public DbSet<ProcessedPaymentWebhook> ProcessedPaymentWebhooks => Set<ProcessedPaymentWebhook>();
+    public DbSet<CashTransaction> CashTransactions => Set<CashTransaction>();
+    public DbSet<DailyCashClosing> DailyCashClosings => Set<DailyCashClosing>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

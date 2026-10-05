@@ -15,6 +15,7 @@ public static class YardOperationsEndpoints
         MapWorkOrderEndpoints(app);
         MapVehicleInspectionEndpoints(app);
         MapPostServicePhotosEndpoints(app);
+        MapCommissionsEndpoints(app);
 
         return app;
     }
@@ -1077,6 +1078,37 @@ public static class YardOperationsEndpoints
 
             var result = await service.GetNotificationSummaryAsync(tenantId, id, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound(new { result.Error!.Code, result.Error.Description });
+        }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+    }
+
+    private static void MapCommissionsEndpoints(IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/yard/commissions");
+
+        group.MapGet("/report", async (
+            DateOnly? startDate,
+            DateOnly? endDate,
+            Guid? teamMemberId,
+            ICurrentTenantAccessor currentTenantAccessor,
+            CommissionApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var start = startDate ?? new DateOnly(today.Year, today.Month, 1);
+            var end = endDate ?? today;
+
+            var result = await service.GetCommissionReportAsync(tenantId, start, end, teamMemberId, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
         }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
     }
 }

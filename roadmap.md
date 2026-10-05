@@ -247,10 +247,12 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 5.3 Caixa e comissões
 
-- [ ] Registrar receitas por Pix, dinheiro, cartão de crédito e débito.
-- [ ] Gerar fechamento diário e relatório por método de pagamento.
-- [ ] Calcular comissões por colaborador/lavador conforme regras configuradas.
-- [ ] **Entrega:** gestor confere totais do dia e detalhamento das comissões.
+- [x] Registrar receitas por Pix, dinheiro, cartão de crédito e débito.
+- [x] Gerar fechamento diário e relatório por método de pagamento.
+- [x] Calcular comissões por colaborador/lavador conforme regras configuradas.
+- [x] **Entrega:** gestor confere totais do dia e detalhamento das comissões.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): módulo financeiro de controle de caixa, movimentações manuais, conciliação de fechamento diário e motor automatizado de comissões por colaborador/lavador. No módulo `Billing`, foram introduzidos os agregados `CashTransaction` e `DailyCashClosing` (migração EF Core `AddCashRegisterAndDailyClosing`), suportando receitas de ordens de serviço (`PaymentMethodConstants`: Pix, Cash, CreditCard, DebitCard) com controle de troco calculado, aportes e sangrias manuais, além de integração automática com o gateway de Pix via webhook para registro idempotente de transações. O orquestrador `CashRegisterApplicationService` gera o resumo diário de faturamento agrupado por método de pagamento e realiza o fechamento cego com auditoria de conferência de gaveta (`ActualCashAmount` vs `ExpectedCashAmount`), apurando sobras ou faltas com justificativas obrigatórias. No módulo `YardOperations`, o serviço de domínio `CommissionCalculator` e o serviço aplicacional `CommissionApplicationService` calculam comissões dinâmicas sobre itens de ordens de serviço finalizadas e pagas, aplicando regras configuradas por serviço e cargo (`CommissionRule`: percentual ou valor fixo com taxa de split), gerando relatórios detalhados com deduções de descontos proporcionais. No frontend Blazor WebAssembly, a nova página `CashierPage.razor` (`/cashier`, restrita a `Administrator` e `Receptionist`) disponibiliza cartões de KPI consolidados, gráfico de distribuição percentual por método, tabela de transações do dia com filtros rápidos, modal de registro de recebimento de OS (`RegisterWorkOrderPaymentModal.razor`) com cálculo de troco em tempo real integrado ao card do Kanban (`YardKanbanCard.razor`), modais de sangria/aporte (`CashMovementModal.razor`) e fechamento de caixa (`CloseDailyCashModal.razor`), além de visualização analítica das comissões individuais com sanfonas detalhadas por item de serviço e histórico auditado de fechamentos anteriores. Total conformidade com 515 testes aprovados na solução (100% de sucesso em testes unitários, testes de arquitetura NetArchTest, integração multi-tenant com Testcontainers SQL Server e componentes bUnit). Decisão formalizada na [ADR-0014](docs/architecture/ADR-0014-caixa-fechamento-diario-e-comissoes.md) e documentação viva em [docs/living-docs/caixa-comissoes-5.3.md](docs/living-docs/caixa-comissoes-5.3.md).
 
 ### 5.4 Fidelidade
 

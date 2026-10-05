@@ -1,0 +1,238 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject CashierApiClient CashierClient
+@inject IToastService ToastService
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div class="header-titles">
+                    <span class="modal-eyebrow">BALCÃO DE RECEBIMENTO</span>
+                    <h3 class="modal-title">Baixar Pagamento da OS</h3>
+                </div>
+                <button type="button" class="btn-close" @onclick="HandleClose" aria-label="Fechar">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="order-summary-strip">
+                    <div class="summary-field">
+                        <span class="field-label">Veículo</span>
+                        <span class="field-value plate-badge">@Plate</span>
+                    </div>
+                    <div class="summary-field">
+                        <span class="field-label">Cliente</span>
+                        <span class="field-value">@CustomerName</span>
+                    </div>
+                    <div class="summary-field">
+                        <span class="field-label">Valor a Cobrar</span>
+                        <span class="field-value price-highlight">
+                            @TotalAmount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Forma de Pagamento</label>
+                    <div class="method-grid">
+                        <button type="button"
+                                class="method-btn @(_selectedMethod == PaymentMethodConstants.Pix ? "active" : "")"
+                                @onclick="() => SelectMethod(PaymentMethodConstants.Pix)">
+                            <span class="method-icon">💠</span>
+                            <span class="method-name">Pix</span>
+                        </button>
+                        <button type="button"
+                                class="method-btn @(_selectedMethod == PaymentMethodConstants.Cash ? "active" : "")"
+                                @onclick="() => SelectMethod(PaymentMethodConstants.Cash)">
+                            <span class="method-icon">💵</span>
+                            <span class="method-name">Dinheiro</span>
+                        </button>
+                        <button type="button"
+                                class="method-btn @(_selectedMethod == PaymentMethodConstants.CreditCard ? "active" : "")"
+                                @onclick="() => SelectMethod(PaymentMethodConstants.CreditCard)">
+                            <span class="method-icon">💳</span>
+                            <span class="method-name">Cartão de Crédito</span>
+                        </button>
+                        <button type="button"
+                                class="method-btn @(_selectedMethod == PaymentMethodConstants.DebitCard ? "active" : "")"
+                                @onclick="() => SelectMethod(PaymentMethodConstants.DebitCard)">
+                            <span class="method-icon">💳</span>
+                            <span class="method-name">Cartão de Débito</span>
+                        </button>
+                    </div>
+                </div>
+
+                @if (_selectedMethod == PaymentMethodConstants.Cash)
+                {
+                    <div class="cash-calc-box">
+                        <div class="form-group">
+                            <label class="form-label" for="cashReceived">Valor em Dinheiro Recebido (R$)</label>
+                            <input id="cashReceived"
+                                   type="number"
+                                   step="0.01"
+                                   class="form-control"
+                                   @bind="_cashReceived"
+                                   @bind:event="oninput"
+                                   placeholder="@TotalAmount.ToString("F2")" />
+                        </div>
+
+                        @if (_cashReceived.HasValue)
+                        {
+                            var change = _cashReceived.Value - TotalAmount;
+                            @if (change >= 0)
+                            {
+                                <div class="change-banner success">
+                                    <span class="change-label">Troco a devolver:</span>
+                                    <span class="change-value">@change.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                                </div>
+                            }
+                            else
+                            {
+                                var missing = -change;
+                                <div class="change-banner danger">
+                                    <span class="change-label">Faltam:</span>
+                                    <span class="change-value">@missing.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+
+                @if (_selectedMethod == PaymentMethodConstants.CreditCard || _selectedMethod == PaymentMethodConstants.DebitCard || _selectedMethod == PaymentMethodConstants.Pix)
+                {
+                    <div class="form-group">
+                        <label class="form-label" for="refNumber">Cód. Autorização / NSU / Comprovante (opcional)</label>
+                        <input id="refNumber"
+                               type="text"
+                               class="form-control"
+                               @bind="_referenceNumber"
+                               placeholder="Ex: NSU123456 ou DOC-9988" />
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label" for="notes">Observações do Recebimento (opcional)</label>
+                    <input id="notes"
+                           type="text"
+                           class="form-control"
+                           @bind="_notes"
+                           placeholder="Ex: Pago no balcão" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        @_errorMessage
+                    </div>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HandleClose" disabled="@_isSubmitting">
+                    Cancelar
+                </button>
+                <button type="button"
+                        class="btn btn-primary"
+                        @onclick="HandleSubmit"
+                        disabled="@(_isSubmitting || (_selectedMethod == PaymentMethodConstants.Cash && _cashReceived.HasValue && _cashReceived.Value < TotalAmount))">
+                    @if (_isSubmitting)
+                    {
+                        <span class="spinner-small"></span>
+                        <span>Processando baixa...</span>
+                    }
+                    else
+                    {
+                        <span>Confirmar Pagamento e Baixar OS</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public Guid WorkOrderId { get; set; }
+    [Parameter] public string Plate { get; set; } = string.Empty;
+    [Parameter] public string CustomerName { get; set; } = string.Empty;
+    [Parameter] public decimal TotalAmount { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<CashTransactionDto> OnPaymentRegistered { get; set; }
+
+    private string _selectedMethod = PaymentMethodConstants.Pix;
+    private decimal? _cashReceived;
+    private string? _referenceNumber;
+    private string? _notes;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && !_cashReceived.HasValue)
+        {
+            _cashReceived = TotalAmount;
+        }
+    }
+
+    private void SelectMethod(string method)
+    {
+        _selectedMethod = method;
+        _errorMessage = null;
+        if (method == PaymentMethodConstants.Cash && !_cashReceived.HasValue)
+        {
+            _cashReceived = TotalAmount;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (WorkOrderId == Guid.Empty || TotalAmount <= 0) return;
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new RegisterWorkOrderPaymentRequest(
+                WorkOrderId,
+                TotalAmount,
+                _selectedMethod,
+                _selectedMethod == PaymentMethodConstants.Cash ? _cashReceived : null,
+                _referenceNumber,
+                _notes);
+
+            var tx = await CashierClient.RegisterWorkOrderPaymentAsync(request);
+            ToastService.ShowSuccess($"Pagamento de {TotalAmount:C2} registrado via {PaymentMethodConstants.ToDisplayName(_selectedMethod)} com sucesso!");
+
+            if (OnPaymentRegistered.HasDelegate)
+            {
+                await OnPaymentRegistered.InvokeAsync(tx);
+            }
+
+            await HandleClose();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        _errorMessage = null;
+        _isSubmitting = false;
+        _cashReceived = null;
+        _referenceNumber = null;
+        _notes = null;
+
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

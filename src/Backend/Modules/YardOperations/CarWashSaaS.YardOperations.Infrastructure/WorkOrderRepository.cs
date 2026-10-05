@@ -93,6 +93,28 @@ public sealed class WorkOrderRepository(YardOperationsDbContext dbContext) : IWo
             .Take(limit)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyCollection<WorkOrder>> ListForCommissionReportAsync(
+        Guid tenantId,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        Guid? operatorId = null,
+        CancellationToken ct = default)
+    {
+        var query = dbContext.WorkOrders
+            .Include(order => order.Items)
+            .Where(order => order.TenantId == tenantId &&
+                            order.AssignedOperatorId.HasValue &&
+                            ((order.PaidAtUtc.HasValue && order.PaidAtUtc.Value >= startUtc && order.PaidAtUtc.Value <= endUtc) ||
+                             (!order.PaidAtUtc.HasValue && order.CreatedAtUtc >= startUtc && order.CreatedAtUtc <= endUtc)));
+
+        if (operatorId.HasValue)
+        {
+            query = query.Where(order => order.AssignedOperatorId == operatorId.Value);
+        }
+
+        return await query.OrderByDescending(order => order.CreatedAtUtc).ToListAsync(ct);
+    }
+
     public async Task AddAsync(WorkOrder workOrder, CancellationToken ct = default) =>
         await dbContext.WorkOrders.AddAsync(workOrder, ct);
 
