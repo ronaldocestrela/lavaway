@@ -230,9 +230,11 @@ Migrations e scripts idempotentes foram gerados em `scripts/sql/` e aplicados co
 
 ### 5.1 Pix associado à OS
 
-- [ ] Escolher o gateway e gerar QR Code e código Copia e Cola para o valor devido na OS.
-- [ ] Enviar os dados de pagamento ao cliente por WhatsApp quando solicitado.
-- [ ] **Entrega:** cobrança Pix é vinculada à OS e pode ser consultada pela equipe.
+- [x] Escolher o gateway e gerar QR Code e código Copia e Cola para o valor devido na OS.
+- [x] Enviar os dados de pagamento ao cliente por WhatsApp quando solicitado.
+- [x] **Entrega:** cobrança Pix é vinculada à OS e pode ser consultada pela equipe.
+
+> Implementação concluída de ponta a ponta (Backend e Frontend Blazor WebAssembly): criação do novo módulo vertical autônomo `Billing` (`CarWashSaaS.Billing.Domain`, `CarWashSaaS.Billing.Application` e `CarWashSaaS.Billing.Infrastructure` com schema dedicado `billing` e migração EF Core `InitialBilling`). A porta de saída de pagamentos `IPixGatewayProvider` suporta múltiplos gateways através de adaptadores desacoplados (`MercadoPagoPixGatewayProvider` consumindo a API REST oficial do Mercado Pago com tokens seguros por tenant, e `SimulatedPixGatewayProvider` determinístico no padrão EMV do Banco Central com imagem vetorial SVG/Base64 para desenvolvimento local, CI/CD e testes automatizados). A comunicação intermodular entre `Billing`, `YardOperations` e `WhatsApp` opera sob isolamento estrito via interfaces públicas em `Shared.Contracts` (`IWorkOrderPaymentLookup` e `IPixBillingLookup`). O agregado de domínio `PixCharge` implementa `IMustHaveTenant`, chaves UUID Version 7 e controle de ciclo de vida idempotente (`Pending`, `Paid`, `Expired`, `Cancelled`). A API expõe endpoints autenticados sob `/billing/work-orders/{id}/pix` e `/billing/work-orders/{id}/pix/send-whatsapp`. No chatbot conversacional (`ChatbotConversationEngine`), palavras-chave como "PIX", "PAGAR" ou "SEGUNDA VIA" identificam proativamente a OS ativa do cliente pelo telefone e devolvem o código Pix Copia e Cola instantaneamente. No frontend Blazor WebAssembly, o Kanban operacional (`YardKanbanCard.razor` e `YardKanbanBoard.razor`) disponibiliza o botão de ação rápida "💠 Pix" que aciona o modal dedicado `WorkOrderPixModal.razor`, exibindo resumo da OS, QR Code responsivo, código Copia e Cola com cópia em 1 clique via Clipboard API com feedback visual, botão de despacho para o WhatsApp do cliente e carimbo de auditoria de envio. Total conformidade com 467 testes aprovados na solução (NetArchTest, testes unitários, integração multi-tenant com Testcontainers SQL Server e componentes bUnit). Decisão formalizada na [ADR-0012](docs/architecture/ADR-0012-pix-associado-ordem-servico-gateway.md) e documentação viva em [docs/living-docs/pix-associado-os-5.1.md](docs/living-docs/pix-associado-os-5.1.md).
 
 ### 5.2 Confirmação e conciliação de pagamento
 

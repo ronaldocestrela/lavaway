@@ -66,6 +66,23 @@ public sealed class WorkOrderRepository(YardOperationsDbContext dbContext) : IWo
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<WorkOrder?> GetActiveOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
+    {
+        var normalized = Customer.NormalizePhone(customerPhone);
+        var customer = await dbContext.Customers
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && (c.NormalizedPhone == normalized || c.Phone == customerPhone), ct);
+
+        if (customer is null) return null;
+
+        return await dbContext.WorkOrders
+            .Include(order => order.Items)
+            .Include(order => order.StatusHistory)
+            .Include(order => order.PostServicePhotos)
+            .Where(order => order.TenantId == tenantId && order.CustomerId == customer.Id && !order.PickedUpAtUtc.HasValue)
+            .OrderByDescending(order => order.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default) =>
         await dbContext.WorkOrders
             .Include(order => order.Items)

@@ -10,7 +10,9 @@ public sealed class ChatbotConversationEngine(
     ITenantStoreProfileLookup storeProfileLookup,
     IOutboundWhatsAppDispatcher messageDispatcher,
     ICustomerCommunicationPreferenceRepository? preferenceRepository = null,
-    IAfterSalesLookup? afterSalesLookup = null)
+    IAfterSalesLookup? afterSalesLookup = null,
+    IWorkOrderPaymentLookup? workOrderPaymentLookup = null,
+    IPixBillingLookup? pixBillingLookup = null)
 {
     private static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(30);
 
@@ -118,6 +120,34 @@ public sealed class ChatbotConversationEngine(
                     : $"Agradecemos seu retorno sincero ({rating} estrelas). 🙏\n\nLamentamos que sua experiência não tenha sido impecável. Nosso time de atendimento entrará em contato para acolher suas observações e melhorar continuamente.";
 
                 return await SendBotReplyAsync(tenantId, session.CustomerPhone, surveyReply, ct);
+            }
+        }
+
+        // 4. Interceptação de Solicitação de Cobrança Pix pelo Cliente ("PIX", "PAGAR", "PAGAMENTO", "SEGUNDA VIA")
+        if (IsPixPaymentKeyword(lower) && workOrderPaymentLookup is not null && pixBillingLookup is not null)
+        {
+            var activeOrderResult = await workOrderPaymentLookup.GetActiveWorkOrderForCustomerPhoneAsync(tenantId, senderPhone, ct);
+            if (activeOrderResult.IsSuccess && activeOrderResult.Value is not null)
+            {
+                var activeOrder = activeOrderResult.Value;
+                var pixResult = await pixBillingLookup.GetOrCreateWorkOrderPixChargeAsync(tenantId, activeOrder.WorkOrderId, ct);
+                if (pixResult.IsSuccess && pixResult.Value is not null)
+                {
+                    var charge = pixResult.Value;
+                    var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
+                    var storeName = storeProfile.Value?.TradeName ?? "Lavaway";
+                    var expirationLocal = charge.ExpiresAtUtc.ToOffset(TimeSpan.FromHours(-3)).ToString("HH:mm", CultureInfo.GetCultureInfo("pt-BR"));
+
+                    var pixReply =
+                        $"Olá! Seguem os dados Pix para pagamento dos serviços do seu veículo *{activeOrder.Plate}* no *{storeName}*:\n\n" +
+                        $"💰 *Valor a pagar:* R$ {charge.Amount:F2}\n\n" +
+                        $"*Código Pix Copia e Cola:*\n```{charge.CopyPasteKey}```\n\n" +
+                        $"⏳ Válido até {expirationLocal}. Assim que o pagamento for concluído, nosso sistema identificará automaticamente!";
+
+                    session.Reset();
+                    await sessionRepository.UpdateAsync(session, ct);
+                    return await SendBotReplyAsync(tenantId, session.CustomerPhone, pixReply, ct);
+                }
             }
         }
 
@@ -776,6 +806,11 @@ public sealed class ChatbotConversationEngine(
 
     private static bool IsOptInKeyword(string lower) =>
         lower is "quero" or "sim quero" or "ativar" or "voltar a receber" or "reativar" or "optin" or "opt-in";
+
+    private static bool IsPixPaymentKeyword(string lower) =>
+        lower is "pix" or "pagar" or "pagamento" or "segunda via" or "chave pix" or "copia e cola" ||
+        lower.StartsWith("pix ", StringComparison.Ordinal) ||
+        lower.StartsWith("pagar ", StringComparison.Ordinal);
 
     private static bool TryExtractRating(string text, out int rating)
     {

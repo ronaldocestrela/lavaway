@@ -262,6 +262,12 @@ public sealed class AfterSalesApplicationServiceTests
                 .OrderByDescending(o => o.PickedUpAtUtc)
                 .FirstOrDefault());
 
+        public Task<WorkOrder?> GetActiveOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default) =>
+            Task.FromResult(_orders
+                .Where(o => o.TenantId == tenantId && !o.PickedUpAtUtc.HasValue)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .FirstOrDefault());
+
         public Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyCollection<WorkOrder>>(_orders.Where(o => o.TenantId == tenantId && o.SurveySentAtUtc.HasValue).Take(limit).ToList());
 

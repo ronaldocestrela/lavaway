@@ -36,5 +36,8 @@
     <ProjectReference Include="..\..\..\..\src\Backend\Modules\WhatsApp\CarWashSaaS.WhatsApp.Application\CarWashSaaS.WhatsApp.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\Backend\Modules\WhatsApp\CarWashSaaS.WhatsApp.Infrastructure\CarWashSaaS.WhatsApp.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\..\src\Backend\CarWashSaaS.Api\CarWashSaaS.Api.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Backend\Modules\Billing\CarWashSaaS.Billing.Domain\CarWashSaaS.Billing.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Backend\Modules\Billing\CarWashSaaS.Billing.Application\CarWashSaaS.Billing.Application.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Backend\Modules\Billing\CarWashSaaS.Billing.Infrastructure\CarWashSaaS.Billing.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

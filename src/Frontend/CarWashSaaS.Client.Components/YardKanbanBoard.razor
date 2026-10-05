@@ -74,7 +74,8 @@
                               OnCardViewHistory="HandleCardViewHistory"
                               OnCardComparisonGallery="HandleCardComparisonGallery"
                               OnCardNotifyReady="HandleCardNotifyReady"
-                              OnCardPickup="HandleCardPickup" />
+                              OnCardPickup="HandleCardPickup"
+                              OnCardOpenPix="HandleCardOpenPix" />
         }
     </div>
 
@@ -194,6 +195,17 @@
                             IsLoading="_isLoadingHistory"
                             History="_workOrderHistory"
                             OnClose="() => _isHistoryDrawerOpen = false" />
+
+    <!-- Modal de Cobrança Pix da OS -->
+    @if (_isPixModalOpen && _targetPixCard is not null)
+    {
+        <WorkOrderPixModal IsOpen="_isPixModalOpen"
+                           WorkOrderId="_targetPixCard.Id"
+                           Plate="_targetPixCard.Plate"
+                           CustomerName="_targetPixCard.CustomerName"
+                           TotalAmount="_targetPixCard.TotalAmount"
+                           OnClose="ClosePixModal" />
+    }
 </div>
 }
 
@@ -237,6 +249,22 @@
     private string _historyPlate = string.Empty;
     private bool _isLoadingHistory;
     private IReadOnlyList<WorkOrderStatusHistoryDto> _workOrderHistory = [];
+
+    // Pix modal state
+    private bool _isPixModalOpen;
+    private WorkOrderKanbanCardDto? _targetPixCard;
+
+    private void HandleCardOpenPix(WorkOrderKanbanCardDto card)
+    {
+        _targetPixCard = card;
+        _isPixModalOpen = true;
+    }
+
+    private void ClosePixModal()
+    {
+        _isPixModalOpen = false;
+        _targetPixCard = null;
+    }
 
     private bool _isProcessingAction;
 

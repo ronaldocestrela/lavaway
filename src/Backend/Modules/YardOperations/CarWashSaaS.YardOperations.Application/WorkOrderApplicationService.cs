@@ -14,7 +14,7 @@ public sealed class WorkOrderApplicationService(
     IYardRealtimeNotifier? realtimeNotifier = null,
     ITenantObjectStorage? tenantObjectStorage = null,
     IVehicleInspectionRepository? vehicleInspectionRepository = null,
-    IBackgroundQueue? backgroundQueue = null)
+    IBackgroundQueue? backgroundQueue = null) : IWorkOrderPaymentLookup
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -688,6 +688,84 @@ public sealed class WorkOrderApplicationService(
         workOrderRepository.Update(workOrder);
         var saveResult = await unitOfWork.SaveChangesAsync(ct);
         return saveResult.IsSuccess ? Result.Success() : Result.Failure(saveResult.Error!);
+    }
+
+    public async Task<Result<WorkOrderPaymentSummaryDto>> GetPaymentSummaryAsync(
+        Guid tenantId,
+        Guid workOrderId,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<WorkOrderPaymentSummaryDto>.Failure(new Error("tenant.required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        if (workOrderId == Guid.Empty)
+        {
+            return Result<WorkOrderPaymentSummaryDto>.Failure(new Error("work_order.required", "Ordem de serviço é obrigatória.", ErrorType.Validation));
+        }
+
+        var order = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
+        if (order is null)
+        {
+            return Result<WorkOrderPaymentSummaryDto>.Failure(new Error("work_order.not_found", "Ordem de serviço não encontrada.", ErrorType.NotFound));
+        }
+
+        var customer = await customerRepository.GetByIdAsync(tenantId, order.CustomerId, ct);
+        var vehicle = await vehicleRepository.GetByIdAsync(tenantId, order.VehicleId, ct);
+
+        var summary = new WorkOrderPaymentSummaryDto(
+            order.Id,
+            order.TenantId,
+            order.CustomerId,
+            customer?.Name ?? "Cliente",
+            customer?.Phone ?? string.Empty,
+            vehicle?.Plate ?? "SEM-PLACA",
+            vehicle?.Size.ToString() ?? "HatchSedan",
+            order.Status.ToString(),
+            order.TotalAmount,
+            order.CreatedAtUtc);
+
+        return Result<WorkOrderPaymentSummaryDto>.Success(summary);
+    }
+
+    public async Task<Result<WorkOrderPaymentSummaryDto?>> GetActiveWorkOrderForCustomerPhoneAsync(
+        Guid tenantId,
+        string customerPhone,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<WorkOrderPaymentSummaryDto?>.Failure(new Error("tenant.required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        if (string.IsNullOrWhiteSpace(customerPhone))
+        {
+            return Result<WorkOrderPaymentSummaryDto?>.Failure(new Error("customer.phone_required", "Telefone do cliente é obrigatório.", ErrorType.Validation));
+        }
+
+        var order = await workOrderRepository.GetActiveOrderByPhoneAsync(tenantId, customerPhone, ct);
+        if (order is null)
+        {
+            return Result<WorkOrderPaymentSummaryDto?>.Success(null);
+        }
+
+        var customer = await customerRepository.GetByIdAsync(tenantId, order.CustomerId, ct);
+        var vehicle = await vehicleRepository.GetByIdAsync(tenantId, order.VehicleId, ct);
+
+        var summary = new WorkOrderPaymentSummaryDto(
+            order.Id,
+            order.TenantId,
+            order.CustomerId,
+            customer?.Name ?? "Cliente",
+            customer?.Phone ?? customerPhone,
+            vehicle?.Plate ?? "SEM-PLACA",
+            vehicle?.Size.ToString() ?? "HatchSedan",
+            order.Status.ToString(),
+            order.TotalAmount,
+            order.CreatedAtUtc);
+
+        return Result<WorkOrderPaymentSummaryDto?>.Success(summary);
     }
 
     private static WorkOrderDto ToDto(WorkOrder order, string customerName, string plate, string vehicleSize) =>

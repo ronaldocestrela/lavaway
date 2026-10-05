@@ -1,3 +1,4 @@
+using CarWashSaaS.Billing.Infrastructure;
 using CarWashSaaS.Identity.Infrastructure;
 using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Tenants.Infrastructure;
@@ -36,6 +37,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
         await using var whatsApp = new WhatsAppDbContext(CreateWhatsAppOptions(), new CurrentTenantAccessor());
         await whatsApp.Database.MigrateAsync();
+
+        await using var billing = new BillingDbContext(CreateBillingOptions(), new CurrentTenantAccessor());
+        await billing.Database.MigrateAsync();
     }
 
     public DbContextOptions<TenantsDbContext> CreateTenantsOptions() =>
@@ -57,6 +61,11 @@ public sealed class SqlServerFixture : IAsyncLifetime
     public DbContextOptions<WhatsAppDbContext> CreateWhatsAppOptions() =>
         new DbContextOptionsBuilder<WhatsAppDbContext>()
             .UseSqlServer(_container!.GetConnectionString(), sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "whatsapp"))
+            .Options;
+
+    public DbContextOptions<BillingDbContext> CreateBillingOptions() =>
+        new DbContextOptionsBuilder<BillingDbContext>()
+            .UseSqlServer(_container!.GetConnectionString(), sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "billing"))
             .Options;
 
     public Task DisposeAsync() => _container is null ? Task.CompletedTask : _container.DisposeAsync().AsTask();

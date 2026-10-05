@@ -75,6 +75,9 @@
                 <span>📸 Antes/Depois</span>
             </button>
         }
+        <button type="button" class="btn-pix-trigger" @onclick="HandleOpenPix" title="Cobrança Pix da OS">
+            <span>💠 Pix</span>
+        </button>
     </div>
 
     <div class="card-actions">
@@ -137,6 +140,15 @@
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnComparisonGalleryClicked { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnNotifyReadyClicked { get; set; }
     [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnPickupClicked { get; set; }
+    [Parameter] public EventCallback<WorkOrderKanbanCardDto> OnOpenPixClicked { get; set; }
+
+    private async Task HandleOpenPix()
+    {
+        if (OnOpenPixClicked.HasDelegate)
+        {
+            await OnOpenPixClicked.InvokeAsync(Card);
+        }
+    }
 
     private bool IsEligibleForPhotos =>
         Card.ServiceNames.Any(name =>

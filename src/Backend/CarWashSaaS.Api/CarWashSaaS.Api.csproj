@@ -28,6 +28,8 @@
     <ProjectReference Include="..\Modules\WhatsApp\CarWashSaaS.WhatsApp.Application\CarWashSaaS.WhatsApp.Application.csproj" />
     <ProjectReference Include="..\Modules\WhatsApp\CarWashSaaS.WhatsApp.Infrastructure\CarWashSaaS.WhatsApp.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared\CarWashSaaS.Shared.Configuration\CarWashSaaS.Shared.Configuration.csproj" />
+    <ProjectReference Include="..\Modules\Billing\CarWashSaaS.Billing.Application\CarWashSaaS.Billing.Application.csproj" />
+    <ProjectReference Include="..\Modules\Billing\CarWashSaaS.Billing.Infrastructure\CarWashSaaS.Billing.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

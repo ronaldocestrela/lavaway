@@ -1,4 +1,7 @@
 using System.Reflection;
+using CarWashSaaS.Billing.Application;
+using CarWashSaaS.Billing.Domain;
+using CarWashSaaS.Billing.Infrastructure;
 using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Identity.Infrastructure;
@@ -23,7 +26,8 @@ public sealed class ModuleBoundaryTests
         typeof(Tenant).Assembly,
         typeof(ShopRole).Assembly,
         typeof(Customer).Assembly,
-        typeof(WhatsAppConnection).Assembly
+        typeof(WhatsAppConnection).Assembly,
+        typeof(PixCharge).Assembly
     ];
 
     private static readonly Assembly[] ApplicationAssemblies =
@@ -31,7 +35,8 @@ public sealed class ModuleBoundaryTests
         typeof(StoreProfileApplicationService).Assembly,
         typeof(IdentityApplicationService).Assembly,
         typeof(CustomerVehicleApplicationService).Assembly,
-        typeof(WhatsAppConnectionApplicationService).Assembly
+        typeof(WhatsAppConnectionApplicationService).Assembly,
+        typeof(PixBillingApplicationService).Assembly
     ];
 
     private static readonly Assembly[] InfrastructureAssemblies =
@@ -39,7 +44,8 @@ public sealed class ModuleBoundaryTests
         typeof(TenantsDbContext).Assembly,
         typeof(IdentityModuleDbContext).Assembly,
         typeof(YardOperationsDbContext).Assembly,
-        typeof(WhatsAppDbContext).Assembly
+        typeof(WhatsAppDbContext).Assembly,
+        typeof(BillingDbContext).Assembly
     ];
 
     [Fact]
@@ -52,6 +58,7 @@ public sealed class ModuleBoundaryTests
             "CarWashSaaS.Identity.Infrastructure",
             "CarWashSaaS.YardOperations.Infrastructure",
             "CarWashSaaS.WhatsApp.Infrastructure",
+            "CarWashSaaS.Billing.Infrastructure",
             "Microsoft.EntityFrameworkCore",
             "Microsoft.AspNetCore"
         };
@@ -77,7 +84,8 @@ public sealed class ModuleBoundaryTests
             "CarWashSaaS.Tenants.Application",
             "CarWashSaaS.Identity.Application",
             "CarWashSaaS.YardOperations.Application",
-            "CarWashSaaS.WhatsApp.Application"
+            "CarWashSaaS.WhatsApp.Application",
+            "CarWashSaaS.Billing.Application"
         };
 
         foreach (var assembly in DomainAssemblies)
@@ -102,7 +110,8 @@ public sealed class ModuleBoundaryTests
             "CarWashSaaS.Tenants.Infrastructure",
             "CarWashSaaS.Identity.Infrastructure",
             "CarWashSaaS.YardOperations.Infrastructure",
-            "CarWashSaaS.WhatsApp.Infrastructure"
+            "CarWashSaaS.WhatsApp.Infrastructure",
+            "CarWashSaaS.Billing.Infrastructure"
         };
 
         foreach (var assembly in ApplicationAssemblies)
@@ -167,7 +176,8 @@ public sealed class ModuleBoundaryTests
             typeof(InspectionPhoto),
             typeof(PostServicePhoto),
             typeof(Booking),
-            typeof(ChatbotConversationSession)
+            typeof(ChatbotConversationSession),
+            typeof(PixCharge)
         };
 
         Assert.All(tenantOwnedTypes, type =>
@@ -193,7 +203,8 @@ public sealed class ModuleBoundaryTests
             typeof(WhatsAppConnection),
             typeof(VehicleInspection),
             typeof(Booking),
-            typeof(ChatbotConversationSession)
+            typeof(ChatbotConversationSession),
+            typeof(PixCharge)
         };
 
         Assert.All(aggregateRoots, type =>

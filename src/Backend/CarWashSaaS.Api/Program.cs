@@ -3,6 +3,10 @@ using CarWashSaaS.Api.Endpoints;
 using CarWashSaaS.Api.Hubs;
 using CarWashSaaS.Api.Middleware;
 using CarWashSaaS.Api.Services;
+using CarWashSaaS.Billing.Application;
+using CarWashSaaS.Billing.Infrastructure;
+using CarWashSaaS.Billing.Infrastructure.Gateways;
+using CarWashSaaS.Billing.Infrastructure.Repositories;
 using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Identity.Infrastructure;
@@ -91,6 +95,12 @@ builder.Services.AddScoped<IFrequencyCappingService, FrequencyCappingService>();
 builder.Services.AddScoped<AfterSalesApplicationService>();
 builder.Services.AddScoped<IAfterSalesLookup>(sp => sp.GetRequiredService<AfterSalesApplicationService>());
 builder.Services.AddScoped<ReactivationCampaignApplicationService>();
+builder.Services.AddScoped<IWorkOrderPaymentLookup>(sp => sp.GetRequiredService<WorkOrderApplicationService>());
+builder.Services.AddScoped<IPixChargeRepository, PixChargeRepository>();
+builder.Services.AddHttpClient<MercadoPagoPixGatewayProvider>();
+builder.Services.AddScoped<IPixGatewayProvider, SimulatedPixGatewayProvider>();
+builder.Services.AddScoped<PixBillingApplicationService>();
+builder.Services.AddScoped<IPixBillingLookup>(sp => sp.GetRequiredService<PixBillingApplicationService>());
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
@@ -150,6 +160,8 @@ builder.Services.AddDbContext<YardOperationsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "yard")));
 builder.Services.AddDbContext<WhatsAppDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "whatsapp")));
+builder.Services.AddDbContext<BillingDbContext>(options =>
+    options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "billing")));
 
 var signingKey = builder.Configuration["Authentication:SigningKey"] ?? JwtTokenService.DefaultSigningKey;
 var issuer = builder.Configuration["Authentication:Issuer"] ?? authority;
@@ -239,6 +251,7 @@ app.MapTenantEndpoints();
 app.MapYardOperationsEndpoints();
 app.MapSchedulingEndpoints();
 app.MapAfterSalesEndpoints();
+app.MapBillingEndpoints();
 app.MapHub<YardHub>("/hubs/yard").RequireCors("Client");
 
 app.Run();

@@ -226,6 +226,13 @@ public sealed class WorkOrderApplicationServiceTests
         public Task<WorkOrder?> GetLatestCompletedOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default) =>
             Task.FromResult<WorkOrder?>(null);
 
+        public Task<WorkOrder?> GetActiveOrderByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
+        {
+            var customer = Customers.FirstOrDefault(c => c.TenantId == tenantId && (c.NormalizedPhone == Customer.NormalizePhone(customerPhone) || c.Phone == customerPhone));
+            if (customer is null) return Task.FromResult<WorkOrder?>(null);
+            return Task.FromResult(SavedWorkOrders.FirstOrDefault(w => w.TenantId == tenantId && w.CustomerId == customer.Id && !w.PickedUpAtUtc.HasValue));
+        }
+
         public Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
 
