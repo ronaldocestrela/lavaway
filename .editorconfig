@@ -28,3 +28,14 @@ csharp_using_directive_placement = outside_namespace:warning
 dotnet_sort_system_directives_first = true
 csharp_style_expression_bodied_methods = when_on_single_line:suggestion
 csharp_style_expression_bodied_properties = true:suggestion
+
+# EF Core Migrations (auto-generated code)
+[**/Migrations/**]
+generated_code = true
+charset = unset
+indent_size = unset
+trim_trailing_whitespace = false
+insert_final_newline = unset
+csharp_style_namespace_declarations = unset
+csharp_using_directive_placement = unset
+
