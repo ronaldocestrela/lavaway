@@ -26,6 +26,11 @@ public static class WhatsAppEndpoints
         {
             var expectedSecret = configuration["WhatsApp:EvolutionApi:WebhookSecret"];
             var providedSecret = request.Headers["X-Webhook-Secret"].ToString();
+            if (string.IsNullOrWhiteSpace(providedSecret) && request.Query.TryGetValue("secret", out var querySecret))
+            {
+                providedSecret = querySecret.ToString();
+            }
+
             if (string.IsNullOrWhiteSpace(expectedSecret))
             {
                 return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);

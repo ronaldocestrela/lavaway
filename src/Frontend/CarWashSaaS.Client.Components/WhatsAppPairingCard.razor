@@ -225,8 +225,8 @@
             return qrCode;
         }
 
-        // Se for base64 puro sem prefixo data:image
-        if (qrCode.Length > 100 && !qrCode.Contains(' ') && !qrCode.StartsWith("evolution:", StringComparison.OrdinalIgnoreCase))
+        // Se for base64 puro sem prefixo data:image (não deve conter @ ou , que são caracteres do token do WhatsApp)
+        if (qrCode.Length > 100 && !qrCode.Contains(' ') && !qrCode.Contains('@') && !qrCode.Contains(',') && !qrCode.StartsWith("evolution:", StringComparison.OrdinalIgnoreCase))
         {
             return $"data:image/png;base64,{qrCode}";
         }

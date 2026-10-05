@@ -50,6 +50,67 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
     }
 
     [Fact]
+    public async Task GeneratePairingAsync_WhenInstanceAlreadyExists_ShouldConnectViaGetAndReturnBase64QrCode()
+    {
+        var handler = new DynamicHttpMessageHandler(request =>
+        {
+            if (request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath.EndsWith("instance/create"))
+            {
+                return new HttpResponseMessage(HttpStatusCode.Forbidden)
+                {
+                    Content = new StringContent("{\"status\":403,\"error\":\"Forbidden\",\"response\":{\"message\":[\"This name is already in use.\"]}}", Encoding.UTF8, "application/json")
+                };
+            }
+
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.Contains("instance/connect/"))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"pairingCode\":null,\"code\":\"2@raw-pairing-code\",\"base64\":\"data:image/png;base64,real-base64-qr\",\"count\":1}", Encoding.UTF8, "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:8080/")
+        };
+
+        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+        var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        var result = await provider.GeneratePairingAsync(tenantId);
+
+        Assert.Equal("lavaway-11111111111111111111111111111111", result.ProviderSessionId);
+        Assert.Equal("2@raw-pairing-code", result.QrCodeValue);
+    }
+
+    [Fact]
+    public async Task GeneratePairingAsync_WhenCreateReturnsNestedQrCodeObject_ShouldExtractBase64QrCode()
+    {
+        var handler = new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.Created)
+            {
+                Content = new StringContent("{\"instance\":{\"instanceName\":\"lavaway-11111111111111111111111111111111\"},\"qrcode\":{\"pairingCode\":null,\"code\":\"2@baileys-code\",\"base64\":\"data:image/png;base64,created-base64-qr\",\"count\":1}}", Encoding.UTF8, "application/json")
+            });
+
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:8080/")
+        };
+
+        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+        var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        var result = await provider.GeneratePairingAsync(tenantId);
+
+        Assert.Equal("lavaway-11111111111111111111111111111111", result.ProviderSessionId);
+        Assert.Equal("2@baileys-code", result.QrCodeValue);
+    }
+
+    [Fact]
     public void DependencyInjection_Should_Resolve_EvolutionApiWhatsAppPairingProvider_Without_Ambiguity()
     {
         var services = new ServiceCollection();
@@ -57,7 +118,8 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
         {
             ["WhatsApp:EvolutionApi:BaseUrl"] = "http://localhost:8080/",
             ["WhatsApp:EvolutionApi:ApiKey"] = "test-api-key",
-            ["WhatsApp:EvolutionApi:InstanceNamePrefix"] = "lavaway"
+            ["WhatsApp:EvolutionApi:InstanceNamePrefix"] = "lavaway",
+            ["WhatsApp:EvolutionApi:WebhookUrl"] = "http://host.docker.internal:5225/whatsapp/webhooks/evolution"
         });
 
         services.AddSingleton<IConfiguration>(configuration);
@@ -88,6 +150,12 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromResult(response);
+    }
+
+    private sealed class DynamicHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(handler(request));
     }
 
     private sealed class ExceptionHttpMessageHandler(Exception exception) : HttpMessageHandler
