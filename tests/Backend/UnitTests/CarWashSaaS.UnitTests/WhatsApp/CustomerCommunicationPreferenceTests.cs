@@ -15,7 +15,7 @@ public sealed class CustomerCommunicationPreferenceTests
         Assert.True(result.IsSuccess);
         var pref = result.Value!;
         Assert.Equal(tenantId, pref.TenantId);
-        Assert.Equal("11977776666", pref.NormalizedPhone);
+        Assert.Equal("5511977776666", pref.NormalizedPhone);
         Assert.True(pref.IsOptedIn);
         Assert.Null(pref.OptedOutAtUtc);
     }

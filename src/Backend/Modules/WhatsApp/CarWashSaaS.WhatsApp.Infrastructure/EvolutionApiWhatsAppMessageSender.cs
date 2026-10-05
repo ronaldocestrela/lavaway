@@ -44,10 +44,14 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.Add("apikey", _apiKey);
 
+        var normalizedPhone = NormalizeRecipientPhone(recipientPhone);
         var payload = JsonSerializer.Serialize(new
         {
-            number = recipientPhone,
-            text = messageText
+            number = normalizedPhone,
+            textMessage = new
+            {
+                text = messageText
+            }
         });
         request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
@@ -94,14 +98,17 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.Add("apikey", _apiKey);
 
+        var normalizedPhone = NormalizeRecipientPhone(recipientPhone);
         var payload = JsonSerializer.Serialize(new
         {
-            number = recipientPhone,
-            mediatype = mediaType,
-            mimetype = mimeType,
-            caption = caption ?? string.Empty,
-            media = mediaBase64OrUrl,
-            fileName = fileName
+            number = normalizedPhone,
+            mediaMessage = new
+            {
+                mediatype = mediaType,
+                caption = caption ?? string.Empty,
+                media = mediaBase64OrUrl,
+                fileName = fileName
+            }
         });
         request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
@@ -165,5 +172,23 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
         }
 
         return $"evolution-{Guid.CreateVersion7():N}";
+    }
+
+    public static string NormalizeRecipientPhone(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            return string.Empty;
+        }
+
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+
+        // Se for número brasileiro com DDD (10 dígitos fixo ou 11 celular), adiciona DDI 55
+        if (digits.Length is 10 or 11)
+        {
+            return $"55{digits}";
+        }
+
+        return digits;
     }
 }

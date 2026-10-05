@@ -39,7 +39,7 @@ public sealed class WhatsAppMessagingComponentTests : BunitContext
         sendButton.Click();
 
         Assert.NotNull(sentRequest);
-        Assert.Equal("11988887777", sentRequest.RecipientPhone);
+        Assert.Equal("5511988887777", sentRequest.RecipientPhone);
         Assert.False(string.IsNullOrWhiteSpace(sentRequest.MessageText));
     }
 

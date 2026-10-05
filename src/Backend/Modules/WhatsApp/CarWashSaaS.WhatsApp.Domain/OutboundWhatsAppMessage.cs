@@ -254,6 +254,12 @@ public sealed class OutboundWhatsAppMessage : IMustHaveTenant
 
     public static string CleanPhoneNumber(string phone)
     {
-        return new string(phone.Where(char.IsDigit).ToArray());
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        if (digits.Length is 10 or 11)
+        {
+            return $"55{digits}";
+        }
+
+        return digits;
     }
 }

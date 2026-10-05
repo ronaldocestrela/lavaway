@@ -15,7 +15,7 @@ public sealed class OutboundWhatsAppMessageTests
         Assert.True(result.IsSuccess);
         var message = result.Value!;
         Assert.Equal(tenantId, message.TenantId);
-        Assert.Equal("11987654321", message.RecipientPhone);
+        Assert.Equal("5511987654321", message.RecipientPhone);
         Assert.Equal("Olá, seu veículo está pronto!", message.Body);
         Assert.Equal("idemp-001", message.IdempotencyKey);
         Assert.Equal(WhatsAppMessageStatus.Queued, message.Status);

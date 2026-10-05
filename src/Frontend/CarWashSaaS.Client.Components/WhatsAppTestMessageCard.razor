@@ -106,7 +106,7 @@
     {
         RecipientPhone = e.Value?.ToString() ?? string.Empty;
         var digits = new string(RecipientPhone.Where(char.IsDigit).ToArray());
-        if (digits.Length > 0 && (digits.Length < 10 || digits.Length > 11))
+        if (digits.Length > 0 && digits.Length != 10 && digits.Length != 11 && !(digits.Length is 12 or 13 && digits.StartsWith("55")))
         {
             PhoneValidationError = "O telefone deve ter DDD + 8 ou 9 dígitos.";
         }
@@ -135,6 +135,8 @@
             return;
         }
 
-        await OnSendTestMessage.InvokeAsync(new SendWhatsAppTestMessageRequest(RecipientPhone, MessageText));
+        var normalizedPhone = digits.Length is 10 or 11 ? $"55{digits}" : digits;
+
+        await OnSendTestMessage.InvokeAsync(new SendWhatsAppTestMessageRequest(normalizedPhone, MessageText));
     }
 }

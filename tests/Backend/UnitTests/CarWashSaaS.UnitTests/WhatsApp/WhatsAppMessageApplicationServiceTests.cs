@@ -25,7 +25,7 @@ public sealed class WhatsAppMessageApplicationServiceTests
         var result = await service.SendTestMessageAsync(tenantId, "(11) 98765-4321", "Mensagem de teste unitário");
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("11987654321", result.Value!.RecipientPhone);
+        Assert.Equal("5511987654321", result.Value!.RecipientPhone);
         Assert.Equal("queued", result.Value.Status);
         Assert.Single(messageRepo.Messages);
         Assert.Single(queue.Messages);
@@ -221,7 +221,7 @@ public sealed class WhatsAppMessageApplicationServiceTests
             "comprovante.pdf");
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("11987654321", result.Value!.RecipientPhone);
+        Assert.Equal("5511987654321", result.Value!.RecipientPhone);
         Assert.Equal("document", result.Value.MediaType);
         Assert.Equal("comprovante.pdf", result.Value.MediaFileName);
         Assert.Single(messageRepo.Messages);

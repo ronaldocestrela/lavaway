@@ -41,7 +41,7 @@ public sealed class WhatsAppMessagingTenantIntegrationTests(SqlServerFixture fix
         var readByTenantA = await tenantARepo.GetByIdAsync(tenantAMessage.Id);
         Assert.NotNull(readByTenantA);
         Assert.Equal(tenantA, readByTenantA!.TenantId);
-        Assert.Equal("11988887777", readByTenantA.RecipientPhone);
+        Assert.Equal("5511988887777", readByTenantA.RecipientPhone);
     }
 
     [Fact]

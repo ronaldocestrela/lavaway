@@ -81,13 +81,24 @@
 
     private static string FormatPhone(string phone)
     {
-        if (phone.Length == 11)
+        if (string.IsNullOrWhiteSpace(phone))
         {
-            return $"({phone[..2]}) {phone.Substring(2, 5)}-{phone.Substring(7, 4)}";
+            return string.Empty;
         }
-        if (phone.Length == 10)
+
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("55") && (digits.Length == 12 || digits.Length == 13))
         {
-            return $"({phone[..2]}) {phone.Substring(2, 4)}-{phone.Substring(6, 4)}";
+            digits = digits[2..];
+        }
+
+        if (digits.Length == 11)
+        {
+            return $"({digits[..2]}) {digits.Substring(2, 5)}-{digits.Substring(7, 4)}";
+        }
+        if (digits.Length == 10)
+        {
+            return $"({digits[..2]}) {digits.Substring(2, 4)}-{digits.Substring(6, 4)}";
         }
         return phone;
     }
