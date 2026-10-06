@@ -213,10 +213,10 @@
     @if (_isPaymentModalOpen && _targetPaymentCard is not null)
     {
         <RegisterWorkOrderPaymentModal IsOpen="_isPaymentModalOpen"
-                                       WorkOrderId="_targetPaymentCard.Id"
-                                       Plate="_targetPaymentCard.Plate"
-                                       CustomerName="_targetPaymentCard.CustomerName"
-                                       TotalAmount="_targetPaymentCard.TotalAmount"
+                                       WorkOrderId="@_targetPaymentCard.Id"
+                                       Plate="@_targetPaymentCard.Plate"
+                                       CustomerName="@_targetPaymentCard.CustomerName"
+                                       TotalAmount="@_targetPaymentCard.TotalAmount"
                                        OnPaymentRegistered="HandlePaymentRegistered"
                                        OnClose="() => _isPaymentModalOpen = false" />
     }
