@@ -77,7 +77,7 @@
                     class="mobile-kanban-tab @(_selectedMobileStatus == col.Status ? "active" : "")"
                     @onclick="() => _selectedMobileStatus = col.Status">
                 <span>@col.Title</span>
-                <span class="tab-badge">@col.CardCount</span>
+                <span class="tab-badge">@col.Count</span>
             </button>
         }
     </div>
