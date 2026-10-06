@@ -24,10 +24,10 @@
 
 @media (max-width: 760px) {
     .app-shell { grid-template-columns: 1fr; }
-    .sidebar { position: static; height: auto; padding: 14px 18px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+    .sidebar { position: static; height: auto; padding: 14px 18px; display: grid; grid-template-columns: 1fr; align-items: center; gap: 12px; }
     .sidebar-caption, .sidebar-bottom { display: none; }
-    ::deep .primary-nav { display: flex; justify-content: flex-end; }
-    ::deep .primary-nav-link { min-height: 35px; grid-template-columns: 1fr; padding: 0 10px; }
+    ::deep .primary-nav { display: flex; grid-column: 1 / -1; justify-content: flex-start; overflow-x: auto; padding-bottom: 4px; }
+    ::deep .primary-nav-link { min-height: 35px; flex: 0 0 auto; grid-template-columns: 1fr; padding: 0 10px; }
     ::deep .nav-index, ::deep .nav-arrow { display: none; }
     .topbar { height: 52px; padding: 0 18px; }
     .page-content { padding: 30px 18px 42px; }

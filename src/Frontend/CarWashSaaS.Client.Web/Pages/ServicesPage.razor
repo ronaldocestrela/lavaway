@@ -10,22 +10,16 @@
 <PageTitle>Catálogo de Serviços | Lavaway</PageTitle>
 
 <section class="services-page">
-    <div class="page-heading">
-        <div>
-            <div class="eyebrow">
-                <span class="eyebrow-mark"></span>
-                <span>OPERAÇÃO &amp; CATÁLOGO</span>
-            </div>
-            <h1>Catálogo de Serviços</h1>
-            <p class="page-subtitle">Configure os serviços oferecidos, preços específicos por porte de veículo e durações estimadas de execução.</p>
-        </div>
-        <div class="heading-actions">
+    <PageHeading Eyebrow="OPERAÇÃO &amp; CATÁLOGO"
+                 Title="Catálogo de Serviços"
+                 Subtitle="Configure os serviços oferecidos, preços específicos por porte de veículo e durações estimadas de execução.">
+        <Actions>
             <button type="button" class="btn btn-primary" @onclick="OpenCreateModal">
                 <span class="btn-icon">+</span>
                 <span>Novo Serviço</span>
             </button>
-        </div>
-    </div>
+        </Actions>
+    </PageHeading>
 
     @if (_isLoading)
     {

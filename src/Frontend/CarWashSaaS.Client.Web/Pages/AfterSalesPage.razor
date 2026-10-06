@@ -10,24 +10,16 @@
 <PageTitle>Pós-Venda &amp; Retenção | Lavaway</PageTitle>
 
 <section class="after-sales-page">
-    <div class="page-heading">
-        <div>
-            <div class="eyebrow">
-                <span class="eyebrow-mark"></span>
-                <span>PÓS-VENDA &amp; RETENÇÃO</span>
-            </div>
-            <h1>Satisfação do Cliente &amp; Reativação</h1>
-            <p class="page-subtitle">
-                Acompanhe o CSAT em tempo real das pesquisas enviadas via WhatsApp (1h pós-retirada), automatize réguas de retenção inteligentes (15, 30 e 45 dias) e controle opt-out anti-spam.
-            </p>
-        </div>
-        <div class="heading-actions">
+    <PageHeading Eyebrow="PÓS-VENDA &amp; RETENÇÃO"
+                 Title="Satisfação do Cliente &amp; Reativação"
+                 Subtitle="Acompanhe o CSAT em tempo real das pesquisas enviadas via WhatsApp (1h pós-retirada), automatize réguas de retenção inteligentes (15, 30 e 45 dias) e controle opt-out anti-spam.">
+        <Actions>
             <button type="button" class="btn-refresh" @onclick="LoadAllDataAsync" disabled="@_isLoading">
                 <span class="@(_isLoading ? "spinning" : "")">&#8635;</span>
                 <span>Atualizar Dados</span>
             </button>
-        </div>
-    </div>
+        </Actions>
+    </PageHeading>
 
     <!-- Tabs Navigation -->
     <div class="tabs-bar">

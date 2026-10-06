@@ -12,19 +12,15 @@
 <PageTitle>Agenda &amp; Reservas | Lavaway</PageTitle>
 
 <section class="scheduling-page">
-            <header class="scheduling-header">
-                <div>
-                    <div class="eyebrow"><span class="eyebrow-mark"></span> CONTROLE OPERACIONAL</div>
-                    <h1>Agenda &amp; Reservas</h1>
-                    <p class="subtitle">Acompanhe os agendamentos realizados via WhatsApp e crie novas reservas.</p>
-                </div>
-
-                <div class="header-actions">
-                    <button type="button" class="btn-primary" @onclick="OpenNewBookingModal">
-                        <span>+ Nova Reserva Manual</span>
-                    </button>
-                </div>
-            </header>
+    <PageHeading Eyebrow="CONTROLE OPERACIONAL"
+                 Title="Agenda &amp; Reservas"
+                 Subtitle="Acompanhe os agendamentos realizados via WhatsApp e crie novas reservas.">
+        <Actions>
+            <button type="button" class="btn-primary" @onclick="OpenNewBookingModal">
+                <span>+ Nova Reserva Manual</span>
+            </button>
+        </Actions>
+    </PageHeading>
 
             <!-- Barra de Capacidade do Dia -->
             <BookingCapacityMeter BookingsCount="@_bookings.Count"

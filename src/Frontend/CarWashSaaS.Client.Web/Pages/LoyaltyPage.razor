@@ -7,20 +7,18 @@
 <PageTitle>Fidelidade &amp; Selos - Lavaway</PageTitle>
 
 <div class="loyalty-page-container">
-    <header class="page-header">
-        <div class="header-titles">
-            <h1 class="page-title">🏷️ Programa de Fidelidade</h1>
-            <p class="page-subtitle">Acompanhe o acúmulo de selos, resgates e engajamento dos seus clientes.</p>
-        </div>
-        <div class="header-actions">
+    <PageHeading Eyebrow="RELACIONAMENTO &amp; FIDELIDADE"
+                 Title="Programa de Fidelidade"
+                 Subtitle="Acompanhe o acúmulo de selos, resgates e engajamento dos seus clientes.">
+        <Actions>
             <button class="btn btn-outline" type="button" @onclick="OpenConfigModal">
                 ⚙️ Configurar Regras
             </button>
             <button class="btn btn-secondary" type="button" @onclick="LoadDataAsync" disabled="@_isLoading">
                 🔄 Atualizar
             </button>
-        </div>
-    </header>
+        </Actions>
+    </PageHeading>
 
     @if (_isLoading && _accounts.Count == 0)
     {
