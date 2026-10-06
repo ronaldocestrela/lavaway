@@ -23,12 +23,26 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
             BaseAddress = new Uri("https://evolution.example.com/")
         };
 
-        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+        var provider = new EvolutionApiWhatsAppPairingProvider(
+            client,
+            "test-key",
+            "lavaway",
+            "http://host.docker.internal:5225/whatsapp/webhooks/evolution");
 
         var result = await provider.GeneratePairingAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
 
         Assert.Equal("lavaway-11111111111111111111111111111111", result.ProviderSessionId);
         Assert.Equal("data:image/png;base64,test-qr", result.QrCodeValue);
+        Assert.NotNull(handler.LastRequestBody);
+        using var requestJson = System.Text.Json.JsonDocument.Parse(handler.LastRequestBody);
+        var requestRoot = requestJson.RootElement;
+        Assert.Equal("WHATSAPP-BAILEYS", requestRoot.GetProperty("Integration").GetString());
+        Assert.True(requestRoot.GetProperty("qrcode").GetBoolean());
+        Assert.Equal("http://host.docker.internal:5225/whatsapp/webhooks/evolution", requestRoot.GetProperty("webhookUrl").GetString());
+        Assert.False(requestRoot.GetProperty("webhookByEvents").GetBoolean());
+        Assert.Equal(4, requestRoot.GetProperty("webhookEvents").GetArrayLength());
+        Assert.False(requestRoot.TryGetProperty("integration", out _));
+        Assert.False(requestRoot.TryGetProperty("webhook", out _));
     }
 
     [Fact]
@@ -148,8 +162,17 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
 
     private sealed class StubHttpMessageHandler(HttpResponseMessage response) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(response);
+        public string? LastRequestBody { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.Content is not null)
+            {
+                LastRequestBody = await request.Content.ReadAsStringAsync(cancellationToken);
+            }
+
+            return response;
+        }
     }
 
     private sealed class DynamicHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) : HttpMessageHandler
@@ -164,4 +187,3 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
             => Task.FromException<HttpResponseMessage>(exception);
     }
 }
-

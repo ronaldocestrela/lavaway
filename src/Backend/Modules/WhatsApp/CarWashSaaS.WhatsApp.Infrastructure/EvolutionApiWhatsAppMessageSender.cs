@@ -48,10 +48,7 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
         var payload = JsonSerializer.Serialize(new
         {
             number = normalizedPhone,
-            textMessage = new
-            {
-                text = messageText
-            }
+            text = messageText
         });
         request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
@@ -102,13 +99,11 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
         var payload = JsonSerializer.Serialize(new
         {
             number = normalizedPhone,
-            mediaMessage = new
-            {
-                mediatype = mediaType,
-                caption = caption ?? string.Empty,
-                media = NormalizeMedia(mediaBase64OrUrl),
-                fileName = fileName
-            }
+            mediatype = mediaType,
+            mimetype = mimeType,
+            caption = caption ?? string.Empty,
+            media = NormalizeMedia(mediaBase64OrUrl),
+            fileName
         });
         request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
@@ -139,7 +134,7 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
     }
 
 
-    // Evolution API v2 aceita apenas URL ou base64 puro (sem prefixo "data:...;base64,").
+    // Evolution API v2 expects a URL or raw base64, without the "data:...;base64," prefix.
     private static string NormalizeMedia(string media)
     {
         if (media.StartsWith("data:", StringComparison.OrdinalIgnoreCase))

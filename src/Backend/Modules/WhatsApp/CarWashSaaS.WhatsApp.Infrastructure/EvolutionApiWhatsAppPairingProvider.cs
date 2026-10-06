@@ -58,14 +58,14 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
             {
                 ["instanceName"] = instanceName,
                 ["qrcode"] = true,
-                ["integration"] = "WHATSAPP-BAILEYS"
+                ["Integration"] = "WHATSAPP-BAILEYS"
             };
 
             if (!string.IsNullOrWhiteSpace(_webhookUrl))
             {
-                createPayload["webhook"] = _webhookUrl;
-                createPayload["webhook_by_events"] = false;
-                createPayload["events"] = new[]
+                createPayload["webhookUrl"] = _webhookUrl;
+                createPayload["webhookByEvents"] = false;
+                createPayload["webhookEvents"] = new[]
                 {
                     "CONNECTION_UPDATE",
                     "MESSAGES_UPSERT",

@@ -112,9 +112,8 @@ public sealed class EvolutionApiWhatsAppMessageSenderTests
 
         // Confere se o número foi normalizado para 5511999998888
         Assert.Equal("5511999998888", root.GetProperty("number").GetString());
-        // Confere se o payload contém textMessage.text conforme exigido pelo Evolution API v1.8.2
-        Assert.True(root.TryGetProperty("textMessage", out var textMsgElement));
-        Assert.Equal("Olá!", textMsgElement.GetProperty("text").GetString());
+        Assert.Equal("Olá!", root.GetProperty("text").GetString());
+        Assert.False(root.TryGetProperty("textMessage", out _));
     }
 
     [Fact]
@@ -150,10 +149,12 @@ public sealed class EvolutionApiWhatsAppMessageSenderTests
         var root = jsonDoc.RootElement;
 
         Assert.Equal("5511999998888", root.GetProperty("number").GetString());
-        Assert.True(root.TryGetProperty("mediaMessage", out var mediaMsgElement));
-        Assert.Equal("document", mediaMsgElement.GetProperty("mediatype").GetString());
-        Assert.Equal("Aqui está seu comprovante!", mediaMsgElement.GetProperty("caption").GetString());
-        Assert.Equal("comprovante.pdf", mediaMsgElement.GetProperty("fileName").GetString());
+        Assert.Equal("document", root.GetProperty("mediatype").GetString());
+        Assert.Equal("application/pdf", root.GetProperty("mimetype").GetString());
+        Assert.Equal("Aqui está seu comprovante!", root.GetProperty("caption").GetString());
+        Assert.Equal("comprovante.pdf", root.GetProperty("fileName").GetString());
+        Assert.Equal("JVBERi0x...", root.GetProperty("media").GetString());
+        Assert.False(root.TryGetProperty("mediaMessage", out _));
     }
 
     private sealed class StubHttpMessageHandler(HttpResponseMessage response) : HttpMessageHandler

@@ -52,14 +52,60 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  evolution-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${EVOLUTION_POSTGRES_DB:-evolution}
+      POSTGRES_USER: ${EVOLUTION_POSTGRES_USER:-evolution}
+      POSTGRES_PASSWORD: ${EVOLUTION_POSTGRES_PASSWORD:-LavawayEvolutionDbDev2026!}
+    volumes:
+      - evolution-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  evolution-redis:
+    image: redis:7-alpine
+    command: redis-server --port 6379 --appendonly yes
+    volumes:
+      - evolution-redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   evolution-api:
-    image: evoapicloud/evolution-api:v1.8.2
+    image: evoapicloud/evolution-api:v2.3.7
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
     environment:
       SERVER_PORT: "8080"
       SERVER_URL: "http://localhost:8080"
       AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-CHANGE_ME}
-      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
-      DATABASE_ENABLED: "false"
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${EVOLUTION_POSTGRES_USER:-evolution}:${EVOLUTION_POSTGRES_PASSWORD:-LavawayEvolutionDbDev2026!}@evolution-postgres:5432/${EVOLUTION_POSTGRES_DB:-evolution}?schema=evolution_api
+      DATABASE_CONNECTION_CLIENT_NAME: lavaway
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
+      DATABASE_SAVE_MESSAGE_UPDATE: "false"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      DATABASE_SAVE_DATA_LABELS: "false"
+      DATABASE_SAVE_DATA_HISTORIC: "false"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://evolution-redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: lavaway:evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -73,3 +119,5 @@ volumes:
   minio-data:
   rabbitmq-data:
   evolution-instances:
+  evolution-postgres-data:
+  evolution-redis-data:

@@ -80,7 +80,9 @@ sequenceDiagram
 
 ## Configuração do Webhook
 
-Configure `WhatsApp:EvolutionApi:WebhookSecret` por variável de ambiente (`WhatsApp__EvolutionApi__WebhookSecret`) e configure a Evolution API para enviar `CONNECTION_UPDATE` a `POST /whatsapp/webhooks/evolution` com o header `X-Webhook-Secret`. O nome da instância segue `{InstanceNamePrefix}-{tenantId:N}`.
+Configure `WhatsApp:EvolutionApi:WebhookSecret` por variável de ambiente (`WhatsApp__EvolutionApi__WebhookSecret`) e configure a Evolution API para enviar `CONNECTION_UPDATE` a `POST /whatsapp/webhooks/evolution`. No callback direto, o segredo segue na query string porque a configuração de webhook da Evolution não define headers arbitrários; use HTTPS e evite registrar a URL completa nos logs. Se um proxy encaminhar o callback, ele pode enviar o segredo em `X-Webhook-Secret`. O nome da instância segue `{InstanceNamePrefix}-{tenantId:N}`.
+
+O ambiente local utiliza Evolution API `v2.3.7`, com PostgreSQL e Redis dedicados; apenas os metadados das instâncias são persistidos nesses serviços. O volume de arquivos `evolution-instances` também deve ser mantido em atualizações. O adaptador usa os formatos v2 para criação de instâncias, webhooks e envio de mensagens.
 
 ## Critérios de Aceite Atendidos de Ponta a Ponta
 
