@@ -31,6 +31,14 @@ public sealed class WhatsAppMessageApplicationService(
             return Result<WhatsAppMessageDto>.Failure(new Error("whatsapp.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
+        var idempotency = await ResolveIdempotencyAsync(tenantId, idempotencyKey, ct);
+        if (idempotency.Existing is not null)
+        {
+            return Result<WhatsAppMessageDto>.Success(MapToDto(idempotency.Existing));
+        }
+
+        idempotencyKey = idempotency.Key;
+
         // 1. Validar conexão ativa
         var connection = await connectionRepository.GetByTenantAsync(tenantId, ct);
         if (connection is null || connection.Status != WhatsAppConnectionStatus.Connected)
@@ -204,6 +212,14 @@ public sealed class WhatsAppMessageApplicationService(
             return Result<WhatsAppMessageDto>.Failure(new Error("whatsapp.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
+        var idempotency = await ResolveIdempotencyAsync(tenantId, idempotencyKey, ct);
+        if (idempotency.Existing is not null)
+        {
+            return Result<WhatsAppMessageDto>.Success(MapToDto(idempotency.Existing));
+        }
+
+        idempotencyKey = idempotency.Key;
+
         // 1. Validar conexão ativa
         var connection = await connectionRepository.GetByTenantAsync(tenantId, ct);
         if (connection is null || connection.Status != WhatsAppConnectionStatus.Connected)
@@ -265,6 +281,30 @@ public sealed class WhatsAppMessageApplicationService(
         await backgroundQueue.EnqueueAsync(queueMessage, ct);
 
         return Result<WhatsAppMessageDto>.Success(MapToDto(message));
+    }
+
+    // Chave já usada: devolve a mensagem existente, exceto se falhou (permite reenvio com nova chave).
+    private async Task<(OutboundWhatsAppMessage? Existing, string? Key)> ResolveIdempotencyAsync(
+        Guid tenantId, string? idempotencyKey, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            return (null, idempotencyKey);
+        }
+
+        var key = idempotencyKey.Trim();
+        var existing = await messageRepository.GetByIdempotencyKeyAsync(tenantId, key, ct);
+        if (existing is null)
+        {
+            return (null, key);
+        }
+
+        if (existing.Status is WhatsAppMessageStatus.Failed or WhatsAppMessageStatus.Rejected)
+        {
+            return (null, $"{key}-retry-{Guid.CreateVersion7():N}"[..Math.Min(128, key.Length + 7 + 32)]);
+        }
+
+        return (existing, key);
     }
 
     public static WhatsAppMessageDto MapToDto(OutboundWhatsAppMessage message) => new(
