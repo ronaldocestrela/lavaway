@@ -150,9 +150,10 @@ public sealed class EvolutionApiWhatsAppMessageSenderTests
         var root = jsonDoc.RootElement;
 
         Assert.Equal("5511999998888", root.GetProperty("number").GetString());
-        Assert.Equal("document", root.GetProperty("mediatype").GetString());
-        Assert.Equal("Aqui está seu comprovante!", root.GetProperty("caption").GetString());
-        Assert.Equal("comprovante.pdf", root.GetProperty("fileName").GetString());
+        Assert.True(root.TryGetProperty("mediaMessage", out var mediaMsgElement));
+        Assert.Equal("document", mediaMsgElement.GetProperty("mediatype").GetString());
+        Assert.Equal("Aqui está seu comprovante!", mediaMsgElement.GetProperty("caption").GetString());
+        Assert.Equal("comprovante.pdf", mediaMsgElement.GetProperty("fileName").GetString());
     }
 
     private sealed class StubHttpMessageHandler(HttpResponseMessage response) : HttpMessageHandler

@@ -102,11 +102,13 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
         var payload = JsonSerializer.Serialize(new
         {
             number = normalizedPhone,
-            mediatype = mediaType,
-            mimetype = mimeType,
-            caption = caption ?? string.Empty,
-            media = NormalizeMedia(mediaBase64OrUrl),
-            fileName = fileName
+            mediaMessage = new
+            {
+                mediatype = mediaType,
+                caption = caption ?? string.Empty,
+                media = NormalizeMedia(mediaBase64OrUrl),
+                fileName = fileName
+            }
         });
         request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
