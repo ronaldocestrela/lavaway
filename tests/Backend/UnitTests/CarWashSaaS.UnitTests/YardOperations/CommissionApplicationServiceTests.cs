@@ -69,7 +69,7 @@ public sealed class CommissionApplicationServiceTests
         public Task<TeamMember?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct = default) =>
             Task.FromResult(Members.FirstOrDefault(m => m.TenantId == tenantId && m.Id == id));
 
-        public Task<TeamMember?> GetByEmailAsync(Guid tenantId, string email, CancellationToken ct = default) =>
+        public Task<TeamMember?> GetByEmailAsync(Guid tenantId, string? email, CancellationToken ct = default) =>
             Task.FromResult(Members.FirstOrDefault(m => m.TenantId == tenantId && m.Email == email));
 
         public Task<IReadOnlyCollection<TeamMember>> ListByTenantAsync(Guid tenantId, CancellationToken ct = default) =>

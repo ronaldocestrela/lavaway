@@ -104,9 +104,10 @@ public sealed class YardSetupApplicationService(
             return Result<TeamMember>.Failure(new Error("team_member.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
-        if (!string.IsNullOrWhiteSpace(command.Email))
+        var normalizedEmail = string.IsNullOrWhiteSpace(command.Email) ? null : command.Email.Trim();
+        if (normalizedEmail is not null)
         {
-            var existing = await teamMemberRepository.GetByEmailAsync(tenantId, command.Email.Trim(), ct);
+            var existing = await teamMemberRepository.GetByEmailAsync(tenantId, normalizedEmail, ct);
             if (existing is not null)
             {
                 return Result<TeamMember>.Failure(new Error("team_member.email.duplicate", "A team member with this email already exists for this tenant.", ErrorType.Conflict));
@@ -136,16 +137,17 @@ public sealed class YardSetupApplicationService(
             return Result<TeamMember>.Failure(new Error("team_member.not_found", "Team member was not found.", ErrorType.NotFound));
         }
 
-        if (!string.IsNullOrWhiteSpace(command.Email))
+        var normalizedEmail = string.IsNullOrWhiteSpace(command.Email) ? null : command.Email.Trim();
+        if (normalizedEmail is not null)
         {
-            var existingWithEmail = await teamMemberRepository.GetByEmailAsync(tenantId, command.Email.Trim(), ct);
+            var existingWithEmail = await teamMemberRepository.GetByEmailAsync(tenantId, normalizedEmail, ct);
             if (existingWithEmail is not null && existingWithEmail.Id != id)
             {
                 return Result<TeamMember>.Failure(new Error("team_member.email.duplicate", "A team member with this email already exists for this tenant.", ErrorType.Conflict));
             }
         }
 
-        var updateResult = member.Update(command.FullName, command.Role, command.Email ?? string.Empty);
+        var updateResult = member.Update(command.FullName, command.Role, command.Email);
         if (!updateResult.IsSuccess)
         {
             return updateResult;

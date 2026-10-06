@@ -104,6 +104,26 @@ public sealed class YardSetupTenantIntegrationTests(SqlServerFixture fixture)
         }
     }
 
+    [Fact]
+    public async Task YardSetup_ShouldAllowMultipleTeamMembersWithoutEmailForTheSameTenant()
+    {
+        var tenant = await CreateTenantAsync("Lava-Jato Sem Email");
+
+        await using var context = CreateYardContext(tenant);
+        var service = CreateYardSetupService(context);
+
+        var first = await service.CreateTeamMemberAsync(tenant, new CreateTeamMemberCommand("Primeiro Colaborador", "Lavador", null));
+        var second = await service.CreateTeamMemberAsync(tenant, new CreateTeamMemberCommand("Segundo Colaborador", "Secador", string.Empty));
+
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+
+        var members = await service.ListTeamMembersAsync(tenant);
+        Assert.True(members.IsSuccess);
+        Assert.Equal(2, members.Value!.Count);
+        Assert.All(members.Value!, member => Assert.True(string.IsNullOrEmpty(member.Email)));
+    }
+
     private YardSetupApplicationService CreateYardSetupService(YardOperationsDbContext context)
     {
         var capacityRepo = new YardCapacityRepository(context);

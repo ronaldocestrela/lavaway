@@ -93,6 +93,24 @@ public sealed class YardSetupApplicationServiceTests
     }
 
     [Fact]
+    public async Task CreateTeamMemberAsync_ShouldAllowMultipleMembersWithoutEmail()
+    {
+        var tenantId = Guid.NewGuid();
+
+        var first = await _service.CreateTeamMemberAsync(tenantId, new CreateTeamMemberCommand("João", "Lavador", null));
+        var second = await _service.CreateTeamMemberAsync(tenantId, new CreateTeamMemberCommand("Maria", "Polidora", string.Empty));
+
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+
+        var members = await _service.ListTeamMembersAsync(tenantId);
+
+        Assert.True(members.IsSuccess);
+        Assert.Equal(2, members.Value!.Count);
+        Assert.All(members.Value!, member => Assert.Null(member.Email));
+    }
+
+    [Fact]
     public async Task UpdateTeamMemberAsync_ShouldUpdate_WhenValid()
     {
         var tenantId = Guid.NewGuid();
@@ -219,9 +237,14 @@ public sealed class YardSetupApplicationServiceTests
             return Task.FromResult(_members.FirstOrDefault(m => m.TenantId == tenantId && m.Id == id));
         }
 
-        public Task<TeamMember?> GetByEmailAsync(Guid tenantId, string email, CancellationToken ct = default)
+        public Task<TeamMember?> GetByEmailAsync(Guid tenantId, string? email, CancellationToken ct = default)
         {
-            return Task.FromResult(_members.FirstOrDefault(m => m.TenantId == tenantId && m.Email.Equals(email, StringComparison.OrdinalIgnoreCase)));
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return Task.FromResult<TeamMember?>(null);
+            }
+
+            return Task.FromResult(_members.FirstOrDefault(m => m.TenantId == tenantId && string.Equals(m.Email, email, StringComparison.OrdinalIgnoreCase)));
         }
 
         public Task AddAsync(TeamMember teamMember, CancellationToken ct = default)

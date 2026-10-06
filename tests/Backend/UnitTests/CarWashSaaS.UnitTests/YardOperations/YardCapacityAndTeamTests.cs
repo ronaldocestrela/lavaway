@@ -81,6 +81,17 @@ public sealed class YardCapacityAndTeamTests
     }
 
     [Fact]
+    public void TeamMember_Create_Should_Succeed_Without_Email()
+    {
+        var tenantId = Guid.NewGuid();
+
+        var result = TeamMember.Create(tenantId, "Carlos Lavador", "Lavador", null);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value!.Email);
+    }
+
+    [Fact]
     public void TeamMember_Create_Should_Reject_Empty_Name()
     {
         var tenantId = Guid.NewGuid();
@@ -116,6 +127,18 @@ public sealed class YardCapacityAndTeamTests
         Assert.Equal("João Silva", member.FullName);
         Assert.Equal("Encarregado", member.Role);
         Assert.Equal("joaosilva@lava.com", member.Email);
+    }
+
+    [Fact]
+    public void TeamMember_Update_Should_Clear_Email_WhenBlank()
+    {
+        var tenantId = Guid.NewGuid();
+        var member = TeamMember.Create(tenantId, "João", "Lavador", "joao@lava.com").Value!;
+
+        var result = member.Update("João Silva", "Encarregado", "   ");
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(member.Email);
     }
 
     [Fact]

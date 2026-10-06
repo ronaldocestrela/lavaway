@@ -258,7 +258,7 @@ public sealed class YardKanbanApplicationServiceTests
         Task<TeamMember?> ITeamMemberRepository.GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct) =>
             Task.FromResult(TeamMembers.FirstOrDefault(m => m.TenantId == tenantId && m.Id == id));
 
-        Task<TeamMember?> ITeamMemberRepository.GetByEmailAsync(Guid tenantId, string email, CancellationToken ct) =>
+        Task<TeamMember?> ITeamMemberRepository.GetByEmailAsync(Guid tenantId, string? email, CancellationToken ct) =>
             Task.FromResult(TeamMembers.FirstOrDefault(m => m.TenantId == tenantId && m.Email == email));
 
         Task<IReadOnlyCollection<TeamMember>> ITeamMemberRepository.ListByTenantAsync(Guid tenantId, CancellationToken ct) =>

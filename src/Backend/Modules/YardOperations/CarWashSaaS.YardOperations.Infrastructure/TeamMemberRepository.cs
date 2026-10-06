@@ -21,8 +21,13 @@ public sealed class TeamMemberRepository(YardOperationsDbContext dbContext) : IT
             .FirstOrDefaultAsync(member => member.TenantId == tenantId && member.Id == id, ct);
     }
 
-    public async Task<TeamMember?> GetByEmailAsync(Guid tenantId, string email, CancellationToken ct = default)
+    public async Task<TeamMember?> GetByEmailAsync(Guid tenantId, string? email, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
         var normalizedEmail = email.Trim();
         return await dbContext.TeamMembers
             .FirstOrDefaultAsync(member => member.TenantId == tenantId && member.Email == normalizedEmail, ct);

@@ -355,7 +355,7 @@ public static class YardOperationsEndpoints
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var command = new CreateTeamMemberCommand(request.FullName, request.Role, request.Email ?? string.Empty);
+            var command = new CreateTeamMemberCommand(request.FullName, request.Role, request.Email);
             var result = await service.CreateTeamMemberAsync(tenantId, command);
             return result.IsSuccess ? Results.Created($"/team-members/{result.Value!.Id}", ToDto(result.Value!)) : result.Error!.Type switch
             {
@@ -621,7 +621,7 @@ public static class YardOperationsEndpoints
         member.Id,
         member.FullName,
         member.Role,
-        member.Email,
+        member.Email ?? string.Empty,
         member.IsActive);
 
     private static CommissionRuleDto ToDto(CommissionRule rule) => new(
@@ -1112,4 +1112,3 @@ public static class YardOperationsEndpoints
         }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
     }
 }
-

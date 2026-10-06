@@ -8,7 +8,7 @@ public sealed class TeamMember : IMustHaveTenant
     {
     }
 
-    private TeamMember(Guid id, Guid tenantId, string fullName, string role, string email)
+    private TeamMember(Guid id, Guid tenantId, string fullName, string role, string? email)
     {
         Id = id;
         TenantId = tenantId;
@@ -28,10 +28,10 @@ public sealed class TeamMember : IMustHaveTenant
 
     public string FullName { get; private set; } = string.Empty;
     public string Role { get; private set; } = string.Empty;
-    public string Email { get; private set; } = string.Empty;
+    public string? Email { get; private set; }
     public bool IsActive { get; private set; }
 
-    public static Result<TeamMember> Create(Guid tenantId, string fullName, string role, string email)
+    public static Result<TeamMember> Create(Guid tenantId, string fullName, string role, string? email)
     {
         if (tenantId == Guid.Empty)
         {
@@ -50,8 +50,8 @@ public sealed class TeamMember : IMustHaveTenant
             return Result<TeamMember>.Failure(new Error("team_member.role.invalid", "A valid role is required.", ErrorType.Validation));
         }
 
-        var normalizedEmail = string.IsNullOrWhiteSpace(email) ? string.Empty : email.Trim();
-        if (normalizedEmail.Length > 200)
+        var normalizedEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        if (normalizedEmail is not null && normalizedEmail.Length > 200)
         {
             return Result<TeamMember>.Failure(new Error("team_member.email.invalid", "Email cannot exceed 200 characters.", ErrorType.Validation));
         }
@@ -64,7 +64,7 @@ public sealed class TeamMember : IMustHaveTenant
         return Result<TeamMember>.Success(new TeamMember(Guid.CreateVersion7(), tenantId, normalizedName, normalizedRole, normalizedEmail));
     }
 
-    public Result<TeamMember> Update(string fullName, string role, string email)
+    public Result<TeamMember> Update(string fullName, string role, string? email)
     {
         var normalizedName = string.IsNullOrWhiteSpace(fullName) ? string.Empty : fullName.Trim();
         if (normalizedName.Length is 0 or > 200)
@@ -78,8 +78,8 @@ public sealed class TeamMember : IMustHaveTenant
             return Result<TeamMember>.Failure(new Error("team_member.role.invalid", "A valid role is required.", ErrorType.Validation));
         }
 
-        var normalizedEmail = string.IsNullOrWhiteSpace(email) ? string.Empty : email.Trim();
-        if (normalizedEmail.Length > 200)
+        var normalizedEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        if (normalizedEmail is not null && normalizedEmail.Length > 200)
         {
             return Result<TeamMember>.Failure(new Error("team_member.email.invalid", "Email cannot exceed 200 characters.", ErrorType.Validation));
         }
