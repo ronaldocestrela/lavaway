@@ -1,6 +1,6 @@
+using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.WhatsApp.Application;
 using CarWashSaaS.WhatsApp.Domain;
-using CarWashSaaS.Shared.Contracts;
 
 namespace CarWashSaaS.UnitTests.WhatsApp;
 
