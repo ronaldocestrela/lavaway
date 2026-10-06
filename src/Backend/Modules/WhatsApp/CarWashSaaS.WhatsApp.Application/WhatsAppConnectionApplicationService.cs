@@ -65,7 +65,13 @@ public sealed class WhatsAppConnectionApplicationService(
             return Result<WhatsAppConnection>.Success(existingConnection);
         }
 
-        var pairing = await _pairingProvider.GeneratePairingAsync(tenantId, ct);
+        var pairingResult = await _pairingProvider.GeneratePairingAsync(tenantId, ct);
+        if (!pairingResult.IsSuccess)
+        {
+            return Result<WhatsAppConnection>.Failure(pairingResult.Error!);
+        }
+
+        var pairing = pairingResult.Value;
         var connectionResult = WhatsAppConnection.Create(tenantId, pairing.ProviderSessionId, pairing.QrCodeValue);
         if (!connectionResult.IsSuccess)
         {
@@ -101,7 +107,13 @@ public sealed class WhatsAppConnectionApplicationService(
             return Result<WhatsAppConnection>.Failure(new Error("whatsapp.not_found", "No WhatsApp pairing session was found for this tenant.", ErrorType.NotFound));
         }
 
-        var pairing = await _pairingProvider.GeneratePairingAsync(tenantId, ct);
+        var pairingResult = await _pairingProvider.GeneratePairingAsync(tenantId, ct);
+        if (!pairingResult.IsSuccess)
+        {
+            return Result<WhatsAppConnection>.Failure(pairingResult.Error!);
+        }
+
+        var pairing = pairingResult.Value;
         var refreshed = connection.RefreshSession(pairing.ProviderSessionId, pairing.QrCodeValue);
         if (!refreshed.IsSuccess)
         {

@@ -42,7 +42,8 @@ A solução inicial usava um provedor estático para manter a API funcional. Iss
 - O serviço local fixa `evoapicloud/evolution-api:v2.3.7`; tags mutáveis como `latest` não são usadas.
 - A instalação utiliza PostgreSQL para persistir metadados das instâncias e Redis para cache, além do volume de arquivos das instâncias. As conexões internas dos bancos não são publicadas no host.
 - A API envia os formatos v2 para texto (`number`, `text`) e mídia (`number`, `mediatype`, `mimetype`, `media`, `caption`, `fileName`).
-- A criação da instância usa os campos `Integration`, `webhookUrl`, `webhookByEvents` e `webhookEvents` definidos pelo contrato v2.3.7.
+- A criação da instância usa `integration` em minúsculas e configura callbacks pelo objeto `webhook` aninhado (`enabled`, `url`, `byEvents`, `base64` e `events`), como esperado pelo DTO v2.3.7.
+- Erros HTTP, falhas de rede e respostas sem QR real são retornados como falhas do provider; nenhum QR sintético é persistido nem exibido como se viesse da Evolution API.
 - A URL configurada diretamente na instância transporta o segredo em query string porque o contrato de configuração do webhook não define headers arbitrários. Em produção, usar HTTPS e impedir que a URL completa seja registrada nos logs; um proxy pode ser usado para converter o segredo em header caso necessário.
 - As mensagens recebidas pela Evolution não são persistidas no PostgreSQL dela; a aplicação mantém seu armazenamento e processamento próprios.
 - A alteração de armazenamento não converte automaticamente o estado antigo de instâncias. Em atualizações de instalações existentes, preservar o volume `evolution-instances`, fazer backup de todos os volumes e validar a recuperação das sessões antes do uso.

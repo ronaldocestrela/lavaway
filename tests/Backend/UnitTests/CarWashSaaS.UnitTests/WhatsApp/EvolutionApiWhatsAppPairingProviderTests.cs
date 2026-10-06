@@ -15,7 +15,7 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent("{\"qrcode\":\"data:image/png;base64,test-qr\",\"instance\":{\"name\":\"tenant-123\"}}", Encoding.UTF8, "application/json")
+                Content = new StringContent("{\"qrcode\":{\"code\":\"2@raw-pairing-code\",\"base64\":\"data:image/png;base64,test-qr\"},\"instance\":{\"name\":\"tenant-123\"}}", Encoding.UTF8, "application/json")
             });
 
         var client = new HttpClient(handler)
@@ -31,22 +31,25 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
 
         var result = await provider.GeneratePairingAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
 
-        Assert.Equal("lavaway-11111111111111111111111111111111", result.ProviderSessionId);
-        Assert.Equal("data:image/png;base64,test-qr", result.QrCodeValue);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("lavaway-11111111111111111111111111111111", result.Value.ProviderSessionId);
+        Assert.Equal("2@raw-pairing-code", result.Value.QrCodeValue);
         Assert.NotNull(handler.LastRequestBody);
         using var requestJson = System.Text.Json.JsonDocument.Parse(handler.LastRequestBody);
         var requestRoot = requestJson.RootElement;
-        Assert.Equal("WHATSAPP-BAILEYS", requestRoot.GetProperty("Integration").GetString());
+        Assert.Equal("WHATSAPP-BAILEYS", requestRoot.GetProperty("integration").GetString());
         Assert.True(requestRoot.GetProperty("qrcode").GetBoolean());
-        Assert.Equal("http://host.docker.internal:5225/whatsapp/webhooks/evolution", requestRoot.GetProperty("webhookUrl").GetString());
-        Assert.False(requestRoot.GetProperty("webhookByEvents").GetBoolean());
-        Assert.Equal(4, requestRoot.GetProperty("webhookEvents").GetArrayLength());
-        Assert.False(requestRoot.TryGetProperty("integration", out _));
-        Assert.False(requestRoot.TryGetProperty("webhook", out _));
+        var webhook = requestRoot.GetProperty("webhook");
+        Assert.True(webhook.GetProperty("enabled").GetBoolean());
+        Assert.Equal("http://host.docker.internal:5225/whatsapp/webhooks/evolution", webhook.GetProperty("url").GetString());
+        Assert.False(webhook.GetProperty("byEvents").GetBoolean());
+        Assert.Equal(4, webhook.GetProperty("events").GetArrayLength());
+        Assert.False(requestRoot.TryGetProperty("Integration", out _));
+        Assert.False(requestRoot.TryGetProperty("webhookUrl", out _));
     }
 
     [Fact]
-    public async Task GeneratePairingAsync_Should_Return_Fallback_When_Network_Fails()
+    public async Task GeneratePairingAsync_Should_Return_Failure_When_Network_Fails()
     {
         var handler = new ExceptionHttpMessageHandler(new HttpRequestException("Connection refused"));
         var client = new HttpClient(handler)
@@ -59,8 +62,8 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
 
         var result = await provider.GeneratePairingAsync(tenantId);
 
-        Assert.Equal("lavaway-11111111111111111111111111111111", result.ProviderSessionId);
-        Assert.StartsWith("evolution:lavaway-11111111111111111111111111111111:", result.QrCodeValue);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.provider.network_error", result.Error!.Code);
     }
 
     [Fact]
@@ -97,8 +100,9 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
 
         var result = await provider.GeneratePairingAsync(tenantId);
 
-        Assert.Equal("lavaway-11111111111111111111111111111111", result.ProviderSessionId);
-        Assert.Equal("2@raw-pairing-code", result.QrCodeValue);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("lavaway-11111111111111111111111111111111", result.Value.ProviderSessionId);
+        Assert.Equal("2@raw-pairing-code", result.Value.QrCodeValue);
     }
 
     [Fact]
@@ -120,8 +124,44 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
 
         var result = await provider.GeneratePairingAsync(tenantId);
 
-        Assert.Equal("lavaway-11111111111111111111111111111111", result.ProviderSessionId);
-        Assert.Equal("2@baileys-code", result.QrCodeValue);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("lavaway-11111111111111111111111111111111", result.Value.ProviderSessionId);
+        Assert.Equal("2@baileys-code", result.Value.QrCodeValue);
+    }
+
+    [Fact]
+    public async Task GeneratePairingAsync_Should_Return_Failure_When_Evolution_Returns_No_Real_QrCode()
+    {
+        var handler = new DynamicHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.Created)
+            {
+                Content = new StringContent("{\"instance\":{\"instanceName\":\"lavaway-11111111111111111111111111111111\"},\"qrcode\":null}", Encoding.UTF8, "application/json")
+            });
+        var client = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8080/") };
+        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+
+        var result = await provider.GeneratePairingAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.provider.qr_code_unavailable", result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task GeneratePairingAsync_Should_Not_Connect_When_Create_Fails_With_Invalid_Instance_Payload()
+    {
+        var handler = new DynamicHttpMessageHandler(request =>
+            new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent("{\"error\":\"Bad Request\",\"message\":\"Invalid integration\"}", Encoding.UTF8, "application/json")
+            });
+        var client = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8080/") };
+        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+
+        var result = await provider.GeneratePairingAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.provider.http_error", result.Error!.Code);
+        Assert.Equal(HttpMethod.Post, handler.LastMethod);
     }
 
     [Fact]
@@ -177,8 +217,13 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
 
     private sealed class DynamicHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) : HttpMessageHandler
     {
+        public HttpMethod? LastMethod { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(handler(request));
+        {
+            LastMethod = request.Method;
+            return Task.FromResult(handler(request));
+        }
     }
 
     private sealed class ExceptionHttpMessageHandler(Exception exception) : HttpMessageHandler

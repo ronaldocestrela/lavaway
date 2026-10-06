@@ -1,6 +1,8 @@
+using CarWashSaaS.Shared.Contracts;
+
 namespace CarWashSaaS.WhatsApp.Application;
 
 public interface IWhatsAppPairingProvider
 {
-    Task<(string ProviderSessionId, string QrCodeValue)> GeneratePairingAsync(Guid tenantId, CancellationToken ct = default);
+    Task<Result<(string ProviderSessionId, string QrCodeValue)>> GeneratePairingAsync(Guid tenantId, CancellationToken ct = default);
 }

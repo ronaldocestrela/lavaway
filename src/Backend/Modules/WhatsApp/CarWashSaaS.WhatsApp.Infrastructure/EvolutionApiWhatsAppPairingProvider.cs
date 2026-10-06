@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.WhatsApp.Application;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,7 +42,7 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
         _webhookUrl = webhookUrl;
     }
 
-    public async Task<(string ProviderSessionId, string QrCodeValue)> GeneratePairingAsync(Guid tenantId, CancellationToken ct = default)
+    public async Task<Result<(string ProviderSessionId, string QrCodeValue)>> GeneratePairingAsync(Guid tenantId, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -49,7 +50,6 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
 
         try
         {
-            // 1. Try to create the instance (or check if it exists)
             var createRequest = new HttpRequestMessage(HttpMethod.Post, "instance/create");
             createRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             createRequest.Headers.Add("apikey", _apiKey);
@@ -58,19 +58,24 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
             {
                 ["instanceName"] = instanceName,
                 ["qrcode"] = true,
-                ["Integration"] = "WHATSAPP-BAILEYS"
+                ["integration"] = "WHATSAPP-BAILEYS"
             };
 
             if (!string.IsNullOrWhiteSpace(_webhookUrl))
             {
-                createPayload["webhookUrl"] = _webhookUrl;
-                createPayload["webhookByEvents"] = false;
-                createPayload["webhookEvents"] = new[]
+                createPayload["webhook"] = new
                 {
-                    "CONNECTION_UPDATE",
-                    "MESSAGES_UPSERT",
-                    "MESSAGES_UPDATE",
-                    "SEND_MESSAGE"
+                    enabled = true,
+                    url = _webhookUrl,
+                    byEvents = false,
+                    base64 = false,
+                    events = new[]
+                    {
+                        "CONNECTION_UPDATE",
+                        "MESSAGES_UPSERT",
+                        "MESSAGES_UPDATE",
+                        "SEND_MESSAGE"
+                    }
                 };
             }
 
@@ -89,12 +94,21 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
                     var qrCode = ExtractQrCodeValue(responseBody);
                     if (!string.IsNullOrWhiteSpace(qrCode))
                     {
-                        return (instanceName, qrCode);
+                        return Result<(string ProviderSessionId, string QrCodeValue)>.Success((instanceName, qrCode));
                     }
+
+                    if (TryGetProviderError(responseBody, out var providerError))
+                    {
+                        return ProviderFailure("whatsapp.provider.error", providerError, ErrorType.Unavailable);
+                    }
+                }
+                else if (createResponse.StatusCode is not (System.Net.HttpStatusCode.Forbidden
+                             or System.Net.HttpStatusCode.Conflict))
+                {
+                    return CreateHttpFailure(createResponse.StatusCode, responseBody);
                 }
             }
 
-            // 2. If instance already existed (403/400) or QR code was not ready yet, query GET instance/connect/{instanceName}
             var connectRequest = new HttpRequestMessage(HttpMethod.Get, $"instance/connect/{instanceName}");
             connectRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             connectRequest.Headers.Add("apikey", _apiKey);
@@ -109,17 +123,75 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
                     var qrCode = ExtractQrCodeValue(responseBody);
                     if (!string.IsNullOrWhiteSpace(qrCode))
                     {
-                        return (instanceName, qrCode);
+                        return Result<(string ProviderSessionId, string QrCodeValue)>.Success((instanceName, qrCode));
                     }
+
+                    if (TryGetProviderError(responseBody, out var providerError))
+                    {
+                        return ProviderFailure("whatsapp.provider.error", providerError, ErrorType.Unavailable);
+                    }
+                }
+                else
+                {
+                    return CreateHttpFailure(connectResponse.StatusCode, responseBody);
                 }
             }
 
-            return (instanceName, $"evolution:{instanceName}:{DateTime.UtcNow:O}");
+            return ProviderFailure(
+                "whatsapp.provider.qr_code_unavailable",
+                "Evolution API did not return a QR code for the WhatsApp instance.",
+                ErrorType.Unavailable);
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
-            var fallbackQr = $"evolution:{instanceName}:{DateTime.UtcNow:O}";
-            return (instanceName, fallbackQr);
+            return ProviderFailure("whatsapp.provider.network_error", ex.Message, ErrorType.Unavailable);
+        }
+    }
+
+    private static Result<(string ProviderSessionId, string QrCodeValue)> CreateHttpFailure(
+        System.Net.HttpStatusCode statusCode,
+        string responseBody)
+        => ProviderFailure(
+            "whatsapp.provider.http_error",
+            $"Evolution API returned status {(int)statusCode}: {responseBody}",
+            ErrorType.Unavailable);
+
+    private static Result<(string ProviderSessionId, string QrCodeValue)> ProviderFailure(
+        string code,
+        string description,
+        ErrorType type)
+        => Result<(string ProviderSessionId, string QrCodeValue)>.Failure(new Error(code, description, type));
+
+    private static bool TryGetProviderError(string responseBody, out string message)
+    {
+        message = string.Empty;
+        if (string.IsNullOrWhiteSpace(responseBody))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(responseBody);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object ||
+                !root.TryGetProperty("error", out var errorElement) ||
+                errorElement.ValueKind is not (JsonValueKind.True or JsonValueKind.String))
+            {
+                return false;
+            }
+
+            message = root.TryGetProperty("message", out var messageElement) &&
+                      messageElement.ValueKind == JsonValueKind.String
+                ? messageElement.GetString() ?? "Evolution API reported an error."
+                : errorElement.ValueKind == JsonValueKind.String
+                    ? errorElement.GetString() ?? "Evolution API reported an error."
+                    : "Evolution API reported an error.";
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 

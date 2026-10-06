@@ -226,6 +226,7 @@ public static class WhatsAppEndpoints
                 {
                     ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                     ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Unavailable => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status502BadGateway),
                     _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
                 };
             }
@@ -252,6 +253,7 @@ public static class WhatsAppEndpoints
                 {
                     ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                     ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Unavailable => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status502BadGateway),
                     _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
                 };
             }
