@@ -61,9 +61,30 @@
         </div>
     }
 
-    <!-- Columns Grid -->
-    <div class="columns-grid">
+    <!-- Mobile Column Tabs Selector -->
+    <div class="mobile-kanban-tabs" role="tablist" aria-label="Filtro de etapas do pátio">
+        <button type="button"
+                role="tab"
+                class="mobile-kanban-tab @(_selectedMobileStatus is null ? "active" : "")"
+                @onclick="() => _selectedMobileStatus = null">
+            <span>Todas</span>
+            <span class="tab-badge">@GetTotalActiveCardsCount()</span>
+        </button>
         @foreach (var col in FilteredColumns)
+        {
+            <button type="button"
+                    role="tab"
+                    class="mobile-kanban-tab @(_selectedMobileStatus == col.Status ? "active" : "")"
+                    @onclick="() => _selectedMobileStatus = col.Status">
+                <span>@col.Title</span>
+                <span class="tab-badge">@col.CardCount</span>
+            </button>
+        }
+    </div>
+
+    <!-- Columns Grid -->
+    <div class="columns-grid @(_selectedMobileStatus is not null ? "single-column-view" : "")">
+        @foreach (var col in DisplayedColumns)
         {
             <YardKanbanColumn Column="col"
                               OnCardDragStarted="HandleCardDragStarted"
@@ -309,6 +330,25 @@
     }
 
     private bool _isProcessingAction;
+    private string? _selectedMobileStatus;
+
+    private int GetTotalActiveCardsCount()
+    {
+        return Board?.Columns.Sum(c => c.Cards.Count(card => !card.PickedUpAtUtc.HasValue)) ?? 0;
+    }
+
+    private IEnumerable<YardKanbanColumnDto> DisplayedColumns
+    {
+        get
+        {
+            var cols = FilteredColumns;
+            if (string.IsNullOrEmpty(_selectedMobileStatus))
+            {
+                return cols;
+            }
+            return cols.Where(c => c.Status == _selectedMobileStatus);
+        }
+    }
 
     private IEnumerable<YardKanbanColumnDto> FilteredColumns
     {

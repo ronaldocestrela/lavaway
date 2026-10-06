@@ -470,6 +470,11 @@
     color: #9cb2a7;
 }
 
+/* Mobile Kanban Tabs (oculto no desktop) */
+.mobile-kanban-tabs {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .kanban-toolbar,
     .toolbar-left,
@@ -496,8 +501,78 @@
         align-items: center;
     }
 
+    /* Tabs mobile para navegar entre etapas rapidamente */
+    .mobile-kanban-tabs {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 4px 2px 8px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .mobile-kanban-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .mobile-kanban-tab {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 38px;
+        padding: 0 12px;
+        border-radius: 20px;
+        border: 1px solid #dce5de;
+        background: #ffffff;
+        color: #365148;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.16s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-kanban-tab:active {
+        transform: scale(0.96);
+    }
+
+    .mobile-kanban-tab.active {
+        background: #18302b;
+        color: #c6f277;
+        border-color: #18302b;
+        box-shadow: 0 2px 8px rgba(24, 48, 43, 0.2);
+    }
+
+    .tab-badge {
+        display: inline-grid;
+        place-items: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        border-radius: 9px;
+        background: #eef3ef;
+        color: #243631;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    .mobile-kanban-tab.active .tab-badge {
+        background: #c6f277;
+        color: #122421;
+    }
+
     .columns-grid {
         scroll-snap-type: x proximity;
+    }
+
+    .columns-grid.single-column-view {
+        display: block;
+    }
+
+    .columns-grid.single-column-view ::deep .kanban-column {
+        min-width: 100%;
+        max-width: 100%;
     }
 
     .modal-header,
