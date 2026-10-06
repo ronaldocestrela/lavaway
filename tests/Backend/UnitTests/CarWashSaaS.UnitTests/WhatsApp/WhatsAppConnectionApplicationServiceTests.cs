@@ -73,13 +73,33 @@ public sealed class WhatsAppConnectionApplicationServiceTests
         var connection = WhatsAppConnection.Create(tenantId, "session-123", "qr-123").Value!;
         connection.MarkConnected();
         var repository = new InMemoryWhatsAppConnectionRepository(connection);
-        var service = new WhatsAppConnectionApplicationService(repository);
+        var provider = new FakePairingProvider();
+        var service = new WhatsAppConnectionApplicationService(repository, provider);
 
         var result = await service.DisconnectAsync(tenantId);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal("session-123", provider.DisconnectedSessionId);
         Assert.Equal(WhatsAppConnectionStatus.Disconnected, result.Value!.Status);
         Assert.Equal(WhatsAppConnectionStatus.Disconnected, connection.Status);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_Should_Keep_Connection_Active_When_Provider_Disconnect_Fails()
+    {
+        var tenantId = Guid.NewGuid();
+        var connection = WhatsAppConnection.Create(tenantId, "session-123", "qr-123").Value!;
+        connection.MarkConnected();
+        var repository = new InMemoryWhatsAppConnectionRepository(connection);
+        var provider = new FakePairingProvider(disconnectFail: true);
+        var service = new WhatsAppConnectionApplicationService(repository, provider);
+
+        var result = await service.DisconnectAsync(tenantId);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.provider.network_error", result.Error!.Code);
+        Assert.Equal(WhatsAppConnectionStatus.Connected, connection.Status);
+        Assert.Equal(0, repository.UpdateCount);
     }
 
     [Fact]
@@ -111,6 +131,8 @@ public sealed class WhatsAppConnectionApplicationServiceTests
     {
         private WhatsAppConnection? _connection;
 
+        public int UpdateCount { get; private set; }
+
         public InMemoryWhatsAppConnectionRepository(WhatsAppConnection? connection = null)
         {
             _connection = connection;
@@ -128,6 +150,7 @@ public sealed class WhatsAppConnectionApplicationServiceTests
         public Task UpdateAsync(WhatsAppConnection connection, CancellationToken ct = default)
         {
             _connection = connection;
+            UpdateCount++;
             return Task.CompletedTask;
         }
     }
@@ -135,12 +158,23 @@ public sealed class WhatsAppConnectionApplicationServiceTests
     private sealed class FakePairingProvider(
         string providerSessionId = "provider-session-123",
         string qrCodeValue = "provider-qr-123",
-        bool fail = false) : IWhatsAppPairingProvider
+        bool fail = false,
+        bool disconnectFail = false) : IWhatsAppPairingProvider
     {
+        public string? DisconnectedSessionId { get; private set; }
+
         public Task<Result<(string ProviderSessionId, string QrCodeValue)>> GeneratePairingAsync(Guid tenantId, CancellationToken ct = default)
             => Task.FromResult(fail
                 ? Result<(string ProviderSessionId, string QrCodeValue)>.Failure(
                     new Error("whatsapp.provider.network_error", "Provider is unreachable.", ErrorType.Unavailable))
                 : Result<(string ProviderSessionId, string QrCodeValue)>.Success((providerSessionId, qrCodeValue)));
+
+        public Task<Result> DisconnectAsync(string providerSessionId, CancellationToken ct = default)
+        {
+            DisconnectedSessionId = providerSessionId;
+            return Task.FromResult(disconnectFail
+                ? Result.Failure(new Error("whatsapp.provider.network_error", "Provider is unreachable.", ErrorType.Unavailable))
+                : Result.Success());
+        }
     }
 }

@@ -165,6 +165,60 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
     }
 
     [Fact]
+    public async Task DisconnectAsync_Should_Logout_Tenant_Instance_In_Evolution_Api()
+    {
+        var handler = new DynamicHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:8080/")
+        };
+        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+        var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        var result = await provider.DisconnectAsync("lavaway-11111111111111111111111111111111");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(HttpMethod.Delete, handler.LastMethod);
+        Assert.Equal("/instance/logout/lavaway-11111111111111111111111111111111", handler.LastRequestPath);
+        Assert.Equal("test-key", handler.LastApiKey);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_Should_Return_Failure_When_Evolution_Api_Rejects_Logout()
+    {
+        var handler = new DynamicHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent("{\"message\":\"Logout failed\"}", Encoding.UTF8, "application/json")
+        });
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:8080/")
+        };
+        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+
+        var result = await provider.DisconnectAsync("lavaway-11111111111111111111111111111111");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.provider.http_error", result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_Should_Return_Failure_When_Network_Fails()
+    {
+        var handler = new ExceptionHttpMessageHandler(new HttpRequestException("Connection refused"));
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:8080/")
+        };
+        var provider = new EvolutionApiWhatsAppPairingProvider(client, "test-key", "lavaway");
+
+        var result = await provider.DisconnectAsync("lavaway-11111111111111111111111111111111");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("whatsapp.provider.network_error", result.Error!.Code);
+    }
+
+    [Fact]
     public void DependencyInjection_Should_Resolve_EvolutionApiWhatsAppPairingProvider_Without_Ambiguity()
     {
         var services = new ServiceCollection();
@@ -218,10 +272,14 @@ public sealed class EvolutionApiWhatsAppPairingProviderTests
     private sealed class DynamicHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) : HttpMessageHandler
     {
         public HttpMethod? LastMethod { get; private set; }
+        public string? LastRequestPath { get; private set; }
+        public string? LastApiKey { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastMethod = request.Method;
+            LastRequestPath = request.RequestUri?.AbsolutePath;
+            LastApiKey = request.Headers.TryGetValues("apikey", out var values) ? values.Single() : null;
             return Task.FromResult(handler(request));
         }
     }

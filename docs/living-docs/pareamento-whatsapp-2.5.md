@@ -46,11 +46,15 @@ sequenceDiagram
     Gestor->>Client: DisconnectAsync()
     Client->>API: POST /whatsapp/pairing/disconnect [Role: Administrator]
     API->>App: DisconnectAsync(tenantId)
+    App->>Evolution: DELETE /instance/logout/{providerSessionId}
+    Evolution-->>App: Confirma logout da instância
     App->>DB: Atualiza WhatsAppConnection (Status = Disconnected)
     App-->>API: Result.Success(WhatsAppConnection)
     API-->>Client: 200 OK (WhatsAppConnectionDto: Disconnected)
     Client-->>Gestor: Exibe tela Desconectada
 ```
+
+Se a Evolution API falhar ou rejeitar o logout, a aplicação mantém o estado local e retorna erro `502`; só confirma `Disconnected` após a resposta de sucesso do provedor.
 
 ## Regras de Negócio e Arquitetura
 
@@ -69,7 +73,7 @@ sequenceDiagram
 4. **Ciclo de Vida Completo**:
    - `StartPairingAsync`: Cria nova conexão ou atualiza sessão pendente. Se já estiver conectada, retorna o estado ativo sem recriar instância.
    - `RefreshPairingAsync`: Atualiza o QR Code expirado preservando o isolamento do tenant.
-   - `DisconnectAsync`: Desvincula a instância atual marcando-a como `Disconnected`.
+   - `DisconnectAsync`: Solicita logout da sessão existente na Evolution API usando o `ProviderSessionId` persistido e marca-a localmente como `Disconnected` somente após o sucesso do provedor.
    - Webhook `CONNECTION_UPDATE`: Atualiza para `Connected` quando o provider reportar `"open"` ou `"connected"`; atualiza para `Disconnected` quando `"close"`, `"closed"` ou `"disconnected"`. Eventos de instâncias antigas são ignorados para prevenir race conditions.
 
 5. **Interface do Usuário Blazor WebAssembly**:

@@ -42,6 +42,56 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
         _webhookUrl = webhookUrl;
     }
 
+    public async Task<Result> DisconnectAsync(string providerSessionId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(providerSessionId))
+        {
+            return Result.Failure(new Error(
+                "whatsapp.provider_session.invalid",
+                "A valid provider session is required.",
+                ErrorType.Validation));
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        try
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                $"instance/logout/{Uri.EscapeDataString(providerSessionId)}");
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            request.Headers.Add("apikey", _apiKey);
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result.Failure(new Error(
+                    "whatsapp.provider.http_error",
+                    $"Evolution API returned status {(int)response.StatusCode}: {responseBody}",
+                    ErrorType.Unavailable));
+            }
+
+            if (TryGetProviderError(responseBody, out var providerError))
+            {
+                return Result.Failure(new Error(
+                    "whatsapp.provider.error",
+                    providerError,
+                    ErrorType.Unavailable));
+            }
+
+            return Result.Success();
+        }
+        catch (HttpRequestException ex)
+        {
+            return Result.Failure(new Error(
+                "whatsapp.provider.network_error",
+                ex.Message,
+                ErrorType.Unavailable));
+        }
+    }
+
     public async Task<Result<(string ProviderSessionId, string QrCodeValue)>> GeneratePairingAsync(Guid tenantId, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();

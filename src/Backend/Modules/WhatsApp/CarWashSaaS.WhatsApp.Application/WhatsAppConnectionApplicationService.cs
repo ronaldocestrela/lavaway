@@ -46,6 +46,12 @@ public sealed class WhatsAppConnectionApplicationService(
             return Result<WhatsAppConnection>.Failure(new Error("whatsapp.not_found", "No WhatsApp connection was found for this tenant.", ErrorType.NotFound));
         }
 
+        var providerResult = await _pairingProvider.DisconnectAsync(connection.ProviderSessionId, ct);
+        if (!providerResult.IsSuccess)
+        {
+            return Result<WhatsAppConnection>.Failure(providerResult.Error!);
+        }
+
         connection.MarkDisconnected();
         await repository.UpdateAsync(connection, ct);
 

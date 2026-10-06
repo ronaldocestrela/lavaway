@@ -16,6 +16,7 @@ A solução inicial usava um provedor estático para manter a API funcional. Iss
 - O provedor adotado será a Evolution API, com a configuração centralizada em `WhatsApp:EvolutionApi`.
 - Para cada tenant, o provedor usa um identificador de sessão no formato `prefixo-tenantId` para manter a sessão única e rastreável.
 - O QR Code e o estado da sessão são obtidos em tempo de execução pelo cliente HTTP do provedor, sem acoplamento às entidades de domínio.
+- A desconexão usa o `ProviderSessionId` persistido para chamar `DELETE /instance/logout/{instanceName}` na Evolution API. O estado local só muda após a confirmação; falhas externas retornam `Unavailable`.
 - A API do backend continua configurando a implementação via DI, mantendo a injeção de dependência e o contrato do módulo.
 - Atualizações de conexão chegam pelo endpoint anônimo `POST /whatsapp/webhooks/evolution`, protegido por segredo compartilhado em `X-Webhook-Secret` quando encaminhado por header, ou por parâmetro `secret` na URL no callback direto da Evolution API.
 - O tenant do callback é resolvido do nome da instância, nunca de um campo de tenant enviado no payload. O caso de uso valida que o evento pertence à sessão atual antes de atualizar o estado.
@@ -26,7 +27,7 @@ A solução inicial usava um provedor estático para manter a API funcional. Iss
 - O fluxo de aplicação continua retornando `Result<T>` e preserva a regra de multi-tenant.
 - Eventos atrasados de uma sessão anterior são reconhecidos e confirmados sem modificar a conexão atual, evitando retentativas desnecessárias do provider.
 - O segredo do webhook é uma configuração obrigatória para ativar o endpoint e deve ser fornecido pelo ambiente, nunca com valor padrão compartilhado.
-- O provedor externo pode evoluir independentemente, desde que continue respeitando o contrato de `GeneratePairingAsync`.
+- O provedor externo pode evoluir independentemente, desde que continue respeitando os contratos de geração de pareamento e desconexão.
 - Qualquer falha de comunicação com a Evolution API deve produzir comportamento controlado e não quebrar a pipeline de negócio.
 - Os testes automatizados devem continuar cobrindo o contrato do provedor, a lógica da aplicação e a proteção de tenant.
 
