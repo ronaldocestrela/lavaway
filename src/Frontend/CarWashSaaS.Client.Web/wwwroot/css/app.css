@@ -10,6 +10,12 @@ a, .btn-link {
     color: #0071c1;
 }
 
+.mobile-bottom-nav a,
+.mobile-bottom-nav .bottom-nav-item {
+    color: #8ea39b;
+    text-decoration: none;
+}
+
 .btn-primary {
     color: #fff;
     background-color: #1b6ec2;
