@@ -106,7 +106,7 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
             {
                 mediatype = mediaType,
                 caption = caption ?? string.Empty,
-                media = mediaBase64OrUrl,
+                media = NormalizeMedia(mediaBase64OrUrl),
                 fileName = fileName
             }
         });
@@ -138,6 +138,21 @@ public sealed class EvolutionApiWhatsAppMessageSender : IWhatsAppMessageSender
         }
     }
 
+
+    // Evolution API v2 aceita apenas URL ou base64 puro (sem prefixo "data:...;base64,").
+    private static string NormalizeMedia(string media)
+    {
+        if (media.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            var marker = media.IndexOf("base64,", StringComparison.OrdinalIgnoreCase);
+            if (marker >= 0)
+            {
+                return media[(marker + "base64,".Length)..];
+            }
+        }
+
+        return media;
+    }
 
     private static string ExtractMessageId(string responseBody)
     {
