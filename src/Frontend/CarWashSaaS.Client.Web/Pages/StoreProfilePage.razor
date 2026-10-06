@@ -12,27 +12,21 @@
 <PageTitle>Perfil do Estabelecimento | Lavaway</PageTitle>
 
 <section class="profile-page">
-    <div class="page-heading">
-        <div>
-            <div class="eyebrow">
-                <span class="eyebrow-mark"></span>
-                <span>CONFIGURAÇÕES GERAIS</span>
-            </div>
-            <h1>Perfil do Estabelecimento</h1>
-            <p class="page-subtitle">Gerencie os dados cadastrais, CNPJ, endereço e a identidade visual da sua unidade.</p>
-        </div>
-        @if (_currentProfile is not null && !_isEditing)
-        {
-            <div class="heading-actions">
+    <PageHeading Eyebrow="CONFIGURAÇÕES GERAIS"
+                 Title="Perfil do Estabelecimento"
+                 Subtitle="Gerencie os dados cadastrais, CNPJ, endereço e a identidade visual da sua unidade.">
+        <Actions>
+            @if (_currentProfile is not null && !_isEditing)
+            {
                 <button type="button" class="button button-secondary" @onclick="() => _showReceiptPreview = !_showReceiptPreview">
                     <span>@(_showReceiptPreview ? "Ocultar Prévia" : "Visualizar Comprovante / Link")</span>
                 </button>
                 <button type="button" class="button button-primary" @onclick="() => _isEditing = true">
                     <span>Editar Perfil & Marca</span>
                 </button>
-            </div>
-        }
-    </div>
+            }
+        </Actions>
+    </PageHeading>
 
     @if (_isLoading)
     {

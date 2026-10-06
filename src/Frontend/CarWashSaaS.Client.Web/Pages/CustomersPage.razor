@@ -9,21 +9,16 @@
 @inject ReceptionSessionState ReceptionState
 
 <div class="customers-page">
-    <header class="page-heading">
-        <div>
-            <div class="eyebrow">
-                <span class="eyebrow-mark"></span>
-                <span>GESTÃO DE CLIENTES &amp; VEÍCULOS</span>
-            </div>
-            <h1>Clientes e Veículos</h1>
-            <p class="page-subtitle">Consulte o histórico, atualize dados de contato como telefone e gerencie os veículos associados.</p>
-        </div>
-
-        <button class="button button-primary" type="button" @onclick="OpenCreateCustomerModal" id="btn-open-create-customer">
-            <span class="button-plus">+</span>
-            <span>Novo Cliente</span>
-        </button>
-    </header>
+    <PageHeading Eyebrow="GESTÃO DE CLIENTES &amp; VEÍCULOS"
+                 Title="Clientes e Veículos"
+                 Subtitle="Consulte o histórico, atualize dados de contato como telefone e gerencie os veículos associados.">
+        <Actions>
+            <button class="button button-primary" type="button" @onclick="OpenCreateCustomerModal" id="btn-open-create-customer">
+                <span class="button-plus">+</span>
+                <span>Novo Cliente</span>
+            </button>
+        </Actions>
+    </PageHeading>
 
     <div class="customers-layout">
         <!-- Coluna da Esquerda: Busca e Lista de Clientes -->

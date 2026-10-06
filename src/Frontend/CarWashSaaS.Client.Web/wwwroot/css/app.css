@@ -120,6 +120,38 @@ code {
     background: #f2f6f2;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
+    --lw-color-canvas: #f2f6f2;
+    --lw-color-surface: #ffffff;
+    --lw-color-surface-muted: #f8fafc;
+    --lw-color-text: #20352f;
+    --lw-color-text-muted: #77867f;
+    --lw-color-text-subtle: #94a3b8;
+    --lw-color-border: #e1e9e3;
+    --lw-color-border-strong: #d8e3db;
+    --lw-color-primary: #c6f277;
+    --lw-color-primary-hover: #b6e564;
+    --lw-color-primary-ink: #17332c;
+    --lw-color-accent: #10b981;
+    --lw-color-success: #047857;
+    --lw-color-success-surface: #ecfdf5;
+    --lw-color-warning: #92400e;
+    --lw-color-warning-surface: #fffbeb;
+    --lw-color-danger: #b91c1c;
+    --lw-color-danger-surface: #fef2f2;
+    --lw-color-info: #1d4ed8;
+    --lw-color-info-surface: #eff6ff;
+    --lw-radius-control: 6px;
+    --lw-radius-card: 8px;
+    --lw-radius-panel: 12px;
+    --lw-shadow-card: 0 2px 6px rgba(30, 53, 43, 0.04);
+    --lw-shadow-panel: 0 10px 30px rgba(30, 53, 43, 0.06);
+    --lw-focus-ring: 3px solid #dfa449;
+    --lw-space-1: 4px;
+    --lw-space-2: 8px;
+    --lw-space-3: 12px;
+    --lw-space-4: 16px;
+    --lw-space-5: 20px;
+    --lw-space-6: 24px;
     --ink: #243631;
     --muted: #798880;
     --line: #e1e9e3;
@@ -130,10 +162,10 @@ code {
 
 * { box-sizing: border-box; }
 html, body, #app { min-height: 100%; margin: 0; }
-body { min-width: 320px; min-height: 100vh; background-color: #f2f6f2; background-image: radial-gradient(#cfd9d1 0.65px, transparent 0.65px); background-size: 16px 16px; }
+body { min-width: 320px; min-height: 100vh; background-color: var(--lw-color-canvas); background-image: radial-gradient(#cfd9d1 0.65px, transparent 0.65px); background-size: 16px 16px; }
 button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #dfa449; outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: var(--lw-focus-ring); outline-offset: 2px; }
 .loading-progress circle { fill: none; stroke: #d8e3da; stroke-width: .55rem; transform-origin: 50% 50%; transform: rotate(-90deg); }
 .loading-progress circle:last-child { stroke: #7da34c; stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * .8), 500%; transition: stroke-dasharray .05s ease-in-out; }
 #blazor-error-ui { display: none; position: fixed; z-index: 1000; inset: auto 0 0; padding: 13px 20px; color: white; background: #9d4339; }

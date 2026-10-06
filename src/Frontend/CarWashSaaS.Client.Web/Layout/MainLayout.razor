@@ -1,4 +1,7 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Routing
 <div class="app-shell">
     <aside class="sidebar">
         <a class="brand" href="reception" aria-label="Lavaway, recepção">
@@ -14,7 +17,7 @@
     </aside>
     <div class="workspace">
         <header class="topbar">
-            <div class="breadcrumb"><span>Operação</span><span class="breadcrumb-slash">/</span><strong>Recepção</strong></div>
+            <div class="breadcrumb"><span>Operação</span><span class="breadcrumb-slash">/</span><strong>@CurrentSection</strong></div>
             <AuthorizeView>
                 <Authorized Context="authState">
                     <div class="user-session-bar">
@@ -30,3 +33,39 @@
         <main class="page-content">@Body</main>
     </div>
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private string CurrentSection => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/') switch
+    {
+        "reception" => "Recepção",
+        "yard" => "Pátio & Kanban",
+        "customers" => "Clientes",
+        "scheduling" => "Agenda & Reservas",
+        "after-sales" => "Pós-Venda & Retenção",
+        "cashier" => "Caixa & Comissões",
+        "loyalty" => "Fidelidade & Selos",
+        "subscriptions" => "Assinaturas & Clubes",
+        "settings/profile" => "Perfil da Loja",
+        "settings/services" => "Serviços & Preços",
+        "settings/team" => "Capacidade & Equipe",
+        "settings/whatsapp" => "WhatsApp",
+        "work-orders/new" => "Nova Ordem de Serviço",
+        _ when Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("work-orders/", StringComparison.OrdinalIgnoreCase) => "Vistoria do Veículo",
+        _ => "Operação"
+    };
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+}

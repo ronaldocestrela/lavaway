@@ -7,20 +7,18 @@
 @inject IToastService Toast
 
 <div class="subscriptions-page-container">
-    <header class="page-header">
-        <div>
-            <h1 class="page-title">⭐ Assinaturas e Créditos Recorrentes</h1>
-            <p class="page-subtitle">Gestão de planos de recorrência, créditos mensais e controle por placa de veículo</p>
-        </div>
-        <div class="header-actions">
+    <PageHeading Eyebrow="PLANOS &amp; RECORRÊNCIA"
+                 Title="Assinaturas e Créditos Recorrentes"
+                 Subtitle="Gestão de planos de recorrência, créditos mensais e controle por placa de veículo">
+        <Actions>
             <button class="btn btn-outline" type="button" @onclick="OpenNewPlanModal">
                 <span>➕ Novo Plano</span>
             </button>
             <button class="btn btn-primary" type="button" @onclick="OpenNewSubscriptionModal">
                 <span>💳 Nova Assinatura</span>
             </button>
-        </div>
-    </header>
+        </Actions>
+    </PageHeading>
 
     @if (_isLoading)
     {

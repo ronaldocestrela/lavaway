@@ -7,43 +7,41 @@
 @inject IToastService ToastService
 
 <div class="cashier-page">
-    <header class="page-header">
-        <div class="header-main">
-            <span class="page-eyebrow">GESTÃO FINANCEIRA &amp; EQUIPE</span>
-            <h1 class="page-title">Caixa &amp; Comissões</h1>
-        </div>
-
-        <div class="header-controls">
-            <div class="date-selector-group">
-                <button type="button"
-                        class="btn-date-quick @(_selectedDate == _today ? "active" : "")"
-                        @onclick="() => SetDate(_today)">
-                    Hoje
-                </button>
-                <button type="button"
-                        class="btn-date-quick @(_selectedDate == _today.AddDays(-1) ? "active" : "")"
-                        @onclick="() => SetDate(_today.AddDays(-1))">
-                    Ontem
-                </button>
-                <input type="date"
-                       class="date-input"
-                       value="@_selectedDate.ToString("yyyy-MM-dd")"
-                       @onchange="OnDateInputChanged" />
-            </div>
-
-            <div class="header-actions">
-                <button type="button" class="btn btn-action-movement" @onclick="() => _showMovementModal = true">
-                    <span>➕ Sangria / Aporte</span>
-                </button>
-                @if (_summary is not null && !_summary.IsClosed)
-                {
-                    <button type="button" class="btn btn-action-close" @onclick="() => _showCloseModal = true">
-                        <span>🔒 Fechar Caixa</span>
+    <PageHeading Eyebrow="GESTÃO FINANCEIRA &amp; EQUIPE"
+                 Title="Caixa &amp; Comissões">
+        <Actions>
+            <div class="header-controls">
+                <div class="date-selector-group">
+                    <button type="button"
+                            class="btn-date-quick @(_selectedDate == _today ? "active" : "")"
+                            @onclick="() => SetDate(_today)">
+                        Hoje
                     </button>
-                }
+                    <button type="button"
+                            class="btn-date-quick @(_selectedDate == _today.AddDays(-1) ? "active" : "")"
+                            @onclick="() => SetDate(_today.AddDays(-1))">
+                        Ontem
+                    </button>
+                    <input type="date"
+                           class="date-input"
+                           value="@_selectedDate.ToString("yyyy-MM-dd")"
+                           @onchange="OnDateInputChanged" />
+                </div>
+
+                <div class="header-actions">
+                    <button type="button" class="btn btn-action-movement" @onclick="() => _showMovementModal = true">
+                        <span>➕ Sangria / Aporte</span>
+                    </button>
+                    @if (_summary is not null && !_summary.IsClosed)
+                    {
+                        <button type="button" class="btn btn-action-close" @onclick="() => _showCloseModal = true">
+                            <span>🔒 Fechar Caixa</span>
+                        </button>
+                    }
+                </div>
             </div>
-        </div>
-    </header>
+        </Actions>
+    </PageHeading>
 
     @if (_summary is not null)
     {

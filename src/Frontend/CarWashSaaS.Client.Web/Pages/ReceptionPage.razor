@@ -12,20 +12,19 @@
 <PageTitle>Recepção | Lavaway</PageTitle>
 
 <section class="reception-page">
-    <div class="page-heading">
-        <div>
-            <div class="eyebrow"><span class="eyebrow-mark"></span> ATENDIMENTO DO DIA</div>
-            <h1>Recepção</h1>
-            <p class="page-subtitle">Localize o cliente e o veículo para começar.</p>
-        </div>
-        <AuthorizeView Roles="Administrator,Receptionist">
-            <Authorized Context="createAuthState">
-                <button class="button button-secondary new-customer-button" type="button" @onclick="OpenCreateForm">
-                    <span class="button-plus" aria-hidden="true">+</span> Novo cliente
-                </button>
-            </Authorized>
-        </AuthorizeView>
-    </div>
+    <PageHeading Eyebrow="ATENDIMENTO DO DIA"
+                 Title="Recepção"
+                 Subtitle="Localize o cliente e o veículo para começar.">
+        <Actions>
+            <AuthorizeView Roles="Administrator,Receptionist">
+                <Authorized Context="createAuthState">
+                    <button class="button button-secondary new-customer-button" type="button" @onclick="OpenCreateForm">
+                        <span class="button-plus" aria-hidden="true">+</span> Novo cliente
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        </Actions>
+    </PageHeading>
 
     <div class="reception-grid">
                 <section class="search-column" aria-label="Busca de clientes e veículos">
