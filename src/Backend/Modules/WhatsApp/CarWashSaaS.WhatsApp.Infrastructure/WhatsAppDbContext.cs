@@ -64,6 +64,9 @@ public sealed class WhatsAppDbContext(
             .WithOne()
             .HasForeignKey(value => value.OutboundWhatsAppMessageId)
             .OnDelete(DeleteBehavior.Cascade);
+        message.Navigation(value => value.DeliveryAttempts)
+            .HasField("_attempts")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         var attempt = modelBuilder.Entity<WhatsAppDeliveryAttempt>();
         attempt.ToTable("WhatsAppDeliveryAttempts", "whatsapp");
