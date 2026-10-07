@@ -26,6 +26,8 @@ builder.Services.AddScoped<CashierApiClient>();
 builder.Services.AddScoped<LoyaltyApiClient>();
 builder.Services.AddScoped<SubscriptionApiClient>();
 builder.Services.AddScoped<PlatformAuditApiClient>();
+builder.Services.AddScoped<GlobalTenantApiClient>();
+builder.Services.AddScoped<ImpersonationSessionState>();
 builder.Services.AddScoped<IToastService, ToastService>();
 
 

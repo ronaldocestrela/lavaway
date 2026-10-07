@@ -4,6 +4,7 @@ using CarWashSaaS.Tenants.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CarWashSaaS.Tenants.Infrastructure.Migrations
 {
     [DbContext(typeof(TenantsDbContext))]
-    partial class TenantsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007123835_AddTenantStatusAndLifecycle")]
+    partial class AddTenantStatusAndLifecycle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -75,6 +75,7 @@ public static class PlatformActionConstants
     public const string TenantCreated = "Tenant.Created";
     public const string TenantStatusChanged = "Tenant.StatusChanged";
     public const string TenantImpersonated = "Tenant.Impersonated";
+    public const string TenantImpersonationEnded = "Tenant.ImpersonationEnded";
     public const string BillingPlanModified = "BillingPlan.Modified";
     public const string SystemSettingUpdated = "System.SettingUpdated";
     public const string SensitiveDataExported = "Security.SensitiveDataExported";

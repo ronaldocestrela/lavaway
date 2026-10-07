@@ -1,0 +1,168 @@
+@inject GlobalTenantApiClient TenantApiClient
+@inject ImpersonationSessionState ImpersonationSession
+@inject IToastService ToastService
+
+@if (IsOpen && Tenant is not null)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-container" @onclick:stopPropagation="true" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div class="modal-header">
+                <div class="header-title-group">
+                    <span class="warning-icon" aria-hidden="true">🛡️</span>
+                    <div>
+                        <h2 id="modal-title" class="modal-title">Iniciar Modo Diagnóstico (Impersonate)</h2>
+                        <p class="modal-subtitle">Estabelecimento: <strong>@Tenant.Name</strong></p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" @onclick="HandleClose" aria-label="Fechar modal">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="audit-warning-box">
+                    <div class="warning-badge">AVISO DE AUDITORIA FORENSE</div>
+                    <p class="warning-text">
+                        Esta operação permite diagnosticar o ambiente do lojista utilizando os mesmos dados operacionais. 
+                        <strong>Todas as ações realizadas durante esta sessão serão registradas compulsoriamente na trilha de auditoria</strong> 
+                        com seu usuário, data/hora e IP de origem.
+                    </p>
+                </div>
+
+                <div class="tenant-overview-card">
+                    <div class="meta-row">
+                        <span class="meta-label">ID do Estabelecimento:</span>
+                        <code class="meta-code">@Tenant.Id</code>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Tenant.Cnpj))
+                    {
+                        <div class="meta-row">
+                            <span class="meta-label">CNPJ:</span>
+                            <span>@Tenant.Cnpj</span>
+                        </div>
+                    }
+                    <div class="meta-row">
+                        <span class="meta-label">Status Atual:</span>
+                        <span class="status-badge status-@Tenant.Status.ToString().ToLowerInvariant()">@Tenant.Status</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ticketRef" class="form-label">Número do Chamado / Ticket (Opcional)</label>
+                    <input id="ticketRef" 
+                           type="text" 
+                           class="form-control" 
+                           placeholder="Ex: CHAMADO-4921 ou INCIDENTE-883"
+                           @bind="ticketReference" 
+                           disabled="@isSubmitting" />
+                </div>
+
+                <div class="form-group">
+                    <label for="reason" class="form-label">
+                        Justificativa Técnica <span class="required">*</span>
+                    </label>
+                    <textarea id="reason" 
+                              class="form-control textarea" 
+                              rows="3" 
+                              placeholder="Descreva detalhadamente o motivo do diagnóstico (ex: Investigação de falha na emissão de OS ou divergência de caixa reportada pelo lojista)..."
+                              @bind="reason" 
+                              disabled="@isSubmitting"></textarea>
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="form-error">@errorMessage</div>
+                    }
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HandleClose" disabled="@isSubmitting">Cancelar</button>
+                <button type="button" class="btn btn-primary" @onclick="SubmitAsync" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span>Iniciando Sessão...</span>
+                    }
+                    else
+                    {
+                        <span>Acessar Contexto do Tenant</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public GlobalTenantSummaryDto? Tenant { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<ImpersonationSessionDto> OnStarted { get; set; }
+
+    private string ticketReference = string.Empty;
+    private string reason = string.Empty;
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    private async Task HandleClose()
+    {
+        if (isSubmitting) return;
+        ResetForm();
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (Tenant is null) return;
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            errorMessage = "A justificativa técnica é obrigatória para iniciar o diagnóstico.";
+            return;
+        }
+
+        errorMessage = null;
+        isSubmitting = true;
+
+        try
+        {
+            var request = new StartImpersonationRequest(reason.Trim(), ticketReference.Trim());
+            var result = await TenantApiClient.StartImpersonationAsync(Tenant.Id, request);
+
+            if (result.IsSuccess)
+            {
+                var session = result.Value!;
+                ImpersonationSession.Start(
+                    session.TenantId,
+                    session.TenantName,
+                    session.OperatorEmail,
+                    session.Reason,
+                    session.TicketReference,
+                    session.StartedAtUtc);
+
+                ToastService.ShowSuccess($"Modo diagnóstico iniciado para '{session.TenantName}'.");
+                await OnStarted.InvokeAsync(session);
+                ResetForm();
+            }
+            else
+            {
+                errorMessage = result.Error?.Description ?? "Falha ao iniciar diagnóstico.";
+                ToastService.ShowError(errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            ToastService.ShowError($"Erro: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        ticketReference = string.Empty;
+        reason = string.Empty;
+        errorMessage = null;
+        isSubmitting = false;
+    }
+}

@@ -1,0 +1,149 @@
+@inject GlobalTenantApiClient TenantApiClient
+@inject IToastService ToastService
+
+@if (IsOpen && Tenant is not null)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-container" @onclick:stopPropagation="true" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
+            <div class="modal-header">
+                <div>
+                    <h2 id="status-modal-title" class="modal-title">Alterar Status Comercial</h2>
+                    <p class="modal-subtitle">Estabelecimento: <strong>@Tenant.Name</strong></p>
+                </div>
+                <button type="button" class="btn-close" @onclick="HandleClose" aria-label="Fechar modal">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="current-status-banner">
+                    <span class="status-label">Status Atual:</span>
+                    <span class="status-badge status-@Tenant.Status.ToString().ToLowerInvariant()">@Tenant.Status</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="newStatus" class="form-label">Novo Status Comercial <span class="required">*</span></label>
+                    <select id="newStatus" class="form-control" @bind="selectedStatus" disabled="@isSubmitting">
+                        <option value="@TenantStatus.Active">Ativo (Operando normalmente)</option>
+                        <option value="@TenantStatus.Trial">Em Período de Testes (Trial)</option>
+                        <option value="@TenantStatus.Delinquent">Inadimplente (Fatura em atraso)</option>
+                        <option value="@TenantStatus.Canceled">Cancelado (Acesso rescindido)</option>
+                    </select>
+                </div>
+
+                @if (selectedStatus == TenantStatus.Trial)
+                {
+                    <div class="form-group">
+                        <label for="trialEnd" class="form-label">Término do Período de Testes (UTC)</label>
+                        <input id="trialEnd" 
+                               type="datetime-local" 
+                               class="form-control" 
+                               @bind="trialEndsAtLocal" 
+                               disabled="@isSubmitting" />
+                        <span class="form-hint">Defina a nova data limite para o período de testes do lojista.</span>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="statusReason" class="form-label">Motivo / Justificativa da Alteração</label>
+                    <textarea id="statusReason" 
+                              class="form-control textarea" 
+                              rows="3" 
+                              placeholder="Informe o motivo da alteração de status (ex: Contratação de plano Pro, Regularização de fatura Pix, Solicitação voluntária de cancelamento)..."
+                              @bind="reason" 
+                              disabled="@isSubmitting"></textarea>
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="form-error">@errorMessage</div>
+                    }
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HandleClose" disabled="@isSubmitting">Cancelar</button>
+                <button type="button" class="btn btn-primary" @onclick="SubmitAsync" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span>Salvando...</span>
+                    }
+                    else
+                    {
+                        <span>Salvar Alteração de Status</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public GlobalTenantSummaryDto? Tenant { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<GlobalTenantSummaryDto> OnStatusUpdated { get; set; }
+
+    private TenantStatus selectedStatus = TenantStatus.Active;
+    private DateTime? trialEndsAtLocal;
+    private string reason = string.Empty;
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    protected override void OnParametersSet()
+    {
+        if (Tenant is not null)
+        {
+            selectedStatus = Tenant.Status;
+            trialEndsAtLocal = Tenant.TrialEndsAtUtc?.LocalDateTime ?? DateTime.UtcNow.AddDays(14);
+            reason = Tenant.StatusReason ?? string.Empty;
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        if (isSubmitting) return;
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (Tenant is null) return;
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            DateTimeOffset? trialEndsAtUtc = null;
+            if (selectedStatus == TenantStatus.Trial && trialEndsAtLocal.HasValue)
+            {
+                trialEndsAtUtc = new DateTimeOffset(trialEndsAtLocal.Value, TimeSpan.Zero);
+            }
+
+            var request = new UpdateTenantStatusRequest(
+                NewStatus: selectedStatus,
+                Reason: string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
+                TrialEndsAtUtc: trialEndsAtUtc);
+
+            var result = await TenantApiClient.UpdateTenantStatusAsync(Tenant.Id, request);
+
+            if (result.IsSuccess)
+            {
+                ToastService.ShowSuccess($"Status de '{Tenant.Name}' atualizado para {selectedStatus}.");
+                await OnStatusUpdated.InvokeAsync(result.Value!);
+            }
+            else
+            {
+                errorMessage = result.Error?.Description ?? "Falha ao atualizar status.";
+                ToastService.ShowError(errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            ToastService.ShowError($"Erro: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

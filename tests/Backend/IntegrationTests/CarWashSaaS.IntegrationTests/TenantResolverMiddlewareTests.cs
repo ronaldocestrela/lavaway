@@ -114,6 +114,31 @@ public sealed class TenantResolverMiddlewareTests
         Assert.Equal(targetTenantId, accessor.TenantId);
     }
 
+    [Fact]
+    public async Task InvokeAsync_ShouldIgnoreImpersonatedTenantHeader_WhenUserIsNotPlatformUser()
+    {
+        var legitimateTenantId = Guid.NewGuid();
+        var maliciousTargetTenantId = Guid.NewGuid();
+        var accessor = new CurrentTenantAccessor();
+        var context = CreateAuthenticatedContext(
+            new Claim("tenant_id", legitimateTenantId.ToString()),
+            new Claim("role", "Administrator"));
+        context.Request.Headers["X-Impersonate-Tenant-Id"] = maliciousTargetTenantId.ToString();
+
+        var nextWasCalled = false;
+        var middleware = new TenantResolverMiddleware(_ =>
+        {
+            nextWasCalled = true;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context, accessor);
+
+        Assert.True(nextWasCalled);
+        Assert.Equal(legitimateTenantId, accessor.TenantId);
+        Assert.NotEqual(maliciousTargetTenantId, accessor.TenantId);
+    }
+
     private static DefaultHttpContext CreateAuthenticatedContext(params Claim[] claims)
     {
         var context = new DefaultHttpContext();

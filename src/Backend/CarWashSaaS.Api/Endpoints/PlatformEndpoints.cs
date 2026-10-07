@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using System.Text.Json;
 using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Shared.Contracts;
+using CarWashSaaS.Tenants.Application;
 using Microsoft.AspNetCore.Http;
 
 namespace CarWashSaaS.Api.Endpoints;
@@ -151,6 +153,177 @@ public static class PlatformEndpoints
 
             return Results.BadRequest(new { result.Error!.Code, result.Error.Description });
         }).RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformUser);
+
+        // Global Tenants Management
+        platformGroup.MapGet("/tenants", async (
+            string? searchTerm,
+            TenantStatus? status,
+            int? page,
+            int? pageSize,
+            GlobalTenantApplicationService tenantService,
+            CancellationToken ct) =>
+        {
+            var request = new GetGlobalTenantsRequest(
+                SearchTerm: searchTerm,
+                Status: status,
+                Page: page ?? 1,
+                PageSize: pageSize ?? 20);
+
+            var result = await tenantService.GetTenantsAsync(request, ct);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(new { result.Error!.Code, result.Error.Description });
+        }).RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformSupport);
+
+        platformGroup.MapGet("/tenants/{id:guid}", async (
+            Guid id,
+            GlobalTenantApplicationService tenantService,
+            CancellationToken ct) =>
+        {
+            var result = await tenantService.GetTenantByIdAsync(id, ct);
+            if (result.IsSuccess)
+            {
+                return Results.Ok(result.Value);
+            }
+
+            return result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                _ => Results.BadRequest(new { result.Error!.Code, result.Error.Description })
+            };
+        }).RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformSupport);
+
+        platformGroup.MapPut("/tenants/{id:guid}/status", async (
+            Guid id,
+            UpdateTenantStatusRequest request,
+            GlobalTenantApplicationService tenantService,
+            AuditTrailApplicationService auditService,
+            ClaimsPrincipal user,
+            HttpContext context,
+            CancellationToken ct) =>
+        {
+            var actorIdClaim = user.FindFirst("sub")?.Value;
+            var actorEmailClaim = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value ?? "admin@lavaway.com";
+            var actorRoleClaim = user.FindFirst("role")?.Value ?? user.FindFirst(ClaimTypes.Role)?.Value ?? "SuperAdmin";
+            var actorRealm = user.FindFirst("user_realm")?.Value ?? "Platform";
+            var actorId = Guid.TryParse(actorIdClaim, out var parsedId) ? parsedId : Guid.NewGuid();
+
+            var result = await tenantService.UpdateTenantStatusAsync(id, request, ct);
+            if (!result.IsSuccess)
+            {
+                return result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.BadRequest(new { result.Error!.Code, result.Error.Description })
+                };
+            }
+
+            // Registrar trilha de auditoria
+            var ipAddress = context.Connection.RemoteIpAddress?.ToString();
+            var userAgent = context.Request.Headers.UserAgent.ToString();
+            var detailsJson = JsonSerializer.Serialize(new
+            {
+                tenantId = id,
+                newStatus = request.NewStatus.ToString(),
+                reason = request.Reason,
+                trialEndsAtUtc = request.TrialEndsAtUtc
+            });
+
+            await auditService.RecordEventAsync(new RecordAuditEventRequest(
+                ActorId: actorId,
+                ActorEmail: actorEmailClaim,
+                ActorRole: actorRoleClaim,
+                ActorRealm: actorRealm,
+                Action: PlatformActionConstants.TenantStatusChanged,
+                TargetType: PlatformTargetTypeConstants.Tenant,
+                TargetId: id.ToString(),
+                TenantId: id,
+                IpAddress: ipAddress,
+                UserAgent: userAgent,
+                DetailsJson: detailsJson,
+                Outcome: "Success"), ct);
+
+            return Results.Ok(result.Value);
+        }).RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformSupport);
+
+        // Impersonation Engine
+        platformGroup.MapPost("/tenants/{id:guid}/impersonate", async (
+            Guid id,
+            StartImpersonationRequest request,
+            TenantImpersonationApplicationService impersonationService,
+            ClaimsPrincipal user,
+            HttpContext context,
+            CancellationToken ct) =>
+        {
+            var actorIdClaim = user.FindFirst("sub")?.Value;
+            var actorEmailClaim = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value ?? "support@lavaway.com";
+            var actorRoleClaim = user.FindFirst("role")?.Value ?? user.FindFirst(ClaimTypes.Role)?.Value ?? "PlatformSupport";
+            var actorRealm = user.FindFirst("user_realm")?.Value ?? "Platform";
+            var actorId = Guid.TryParse(actorIdClaim, out var parsedId) ? parsedId : Guid.NewGuid();
+
+            var ipAddress = context.Connection.RemoteIpAddress?.ToString();
+            var userAgent = context.Request.Headers.UserAgent.ToString();
+
+            var result = await impersonationService.StartImpersonationAsync(
+                id,
+                request,
+                actorId,
+                actorEmailClaim,
+                actorRoleClaim,
+                actorRealm,
+                ipAddress,
+                userAgent,
+                ct);
+
+            if (result.IsSuccess)
+            {
+                return Results.Ok(result.Value);
+            }
+
+            return result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status403Forbidden),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformSupport);
+
+        platformGroup.MapPost("/tenants/{id:guid}/end-impersonation", async (
+            Guid id,
+            EndImpersonationRequest request,
+            TenantImpersonationApplicationService impersonationService,
+            ClaimsPrincipal user,
+            HttpContext context,
+            CancellationToken ct) =>
+        {
+            var actorIdClaim = user.FindFirst("sub")?.Value;
+            var actorEmailClaim = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value ?? "support@lavaway.com";
+            var actorRoleClaim = user.FindFirst("role")?.Value ?? user.FindFirst(ClaimTypes.Role)?.Value ?? "PlatformSupport";
+            var actorRealm = user.FindFirst("user_realm")?.Value ?? "Platform";
+            var actorId = Guid.TryParse(actorIdClaim, out var parsedId) ? parsedId : Guid.NewGuid();
+
+            var ipAddress = context.Connection.RemoteIpAddress?.ToString();
+            var userAgent = context.Request.Headers.UserAgent.ToString();
+
+            var result = await impersonationService.EndImpersonationAsync(
+                id,
+                request,
+                actorId,
+                actorEmailClaim,
+                actorRoleClaim,
+                actorRealm,
+                ipAddress,
+                userAgent,
+                ct);
+
+            if (result.IsSuccess)
+            {
+                return Results.Ok(new { message = "Sessão de diagnóstico encerrada com sucesso." });
+            }
+
+            return Results.BadRequest(new { result.Error!.Code, result.Error.Description });
+        }).RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformSupport);
 
         return app;
     }
