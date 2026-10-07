@@ -1,0 +1,121 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen && Event is not null)
+{
+    <div class="modal-backdrop" @onclick="HandleBackdropClick" aria-modal="true" role="dialog">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div class="header-title-group">
+                    <span class="modal-tag">Auditoria &bull; Detalhes do Evento</span>
+                    <h2 class="modal-title">@Event.Action</h2>
+                </div>
+                <button type="button" class="btn-close" @onclick="Close" aria-label="Fechar">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Identificador (UUIDv7)</span>
+                        <span class="info-value font-mono">@Event.Id</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Data e Hora (UTC)</span>
+                        <span class="info-value">@Event.TimestampUtc.ToString("dd/MM/yyyy HH:mm:ss 'UTC'")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Autor (Operador)</span>
+                        <span class="info-value"><strong>@Event.ActorEmail</strong></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Papel / Realm</span>
+                        <span class="info-value">
+                            <span class="role-badge">@Event.ActorRole</span>
+                            <span class="realm-badge">@Event.ActorRealm</span>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tipo de Alvo</span>
+                        <span class="info-value">@Event.TargetType</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Identificador do Alvo</span>
+                        <span class="info-value font-mono">@Event.TargetId</span>
+                    </div>
+                    @if (Event.TenantId.HasValue)
+                    {
+                        <div class="info-item">
+                            <span class="info-label">Estabelecimento (TenantId)</span>
+                            <span class="info-value font-mono">@Event.TenantId.Value</span>
+                        </div>
+                    }
+                    <div class="info-item">
+                        <span class="info-label">Desfecho / Status</span>
+                        <span class="info-value">
+                            <span class="outcome-badge outcome-@Event.Outcome.ToLowerInvariant()">@Event.Outcome</span>
+                        </span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Event.IpAddress))
+                    {
+                        <div class="info-item">
+                            <span class="info-label">Endereço IP</span>
+                            <span class="info-value font-mono">@Event.IpAddress</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Event.UserAgent))
+                    {
+                        <div class="info-item full-width">
+                            <span class="info-label">Agente de Usuário (User-Agent)</span>
+                            <span class="info-value text-muted">@Event.UserAgent</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Event.ErrorMessage))
+                    {
+                        <div class="info-item full-width error-box">
+                            <span class="info-label text-danger">Mensagem de Falha</span>
+                            <span class="info-value text-danger">@Event.ErrorMessage</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="payload-section">
+                    <span class="info-label">Metadados &amp; Snapshot (JSON)</span>
+                    <pre class="json-viewer"><code>@FormatJson(Event.DetailsJson)</code></pre>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn-secondary" @onclick="Close">Fechar</button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public AuditEventDto? Event { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await Close();
+    }
+
+    private static string FormatJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return "{}";
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+}

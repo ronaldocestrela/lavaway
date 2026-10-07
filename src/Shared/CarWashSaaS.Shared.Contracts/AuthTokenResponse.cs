@@ -7,6 +7,7 @@ public sealed record AuthTokenResponse(
     string TokenType,
     Guid UserId,
     string Email,
-    Guid TenantId,
+    Guid? TenantId,
     string Role,
     IReadOnlyCollection<string> Permissions);
+

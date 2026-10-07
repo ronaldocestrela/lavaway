@@ -67,6 +67,10 @@ builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IIdentityUserRepository, IdentityUserRepository>();
 builder.Services.AddScoped<IdentityApplicationService>();
+builder.Services.AddScoped<IAdministrativeAuditEventRepository, AdministrativeAuditEventRepository>();
+builder.Services.AddScoped<IPlatformUserRepository, PlatformUserRepository>();
+builder.Services.AddScoped<AuditTrailApplicationService>();
+builder.Services.AddScoped<PlatformAuthApplicationService>();
 builder.Services.AddScoped<IStoreProfileRepository, StoreProfileRepository>();
 builder.Services.AddScoped<StoreProfileApplicationService>();
 builder.Services.AddScoped<ITenantStoreProfileLookup>(sp => sp.GetRequiredService<StoreProfileApplicationService>());
@@ -228,6 +232,21 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(AuthorizationPolicyNames.UpdateWorkOrderStatus,
         policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString(), ShopRole.Operator.ToString()));
 
+    options.AddPolicy(PlatformAuthorizationPolicyNames.PlatformSuperAdmin,
+        policy => policy.RequireRole(PlatformRole.SuperAdmin.ToString()));
+    options.AddPolicy(PlatformAuthorizationPolicyNames.PlatformSupport,
+        policy => policy.RequireRole(PlatformRole.PlatformSupport.ToString(), PlatformRole.SuperAdmin.ToString()));
+    options.AddPolicy(PlatformAuthorizationPolicyNames.PlatformBillingAdmin,
+        policy => policy.RequireRole(PlatformRole.PlatformBillingAdmin.ToString(), PlatformRole.SuperAdmin.ToString()));
+    options.AddPolicy(PlatformAuthorizationPolicyNames.PlatformAuditor,
+        policy => policy.RequireRole(PlatformRole.PlatformAuditor.ToString(), PlatformRole.SuperAdmin.ToString()));
+    options.AddPolicy(PlatformAuthorizationPolicyNames.PlatformUser,
+        policy => policy.RequireRole(
+            PlatformRole.SuperAdmin.ToString(),
+            PlatformRole.PlatformSupport.ToString(),
+            PlatformRole.PlatformBillingAdmin.ToString(),
+            PlatformRole.PlatformAuditor.ToString()));
+
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
@@ -265,6 +284,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 app.MapIdentityEndpoints();
+app.MapPlatformEndpoints();
 app.MapWhatsAppEndpoints();
 app.MapTenantEndpoints();
 app.MapYardOperationsEndpoints();
@@ -277,3 +297,4 @@ app.MapSubscriptionEndpoints();
 app.MapHub<YardHub>("/hubs/yard").RequireCors("Client");
 
 app.Run();
+

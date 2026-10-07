@@ -113,13 +113,17 @@
                         <span class="quick-title">Credenciais de Teste / Dev:</span>
                         <div class="quick-tags">
                             <button type="button" class="quick-btn" @onclick='() => FillCredentials("admin@lavaway.com", "Admin123!")'>
-                                👤 Administrador (admin@lavaway.com)
+                                👤 Admin Loja (admin@lavaway.com)
                             </button>
                             <button type="button" class="quick-btn" @onclick='() => FillCredentials("recepcao@lavaway.com", "Recepcao123!")'>
                                 📋 Recepção (recepcao@lavaway.com)
                             </button>
+                            <button type="button" class="quick-btn" @onclick='() => FillCredentials("platform@lavaway.com", "PlatformAdmin123!")'>
+                                🛡️ Admin Plataforma (platform@lavaway.com)
+                            </button>
                         </div>
                     </div>
+
 
                     <button class="btn-primary full glow" type="submit" disabled="@_isLoading" id="btn-login-submit">
                         @if (_isLoading)
@@ -193,7 +197,7 @@
         }
     }
 
-    private string GetSafeReturnUrl()
+    private string GetSafeReturnUrl(string? role = null)
     {
         if (!string.IsNullOrWhiteSpace(ReturnUrl))
         {
@@ -207,8 +211,19 @@
             }
         }
 
+        if (IsPlatformRole(role))
+        {
+            return "platform/audit";
+        }
+
         return "reception";
     }
+
+    private static bool IsPlatformRole(string? role) =>
+        role is PlatformRoles.SuperAdmin
+            or PlatformRoles.PlatformAuditor
+            or PlatformRoles.PlatformSupport
+            or PlatformRoles.PlatformBillingAdmin;
 
     private void FillCredentials(string email, string password)
     {
@@ -244,7 +259,7 @@
 
                 AuthStateProvider.NotifyUserAuthentication(result.Value.AccessToken);
 
-                var targetUrl = GetSafeReturnUrl();
+                var targetUrl = GetSafeReturnUrl(result.Value.Role);
                 _successMessage = "Autenticação realizada! Redirecionando...";
                 await Task.Delay(300);
                 Navigation.NavigateTo(targetUrl);

@@ -15,6 +15,8 @@ public sealed class IdentityModuleDbContext(
     public Guid? TenantId => currentTenantAccessor.TenantId;
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PlatformUser> PlatformUsers => Set<PlatformUser>();
+    public DbSet<AdministrativeAuditEvent> AdministrativeAuditEvents => Set<AdministrativeAuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -40,6 +42,45 @@ public sealed class IdentityModuleDbContext(
             token.HasIndex(value => value.TenantId);
             token.HasIndex(value => value.UserId);
             token.HasIndex(value => value.TokenHash).IsUnique();
+        });
+
+        builder.Entity<PlatformUser>(user =>
+        {
+            user.ToTable("PlatformUsers");
+            user.HasKey(value => value.Id);
+            user.Property(value => value.Email).HasMaxLength(256).IsRequired();
+            user.Property(value => value.FullName).HasMaxLength(200).IsRequired();
+            user.Property(value => value.Role).HasConversion<string>().HasMaxLength(64).IsRequired();
+            user.Property(value => value.PasswordHash).IsRequired();
+            user.Property(value => value.IsActive).IsRequired();
+            user.Property(value => value.CreatedAtUtc).IsRequired();
+            user.HasIndex(value => value.Email).IsUnique();
+        });
+
+        builder.Entity<AdministrativeAuditEvent>(audit =>
+        {
+            audit.ToTable("AdministrativeAuditEvents");
+            audit.HasKey(value => value.Id);
+            audit.Property(value => value.TimestampUtc).IsRequired();
+            audit.Property(value => value.ActorId).IsRequired();
+            audit.Property(value => value.ActorEmail).HasMaxLength(256).IsRequired();
+            audit.Property(value => value.ActorRole).HasMaxLength(64).IsRequired();
+            audit.Property(value => value.ActorRealm).HasMaxLength(32).IsRequired();
+            audit.Property(value => value.Action).HasMaxLength(128).IsRequired();
+            audit.Property(value => value.TargetType).HasMaxLength(128).IsRequired();
+            audit.Property(value => value.TargetId).HasMaxLength(128).IsRequired();
+            audit.Property(value => value.TenantId);
+            audit.Property(value => value.IpAddress).HasMaxLength(64);
+            audit.Property(value => value.UserAgent).HasMaxLength(512);
+            audit.Property(value => value.DetailsJson).IsRequired();
+            audit.Property(value => value.Outcome).HasMaxLength(32).IsRequired();
+            audit.Property(value => value.ErrorMessage).HasMaxLength(1024);
+
+            audit.HasIndex(value => value.TimestampUtc);
+            audit.HasIndex(value => value.ActorId);
+            audit.HasIndex(value => value.Action);
+            audit.HasIndex(value => new { value.TargetType, value.TargetId });
+            audit.HasIndex(value => value.TenantId);
         });
 
         builder.Entity<IdentityRole<Guid>>().HasData(
@@ -70,13 +111,28 @@ public sealed class IdentityModuleDbContext(
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        PreventAuditEventMutations();
         ChangeTracker.ValidateTenantWrites(currentTenantAccessor);
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        PreventAuditEventMutations();
         ChangeTracker.ValidateTenantWrites(currentTenantAccessor);
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
+
+    private void PreventAuditEventMutations()
+    {
+        var auditMutations = ChangeTracker.Entries<AdministrativeAuditEvent>()
+            .Where(entry => entry.State is EntityState.Modified or EntityState.Deleted)
+            .ToArray();
+
+        if (auditMutations.Length > 0)
+        {
+            throw new InvalidOperationException("Administrative audit events are append-only and cannot be modified or deleted.");
+        }
+    }
 }
+

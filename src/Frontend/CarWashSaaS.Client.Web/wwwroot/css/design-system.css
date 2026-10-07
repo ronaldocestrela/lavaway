@@ -312,6 +312,38 @@
     .workspace .kpi-grid {
         grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
     }
+
+    .workspace :is(.button, .btn, .btn-primary, .btn-secondary, .button-primary, .button-secondary) {
+        min-height: 44px;
+    }
+
+    .workspace :is(.modal-backdrop, .dialog-backdrop, .gallery-modal-backdrop) {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .workspace :is(.modal-dialog, .modal-content, .gallery-modal-dialog) {
+        width: 100%;
+        max-width: 100%;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        max-height: 88vh;
+        max-height: 88dvh;
+        margin: 0;
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+        animation: slideUpMobile 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .workspace .table-responsive {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@keyframes slideUpMobile {
+    from { transform: translateY(100%); opacity: 0.8; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
