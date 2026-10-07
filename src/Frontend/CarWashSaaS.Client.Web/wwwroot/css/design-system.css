@@ -17,7 +17,8 @@
     .loyalty-page-container,
     .whatsapp-page,
     .workorder-page,
-    .reception-page
+    .reception-page,
+    .tenant-subscription-page
 ) {
     width: 100%;
     max-width: 1400px;

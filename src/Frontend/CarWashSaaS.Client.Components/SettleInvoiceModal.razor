@@ -2,43 +2,41 @@
 
 @if (IsOpen && Invoice is not null)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-        <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+    <div class="modal-overlay" role="dialog" aria-modal="true">
+        <div class="modal-card">
             <!-- Header -->
-            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div class="modal-header">
                 <div>
-                    <h3 class="text-base font-bold text-slate-900">Pagamento de Fatura</h3>
-                    <p class="text-xs text-slate-500">Fatura @Invoice.GatewayInvoiceId</p>
+                    <h3 class="modal-title">Pagamento de Fatura</h3>
+                    <p class="modal-subtitle">Fatura @Invoice.GatewayInvoiceId</p>
                 </div>
-                <button type="button" @onclick="Close" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button type="button" @onclick="Close" class="modal-close-btn" aria-label="Fechar">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
             <!-- Content -->
-            <div class="mt-4 flex flex-col items-center text-center">
-                <span class="text-3xl font-extrabold text-slate-900">R$ @Invoice.Amount.ToString("N2")</span>
-                <span class="mt-1 text-xs text-slate-500">Vencimento: @Invoice.DueDateUtc.ToString("dd/MM/yyyy")</span>
+            <div class="modal-body">
+                <span class="pix-amount">R$ @Invoice.Amount.ToString("N2")</span>
+                <span class="pix-due-date">Vencimento: @Invoice.DueDateUtc.ToString("dd/MM/yyyy")</span>
 
                 @if (!string.IsNullOrWhiteSpace(Invoice.PixQrCode))
                 {
-                    <div class="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3 shadow-inner">
-                        <img src="@Invoice.PixQrCode" alt="QR Code Pix" class="h-44 w-44 rounded-lg" />
+                    <div class="qrcode-box">
+                        <img src="@Invoice.PixQrCode" alt="QR Code Pix" class="qrcode-img" />
                     </div>
-                    <span class="mt-2 text-[11px] text-slate-400">Abra o app do seu banco e aponte a câmera</span>
+                    <span class="qrcode-instruction">Abra o app do seu banco e aponte a câmera</span>
                 }
 
                 @if (!string.IsNullOrWhiteSpace(Invoice.PixCopiaECola))
                 {
-                    <div class="mt-4 w-full">
-                        <label class="block text-left text-xs font-medium text-slate-700">Código Pix Copia e Cola:</label>
-                        <div class="mt-1 flex items-center gap-2">
-                            <input type="text" readonly value="@Invoice.PixCopiaECola"
-                                   class="w-full truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-mono text-slate-600 focus:outline-none" />
-                            <button type="button" @onclick="CopyPixCode"
-                                    class="shrink-0 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-900">
+                    <div class="copiacola-section">
+                        <label class="copiacola-label">Código Pix Copia e Cola:</label>
+                        <div class="copiacola-input-group">
+                            <input type="text" readonly value="@Invoice.PixCopiaECola" class="copiacola-input" />
+                            <button type="button" @onclick="CopyPixCode" class="btn-copy">
                                 @(Copied ? "Copiado!" : "Copiar")
                             </button>
                         </div>
@@ -47,9 +45,8 @@
             </div>
 
             <!-- Actions -->
-            <div class="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-4">
-                <button type="button" @onclick="ConfirmSettlement" disabled="@IsLoading"
-                        class="w-full rounded-lg bg-emerald-600 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50">
+            <div class="modal-footer">
+                <button type="button" @onclick="ConfirmSettlement" disabled="@IsLoading" class="btn-confirm-settle">
                     @if (IsLoading)
                     {
                         <span>Confirmando Pagamento...</span>
@@ -59,8 +56,7 @@
                         <span>Simular Confirmação Pix (Baixa Imediata)</span>
                     }
                 </button>
-                <button type="button" @onclick="Close"
-                        class="w-full rounded-lg py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100">
+                <button type="button" @onclick="Close" class="btn-close-flat">
                     Fechar
                 </button>
             </div>
