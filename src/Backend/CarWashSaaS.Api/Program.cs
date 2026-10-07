@@ -68,6 +68,7 @@ builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IIdentityUserRepository, IdentityUserRepository>();
 builder.Services.AddScoped<IdentityApplicationService>();
+builder.Services.AddScoped<TenantOnboardingService>();
 builder.Services.AddScoped<IAdministrativeAuditEventRepository, AdministrativeAuditEventRepository>();
 builder.Services.AddScoped<IPlatformUserRepository, PlatformUserRepository>();
 builder.Services.AddScoped<AuditTrailApplicationService>();

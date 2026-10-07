@@ -332,6 +332,7 @@
 .gradient-text {
     background: linear-gradient(135deg, #c6f277 0%, #e8ffd0 50%, #90e0b3 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 .hero-description {
@@ -1873,6 +1874,34 @@
 }
 .mt-16 {
     margin-top: 16px;
+}
+.full-width {
+    width: 100%;
+}
+.modal-alert-error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.success-secondary-actions {
+    margin-top: 12px;
+}
+.whatsapp-support-link {
+    color: #8da499;
+    font-size: 13px;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.whatsapp-support-link:hover {
+    color: #c6f277;
+    text-decoration: underline;
 }
 
 /* ==========================================================================
