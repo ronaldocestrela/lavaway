@@ -72,6 +72,51 @@ public sealed class JwtTokenService : ITokenService
         return new GeneratedToken(tokenString, _accessTokenLifetimeMinutes * 60);
     }
 
+    public GeneratedToken GeneratePlatformAccessToken(
+        Guid userId,
+        string email,
+        string fullName,
+        PlatformRole role,
+        IReadOnlyCollection<PlatformPermission> permissions)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var expires = DateTime.UtcNow.AddMinutes(_accessTokenLifetimeMinutes);
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(JwtRegisteredClaimNames.Email, email),
+            new(JwtRegisteredClaimNames.Name, fullName),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("user_realm", "Platform"),
+            new("is_platform_admin", "true"),
+            new("role", role.ToString()),
+            new(ClaimTypes.Role, role.ToString())
+        };
+
+        foreach (var permission in permissions)
+        {
+            claims.Add(new Claim("platform_permission", permission.ToString()));
+            claims.Add(new Claim("permission", permission.ToString()));
+        }
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = expires,
+            Issuer = _issuer,
+            Audience = _audience,
+            SigningCredentials = credentials
+        };
+
+        var handler = new JwtSecurityTokenHandler();
+        var token = handler.CreateToken(tokenDescriptor);
+        var tokenString = handler.WriteToken(token);
+
+        return new GeneratedToken(tokenString, _accessTokenLifetimeMinutes * 60);
+    }
+
     public string GenerateRefreshToken()
     {
         var randomBytes = RandomNumberGenerator.GetBytes(64);

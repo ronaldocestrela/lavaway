@@ -13,7 +13,15 @@ public interface ITokenService
         ShopRole role,
         IReadOnlyCollection<ShopPermission> permissions);
 
+    GeneratedToken GeneratePlatformAccessToken(
+        Guid userId,
+        string email,
+        string fullName,
+        PlatformRole role,
+        IReadOnlyCollection<PlatformPermission> permissions);
+
     string GenerateRefreshToken();
 
     string HashToken(string token);
 }
+

@@ -1,0 +1,292 @@
+@page "/platform/audit"
+@attribute [Authorize]
+@inject PlatformAuditApiClient AuditApi
+@inject IToastService Toast
+@using CarWashSaaS.Shared.Contracts
+
+<div class="audit-page">
+    <header class="page-header">
+        <div class="header-left">
+            <span class="badge-tag">GOVERNANÇA &bull; SEGURANÇA &bull; PLATAFORMA</span>
+            <h1 class="page-title">Trilha de Auditoria Administrativa</h1>
+            <p class="page-subtitle">Rastreabilidade completa de ações sensíveis com registro inviolável de autor, data e alvo.</p>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-refresh" @onclick="LoadAuditEventsAsync" disabled="@isLoading">
+                <span class="@(isLoading ? "spin" : "")">🔄</span> Atualizar
+            </button>
+        </div>
+    </header>
+
+    <!-- KPI Cards -->
+    <section class="kpi-grid">
+        <div class="kpi-card">
+            <span class="kpi-caption">Total de Eventos (Filtro)</span>
+            <strong class="kpi-metric">@totalCount</strong>
+            <span class="kpi-subtext">Eventos registrados no período</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-caption">Eventos com Sucesso</span>
+            <strong class="kpi-metric text-success">@events.Count(e => e.Outcome == "Success")</strong>
+            <span class="kpi-subtext">Nesta página</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-caption">Alertas / Falhas</span>
+            <strong class="kpi-metric text-danger">@events.Count(e => e.Outcome == "Failure")</strong>
+            <span class="kpi-subtext">Tentativas bloqueadas ou erros</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-caption">Operadores Ativos</span>
+            <strong class="kpi-metric text-info">@events.Select(e => e.ActorEmail).Distinct().Count()</strong>
+            <span class="kpi-subtext">Autores distintos na página</span>
+        </div>
+    </section>
+
+    <!-- Filtros Dinâmicos -->
+    <section class="filter-panel">
+        <div class="filter-header">
+            <span class="filter-title">🔍 Filtros de Consulta</span>
+        </div>
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label for="filter-email">Autor (Email)</label>
+                <input id="filter-email" type="text" class="form-control" placeholder="ex: admin@lavaway.com" @bind="filterActorEmail" />
+            </div>
+            <div class="filter-group">
+                <label for="filter-action">Ação</label>
+                <select id="filter-action" class="form-control" @bind="filterAction">
+                    <option value="">Todas as Ações</option>
+                    <option value="@PlatformActionConstants.AuthLoginSuccess">Login Sucesso</option>
+                    <option value="@PlatformActionConstants.AuthLoginFailed">Login Falha</option>
+                    <option value="@PlatformActionConstants.PlatformUserCreated">Criação de Usuário Plataforma</option>
+                    <option value="@PlatformActionConstants.TenantCreated">Criação de Loja / Tenant</option>
+                    <option value="@PlatformActionConstants.TenantStatusChanged">Alteração Status Loja</option>
+                    <option value="@PlatformActionConstants.TenantImpersonated">Impersonation de Suporte</option>
+                    <option value="@PlatformActionConstants.BillingPlanModified">Alteração de Plano</option>
+                    <option value="@PlatformActionConstants.SystemSettingUpdated">Configuração do Sistema</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-target">Tipo de Alvo</label>
+                <select id="filter-target" class="form-control" @bind="filterTargetType">
+                    <option value="">Todos os Alvos</option>
+                    <option value="@PlatformTargetTypeConstants.PlatformUser">Usuário Plataforma</option>
+                    <option value="@PlatformTargetTypeConstants.Tenant">Estabelecimento (Tenant)</option>
+                    <option value="@PlatformTargetTypeConstants.ShopUser">Usuário da Loja</option>
+                    <option value="@PlatformTargetTypeConstants.BillingPlan">Plano de Cobrança</option>
+                    <option value="@PlatformTargetTypeConstants.System">Sistema Global</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-outcome">Desfecho</label>
+                <select id="filter-outcome" class="form-control" @bind="filterOutcome">
+                    <option value="">Todos</option>
+                    <option value="Success">Success (Sucesso)</option>
+                    <option value="Failure">Failure (Falha)</option>
+                    <option value="Warning">Warning (Aviso)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-search">Busca Geral</label>
+                <input id="filter-search" type="text" class="form-control" placeholder="Buscar em detalhes..." @bind="searchTerm" />
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button type="button" class="btn-primary" @onclick="HandleApplyFilterAsync">Aplicar Filtros</button>
+            <button type="button" class="btn-secondary" @onclick="HandleClearFilterAsync">Limpar</button>
+        </div>
+    </section>
+
+    <!-- Tabela de Eventos -->
+    <section class="table-container">
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <span class="spinner"></span>
+                <p>Consultando trilha de auditoria...</p>
+            </div>
+        }
+        else if (events.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="empty-icon">🛡️</span>
+                <h3>Nenhum evento de auditoria encontrado</h3>
+                <p>Nenhuma ação registrada corresponde aos critérios de pesquisa selecionados.</p>
+            </div>
+        }
+        else
+        {
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>Data/Hora (UTC)</th>
+                        <th>Autor (Operador)</th>
+                        <th>Realm / Papel</th>
+                        <th>Ação Auditada</th>
+                        <th>Alvo</th>
+                        <th>Desfecho</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var evt in events)
+                    {
+                        <tr>
+                            <td class="font-mono text-small">
+                                @evt.TimestampUtc.ToString("dd/MM/yyyy HH:mm:ss")
+                            </td>
+                            <td>
+                                <strong>@evt.ActorEmail</strong>
+                            </td>
+                            <td>
+                                <span class="role-pill">@evt.ActorRole</span>
+                                <span class="realm-pill">@evt.ActorRealm</span>
+                            </td>
+                            <td>
+                                <span class="action-tag">@evt.Action</span>
+                            </td>
+                            <td>
+                                <span class="target-type">@evt.TargetType:</span>
+                                <span class="font-mono text-small">@(evt.TargetId.Length > 16 ? evt.TargetId[..16] + "..." : evt.TargetId)</span>
+                            </td>
+                            <td>
+                                <span class="status-badge status-@evt.Outcome.ToLowerInvariant()">
+                                    @evt.Outcome
+                                </span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn-inspect" @onclick="() => InspectEvent(evt)">
+                                    Inspecionar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Paginação -->
+            <footer class="pagination-bar">
+                <span class="pagination-info">Página @currentPage de @totalPages (Total: @totalCount eventos)</span>
+                <div class="pagination-buttons">
+                    <button type="button" class="btn-page" @onclick="PreviousPageAsync" disabled="@(currentPage <= 1)">
+                        &lsaquo; Anterior
+                    </button>
+                    <button type="button" class="btn-page" @onclick="NextPageAsync" disabled="@(currentPage >= totalPages)">
+                        Próxima &rsaquo;
+                    </button>
+                </div>
+            </footer>
+        }
+    </section>
+
+    <!-- Modal de Detalhes -->
+    <AuditEventDetailsModal
+        IsOpen="@isModalOpen"
+        Event="@selectedEvent"
+        OnClose="CloseModal" />
+</div>
+
+@code {
+    private List<AuditEventDto> events = [];
+    private bool isLoading = true;
+    private int totalCount = 0;
+    private int currentPage = 1;
+    private int pageSize = 15;
+    private int totalPages => pageSize > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
+
+    private string? filterActorEmail;
+    private string? filterAction;
+    private string? filterTargetType;
+    private string? filterOutcome;
+    private string? searchTerm;
+
+    private bool isModalOpen = false;
+    private AuditEventDto? selectedEvent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuditEventsAsync();
+    }
+
+    private async Task LoadAuditEventsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var filter = new AuditQueryFilter(
+                ActorEmail: filterActorEmail,
+                Action: filterAction,
+                TargetType: filterTargetType,
+                Outcome: filterOutcome,
+                SearchTerm: searchTerm,
+                Page: currentPage,
+                PageSize: pageSize);
+
+            var result = await AuditApi.SearchAuditEventsAsync(filter);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                events = result.Value.Items.ToList();
+                totalCount = result.Value.TotalCount;
+            }
+            else
+            {
+                Toast.ShowError("Falha ao carregar trilha de auditoria: " + result.Error?.Description);
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Erro de comunicação ao carregar auditoria: " + ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleApplyFilterAsync()
+    {
+        currentPage = 1;
+        await LoadAuditEventsAsync();
+    }
+
+    private async Task HandleClearFilterAsync()
+    {
+        filterActorEmail = null;
+        filterAction = null;
+        filterTargetType = null;
+        filterOutcome = null;
+        searchTerm = null;
+        currentPage = 1;
+        await LoadAuditEventsAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadAuditEventsAsync();
+        }
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadAuditEventsAsync();
+        }
+    }
+
+    private void InspectEvent(AuditEventDto evt)
+    {
+        selectedEvent = evt;
+        isModalOpen = true;
+    }
+
+    private void CloseModal()
+    {
+        isModalOpen = false;
+        selectedEvent = null;
+    }
+}

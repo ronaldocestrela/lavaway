@@ -215,8 +215,11 @@ public sealed class ModuleBoundaryTests
             typeof(LoyaltyProgram),
             typeof(CustomerLoyaltyAccount),
             typeof(SubscriptionPlan),
-            typeof(CustomerSubscription)
+            typeof(CustomerSubscription),
+            typeof(PlatformUser),
+            typeof(AdministrativeAuditEvent)
         };
+
 
         Assert.All(aggregateRoots, type =>
         {

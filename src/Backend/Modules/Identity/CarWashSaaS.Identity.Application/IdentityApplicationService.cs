@@ -6,7 +6,9 @@ namespace CarWashSaaS.Identity.Application;
 public sealed class IdentityApplicationService(
     IIdentityUserRepository userRepository,
     IRefreshTokenRepository refreshTokenRepository,
-    ITokenService tokenService)
+    ITokenService tokenService,
+    IPlatformUserRepository? platformUserRepository = null,
+    AuditTrailApplicationService? auditTrailService = null)
 {
     public async Task<Result<AuthTokenResponse>> AuthenticateAsync(
         LoginRequest request,
@@ -26,6 +28,68 @@ public sealed class IdentityApplicationService(
         var user = await userRepository.FindByEmailAsync(normalizedEmail, ct);
         if (user is null)
         {
+            // Verificar se é um operador da plataforma tentando logar
+            if (platformUserRepository is not null && (!request.TenantId.HasValue || request.TenantId.Value == Guid.Empty))
+            {
+                var platformUser = await platformUserRepository.FindByEmailAsync(normalizedEmail, ct);
+                if (platformUser is not null && platformUser.IsActive)
+                {
+                    var isPlatformPasswordValid = platformUserRepository.VerifyPassword(platformUser, request.Password);
+                    if (isPlatformPasswordValid)
+                    {
+                        platformUser.RecordLogin(DateTimeOffset.UtcNow);
+                        platformUserRepository.Update(platformUser);
+
+                        var platformPermissions = PlatformRolePermissions.GetPermissions(platformUser.Role);
+                        var platformToken = tokenService.GeneratePlatformAccessToken(
+                            platformUser.Id,
+                            platformUser.Email,
+                            platformUser.FullName,
+                            platformUser.Role,
+                            platformPermissions);
+
+                        var platformRefreshToken = tokenService.GenerateRefreshToken();
+
+                        if (auditTrailService is not null)
+                        {
+                            await auditTrailService.RecordEventAsync(new RecordAuditEventRequest(
+                                ActorId: platformUser.Id,
+                                ActorEmail: platformUser.Email,
+                                ActorRole: platformUser.Role.ToString(),
+                                ActorRealm: "Platform",
+                                Action: PlatformActionConstants.AuthLoginSuccess,
+                                TargetType: PlatformTargetTypeConstants.PlatformUser,
+                                TargetId: platformUser.Id.ToString(),
+                                Outcome: "Success"), ct);
+                        }
+
+                        return Result<AuthTokenResponse>.Success(new AuthTokenResponse(
+                            platformToken.Token,
+                            platformRefreshToken,
+                            platformToken.ExpiresInSeconds,
+                            "Bearer",
+                            platformUser.Id,
+                            platformUser.Email,
+                            null,
+                            platformUser.Role.ToString(),
+                            platformPermissions.Select(p => p.ToString()).ToArray()));
+                    }
+                    else if (auditTrailService is not null)
+                    {
+                        await auditTrailService.RecordEventAsync(new RecordAuditEventRequest(
+                            ActorId: platformUser.Id,
+                            ActorEmail: platformUser.Email,
+                            ActorRole: platformUser.Role.ToString(),
+                            ActorRealm: "Platform",
+                            Action: PlatformActionConstants.AuthLoginFailed,
+                            TargetType: PlatformTargetTypeConstants.PlatformUser,
+                            TargetId: platformUser.Id.ToString(),
+                            Outcome: "Failure",
+                            ErrorMessage: "Invalid password"), ct);
+                    }
+                }
+            }
+
             return Result<AuthTokenResponse>.Failure(new Error("auth.invalid_credentials", "Invalid email or password.", ErrorType.Unauthorized));
         }
 
@@ -33,6 +97,7 @@ public sealed class IdentityApplicationService(
         {
             return Result<AuthTokenResponse>.Failure(new Error("auth.invalid_credentials", "Invalid email or password.", ErrorType.Unauthorized));
         }
+
 
         var passwordValid = await userRepository.CheckPasswordAsync(user.Id, request.Password, ct);
         if (!passwordValid)

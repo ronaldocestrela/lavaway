@@ -301,6 +301,12 @@ public sealed class IdentityApplicationServiceTests
             return new GeneratedToken("access_token_jwt", 3600);
         }
 
+        public GeneratedToken GeneratePlatformAccessToken(Guid userId, string email, string fullName, PlatformRole role, IReadOnlyCollection<PlatformPermission> permissions)
+        {
+            return new GeneratedToken("platform_access_token_jwt", 3600);
+        }
+
+
         public string GenerateRefreshToken()
         {
             return "generated_refresh_token";

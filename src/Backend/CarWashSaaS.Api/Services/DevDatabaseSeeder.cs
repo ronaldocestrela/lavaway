@@ -122,5 +122,50 @@ public static class DevDatabaseSeeder
                 await userRepo.CreateUserAsync(tenantId, receptionEmail, receptionPassword, ShopRole.Receptionist);
             }
         }
+
+        // 5. Ensure Platform SuperAdmin exists in identity.PlatformUsers
+        var platformUserRepo = sp.GetRequiredService<IPlatformUserRepository>();
+        var auditTrailService = sp.GetRequiredService<AuditTrailApplicationService>();
+
+        var platformAdminEmail = configuration["Seed:PlatformAdminEmail"]
+            ?? configuration["SEED_PLATFORM_ADMIN_EMAIL"]
+            ?? configuration["Seed:PlatformSuperAdminEmail"]
+            ?? configuration["SEED_PLATFORM_SUPERADMIN_EMAIL"]
+            ?? "platform@lavaway.com";
+
+        var platformAdminPassword = configuration["Seed:PlatformAdminPassword"]
+            ?? configuration["SEED_PLATFORM_ADMIN_PASSWORD"]
+            ?? configuration["Seed:PlatformSuperAdminPassword"]
+            ?? configuration["SEED_PLATFORM_SUPERADMIN_PASSWORD"]
+            ?? "PlatformAdmin123!";
+
+        var existingPlatformAdmin = await platformUserRepo.FindByEmailAsync(platformAdminEmail);
+        if (existingPlatformAdmin is null)
+        {
+            var passwordHash = platformUserRepo.HashPassword(platformAdminPassword);
+            var superAdminResult = PlatformUser.Create(
+                platformAdminEmail,
+                "Administrador da Plataforma Lavaway",
+                PlatformRole.SuperAdmin,
+                passwordHash);
+
+
+            if (superAdminResult.IsSuccess && superAdminResult.Value is not null)
+            {
+                await platformUserRepo.AddAsync(superAdminResult.Value);
+
+                await auditTrailService.RecordEventAsync(new RecordAuditEventRequest(
+                    ActorId: superAdminResult.Value.Id,
+                    ActorEmail: superAdminResult.Value.Email,
+                    ActorRole: PlatformRole.SuperAdmin.ToString(),
+                    ActorRealm: "Platform",
+                    Action: PlatformActionConstants.PlatformUserCreated,
+                    TargetType: PlatformTargetTypeConstants.PlatformUser,
+                    TargetId: superAdminResult.Value.Id.ToString(),
+                    DetailsJson: "{\"seed\":true,\"description\":\"Initial Platform SuperAdmin seeded for development\"}",
+                    Outcome: "Success"));
+            }
+        }
     }
 }
+
