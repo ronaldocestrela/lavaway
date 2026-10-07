@@ -60,71 +60,71 @@ public sealed class SaasBillingWebhookApplicationService(
             case "invoice.paid":
             case "payment.confirmed":
             case "subscription.renewed":
-            {
-                if (!string.IsNullOrWhiteSpace(payload.GatewayInvoiceId))
                 {
-                    var invoice = await invoiceRepository.GetByGatewayInvoiceIdAsync(payload.GatewayInvoiceId, ct);
-                    if (invoice is not null)
+                    if (!string.IsNullOrWhiteSpace(payload.GatewayInvoiceId))
                     {
-                        invoice.MarkPaid(payload.TimestampUtc);
-                        invoiceRepository.Update(invoice);
+                        var invoice = await invoiceRepository.GetByGatewayInvoiceIdAsync(payload.GatewayInvoiceId, ct);
+                        if (invoice is not null)
+                        {
+                            invoice.MarkPaid(payload.TimestampUtc);
+                            invoiceRepository.Update(invoice);
+                        }
                     }
+
+                    var now = DateTimeOffset.UtcNow;
+                    var nextCycle = now.AddMonths(1);
+                    subscription.RenewCycle(now, nextCycle);
+                    subscriptionRepository.Update(subscription);
+
+                    var quotaUsage = await quotaUsageRepository.GetCurrentCycleByTenantIdAsync(tenantId, ct);
+                    if (quotaUsage is not null)
+                    {
+                        quotaUsage.ResetForNewCycle(now, nextCycle);
+                        quotaUsageRepository.Update(quotaUsage);
+                    }
+
+                    await globalTenantLookup.UpdateTenantStatusAsync(tenantId, new UpdateTenantStatusRequest(
+                        TenantStatus.Active,
+                        "Assinatura confirmada e ativada via webhook de pagamento."), ct);
+                    break;
                 }
-
-                var now = DateTimeOffset.UtcNow;
-                var nextCycle = now.AddMonths(1);
-                subscription.RenewCycle(now, nextCycle);
-                subscriptionRepository.Update(subscription);
-
-                var quotaUsage = await quotaUsageRepository.GetCurrentCycleByTenantIdAsync(tenantId, ct);
-                if (quotaUsage is not null)
-                {
-                    quotaUsage.ResetForNewCycle(now, nextCycle);
-                    quotaUsageRepository.Update(quotaUsage);
-                }
-
-                await globalTenantLookup.UpdateTenantStatusAsync(tenantId, new UpdateTenantStatusRequest(
-                    TenantStatus.Active,
-                    "Assinatura confirmada e ativada via webhook de pagamento."), ct);
-                break;
-            }
 
             case "invoice.overdue":
             case "payment.failed":
-            {
-                if (!string.IsNullOrWhiteSpace(payload.GatewayInvoiceId))
                 {
-                    var invoice = await invoiceRepository.GetByGatewayInvoiceIdAsync(payload.GatewayInvoiceId, ct);
-                    if (invoice is not null)
+                    if (!string.IsNullOrWhiteSpace(payload.GatewayInvoiceId))
                     {
-                        invoice.MarkOverdue();
-                        invoiceRepository.Update(invoice);
+                        var invoice = await invoiceRepository.GetByGatewayInvoiceIdAsync(payload.GatewayInvoiceId, ct);
+                        if (invoice is not null)
+                        {
+                            invoice.MarkOverdue();
+                            invoiceRepository.Update(invoice);
+                        }
                     }
-                }
 
-                var now = payload.TimestampUtc;
-                subscription.MarkOverdue(now, gracePeriodDays: 5, "Fatura em atraso notificada pelo provedor de pagamentos.");
-                subscriptionRepository.Update(subscription);
+                    var now = payload.TimestampUtc;
+                    subscription.MarkOverdue(now, gracePeriodDays: 5, "Fatura em atraso notificada pelo provedor de pagamentos.");
+                    subscriptionRepository.Update(subscription);
 
-                if (subscription.Status == TenantSubscriptionStatus.Delinquent)
-                {
-                    await globalTenantLookup.UpdateTenantStatusAsync(tenantId, new UpdateTenantStatusRequest(
-                        TenantStatus.Delinquent,
-                        "Suspenso por inadimplência após vencimento do prazo de carência da assinatura."), ct);
+                    if (subscription.Status == TenantSubscriptionStatus.Delinquent)
+                    {
+                        await globalTenantLookup.UpdateTenantStatusAsync(tenantId, new UpdateTenantStatusRequest(
+                            TenantStatus.Delinquent,
+                            "Suspenso por inadimplência após vencimento do prazo de carência da assinatura."), ct);
+                    }
+                    break;
                 }
-                break;
-            }
 
             case "subscription.canceled":
-            {
-                subscription.Cancel("Assinatura cancelada via provedor de pagamentos.");
-                subscriptionRepository.Update(subscription);
+                {
+                    subscription.Cancel("Assinatura cancelada via provedor de pagamentos.");
+                    subscriptionRepository.Update(subscription);
 
-                await globalTenantLookup.UpdateTenantStatusAsync(tenantId, new UpdateTenantStatusRequest(
-                    TenantStatus.Canceled,
-                    "Assinatura cancelada no SaaS."), ct);
-                break;
-            }
+                    await globalTenantLookup.UpdateTenantStatusAsync(tenantId, new UpdateTenantStatusRequest(
+                        TenantStatus.Canceled,
+                        "Assinatura cancelada no SaaS."), ct);
+                    break;
+                }
         }
 
         await processedEventsRepository.AddAsync(new ProcessedSaasWebhookEvent(
