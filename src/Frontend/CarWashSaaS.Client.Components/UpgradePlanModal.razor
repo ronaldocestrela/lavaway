@@ -2,100 +2,113 @@
 
 @if (IsOpen)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-        <div class="relative w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
+    <div class="modal-overlay" role="dialog" aria-modal="true">
+        <div class="modal-card">
             <!-- Header -->
-            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div class="modal-header">
                 <div>
-                    <h3 class="text-lg font-bold text-slate-900">Planos de Assinatura Lavaway</h3>
-                    <p class="text-xs text-slate-500">Escolha o plano ideal para a capacidade e recursos do seu estabelecimento</p>
+                    <h3 class="modal-title">Planos de Assinatura Lavaway</h3>
+                    <p class="modal-subtitle">Escolha o plano ideal para a capacidade e recursos do seu estabelecimento</p>
                 </div>
-                <button type="button" @onclick="Close" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button type="button" @onclick="Close" class="modal-close-btn" aria-label="Fechar">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
             <!-- Cards -->
-            <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div class="plans-grid">
                 @foreach (var plan in Plans)
                 {
                     var isCurrent = plan.Tier == CurrentTier;
                     var isSelected = plan.Tier == SelectedTier;
 
-                    <div class="relative flex flex-col justify-between rounded-xl border p-4 transition-all
-                                @(isSelected ? "border-indigo-600 ring-2 ring-indigo-600/20 bg-indigo-50/20" : isCurrent ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white hover:border-slate-300")">
-                        
+                    <div class="plan-card @(isSelected ? "is-selected" : "") @(isCurrent ? "is-current" : "")">
                         @if (isCurrent)
                         {
-                            <span class="absolute -top-2.5 right-3 rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-semibold text-white">
-                                Plano Atual
-                            </span>
+                            <span class="plan-badge badge-current">Plano Atual</span>
                         }
                         else if (plan.Tier == SaasPlanTier.Pro)
                         {
-                            <span class="absolute -top-2.5 right-3 rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-                                Mais Popular
-                            </span>
+                            <span class="plan-badge badge-popular">Mais Popular</span>
                         }
 
-                        <div>
-                            <h4 class="text-base font-bold text-slate-900">@plan.Name</h4>
-                            <p class="mt-1 text-xs text-slate-500 line-clamp-2">@plan.Description</p>
+                        <div class="plan-card-body">
+                            <h4 class="plan-card-name">@plan.Name</h4>
+                            <p class="plan-card-desc">@plan.Description</p>
 
-                            <div class="mt-3 flex items-baseline gap-1">
-                                <span class="text-2xl font-extrabold text-slate-900">R$ @plan.MonthlyPrice.ToString("N2")</span>
-                                <span class="text-xs text-slate-500">/mês</span>
+                            <div class="plan-card-price-row">
+                                <span class="plan-card-price">R$ @plan.MonthlyPrice.ToString("N2")</span>
+                                <span class="plan-card-period">/mês</span>
                             </div>
 
-                            <ul class="mt-4 space-y-2 text-xs text-slate-600">
-                                <li class="flex items-center gap-1.5">
-                                    <svg class="h-4 w-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <ul class="plan-features-list">
+                                <li class="plan-feature-item">
+                                    <svg class="feature-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                     <span>@(plan.MaxWorkOrdersPerCycle > 0 ? $"Até {plan.MaxWorkOrdersPerCycle} OS/mês" : "OS Ilimitadas")</span>
                                 </li>
-                                <li class="flex items-center gap-1.5">
-                                    <svg class="h-4 w-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <li class="plan-feature-item">
+                                    <svg class="feature-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                     <span>@(plan.MaxWhatsAppMessagesPerCycle > 0 ? $"Até {plan.MaxWhatsAppMessagesPerCycle} msgs WhatsApp" : "WhatsApp Ilimitado")</span>
                                 </li>
-                                <li class="flex items-center gap-1.5">
-                                    <svg class="h-4 w-4 @(plan.HasCustomerSubscriptions ? "text-emerald-500" : "text-slate-300") shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span class="@(plan.HasCustomerSubscriptions ? "" : "line-through text-slate-400")">Clube de Assinaturas</span>
+                                <li class="plan-feature-item">
+                                    @if (plan.HasCustomerSubscriptions)
+                                    {
+                                        <svg class="feature-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>Clube de Assinaturas</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="feature-disabled">✕ Clube de Assinaturas</span>
+                                    }
                                 </li>
-                                <li class="flex items-center gap-1.5">
-                                    <svg class="h-4 w-4 @(plan.HasLoyalty ? "text-emerald-500" : "text-slate-300") shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span class="@(plan.HasLoyalty ? "" : "line-through text-slate-400")">Fidelidade & Comissões</span>
+                                <li class="plan-feature-item">
+                                    @if (plan.HasLoyalty)
+                                    {
+                                        <svg class="feature-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>Fidelidade &amp; Comissões</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="feature-disabled">✕ Fidelidade &amp; Comissões</span>
+                                    }
                                 </li>
-                                <li class="flex items-center gap-1.5">
-                                    <svg class="h-4 w-4 @(plan.HasAiChatbot ? "text-emerald-500" : "text-slate-300") shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span class="@(plan.HasAiChatbot ? "" : "line-through text-slate-400")">Bot Conversacional IA</span>
+                                <li class="plan-feature-item">
+                                    @if (plan.HasAiChatbot)
+                                    {
+                                        <svg class="feature-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>Bot Conversacional IA</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="feature-disabled">✕ Bot Conversacional IA</span>
+                                    }
                                 </li>
                             </ul>
                         </div>
 
-                        <div class="mt-5">
+                        <div class="plan-card-footer">
                             @if (isCurrent)
                             {
-                                <button type="button" disabled
-                                        class="w-full rounded-lg bg-slate-100 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed">
+                                <button type="button" disabled class="btn-select-plan">
                                     Plano Atual
                                 </button>
                             }
                             else
                             {
                                 <button type="button" @onclick="() => SelectTier(plan.Tier)"
-                                        class="w-full rounded-lg py-2 text-xs font-semibold transition-colors
-                                               @(isSelected ? "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200")">
+                                        class="btn-select-plan @(isSelected ? "is-active-selection" : "")">
                                     @(isSelected ? "Selecionado" : "Mudar para este")
                                 </button>
                             }
@@ -105,19 +118,18 @@
             </div>
 
             <!-- Footer -->
-            <div class="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-                <button type="button" @onclick="Close"
-                        class="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+            <div class="modal-footer">
+                <button type="button" @onclick="Close" class="btn-modal-cancel">
                     Cancelar
                 </button>
                 <button type="button" @onclick="ConfirmPlanChange"
                         disabled="@(SelectedTier == null || SelectedTier == CurrentTier || IsLoading)"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="btn-modal-confirm">
                     @if (IsLoading)
                     {
-                        <svg class="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        <svg class="spinner-icon" fill="none" viewBox="0 0 24 24">
+                            <circle opacity="0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path opacity="0.75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                         </svg>
                         <span>Processando...</span>
                     }

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CarWashSaaS.Api.Services;
 using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Shared.Contracts;
@@ -25,6 +26,25 @@ public static class IdentityEndpoints
             return result.Error!.Type switch
             {
                 ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status401Unauthorized),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        }).AllowAnonymous();
+
+        authGroup.MapPost("/register-tenant", async (
+            RegisterTenantRequest request,
+            TenantOnboardingService onboardingService,
+            CancellationToken ct) =>
+        {
+            var result = await onboardingService.RegisterAsync(request, ct);
+            if (result.IsSuccess)
+            {
+                return Results.Created("/auth/me", result.Value);
+            }
+
+            return result.Error!.Type switch
+            {
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };

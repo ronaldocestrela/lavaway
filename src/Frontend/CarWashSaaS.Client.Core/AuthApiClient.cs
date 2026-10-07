@@ -30,6 +30,28 @@ public sealed class AuthApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<Result<AuthTokenResponse>> RegisterTenantAsync(RegisterTenantRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await httpClient.PostAsJsonAsync("auth/register-tenant", request, ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<AuthTokenResponse>(JsonOptions, ct);
+                return data is not null
+                    ? Result<AuthTokenResponse>.Success(data)
+                    : Result<AuthTokenResponse>.Failure(new Error("auth.empty_response", "Empty response from server.", ErrorType.Validation));
+            }
+
+            var error = await ReadErrorAsync(response, ct);
+            return Result<AuthTokenResponse>.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<AuthTokenResponse>.Failure(new Error("auth.network_error", ex.Message, ErrorType.Validation));
+        }
+    }
+
     public async Task<Result<AuthTokenResponse>> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken ct = default)
     {
         try

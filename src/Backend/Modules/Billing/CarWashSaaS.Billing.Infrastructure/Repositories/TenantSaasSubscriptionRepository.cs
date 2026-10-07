@@ -1,9 +1,13 @@
 using CarWashSaaS.Billing.Domain;
+using CarWashSaaS.Shared.Configuration;
+using CarWashSaaS.Shared.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarWashSaaS.Billing.Infrastructure.Repositories;
 
-public sealed class TenantSaasSubscriptionRepository(BillingDbContext dbContext) : ITenantSaasSubscriptionRepository
+public sealed class TenantSaasSubscriptionRepository(
+    BillingDbContext dbContext,
+    ICurrentTenantAccessor? currentTenantAccessor = null) : ITenantSaasSubscriptionRepository
 {
     public async Task<TenantSaasSubscription?> GetByTenantIdAsync(Guid tenantId, CancellationToken ct = default)
     {
@@ -29,16 +33,26 @@ public sealed class TenantSaasSubscriptionRepository(BillingDbContext dbContext)
 
     public async Task AddAsync(TenantSaasSubscription subscription, CancellationToken ct = default)
     {
+        EnsureTenantContext(subscription.TenantId);
         await dbContext.TenantSaasSubscriptions.AddAsync(subscription, ct);
     }
 
     public void Update(TenantSaasSubscription subscription)
     {
+        EnsureTenantContext(subscription.TenantId);
         dbContext.TenantSaasSubscriptions.Update(subscription);
     }
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await dbContext.SaveChangesAsync(ct);
+    }
+
+    private void EnsureTenantContext(Guid tenantId)
+    {
+        if (currentTenantAccessor?.TenantId is null && currentTenantAccessor is CurrentTenantAccessor mutableAccessor)
+        {
+            mutableAccessor.SetTenant(tenantId);
+        }
     }
 }

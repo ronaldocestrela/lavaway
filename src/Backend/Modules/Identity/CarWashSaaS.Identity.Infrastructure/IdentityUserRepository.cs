@@ -1,5 +1,6 @@
 using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
+using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Shared.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,8 @@ namespace CarWashSaaS.Identity.Infrastructure;
 
 public sealed class IdentityUserRepository(
     UserManager<ApplicationUser> userManager,
-    IdentityModuleDbContext context) : IIdentityUserRepository
+    IdentityModuleDbContext context,
+    ICurrentTenantAccessor? currentTenantAccessor = null) : IIdentityUserRepository
 {
     public async Task<IdentityUserSnapshot?> FindByEmailAsync(string email, CancellationToken ct = default)
     {
@@ -77,6 +79,11 @@ public sealed class IdentityUserRepository(
                 "user.email.duplicate",
                 "A user with this email already exists.",
                 ErrorType.Conflict));
+        }
+
+        if (currentTenantAccessor?.TenantId is null && currentTenantAccessor is CurrentTenantAccessor mutableAccessor)
+        {
+            mutableAccessor.SetTenant(tenantId);
         }
 
         var user = new ApplicationUser

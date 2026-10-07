@@ -1,5 +1,10 @@
 @page "/"
 @layout LandingLayout
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject AuthApiClient AuthApi
+@inject ITokenStorage TokenStorage
+@inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
 <PageTitle>Lavaway | O Sistema Operacional para Lava-Jatos e Estética Automotiva</PageTitle>
@@ -941,41 +946,49 @@
                         <p>Preencha os dados do seu lava-jato ou estética para liberar seu acesso imediatamente.</p>
                     </div>
 
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <div class="modal-alert-error" role="alert">
+                            <span>⚠️</span>
+                            <span>@_errorMessage</span>
+                        </div>
+                    }
+
                     <form class="modal-form" @onsubmit="SubmitHireRequest" @onsubmit:preventDefault>
                         <div class="modal-grid">
                             <label class="modal-field">
                                 <span>Nome da sua Estética / Lava-Jato *</span>
-                                <input @bind="_hireStoreName" placeholder="Ex: Studio Auto Brilho" required />
+                                <input @bind="_hireStoreName" placeholder="Ex: Studio Auto Brilho" required disabled="@_isSubmitting" />
                             </label>
 
                             <label class="modal-field">
                                 <span>Seu Nome Completo *</span>
-                                <input @bind="_hireContactName" placeholder="Ex: Carlos Eduardo" required />
+                                <input @bind="_hireContactName" placeholder="Ex: Carlos Eduardo" required disabled="@_isSubmitting" />
+                            </label>
+
+                            <label class="modal-field">
+                                <span>E-mail de Acesso (Login) *</span>
+                                <input @bind="_hireEmail" type="email" placeholder="carlos@autobrilho.com" required autocomplete="email" disabled="@_isSubmitting" />
+                            </label>
+
+                            <label class="modal-field">
+                                <span>Senha de Acesso (mínimo 6 caracteres) *</span>
+                                <input @bind="_hirePassword" type="password" placeholder="••••••••" required autocomplete="new-password" disabled="@_isSubmitting" />
                             </label>
 
                             <label class="modal-field">
                                 <span>WhatsApp com DDD *</span>
-                                <input @bind="_hirePhone" inputmode="tel" placeholder="(11) 99999-8888" required />
+                                <input @bind="_hirePhone" inputmode="tel" placeholder="(11) 99999-8888" required disabled="@_isSubmitting" />
                             </label>
 
                             <label class="modal-field">
                                 <span>Cidade e Estado</span>
-                                <input @bind="_hireCity" placeholder="Ex: Curitiba / PR" />
-                            </label>
-
-                            <label class="modal-field">
-                                <span>Média de veículos atendidos/dia</span>
-                                <select @bind="_hireVehiclesPerDay">
-                                    <option value="Ate 15">Até 15 veículos/dia</option>
-                                    <option value="16 a 35">16 a 35 veículos/dia</option>
-                                    <option value="36 a 70">36 a 70 veículos/dia</option>
-                                    <option value="Mais de 70">Mais de 70 veículos/dia</option>
-                                </select>
+                                <input @bind="_hireCity" placeholder="Ex: Curitiba / PR" disabled="@_isSubmitting" />
                             </label>
 
                             <label class="modal-field">
                                 <span>Plano Selecionado</span>
-                                <select @bind="_selectedPlan">
+                                <select @bind="_selectedPlan" disabled="@_isSubmitting">
                                     <option value="Start">Plano Pátio Start (R$ 99/mês)</option>
                                     <option value="Pro">Plano Estética Pro (R$ 189/mês) — Recomendado</option>
                                     <option value="Redes">Plano Redes &amp; Franquias (R$ 369/mês)</option>
@@ -984,9 +997,16 @@
                         </div>
 
                         <div class="modal-actions">
-                            <button class="btn-quiet" type="button" @onclick="CloseContractModal">Voltar</button>
-                            <button class="btn-primary glow" type="submit" id="btn-submit-hire">
-                                Liberar Meu Acesso Grátis &rarr;
+                            <button class="btn-quiet" type="button" @onclick="CloseContractModal" disabled="@_isSubmitting">Voltar</button>
+                            <button class="btn-primary glow" type="submit" id="btn-submit-hire" disabled="@_isSubmitting">
+                                @if (_isSubmitting)
+                                {
+                                    <span>Criando conta e liberando acesso...</span>
+                                }
+                                else
+                                {
+                                    <span>Liberar Meu Acesso Grátis &rarr;</span>
+                                }
                             </button>
                         </div>
                     </form>
@@ -995,16 +1015,20 @@
                 {
                     <div class="modal-success-view">
                         <div class="success-icon">&#10003;</div>
-                        <h2>Solicitação de Acesso Recebida com Sucesso!</h2>
+                        <h2>Conta Criada com Sucesso!</h2>
                         <p>
-                            Excelente, <strong>@_hireContactName</strong>! Registramos os dados do seu estabelecimento
-                            <strong>@_hireStoreName</strong> para o <strong>Plano @_selectedPlan</strong>.
+                            Bem-vindo, <strong>@_hireContactName</strong>! Seu ambiente para o lava-jato
+                            <strong>@_hireStoreName</strong> foi configurado com <strong>14 dias de teste grátis</strong> no <strong>Plano @_selectedPlan</strong>.
                         </p>
                         <div class="success-box">
-                            <p>Nosso time de implantação já preparou o ambiente para o seu WhatsApp <strong>@_hirePhone</strong>.</p>
-                            <a class="btn-whatsapp-direct" href="@GetWhatsAppDirectLink()" target="_blank" rel="noopener noreferrer">
-                                <span class="wa-ico">💬</span>
-                                <span>Ativar Agora via WhatsApp com Consultor &rarr;</span>
+                            <p>Sua sessão foi iniciada automaticamente. Você já pode gerenciar ordens de serviço, clientes e pátio!</p>
+                            <button class="btn-primary glow full-width" type="button" @onclick="NavigateToApp" id="btn-go-to-dashboard">
+                                🚀 Acessar Recepção e Pátio Agora &rarr;
+                            </button>
+                        </div>
+                        <div class="success-secondary-actions">
+                            <a class="whatsapp-support-link" href="@GetWhatsAppDirectLink()" target="_blank" rel="noopener noreferrer">
+                                💬 Precisa de ajuda com a implantação? Fale com nosso consultor
                             </a>
                         </div>
                         <button class="btn-quiet mt-16" type="button" @onclick="CloseContractModal">Concluir e Fechar</button>
@@ -1029,10 +1053,13 @@
     private string _selectedPlan = "Pro";
     private string _hireStoreName = string.Empty;
     private string _hireContactName = string.Empty;
+    private string _hireEmail = string.Empty;
+    private string _hirePassword = string.Empty;
     private string _hirePhone = string.Empty;
     private string _hireCity = string.Empty;
-    private string _hireVehiclesPerDay = "16 a 35";
     private bool _hireSubmitted;
+    private bool _isSubmitting;
+    private string? _errorMessage;
 
     private void ToggleMobileMenu() => _isMobileMenuOpen = !_isMobileMenuOpen;
     private void CloseMobileMenu() => _isMobileMenuOpen = false;
@@ -1076,6 +1103,8 @@
     {
         _selectedPlan = plan;
         _hireSubmitted = false;
+        _isSubmitting = false;
+        _errorMessage = null;
         _isContractModalOpen = true;
     }
 
@@ -1084,14 +1113,82 @@
         _isContractModalOpen = false;
     }
 
-    private void SubmitHireRequest()
+    private async Task SubmitHireRequest()
     {
-        _hireSubmitted = true;
+        _errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(_hireStoreName) ||
+            string.IsNullOrWhiteSpace(_hireContactName) ||
+            string.IsNullOrWhiteSpace(_hireEmail) ||
+            string.IsNullOrWhiteSpace(_hirePassword) ||
+            string.IsNullOrWhiteSpace(_hirePhone))
+        {
+            _errorMessage = "Por favor, preencha todos os campos obrigatórios (*).";
+            return;
+        }
+
+        if (_hirePassword.Trim().Length < 6)
+        {
+            _errorMessage = "A senha de acesso deve ter pelo menos 6 caracteres.";
+            return;
+        }
+
+        _isSubmitting = true;
+        try
+        {
+            var planTier = _selectedPlan switch
+            {
+                "Start" => SaasPlanTier.Basic,
+                "Redes" => SaasPlanTier.Enterprise,
+                _ => SaasPlanTier.Pro
+            };
+
+            var request = new RegisterTenantRequest(
+                StoreName: _hireStoreName.Trim(),
+                AdminName: _hireContactName.Trim(),
+                Email: _hireEmail.Trim().ToLowerInvariant(),
+                Password: _hirePassword,
+                Phone: _hirePhone.Trim(),
+                City: string.IsNullOrWhiteSpace(_hireCity) ? null : _hireCity.Trim(),
+                State: null,
+                PlanTier: planTier);
+
+            var result = await AuthApi.RegisterTenantAsync(request);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                var auth = result.Value;
+                await TokenStorage.SetAccessTokenAsync(auth.AccessToken);
+                if (!string.IsNullOrWhiteSpace(auth.RefreshToken))
+                {
+                    await TokenStorage.SetRefreshTokenAsync(auth.RefreshToken);
+                }
+                AuthStateProvider.NotifyUserAuthentication(auth.AccessToken);
+                _hireSubmitted = true;
+            }
+            else
+            {
+                _errorMessage = result.Error?.Description ?? "Ocorreu um erro ao criar a conta. Tente novamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erro de conexão: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void NavigateToApp()
+    {
+        CloseContractModal();
+        Navigation.NavigateTo("reception");
     }
 
     private string GetWhatsAppDirectLink()
     {
-        var message = $"Olá! Gostaria de ativar meu acesso ao Lavaway para o plano {_selectedPlan}. Meu estabelecimento: {_hireStoreName} ({_hireCity}), responsável: {_hireContactName}.";
+        var message = $"Olá! Acabei de ativar meu teste no Lavaway para o plano {_selectedPlan}. Meu estabelecimento: {_hireStoreName} ({_hireCity}), responsável: {_hireContactName}.";
         return $"https://wa.me/5511999999999?text={Uri.EscapeDataString(message)}";
     }
 }

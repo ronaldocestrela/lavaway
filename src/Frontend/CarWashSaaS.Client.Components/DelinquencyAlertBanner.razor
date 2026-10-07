@@ -2,62 +2,56 @@
 
 @if (Status == TenantSubscriptionStatus.GracePeriod)
 {
-    <div class="rounded-xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm">
-        <div class="flex items-start gap-3">
-            <div class="rounded-lg bg-amber-100 p-2 text-amber-700">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-            </div>
-            <div class="flex-1">
-                <h4 class="text-sm font-semibold text-amber-900">Período de Tolerância Ativo (Fatura Pendente)</h4>
-                <p class="mt-0.5 text-xs text-amber-800">
-                    Sua assinatura do Lavaway possui uma fatura em aberto. Você pode continuar operando até
-                    <strong>@(GracePeriodEndsAtUtc?.ToString("dd/MM/yyyy HH:mm") ?? "breve")</strong>. Após este prazo, o acesso à emissão de novas OS será suspenso.
-                </p>
-                @if (OnSettleClicked.HasDelegate)
-                {
-                    <div class="mt-2.5">
-                        <button type="button" @onclick="OnSettleClicked"
-                                class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-700">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                            </svg>
-                            Regularizar Fatura com Pix
-                        </button>
-                    </div>
-                }
-            </div>
+    <div class="alert-banner alert-grace" role="alert">
+        <div class="alert-icon-wrapper">
+            <svg class="alert-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        </div>
+        <div class="alert-content">
+            <h4 class="alert-title">Período de Tolerância Ativo (Fatura Pendente)</h4>
+            <p class="alert-text">
+                Sua assinatura do Lavaway possui uma fatura em aberto. Você pode continuar operando até
+                <strong>@(GracePeriodEndsAtUtc?.ToString("dd/MM/yyyy HH:mm") ?? "breve")</strong>. Após este prazo, o acesso à emissão de novas OS será suspenso.
+            </p>
+            @if (OnSettleClicked.HasDelegate)
+            {
+                <div class="alert-actions">
+                    <button type="button" @onclick="OnSettleClicked" class="btn-alert-action">
+                        <svg class="btn-action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        <span>Regularizar Fatura com Pix</span>
+                    </button>
+                </div>
+            }
         </div>
     </div>
 }
 else if (Status == TenantSubscriptionStatus.Delinquent)
 {
-    <div class="rounded-xl border border-rose-200 bg-rose-50/90 p-4 shadow-sm">
-        <div class="flex items-start gap-3">
-            <div class="rounded-lg bg-rose-100 p-2 text-rose-700">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-            </div>
-            <div class="flex-1">
-                <h4 class="text-sm font-semibold text-rose-900">Operação Suspensa por Inadimplência</h4>
-                <p class="mt-0.5 text-xs text-rose-800">
-                    O período de tolerância expirou. A abertura de novas ordens de serviço e o envio de mensagens WhatsApp foram bloqueados temporariamente.
-                </p>
-                @if (OnSettleClicked.HasDelegate)
-                {
-                    <div class="mt-2.5">
-                        <button type="button" @onclick="OnSettleClicked"
-                                class="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-rose-700">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Pagar e Desbloquear Acesso Imediatamente
-                        </button>
-                    </div>
-                }
-            </div>
+    <div class="alert-banner alert-delinquent" role="alert">
+        <div class="alert-icon-wrapper">
+            <svg class="alert-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+        </div>
+        <div class="alert-content">
+            <h4 class="alert-title">Operação Suspensa por Inadimplência</h4>
+            <p class="alert-text">
+                O período de tolerância expirou. A abertura de novas ordens de serviço e o envio de mensagens WhatsApp foram bloqueados temporariamente.
+            </p>
+            @if (OnSettleClicked.HasDelegate)
+            {
+                <div class="alert-actions">
+                    <button type="button" @onclick="OnSettleClicked" class="btn-alert-action">
+                        <svg class="btn-action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Pagar e Desbloquear Acesso Imediatamente</span>
+                    </button>
+                </div>
+            }
         </div>
     </div>
 }
