@@ -8,7 +8,8 @@ public sealed class WhatsAppMessageApplicationService(
     IOutboundWhatsAppMessageRepository messageRepository,
     ITenantWhatsAppQuotaRepository quotaRepository,
     ICustomerCommunicationPreferenceRepository preferenceRepository,
-    IBackgroundQueue backgroundQueue) : IOutboundWhatsAppDispatcher
+    IBackgroundQueue backgroundQueue,
+    ITenantPlanQuotaLookup? planQuotaLookup = null) : IOutboundWhatsAppDispatcher
 {
     public async Task<Result<WhatsAppMessageDto>> SendTestMessageAsync(
         Guid tenantId,
@@ -55,6 +56,22 @@ public sealed class WhatsAppMessageApplicationService(
         }
 
         // 3. Validar cota / rate-limit
+        if (planQuotaLookup is not null)
+        {
+            var planQuotaCheck = await planQuotaLookup.CheckWhatsAppQuotaAsync(tenantId, ct);
+            if (!planQuotaCheck.IsSuccess)
+            {
+                return Result<WhatsAppMessageDto>.Failure(planQuotaCheck.Error!);
+            }
+            if (!planQuotaCheck.Value!.CanProceed)
+            {
+                return Result<WhatsAppMessageDto>.Failure(new Error(
+                    "tenant.quota.whatsapp_exceeded",
+                    planQuotaCheck.Value.Reason ?? "Limite mensal de mensagens WhatsApp do plano atingido ou conta com restrição financeira.",
+                    ErrorType.Conflict));
+            }
+        }
+
         var quota = await quotaRepository.GetOrCreateAsync(tenantId, ct);
         if (!quota.CanSend())
         {
@@ -75,6 +92,11 @@ public sealed class WhatsAppMessageApplicationService(
         if (!quotaRecordResult.IsSuccess)
         {
             return Result<WhatsAppMessageDto>.Failure(quotaRecordResult.Error!);
+        }
+
+        if (planQuotaLookup is not null)
+        {
+            await planQuotaLookup.ConsumeWhatsAppQuotaAsync(tenantId, ct);
         }
 
         await quotaRepository.SaveChangesAsync(ct);

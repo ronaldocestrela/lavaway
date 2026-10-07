@@ -187,6 +187,21 @@ public sealed class TenantImpersonationApplicationServiceTests
 
             return Task.FromResult(Result<GlobalTenantSummaryDto>.Failure(new Error("tenant.not_found", "Not found", ErrorType.NotFound)));
         }
+
+        public Task<Result<GlobalTenantSummaryDto>> UpdateTenantStatusAsync(
+            Guid tenantId,
+            UpdateTenantStatusRequest request,
+            CancellationToken ct = default)
+        {
+            if (_tenants.TryGetValue(tenantId, out var tenant))
+            {
+                var updated = tenant with { Status = request.NewStatus, StatusReason = request.Reason };
+                _tenants[tenantId] = updated;
+                return Task.FromResult(Result<GlobalTenantSummaryDto>.Success(updated));
+            }
+
+            return Task.FromResult(Result<GlobalTenantSummaryDto>.Failure(new Error("tenant.not_found", "Not found", ErrorType.NotFound)));
+        }
     }
 
     private sealed class FakeAuditEventRepository : IAdministrativeAuditEventRepository
