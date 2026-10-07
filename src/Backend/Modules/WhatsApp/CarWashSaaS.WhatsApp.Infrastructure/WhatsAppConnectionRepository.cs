@@ -31,4 +31,23 @@ public sealed class WhatsAppConnectionRepository(WhatsAppDbContext dbContext) : 
         dbContext.WhatsAppConnections.Update(connection);
         await dbContext.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyList<WhatsAppConnection>> ListAllConnectionsAsync(CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        return await dbContext.WhatsAppConnections
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .OrderByDescending(c => c.UpdatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<WhatsAppConnection?> GetByProviderSessionAsync(string providerSessionId, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        return await dbContext.WhatsAppConnections
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.ProviderSessionId == providerSessionId, ct);
+    }
 }

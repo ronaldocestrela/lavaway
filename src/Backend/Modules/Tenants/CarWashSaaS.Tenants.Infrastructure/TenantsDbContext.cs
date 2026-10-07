@@ -22,6 +22,11 @@ public sealed class TenantsDbContext(
         tenant.Property(value => value.Id).ValueGeneratedNever();
         tenant.Property(value => value.Name).HasMaxLength(200).IsRequired();
         tenant.Property(value => value.CreatedAtUtc).HasColumnType("datetimeoffset").IsRequired();
+        tenant.Property(value => value.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
+        tenant.Property(value => value.StatusChangedAtUtc).HasColumnType("datetimeoffset").IsRequired();
+        tenant.Property(value => value.TrialEndsAtUtc).HasColumnType("datetimeoffset");
+        tenant.Property(value => value.StatusReason).HasMaxLength(500);
+        tenant.HasIndex(value => value.Status);
 
         var storeProfile = modelBuilder.Entity<StoreProfile>();
         storeProfile.ToTable("StoreProfiles", "tenants");

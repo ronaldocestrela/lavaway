@@ -1,0 +1,99 @@
+@implements IDisposable
+@inject ImpersonationSessionState ImpersonationSession
+@inject GlobalTenantApiClient TenantApiClient
+@inject IToastService ToastService
+@inject NavigationManager Navigation
+
+@if (ImpersonationSession.IsActive)
+{
+    <aside class="impersonation-banner" role="alert" aria-label="Aviso de Modo Diagnóstico Ativo">
+        <div class="banner-content">
+            <div class="banner-badge">
+                <span class="pulse-dot" aria-hidden="true"></span>
+                <span class="badge-text">MODO DIAGNÓSTICO</span>
+            </div>
+
+            <div class="banner-info">
+                <div class="info-item">
+                    <span class="info-label">Estabelecimento:</span>
+                    <strong class="info-value">@ImpersonationSession.TenantName</strong>
+                    <span class="tenant-id-badge">@ImpersonationSession.TenantId</span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(ImpersonationSession.TicketReference))
+                {
+                    <div class="info-item ticket-chip">
+                        <span class="info-label">Chamado:</span>
+                        <strong class="info-value">@ImpersonationSession.TicketReference</strong>
+                    </div>
+                }
+
+                <div class="info-item operator-chip">
+                    <span class="info-label">Operador:</span>
+                    <span class="info-value">@ImpersonationSession.OperatorEmail</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="banner-actions">
+            <button type="button" 
+                    class="btn-end-impersonation" 
+                    @onclick="EndSessionAsync" 
+                    disabled="@isEnding"
+                    aria-label="Encerrar sessão de diagnóstico">
+                @if (isEnding)
+                {
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span>Encerrando...</span>
+                }
+                else
+                {
+                    <span>Encerrar Diagnóstico</span>
+                }
+            </button>
+        </div>
+    </aside>
+}
+
+@code {
+    private bool isEnding;
+
+    protected override void OnInitialized()
+    {
+        ImpersonationSession.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task EndSessionAsync()
+    {
+        if (isEnding || !ImpersonationSession.TenantId.HasValue) return;
+
+        isEnding = true;
+        try
+        {
+            var tenantId = ImpersonationSession.TenantId.Value;
+            var result = await TenantApiClient.EndImpersonationAsync(tenantId, new EndImpersonationRequest("Encerrado via interface"));
+            
+            ImpersonationSession.End();
+            ToastService.ShowSuccess("Sessão de diagnóstico encerrada com sucesso.");
+            Navigation.NavigateTo("platform/tenants");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao encerrar sessão: {ex.Message}");
+        }
+        finally
+        {
+            isEnding = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        ImpersonationSession.OnChange -= HandleStateChanged;
+    }
+}

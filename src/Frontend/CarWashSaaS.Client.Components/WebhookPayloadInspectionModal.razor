@@ -1,0 +1,117 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen && Log is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm"
+         role="dialog" aria-modal="true" aria-labelledby="webhook-modal-title">
+        <div class="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl transition-all">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="webhook-modal-title" class="text-base font-bold text-slate-900">Inspeção de Evento de Webhook</h3>
+                        <p class="text-xs text-slate-500">Detalhes técnicos do payload processado pelo provedor</p>
+                    </div>
+                </div>
+                <button type="button" @onclick="OnClose" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="mt-4 space-y-4 text-xs">
+                <div class="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5">
+                    <div>
+                        <span class="font-medium text-slate-400">Provedor:</span>
+                        <div class="font-bold text-slate-900">@Log.Provider</div>
+                    </div>
+                    <div>
+                        <span class="font-medium text-slate-400">Tipo do Evento:</span>
+                        <div class="font-mono font-semibold text-indigo-600">@Log.EventType</div>
+                    </div>
+                    <div>
+                        <span class="font-medium text-slate-400">Status:</span>
+                        <div>
+                            <span class="inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold @GetStatusBadgeClass(Log.Status)">
+                                @Log.Status
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="font-medium text-slate-400">Data/Hora UTC:</span>
+                        <div class="font-mono text-slate-700">@Log.ReceivedAtUtc.ToString("dd/MM/yyyy HH:mm:ss")</div>
+                    </div>
+                </div>
+
+                @if (Log.TenantId.HasValue)
+                {
+                    <div class="rounded-xl border border-slate-100 p-3">
+                        <span class="font-medium text-slate-400">Estabelecimento Afetado:</span>
+                        <div class="mt-0.5 flex items-center justify-between">
+                            <span class="font-bold text-slate-800">@(Log.TenantName ?? "Lojista")</span>
+                            <span class="font-mono text-[11px] text-slate-400">@Log.TenantId.Value</span>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Log.TxId))
+                {
+                    <div>
+                        <span class="font-medium text-slate-500">Identificador da Transação (TxId):</span>
+                        <div class="mt-1 rounded-lg bg-slate-900 p-2.5 font-mono text-xs text-emerald-400 select-all">
+                            @Log.TxId
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Log.PayloadHash))
+                {
+                    <div>
+                        <span class="font-medium text-slate-500">Hash de Verificação / Assinatura:</span>
+                        <div class="mt-1 truncate rounded-lg bg-slate-100 p-2 font-mono text-[11px] text-slate-700 select-all">
+                            @Log.PayloadHash
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Log.Notes))
+                {
+                    <div>
+                        <span class="font-medium text-slate-500">Notas / Diagnóstico Interno:</span>
+                        <p class="mt-1 rounded-lg border border-slate-200 bg-white p-2.5 text-slate-700">
+                            @Log.Notes
+                        </p>
+                    </div>
+                }
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button type="button" @onclick="OnClose"
+                        class="rounded-lg bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public PlatformWebhookLogDto? Log { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private static string GetStatusBadgeClass(string status) => status.ToLowerInvariant() switch
+    {
+        "processed" or "success" => "bg-emerald-50 text-emerald-700 border border-emerald-200",
+        "pending" => "bg-amber-50 text-amber-700 border border-amber-200",
+        _ => "bg-rose-50 text-rose-700 border border-rose-200"
+    };
+}

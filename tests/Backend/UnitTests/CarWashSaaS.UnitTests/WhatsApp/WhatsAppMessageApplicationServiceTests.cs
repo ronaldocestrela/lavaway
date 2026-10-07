@@ -132,6 +132,10 @@ public sealed class WhatsAppMessageApplicationServiceTests
 
         public Task AddAsync(WhatsAppConnection connection, CancellationToken ct = default) => Task.CompletedTask;
         public Task UpdateAsync(WhatsAppConnection connection, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<IReadOnlyList<WhatsAppConnection>> ListAllConnectionsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<WhatsAppConnection>>(connection is not null ? new[] { connection } : Array.Empty<WhatsAppConnection>());
+        public Task<WhatsAppConnection?> GetByProviderSessionAsync(string providerSessionId, CancellationToken ct = default)
+            => Task.FromResult(connection?.ProviderSessionId == providerSessionId ? connection : null);
     }
 
     private sealed class FakeOutboundWhatsAppMessageRepository : IOutboundWhatsAppMessageRepository

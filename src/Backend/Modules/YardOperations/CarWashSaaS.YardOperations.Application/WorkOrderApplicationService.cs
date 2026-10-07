@@ -15,7 +15,8 @@ public sealed class WorkOrderApplicationService(
     ITenantObjectStorage? tenantObjectStorage = null,
     IVehicleInspectionRepository? vehicleInspectionRepository = null,
     IBackgroundQueue? backgroundQueue = null,
-    LoyaltyApplicationService? loyaltyApplicationService = null) : IWorkOrderPaymentLookup, IWorkOrderPaymentSettlementService
+    LoyaltyApplicationService? loyaltyApplicationService = null,
+    ITenantPlanQuotaLookup? quotaLookup = null) : IWorkOrderPaymentLookup, IWorkOrderPaymentSettlementService
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -34,6 +35,23 @@ public sealed class WorkOrderApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<WorkOrderDto>.Failure(new Error("tenant.required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        if (quotaLookup is not null)
+        {
+            var quotaCheck = await quotaLookup.CheckWorkOrderQuotaAsync(tenantId, ct);
+            if (!quotaCheck.IsSuccess)
+            {
+                return Result<WorkOrderDto>.Failure(quotaCheck.Error!);
+            }
+
+            if (!quotaCheck.Value!.CanProceed)
+            {
+                return Result<WorkOrderDto>.Failure(new Error(
+                    "tenant.quota.work_orders_exceeded",
+                    quotaCheck.Value.Reason ?? "Limite mensal de ordens de serviço do plano atingido ou conta com restrição financeira.",
+                    ErrorType.Conflict));
+            }
         }
 
         if (command.CustomerId == Guid.Empty || command.VehicleId == Guid.Empty)
@@ -126,6 +144,11 @@ public sealed class WorkOrderApplicationService(
         if (!saveResult.IsSuccess)
         {
             return Result<WorkOrderDto>.Failure(saveResult.Error!);
+        }
+
+        if (quotaLookup is not null)
+        {
+            await quotaLookup.ConsumeWorkOrderQuotaAsync(tenantId, ct);
         }
 
         return Result<WorkOrderDto>.Success(ToDto(workOrder, customer.Name, vehicle.Plate, vehicle.Size.ToString()));

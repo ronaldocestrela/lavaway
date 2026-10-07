@@ -12,6 +12,7 @@ public sealed class WhatsAppDbContext(
     public Guid? TenantId => currentTenantAccessor.TenantId;
 
     public DbSet<WhatsAppConnection> WhatsAppConnections => Set<WhatsAppConnection>();
+    public DbSet<WhatsAppConnectionIncident> WhatsAppConnectionIncidents => Set<WhatsAppConnectionIncident>();
     public DbSet<OutboundWhatsAppMessage> OutboundWhatsAppMessages => Set<OutboundWhatsAppMessage>();
     public DbSet<WhatsAppDeliveryAttempt> WhatsAppDeliveryAttempts => Set<WhatsAppDeliveryAttempt>();
     public DbSet<TenantWhatsAppQuota> TenantWhatsAppQuotas => Set<TenantWhatsAppQuota>();
@@ -33,6 +34,28 @@ public sealed class WhatsAppDbContext(
             .IsRequired();
         connection.Property(value => value.CreatedAt).HasColumnType("datetimeoffset").IsRequired();
         connection.Property(value => value.UpdatedAt).HasColumnType("datetimeoffset").IsRequired();
+        connection.Property(value => value.LastConnectedAtUtc).HasColumnType("datetimeoffset");
+        connection.Property(value => value.LastDisconnectedAtUtc).HasColumnType("datetimeoffset");
+        connection.Property(value => value.DisconnectReason).HasMaxLength(500);
+        connection.Property(value => value.LastAlertSentAtUtc).HasColumnType("datetimeoffset");
+        connection.Property(value => value.AlertCount).IsRequired();
+        connection.Property(value => value.HasActiveAlert).IsRequired();
+
+        var incident = modelBuilder.Entity<WhatsAppConnectionIncident>();
+        incident.ToTable("WhatsAppConnectionIncidents", "whatsapp");
+        incident.HasKey(value => value.Id);
+        incident.Property(value => value.Id).ValueGeneratedNever();
+        incident.Property(value => value.TenantId).IsRequired();
+        incident.Property(value => value.ProviderSessionId).HasMaxLength(200).IsRequired();
+        incident.Property(value => value.Type)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired();
+        incident.Property(value => value.Reason).HasMaxLength(500).IsRequired();
+        incident.Property(value => value.AlertDispatched).IsRequired();
+        incident.Property(value => value.RecipientEmail).HasMaxLength(256);
+        incident.Property(value => value.OccurredAtUtc).HasColumnType("datetimeoffset").IsRequired();
+        incident.HasIndex(value => new { value.TenantId, value.OccurredAtUtc });
 
         var message = modelBuilder.Entity<OutboundWhatsAppMessage>();
         message.ToTable("WhatsAppMessages", "whatsapp");

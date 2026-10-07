@@ -212,6 +212,19 @@ public static class WhatsAppEndpoints
             return Results.Ok(dto);
         }).RequireAuthorization();
 
+        group.MapGet("/health", async (ICurrentTenantAccessor currentTenantAccessor, WhatsAppConnectionApplicationService service, CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.GetHealthDetailsAsync(tenantId, ct);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(new { result.Error!.Code, result.Error.Description });
+        }).RequireAuthorization();
+
         group.MapPost("/pairing/start", async (ICurrentTenantAccessor currentTenantAccessor, WhatsAppConnectionApplicationService service) =>
         {
             if (currentTenantAccessor.TenantId is not Guid tenantId)

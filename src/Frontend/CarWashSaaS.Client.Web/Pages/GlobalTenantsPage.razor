@@ -1,0 +1,392 @@
+@page "/platform/tenants"
+@attribute [Authorize(Roles = "SuperAdmin,PlatformSupport,PlatformBillingAdmin,PlatformAuditor")]
+@using CarWashSaaS.Shared.Contracts
+@inject GlobalTenantApiClient TenantApiClient
+@inject ImpersonationSessionState ImpersonationSession
+@inject IToastService ToastService
+@inject NavigationManager Navigation
+
+<div class="tenants-page-container">
+    <header class="page-header">
+        <div class="header-intro">
+            <div class="header-badge">BACKOFFICE DA PLATAFORMA</div>
+            <h1 class="header-title">Gestão Global de Estabelecimentos (Tenants)</h1>
+            <p class="header-description">
+                Controle operacional de assinantes, ciclo de vida comercial e ferramenta de suporte técnico por impersonation.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-refresh" @onclick="LoadTenantsAsync" disabled="@isLoading">
+                <span class="@(isLoading ? "spin-icon" : "")">↻</span>
+                <span>Atualizar</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- KPIs de Visão Global -->
+    <section class="kpi-grid" aria-label="Indicadores Globais de Tenants">
+        <div class="kpi-card">
+            <div class="kpi-label">TOTAL CADASTRADOS</div>
+            <div class="kpi-value">@totalTenants</div>
+            <div class="kpi-subtext">Base geral da plataforma</div>
+        </div>
+        <div class="kpi-card kpi-active">
+            <div class="kpi-label">ATIVOS</div>
+            <div class="kpi-value text-emerald">@activeTenantsCount</div>
+            <div class="kpi-subtext">Operando normalmente</div>
+        </div>
+        <div class="kpi-card kpi-trial">
+            <div class="kpi-label">EM TESTES (TRIAL)</div>
+            <div class="kpi-value text-cyan">@trialTenantsCount</div>
+            <div class="kpi-subtext">Período de experimentação</div>
+        </div>
+        <div class="kpi-card kpi-delinquent">
+            <div class="kpi-label">INADIMPLENTES</div>
+            <div class="kpi-value text-amber">@delinquentTenantsCount</div>
+            <div class="kpi-subtext">Cobrança pendente</div>
+        </div>
+        <div class="kpi-card kpi-canceled">
+            <div class="kpi-label">CANCELADOS</div>
+            <div class="kpi-value text-rose">@canceledTenantsCount</div>
+            <div class="kpi-subtext">Acesso rescindido</div>
+        </div>
+    </section>
+
+    <!-- Filtros Multifatoriais -->
+    <section class="filters-card" aria-label="Filtros de busca">
+        <div class="filter-row">
+            <div class="filter-group search-input-group">
+                <span class="search-icon" aria-hidden="true">🔍</span>
+                <input type="text" 
+                       class="form-control search-input" 
+                       placeholder="Buscar por nome, razão social, CNPJ ou cidade..."
+                       @bind="searchTerm" 
+                       @bind:event="oninput"
+                       @onkeydown="HandleKeyDown" />
+            </div>
+
+            <div class="filter-group">
+                <select class="form-control select-input" @bind="selectedStatusFilter" @bind:after="ApplyFiltersAsync">
+                    <option value="">Todos os Status</option>
+                    <option value="@TenantStatus.Active">Ativo</option>
+                    <option value="@TenantStatus.Trial">Em Período de Testes</option>
+                    <option value="@TenantStatus.Delinquent">Inadimplente</option>
+                    <option value="@TenantStatus.Canceled">Cancelado</option>
+                </select>
+            </div>
+
+            <div class="filter-group btn-group">
+                <button type="button" class="btn btn-primary" @onclick="ApplyFiltersAsync" disabled="@isLoading">
+                    Buscar
+                </button>
+                <button type="button" class="btn btn-secondary" @onclick="ClearFiltersAsync" disabled="@isLoading">
+                    Limpar
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tabela de Estabelecimentos -->
+    <section class="table-container" aria-label="Listagem de Estabelecimentos">
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="spinner-large"></div>
+                <p>Carregando estabelecimentos...</p>
+            </div>
+        }
+        else if (tenants.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="empty-icon">🏢</span>
+                <h3 class="empty-title">Nenhum estabelecimento encontrado</h3>
+                <p class="empty-text">Tente alterar os termos de busca ou o filtro de status.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="tenants-table">
+                    <thead>
+                        <tr>
+                            <th>ESTABELECIMENTO</th>
+                            <th>CNPJ &amp; LOCALIZAÇÃO</th>
+                            <th>STATUS</th>
+                            <th>TESTES (TRIAL)</th>
+                            <th>CADASTRO</th>
+                            <th class="text-right">AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tenant in tenants)
+                        {
+                            <tr class="tenant-row">
+                                <td class="tenant-primary-cell">
+                                    <strong class="tenant-name">@tenant.Name</strong>
+                                    @if (!string.IsNullOrWhiteSpace(tenant.TradeName) && !tenant.TradeName.Equals(tenant.Name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="tenant-trade-name">@tenant.TradeName</span>
+                                    }
+                                    <span class="tenant-id">ID: @tenant.Id</span>
+                                </td>
+                                <td>
+                                    <div class="location-cell">
+                                        <span>@(string.IsNullOrWhiteSpace(tenant.Cnpj) ? "Sem CNPJ informado" : tenant.Cnpj)</span>
+                                        <small class="location-text">
+                                            @(string.IsNullOrWhiteSpace(tenant.City) ? "—" : $"{tenant.City}/{tenant.State}")
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-@tenant.Status.ToString().ToLowerInvariant()">
+                                        @GetStatusDisplayName(tenant.Status)
+                                    </span>
+                                    @if (!string.IsNullOrWhiteSpace(tenant.StatusReason))
+                                    {
+                                        <div class="status-reason-text" title="@tenant.StatusReason">
+                                            @tenant.StatusReason
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (tenant.Status == TenantStatus.Trial && tenant.TrialEndsAtUtc.HasValue)
+                                    {
+                                        var daysLeft = (tenant.TrialEndsAtUtc.Value.Date - DateTime.UtcNow.Date).Days;
+                                        <div class="trial-cell">
+                                            <span class="trial-date">Até @tenant.TrialEndsAtUtc.Value.ToString("dd/MM/yyyy")</span>
+                                            <span class="trial-days @(daysLeft <= 3 ? "text-amber" : "text-cyan")">
+                                                @(daysLeft >= 0 ? $"{daysLeft} dias restantes" : "Expirado")
+                                            </span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="created-date">@tenant.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm")</span>
+                                </td>
+                                <td class="actions-cell text-right">
+                                    <AuthorizeView Roles="SuperAdmin,PlatformSupport">
+                                        <Authorized>
+                                            <button type="button" 
+                                                    class="btn-action btn-impersonate" 
+                                                    @onclick="() => OpenImpersonationModal(tenant)"
+                                                    title="Iniciar Diagnóstico (Impersonate)">
+                                                <span class="action-icon">🩺</span>
+                                                <span>Diagnosticar</span>
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+
+                                    <AuthorizeView Roles="SuperAdmin,PlatformSupport">
+                                        <Authorized>
+                                            <button type="button" 
+                                                    class="btn-action btn-status" 
+                                                    @onclick="() => OpenStatusModal(tenant)"
+                                                    title="Alterar Status Comercial">
+                                                <span>Status</span>
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            <footer class="pagination-footer">
+                <div class="pagination-info">
+                    Exibindo <strong>@tenants.Count</strong> de <strong>@totalTenants</strong> estabelecimentos (Página @currentPage de @totalPages)
+                </div>
+                <div class="pagination-controls">
+                    <button type="button" 
+                            class="btn-page" 
+                            @onclick="() => GoToPageAsync(currentPage - 1)" 
+                            disabled="@(currentPage <= 1 || isLoading)">
+                        ‹ Anterior
+                    </button>
+                    <span class="page-current">@currentPage</span>
+                    <button type="button" 
+                            class="btn-page" 
+                            @onclick="() => GoToPageAsync(currentPage + 1)" 
+                            disabled="@(currentPage >= totalPages || isLoading)">
+                        Próxima ›
+                    </button>
+                </div>
+            </footer>
+        }
+    </section>
+
+    <!-- Modais -->
+    <StartImpersonationModal IsOpen="@isImpersonationModalOpen" 
+                             Tenant="@selectedTenant" 
+                             OnClose="CloseImpersonationModal" 
+                             OnStarted="HandleImpersonationStarted" />
+
+    <UpdateTenantStatusModal IsOpen="@isStatusModalOpen" 
+                             Tenant="@selectedTenant" 
+                             OnClose="CloseStatusModal" 
+                             OnStatusUpdated="HandleStatusUpdated" />
+</div>
+
+@code {
+    private List<GlobalTenantSummaryDto> tenants = [];
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+    private string selectedStatusFilter = string.Empty;
+    private int currentPage = 1;
+    private int pageSize = 15;
+    private int totalTenants;
+    private int totalPages = 1;
+
+    // Contadores para KPIs
+    private int activeTenantsCount;
+    private int trialTenantsCount;
+    private int delinquentTenantsCount;
+    private int canceledTenantsCount;
+
+    // Modais
+    private bool isImpersonationModalOpen;
+    private bool isStatusModalOpen;
+    private GlobalTenantSummaryDto? selectedTenant;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTenantsAsync();
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            TenantStatus? status = null;
+            if (Enum.TryParse<TenantStatus>(selectedStatusFilter, out var parsedStatus))
+            {
+                status = parsedStatus;
+            }
+
+            var request = new GetGlobalTenantsRequest(
+                SearchTerm: string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim(),
+                Status: status,
+                Page: currentPage,
+                PageSize: pageSize);
+
+            var result = await TenantApiClient.GetTenantsAsync(request);
+            if (result.IsSuccess)
+            {
+                tenants = result.Value!.Items.ToList();
+                totalTenants = result.Value.TotalCount;
+                totalPages = Math.Max(1, result.Value.TotalPages);
+
+                // Carrega estatísticas globais caso não haja filtros ativos
+                if (string.IsNullOrWhiteSpace(searchTerm) && !status.HasValue)
+                {
+                    CalculateKpis(tenants);
+                }
+            }
+            else
+            {
+                ToastService.ShowError(result.Error?.Description ?? "Erro ao carregar estabelecimentos.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro de comunicação: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void CalculateKpis(IReadOnlyList<GlobalTenantSummaryDto> allLoaded)
+    {
+        activeTenantsCount = allLoaded.Count(t => t.Status == TenantStatus.Active);
+        trialTenantsCount = allLoaded.Count(t => t.Status == TenantStatus.Trial);
+        delinquentTenantsCount = allLoaded.Count(t => t.Status == TenantStatus.Delinquent);
+        canceledTenantsCount = allLoaded.Count(t => t.Status == TenantStatus.Canceled);
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        currentPage = 1;
+        await LoadTenantsAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        searchTerm = string.Empty;
+        selectedStatusFilter = string.Empty;
+        currentPage = 1;
+        await LoadTenantsAsync();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ApplyFiltersAsync();
+        }
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+        await LoadTenantsAsync();
+    }
+
+    private void OpenImpersonationModal(GlobalTenantSummaryDto tenant)
+    {
+        selectedTenant = tenant;
+        isImpersonationModalOpen = true;
+    }
+
+    private void CloseImpersonationModal()
+    {
+        isImpersonationModalOpen = false;
+    }
+
+    private void HandleImpersonationStarted(ImpersonationSessionDto session)
+    {
+        isImpersonationModalOpen = false;
+        // Ao iniciar o diagnóstico, redireciona o operador diretamente para o ambiente operacional do lojista (ex: Recepção)
+        Navigation.NavigateTo("reception");
+    }
+
+    private void OpenStatusModal(GlobalTenantSummaryDto tenant)
+    {
+        selectedTenant = tenant;
+        isStatusModalOpen = true;
+    }
+
+    private void CloseStatusModal()
+    {
+        isStatusModalOpen = false;
+    }
+
+    private async Task HandleStatusUpdated(GlobalTenantSummaryDto updated)
+    {
+        isStatusModalOpen = false;
+        var index = tenants.FindIndex(t => t.Id == updated.Id);
+        if (index >= 0)
+        {
+            tenants[index] = updated;
+        }
+        await LoadTenantsAsync();
+    }
+
+    private static string GetStatusDisplayName(TenantStatus status) => status switch
+    {
+        TenantStatus.Active => "Ativo",
+        TenantStatus.Trial => "Em Testes",
+        TenantStatus.Delinquent => "Inadimplente",
+        TenantStatus.Canceled => "Cancelado",
+        _ => status.ToString()
+    };
+}

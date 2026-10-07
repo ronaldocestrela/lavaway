@@ -19,6 +19,11 @@ public sealed class BillingDbContext(
     public DbSet<CustomerSubscription> CustomerSubscriptions => Set<CustomerSubscription>();
     public DbSet<SubscriptionVehiclePlate> SubscriptionVehiclePlates => Set<SubscriptionVehiclePlate>();
     public DbSet<SubscriptionUsage> SubscriptionUsages => Set<SubscriptionUsage>();
+    public DbSet<SaasPlan> SaasPlans => Set<SaasPlan>();
+    public DbSet<TenantSaasSubscription> TenantSaasSubscriptions => Set<TenantSaasSubscription>();
+    public DbSet<TenantQuotaUsage> TenantQuotaUsages => Set<TenantQuotaUsage>();
+    public DbSet<SaasInvoice> SaasInvoices => Set<SaasInvoice>();
+    public DbSet<ProcessedSaasWebhookEvent> ProcessedSaasWebhookEvents => Set<ProcessedSaasWebhookEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -17,6 +17,15 @@ public sealed class JwtAuthorizationMessageHandler(
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
+        var impersonationState = serviceProvider.GetService<ImpersonationSessionState>();
+        if (impersonationState is not null && impersonationState.IsActive && impersonationState.TenantId.HasValue)
+        {
+            if (!request.Headers.Contains("X-Impersonate-Tenant-Id"))
+            {
+                request.Headers.Add("X-Impersonate-Tenant-Id", impersonationState.TenantId.Value.ToString());
+            }
+        }
+
         var response = await base.SendAsync(request, cancellationToken);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized &&

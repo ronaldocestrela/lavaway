@@ -115,6 +115,27 @@ public sealed class WorkOrderRepository(YardOperationsDbContext dbContext) : IWo
         return await query.OrderByDescending(order => order.CreatedAtUtc).ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<WorkOrder>> ListForPlatformMetricsAsync(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        Guid? tenantId = null,
+        CancellationToken ct = default)
+    {
+        var query = dbContext.WorkOrders
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(order => order.Items)
+            .Where(order => (order.PickedUpAtUtc.HasValue && order.PickedUpAtUtc.Value >= fromUtc && order.PickedUpAtUtc.Value <= toUtc) ||
+                            (order.CreatedAtUtc >= fromUtc && order.CreatedAtUtc <= toUtc));
+
+        if (tenantId.HasValue)
+        {
+            query = query.Where(order => order.TenantId == tenantId.Value);
+        }
+
+        return await query.OrderByDescending(order => order.CreatedAtUtc).ToListAsync(ct);
+    }
+
     public async Task AddAsync(WorkOrder workOrder, CancellationToken ct = default) =>
         await dbContext.WorkOrders.AddAsync(workOrder, ct);
 

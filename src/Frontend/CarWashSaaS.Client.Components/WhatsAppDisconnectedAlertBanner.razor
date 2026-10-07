@@ -1,0 +1,70 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <aside class="whatsapp-alert-banner" role="alert" aria-live="polite">
+        <div class="banner-content">
+            <div class="banner-icon-wrapper" aria-hidden="true">
+                <span class="banner-icon">⚠️</span>
+                <span class="status-pulse-dot" aria-hidden="true"></span>
+            </div>
+            <div class="banner-text">
+                <div class="banner-title">
+                    <strong>WhatsApp Desconectado</strong>
+                    @if (!string.IsNullOrWhiteSpace(DisconnectReason))
+                    {
+                        <span class="banner-reason">(@DisconnectReason)</span>
+                    }
+                </div>
+                <p class="banner-description">
+                    A conexão com o WhatsApp da sua loja foi interrompida. Lembretes automáticos, notificações de prontidão e agendamentos pelo chatbot estão <strong>pausados</strong>.
+                </p>
+            </div>
+        </div>
+
+        <div class="banner-actions">
+            @if (OnReconnectRequested.HasDelegate)
+            {
+                <button type="button" class="btn btn-warning btn-sm shadow-sm" @onclick="HandleReconnectClick" disabled="@IsLoading">
+                    @if (IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>Gerando...</span>
+                    }
+                    else
+                    {
+                        <span>📱 Gerar Novo QR Code</span>
+                    }
+                </button>
+            }
+            else
+            {
+                <a href="settings/whatsapp" class="btn btn-warning btn-sm shadow-sm">
+                    📱 Conectar WhatsApp
+                </a>
+            }
+        </div>
+    </aside>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; } = false;
+
+    [Parameter]
+    public string? DisconnectReason { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnReconnectRequested { get; set; }
+
+    private async Task HandleReconnectClick()
+    {
+        if (OnReconnectRequested.HasDelegate)
+        {
+            await OnReconnectRequested.InvokeAsync();
+        }
+    }
+}

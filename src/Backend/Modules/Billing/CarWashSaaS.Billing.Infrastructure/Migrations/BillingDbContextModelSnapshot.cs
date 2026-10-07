@@ -345,6 +345,144 @@ namespace CarWashSaaS.Billing.Infrastructure.Migrations
                     b.ToTable("ProcessedPaymentWebhooks", "billing");
                 });
 
+            modelBuilder.Entity("CarWashSaaS.Billing.Domain.ProcessedSaasWebhookEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset>("ReceivedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.ToTable("ProcessedSaasWebhookEvents", "billing");
+                });
+
+            modelBuilder.Entity("CarWashSaaS.Billing.Domain.SaasInvoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("DueDateUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("GatewayInvoiceId")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTimeOffset?>("PaidAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("PaymentUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("PixCopiaECola")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("PixQrCode")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GatewayInvoiceId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("SaasInvoices", "billing");
+                });
+
+            modelBuilder.Entity("CarWashSaaS.Billing.Domain.SaasPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("HasAiChatbot")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasCommissions")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasCustomerSubscriptions")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasLoyalty")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxTeamMembers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWhatsAppMessagesPerCycle")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWorkOrdersPerCycle")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MonthlyPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Tier")
+                        .IsUnique();
+
+                    b.ToTable("SaasPlans", "billing");
+                });
+
             modelBuilder.Entity("CarWashSaaS.Billing.Domain.SubscriptionPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -467,6 +605,91 @@ namespace CarWashSaaS.Billing.Infrastructure.Migrations
                     b.HasIndex("TenantId", "Plate");
 
                     b.ToTable("SubscriptionVehiclePlates", "billing");
+                });
+
+            modelBuilder.Entity("CarWashSaaS.Billing.Domain.TenantQuotaUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CycleEndUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CycleStartUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("LastUpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("WhatsAppMessagesSentCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkOrdersCreatedCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("TenantQuotaUsages", "billing");
+                });
+
+            modelBuilder.Entity("CarWashSaaS.Billing.Domain.TenantSaasSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CurrentPeriodEndUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CurrentPeriodStartUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("GatewayCustomerId")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("GatewaySubscriptionId")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTimeOffset?>("GracePeriodEndsAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("MonthlyPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset?>("NextBillingDateUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("PlanTier")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("TenantSaasSubscriptions", "billing");
                 });
 
             modelBuilder.Entity("CarWashSaaS.Billing.Domain.SubscriptionUsage", b =>

@@ -1,0 +1,180 @@
+@page "/platform/billing"
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject SaasBillingApiClient BillingClient
+@inject IToastService ToastService
+
+<PageTitle>Faturamento Global & Planos SaaS — Lavaway Backoffice</PageTitle>
+
+<div class="mx-auto max-w-7xl space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <div class="inline-flex items-center gap-2 rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                <span>Backoffice Plataforma</span>
+            </div>
+            <h1 class="mt-1 text-xl font-bold tracking-tight text-slate-900">Faturamento Global & Assinaturas SaaS</h1>
+            <p class="text-xs text-slate-500">Monitore as assinaturas de todos os estabelecimentos, receita recorrente (MRR) e inadimplência.</p>
+        </div>
+        <div>
+            <button type="button" @onclick="LoadDataAsync"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- KPIs Globais -->
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <span class="text-xs font-medium text-slate-500">MRR da Plataforma</span>
+            <p class="mt-2 text-2xl font-black text-slate-900">R$ @TotalMrr.ToString("N2")</p>
+            <p class="mt-1 text-[11px] text-slate-400">Receita mensal recorrente contratada</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <span class="text-xs font-medium text-slate-500">Assinaturas Ativas</span>
+            <p class="mt-2 text-2xl font-black text-emerald-600">@ActiveCount</p>
+            <p class="mt-1 text-[11px] text-slate-400">Estabelecimentos em dia</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <span class="text-xs font-medium text-slate-500">Em Avaliação (Trial)</span>
+            <p class="mt-2 text-2xl font-black text-blue-600">@TrialCount</p>
+            <p class="mt-1 text-[11px] text-slate-400">Potenciais novas contratações</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <span class="text-xs font-medium text-slate-500">Inadimplentes / Carência</span>
+            <p class="mt-2 text-2xl font-black text-rose-600">@DelinquentCount</p>
+            <p class="mt-1 text-[11px] text-slate-400">Ação de cobrança necessária</p>
+        </div>
+    </div>
+
+    <!-- Tabela de Assinaturas -->
+    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <div class="border-b border-slate-100 px-5 py-4">
+            <h3 class="text-sm font-bold text-slate-900">Assinaturas dos Estabelecimentos</h3>
+            <p class="text-xs text-slate-500">Listagem de todos os tenants cadastrados e seu consumo de cotas</p>
+        </div>
+
+        @if (IsLoading)
+        {
+            <div class="p-12 text-center text-xs text-slate-400">
+                Carregando assinaturas da plataforma...
+            </div>
+        }
+        else if (Subscriptions.Count == 0)
+        {
+            <div class="p-12 text-center text-xs text-slate-400">
+                Nenhum estabelecimento encontrado.
+            </div>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100">
+                        <tr>
+                            <th class="px-5 py-3">Estabelecimento</th>
+                            <th class="px-5 py-3">Plano</th>
+                            <th class="px-5 py-3">Mensalidade</th>
+                            <th class="px-5 py-3">Cotas Consumidas</th>
+                            <th class="px-5 py-3">Status</th>
+                            <th class="px-5 py-3">Vigência</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach (var sub in Subscriptions)
+                        {
+                            <tr class="hover:bg-slate-50/50">
+                                <td class="px-5 py-3">
+                                    <div class="font-semibold text-slate-900">@sub.TenantName</div>
+                                    <div class="text-[11px] font-mono text-slate-400">@sub.TenantId</div>
+                                </td>
+                                <td class="px-5 py-3 font-medium text-slate-800">
+                                    @sub.PlanName
+                                </td>
+                                <td class="px-5 py-3 font-bold text-slate-900">
+                                    R$ @sub.MonthlyPrice.ToString("N2")
+                                </td>
+                                <td class="px-5 py-3">
+                                    <div class="space-y-1">
+                                        <div>OS: <strong>@sub.UsedWorkOrders</strong> / @(sub.MaxWorkOrders > 0 ? sub.MaxWorkOrders.ToString() : "∞")</div>
+                                        <div class="text-[11px] text-slate-500">Whats: <strong>@sub.UsedWhatsAppMessages</strong> / @(sub.MaxWhatsAppMessages > 0 ? sub.MaxWhatsAppMessages.ToString() : "∞")</div>
+                                    </div>
+                                </td>
+                                <td class="px-5 py-3">
+                                    <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold @GetStatusBadgeClass(sub.Status)">
+                                        @GetStatusDisplay(sub.Status)
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3 text-slate-500 text-[11px]">
+                                    @sub.CurrentPeriodStartUtc.ToString("dd/MM") a @sub.CurrentPeriodEndUtc.ToString("dd/MM/yyyy")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<TenantSubscriptionOverviewDto> Subscriptions { get; set; } = [];
+    private bool IsLoading { get; set; } = true;
+
+    private decimal TotalMrr => Subscriptions
+        .Where(s => s.Status == TenantSubscriptionStatus.Active)
+        .Sum(s => s.MonthlyPrice);
+
+    private int ActiveCount => Subscriptions.Count(s => s.Status == TenantSubscriptionStatus.Active);
+    private int TrialCount => Subscriptions.Count(s => s.Status == TenantSubscriptionStatus.Trial);
+    private int DelinquentCount => Subscriptions.Count(s => s.Status == TenantSubscriptionStatus.Delinquent || s.Status == TenantSubscriptionStatus.GracePeriod);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var result = await BillingClient.ListAllSubscriptionsForPlatformAsync();
+            if (result.IsSuccess)
+            {
+                Subscriptions = result.Value!;
+            }
+            else
+            {
+                ToastService.ShowError(result.Error!.Description);
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private static string GetStatusBadgeClass(TenantSubscriptionStatus status) => status switch
+    {
+        TenantSubscriptionStatus.Active => "bg-emerald-50 text-emerald-700",
+        TenantSubscriptionStatus.Trial => "bg-blue-50 text-blue-700",
+        TenantSubscriptionStatus.GracePeriod => "bg-amber-50 text-amber-700",
+        TenantSubscriptionStatus.Delinquent => "bg-rose-50 text-rose-700",
+        _ => "bg-slate-100 text-slate-700"
+    };
+
+    private static string GetStatusDisplay(TenantSubscriptionStatus status) => status switch
+    {
+        TenantSubscriptionStatus.Active => "Ativo",
+        TenantSubscriptionStatus.Trial => "Trial",
+        TenantSubscriptionStatus.GracePeriod => "Em Carência",
+        TenantSubscriptionStatus.Delinquent => "Suspenso",
+        TenantSubscriptionStatus.Canceled => "Cancelado",
+        _ => status.ToString()
+    };
+}

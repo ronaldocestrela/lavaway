@@ -13,6 +13,8 @@ public interface IWorkOrderRepository
     Task<IReadOnlyCollection<WorkOrder>> ListSurveysAsync(Guid tenantId, int limit = 50, CancellationToken ct = default);
     Task<IReadOnlyCollection<WorkOrder>> ListForCommissionReportAsync(Guid tenantId, DateTimeOffset startUtc, DateTimeOffset endUtc, Guid? operatorId = null, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
+    Task<IReadOnlyList<WorkOrder>> ListForPlatformMetricsAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, Guid? tenantId = null, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<WorkOrder>>([]);
     Task AddAsync(WorkOrder workOrder, CancellationToken ct = default);
     void Update(WorkOrder workOrder);
 }

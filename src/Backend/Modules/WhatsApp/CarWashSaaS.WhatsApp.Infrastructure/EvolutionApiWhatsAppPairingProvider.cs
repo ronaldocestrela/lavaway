@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CarWashSaaS.WhatsApp.Infrastructure;
 
-public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvider
+public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvider, IWhatsAppHealthCheckProvider
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
@@ -40,6 +40,63 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
         _apiKey = string.IsNullOrWhiteSpace(apiKey) ? throw new ArgumentException("Api key is required.", nameof(apiKey)) : apiKey;
         _instanceNamePrefix = string.IsNullOrWhiteSpace(instanceNamePrefix) ? "lavaway" : instanceNamePrefix;
         _webhookUrl = webhookUrl;
+    }
+
+    public async Task<Result<WhatsAppProviderHealthState>> CheckHealthAsync(string providerSessionId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(providerSessionId))
+        {
+            return Result<WhatsAppProviderHealthState>.Failure(new Error(
+                "whatsapp.provider_session.invalid",
+                "A valid provider session is required.",
+                ErrorType.Validation));
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        try
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"instance/connectionState/{Uri.EscapeDataString(providerSessionId)}");
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            request.Headers.Add("apikey", _apiKey);
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result<WhatsAppProviderHealthState>.Success(new WhatsAppProviderHealthState(
+                    IsReachable: false,
+                    State: "disconnected",
+                    Details: $"HTTP {(int)response.StatusCode}: {responseBody}"));
+            }
+
+            var state = "disconnected";
+            using var doc = JsonDocument.Parse(responseBody);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("instance", out var inst) && inst.TryGetProperty("state", out var st))
+            {
+                state = st.GetString() ?? "disconnected";
+            }
+            else if (root.TryGetProperty("state", out var directSt))
+            {
+                state = directSt.GetString() ?? "disconnected";
+            }
+
+            return Result<WhatsAppProviderHealthState>.Success(new WhatsAppProviderHealthState(
+                IsReachable: true,
+                State: state,
+                Details: responseBody));
+        }
+        catch (HttpRequestException ex)
+        {
+            return Result<WhatsAppProviderHealthState>.Success(new WhatsAppProviderHealthState(
+                IsReachable: false,
+                State: "disconnected",
+                Details: ex.Message));
+        }
     }
 
     public async Task<Result> DisconnectAsync(string providerSessionId, CancellationToken ct = default)
@@ -91,6 +148,7 @@ public sealed class EvolutionApiWhatsAppPairingProvider : IWhatsAppPairingProvid
                 ErrorType.Unavailable));
         }
     }
+
 
     public async Task<Result<(string ProviderSessionId, string QrCodeValue)>> GeneratePairingAsync(Guid tenantId, CancellationToken ct = default)
     {

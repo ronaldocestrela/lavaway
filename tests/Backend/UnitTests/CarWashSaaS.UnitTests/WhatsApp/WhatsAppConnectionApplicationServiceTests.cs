@@ -127,6 +127,134 @@ public sealed class WhatsAppConnectionApplicationServiceTests
         Assert.Equal("whatsapp.tenant.required", result.Error!.Code);
     }
 
+    [Fact]
+    public async Task ApplyProviderStatusAsync_Should_Trigger_Alert_And_Record_Incident_When_Connected_Becomes_Disconnected()
+    {
+        var tenantId = Guid.NewGuid();
+        var connection = WhatsAppConnection.Create(tenantId, "session-123", "qr-123").Value!;
+        connection.MarkConnected();
+
+        var repository = new InMemoryWhatsAppConnectionRepository(connection);
+        var alertSender = new FakeAlertSender();
+        var incidentRepository = new FakeIncidentRepository();
+        var contactLookup = new FakeContactLookup(new TenantNotificationContactDto(tenantId, "Lava Rápido Central", "admin@central.com", "1199999999"));
+
+        var service = new WhatsAppConnectionApplicationService(
+            repository,
+            alertSender: alertSender,
+            incidentRepository: incidentRepository,
+            contactLookup: contactLookup);
+
+        var result = await service.ApplyProviderStatusAsync(tenantId, "session-123", "close");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(WhatsAppConnectionStatus.Disconnected, result.Value!.Status);
+        Assert.True(result.Value.HasActiveAlert);
+        Assert.Equal(1, result.Value.AlertCount);
+        Assert.NotNull(result.Value.LastAlertSentAtUtc);
+
+        // Verifica que o alerta foi disparado com os dados corretos
+        Assert.Single(alertSender.SentAlerts);
+        Assert.Equal("admin@central.com", alertSender.SentAlerts[0].RecipientEmail);
+        Assert.Equal("Lava Rápido Central", alertSender.SentAlerts[0].TenantName);
+
+        // Verifica que o incidente foi registrado
+        Assert.Single(incidentRepository.Incidents);
+        Assert.Equal(WhatsAppIncidentType.Disconnected, incidentRepository.Incidents[0].Type);
+        Assert.True(incidentRepository.Incidents[0].AlertDispatched);
+    }
+
+    [Fact]
+    public async Task ApplyProviderStatusAsync_Should_Respect_Cooldown_And_Not_Duplicate_Alert()
+    {
+        var tenantId = Guid.NewGuid();
+        var connection = WhatsAppConnection.Create(tenantId, "session-123", "qr-123").Value!;
+        connection.MarkConnected();
+
+        var repository = new InMemoryWhatsAppConnectionRepository(connection);
+        var alertSender = new FakeAlertSender();
+        var incidentRepository = new FakeIncidentRepository();
+
+        var service = new WhatsAppConnectionApplicationService(
+            repository,
+            alertSender: alertSender,
+            incidentRepository: incidentRepository);
+
+        // Primeira queda
+        await service.ApplyProviderStatusAsync(tenantId, "session-123", "close");
+        Assert.Single(alertSender.SentAlerts);
+
+        // Segunda notificação de queda 5 minutos depois (sem reconexão prévia)
+        await service.ApplyProviderStatusAsync(tenantId, "session-123", "close");
+
+        // Não deve disparar segundo alerta por causa do cooldown
+        Assert.Single(alertSender.SentAlerts);
+    }
+
+    [Fact]
+    public async Task GetHealthDetailsAsync_Should_Return_Detailed_State()
+    {
+        var tenantId = Guid.NewGuid();
+        var connection = WhatsAppConnection.Create(tenantId, "session-123", "qr-123").Value!;
+        connection.MarkConnected();
+        var repository = new InMemoryWhatsAppConnectionRepository(connection);
+
+        var service = new WhatsAppConnectionApplicationService(repository);
+        var result = await service.GetHealthDetailsAsync(tenantId);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("connected", result.Value!.Status);
+        Assert.True(result.Value.IsConnected);
+        Assert.False(result.Value.HasActiveAlert);
+    }
+
+    [Fact]
+    public async Task CheckTenantHealthAsync_Should_Probe_Provider_And_Sync_Status()
+    {
+        var tenantId = Guid.NewGuid();
+        var connection = WhatsAppConnection.Create(tenantId, "session-123", "qr-123").Value!;
+        connection.MarkConnected();
+
+        var repository = new InMemoryWhatsAppConnectionRepository(connection);
+        var healthProvider = new FakeHealthCheckProvider(new WhatsAppProviderHealthState(true, "open"));
+
+        var service = new WhatsAppConnectionApplicationService(
+            repository,
+            healthCheckProvider: healthProvider);
+
+        var result = await service.CheckTenantHealthAsync(tenantId);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.IsReachable);
+        Assert.Equal("open", result.Value.ProviderState);
+    }
+
+    [Fact]
+    public async Task SendManualReconnectAlertAsync_Should_Force_Dispatch_Alert()
+    {
+        var tenantId = Guid.NewGuid();
+        var connection = WhatsAppConnection.Create(tenantId, "session-123", "qr-123").Value!;
+        connection.MarkDisconnected("Offline");
+
+        var repository = new InMemoryWhatsAppConnectionRepository(connection);
+        var alertSender = new FakeAlertSender();
+        var incidentRepository = new FakeIncidentRepository();
+        var contactLookup = new FakeContactLookup(new TenantNotificationContactDto(tenantId, "Auto Brilho", "contato@autobrilho.com", null));
+
+        var service = new WhatsAppConnectionApplicationService(
+            repository,
+            alertSender: alertSender,
+            incidentRepository: incidentRepository,
+            contactLookup: contactLookup);
+
+        var result = await service.SendManualReconnectAlertAsync(tenantId, "Por favor reconecte seu aparelho");
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(alertSender.SentAlerts);
+        Assert.Equal("contato@autobrilho.com", alertSender.SentAlerts[0].RecipientEmail);
+        Assert.Contains("Por favor reconecte", alertSender.SentAlerts[0].Reason);
+    }
+
     private sealed class InMemoryWhatsAppConnectionRepository : IWhatsAppConnectionRepository
     {
         private WhatsAppConnection? _connection;
@@ -153,6 +281,12 @@ public sealed class WhatsAppConnectionApplicationServiceTests
             UpdateCount++;
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<WhatsAppConnection>> ListAllConnectionsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<WhatsAppConnection>>(_connection is not null ? new[] { _connection } : Array.Empty<WhatsAppConnection>());
+
+        public Task<WhatsAppConnection?> GetByProviderSessionAsync(string providerSessionId, CancellationToken ct = default)
+            => Task.FromResult(_connection?.ProviderSessionId == providerSessionId ? _connection : null);
     }
 
     private sealed class FakePairingProvider(
@@ -176,5 +310,52 @@ public sealed class WhatsAppConnectionApplicationServiceTests
                 ? Result.Failure(new Error("whatsapp.provider.network_error", "Provider is unreachable.", ErrorType.Unavailable))
                 : Result.Success());
         }
+    }
+
+    private sealed class FakeHealthCheckProvider(WhatsAppProviderHealthState state) : IWhatsAppHealthCheckProvider
+    {
+        public Task<Result<WhatsAppProviderHealthState>> CheckHealthAsync(string providerSessionId, CancellationToken ct = default)
+            => Task.FromResult(Result<WhatsAppProviderHealthState>.Success(state));
+    }
+
+    private sealed class FakeAlertSender : IWhatsAppHealthAlertSender
+    {
+        public List<(string RecipientEmail, string TenantName, string ReconnectInstructionsUrl, string? Reason)> SentAlerts { get; } = new();
+
+        public Task<Result> SendDisconnectionAlertAsync(
+            string recipientEmail,
+            string tenantName,
+            string reconnectInstructionsUrl,
+            string? reason = null,
+            CancellationToken ct = default)
+        {
+            SentAlerts.Add((recipientEmail, tenantName, reconnectInstructionsUrl, reason));
+            return Task.FromResult(Result.Success());
+        }
+    }
+
+    private sealed class FakeIncidentRepository : IWhatsAppConnectionIncidentRepository
+    {
+        public List<WhatsAppConnectionIncident> Incidents { get; } = new();
+
+        public Task AddAsync(WhatsAppConnectionIncident incident, CancellationToken ct = default)
+        {
+            Incidents.Add(incident);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<WhatsAppConnectionIncident>> ListRecentByTenantAsync(Guid tenantId, int count = 20, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<WhatsAppConnectionIncident>>(Incidents.Where(i => i.TenantId == tenantId).ToList());
+
+        public Task<IReadOnlyList<WhatsAppConnectionIncident>> ListRecentGlobalAsync(int count = 50, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<WhatsAppConnectionIncident>>(Incidents.ToList());
+    }
+
+    private sealed class FakeContactLookup(TenantNotificationContactDto? contact = null) : ITenantNotificationContactLookup
+    {
+        public Task<Result<TenantNotificationContactDto>> GetContactAsync(Guid tenantId, CancellationToken ct = default)
+            => Task.FromResult(contact is not null
+                ? Result<TenantNotificationContactDto>.Success(contact)
+                : Result<TenantNotificationContactDto>.Failure(new Error("contact.not_found", "Not found", ErrorType.NotFound)));
     }
 }

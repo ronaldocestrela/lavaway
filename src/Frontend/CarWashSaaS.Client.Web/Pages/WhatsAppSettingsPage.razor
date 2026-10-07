@@ -25,6 +25,12 @@
     else
     {
         <div class="section-container">
+            <WhatsAppDisconnectedAlertBanner
+                IsVisible="@(_connection is not null && !_connection.IsConnected)"
+                DisconnectReason="@_health?.DisconnectReason"
+                IsLoading="@_isActionLoading"
+                OnReconnectRequested="StartPairingAsync" />
+
             <WhatsAppPairingCard Connection="@_connection"
                                  IsLoading="@_isActionLoading"
                                  ErrorMessage="@_cardErrorMessage"
@@ -52,6 +58,7 @@
 
 @code {
     private WhatsAppConnectionDto? _connection;
+    private TenantWhatsAppHealthDetailDto? _health;
     private WhatsAppQuotaDto? _quota;
     private IReadOnlyList<WhatsAppMessageDto>? _messages;
     private bool _isLoading = true;
@@ -83,6 +90,14 @@
             _isLoading = true;
             _errorMessage = null;
             _connection = await WhatsAppApi.GetStatusAsync(_cts?.Token ?? CancellationToken.None);
+            try
+            {
+                _health = await WhatsAppApi.GetHealthAsync(_cts?.Token ?? CancellationToken.None);
+            }
+            catch
+            {
+                // health details fallback
+            }
 
             if (_connection?.IsConnecting == true)
             {
