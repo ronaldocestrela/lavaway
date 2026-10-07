@@ -28,6 +28,7 @@ builder.Services.AddScoped<SubscriptionApiClient>();
 builder.Services.AddScoped<PlatformAuditApiClient>();
 builder.Services.AddScoped<GlobalTenantApiClient>();
 builder.Services.AddScoped<SaasBillingApiClient>();
+builder.Services.AddScoped<PlatformWhatsAppApiClient>();
 builder.Services.AddScoped<ImpersonationSessionState>();
 builder.Services.AddScoped<IToastService, ToastService>();
 

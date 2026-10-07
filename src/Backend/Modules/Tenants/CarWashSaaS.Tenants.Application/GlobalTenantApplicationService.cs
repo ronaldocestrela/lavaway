@@ -3,7 +3,7 @@ using CarWashSaaS.Tenants.Domain;
 
 namespace CarWashSaaS.Tenants.Application;
 
-public sealed class GlobalTenantApplicationService(ITenantRepository repository) : IGlobalTenantLookup
+public sealed class GlobalTenantApplicationService(ITenantRepository repository) : IGlobalTenantLookup, ITenantNotificationContactLookup
 {
     public async Task<Result<PagedResult<GlobalTenantSummaryDto>>> GetTenantsAsync(
         GetGlobalTenantsRequest request,
@@ -108,5 +108,34 @@ public sealed class GlobalTenantApplicationService(ITenantRepository repository)
         }
 
         return Result<GlobalTenantSummaryDto>.Success(summary);
+    }
+
+    public async Task<Result<TenantNotificationContactDto>> GetContactAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<TenantNotificationContactDto>.Failure(new Error(
+                "tenant.id.required",
+                "Tenant ID cannot be empty.",
+                ErrorType.Validation));
+        }
+
+        var summary = await repository.GetSummaryByIdAsync(tenantId, ct);
+        if (summary is null)
+        {
+            return Result<TenantNotificationContactDto>.Failure(new Error(
+                "tenant.not_found",
+                $"Tenant with ID '{tenantId}' was not found.",
+                ErrorType.NotFound));
+        }
+
+        var sanitizedName = !string.IsNullOrWhiteSpace(summary.TradeName) ? summary.TradeName : summary.Name;
+        var email = $"{sanitizedName.ToLowerInvariant().Replace(" ", "").Replace("-", "")}@lavaway.com";
+
+        return Result<TenantNotificationContactDto>.Success(new TenantNotificationContactDto(
+            tenantId,
+            sanitizedName,
+            email,
+            summary.Phone));
     }
 }

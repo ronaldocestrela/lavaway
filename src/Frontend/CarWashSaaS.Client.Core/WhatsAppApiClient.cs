@@ -18,6 +18,12 @@ public sealed class WhatsAppApiClient(HttpClient httpClient)
         return await ReadResponseAsync<WhatsAppConnectionDto>(response, ct);
     }
 
+    public async Task<TenantWhatsAppHealthDetailDto> GetHealthAsync(CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync("whatsapp/health", ct);
+        return await ReadResponseAsync<TenantWhatsAppHealthDetailDto>(response, ct);
+    }
+
     public async Task<WhatsAppConnectionDto> StartPairingAsync(CancellationToken ct = default)
     {
         using var response = await httpClient.PostAsync("whatsapp/pairing/start", null, ct);

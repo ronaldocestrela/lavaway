@@ -32,6 +32,12 @@ public sealed class WhatsAppConnection : IMustHaveTenant
     public WhatsAppConnectionStatus Status { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
+    public DateTimeOffset? LastConnectedAtUtc { get; private set; }
+    public DateTimeOffset? LastDisconnectedAtUtc { get; private set; }
+    public string? DisconnectReason { get; private set; }
+    public DateTimeOffset? LastAlertSentAtUtc { get; private set; }
+    public int AlertCount { get; private set; }
+    public bool HasActiveAlert { get; private set; }
 
     public static Result<WhatsAppConnection> Create(Guid tenantId, string providerSessionId, string qrCodeValue)
     {
@@ -91,17 +97,56 @@ public sealed class WhatsAppConnection : IMustHaveTenant
         return Result<WhatsAppConnection>.Success(this);
     }
 
-    public Result<WhatsAppConnection> MarkConnected()
+    public Result<WhatsAppConnection> MarkConnected(DateTimeOffset? connectedAtUtc = null)
     {
         Status = WhatsAppConnectionStatus.Connected;
+        LastConnectedAtUtc = connectedAtUtc ?? DateTimeOffset.UtcNow;
+        HasActiveAlert = false;
+        DisconnectReason = null;
         UpdatedAt = DateTimeOffset.UtcNow;
 
         return Result<WhatsAppConnection>.Success(this);
     }
 
-    public Result<WhatsAppConnection> MarkDisconnected()
+    public Result<WhatsAppConnection> MarkDisconnected(string? reason = null, DateTimeOffset? disconnectedAtUtc = null)
     {
         Status = WhatsAppConnectionStatus.Disconnected;
+        LastDisconnectedAtUtc = disconnectedAtUtc ?? DateTimeOffset.UtcNow;
+        DisconnectReason = !string.IsNullOrWhiteSpace(reason) ? reason.Trim() : "Disconnected";
+        HasActiveAlert = true;
+        UpdatedAt = DateTimeOffset.UtcNow;
+
+        return Result<WhatsAppConnection>.Success(this);
+    }
+
+    public bool ShouldSendAlert(TimeSpan cooldown, DateTimeOffset nowUtc)
+    {
+        if (!HasActiveAlert)
+        {
+            return false;
+        }
+
+        if (!LastAlertSentAtUtc.HasValue)
+        {
+            return true;
+        }
+
+        return (nowUtc - LastAlertSentAtUtc.Value) >= cooldown;
+    }
+
+    public Result<WhatsAppConnection> RecordAlertDispatched(DateTimeOffset? dispatchedAtUtc = null)
+    {
+        var now = dispatchedAtUtc ?? DateTimeOffset.UtcNow;
+        AlertCount++;
+        LastAlertSentAtUtc = now;
+        UpdatedAt = now;
+
+        return Result<WhatsAppConnection>.Success(this);
+    }
+
+    public Result<WhatsAppConnection> ClearActiveAlert()
+    {
+        HasActiveAlert = false;
         UpdatedAt = DateTimeOffset.UtcNow;
 
         return Result<WhatsAppConnection>.Success(this);

@@ -1,0 +1,187 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen && Instance is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" style="background-color: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content shadow-lg border-0 rounded-4">
+                <div class="modal-header border-bottom px-4 py-3 bg-light rounded-top-4">
+                    <div>
+                        <span class="badge bg-primary-subtle text-primary mb-1">DIAGNÓSTICO TÉCNICO</span>
+                        <h5 class="modal-title fw-bold text-dark m-0">@Instance.TenantName</h5>
+                    </div>
+                    <button type="button" class="btn-close" aria-label="Fechar" @onclick="CloseModal" disabled="@IsBusy"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="diagnostic-card p-3 rounded-3 border bg-light">
+                                <span class="text-muted small d-block">Identificador do Tenant</span>
+                                <code class="small text-dark">@Instance.TenantId</code>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="diagnostic-card p-3 rounded-3 border bg-light">
+                                <span class="text-muted small d-block">Sessão da Evolution API</span>
+                                <code class="small text-dark">@Instance.ProviderSessionId</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-overview-panel p-3 rounded-3 border mb-4">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fw-semibold text-secondary">Estado da Conexão</span>
+                            @if (Instance.Status == "connected")
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                                    <span class="status-dot bg-success me-1"></span> Conectado
+                                </span>
+                            }
+                            else if (Instance.Status == "connecting")
+                            {
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill">
+                                    <span class="status-dot bg-warning me-1"></span> Pareando
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill">
+                                    <span class="status-dot bg-danger me-1"></span> Desconectado
+                                </span>
+                            }
+                        </div>
+
+                        <div class="row g-2 small text-muted mt-2">
+                            <div class="col-sm-6">
+                                <strong>Última Conexão:</strong> @(Instance.LastConnectedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nunca")
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Última Queda:</strong> @(Instance.LastDisconnectedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nenhuma")
+                            </div>
+                            <div class="col-12 mt-2">
+                                <strong>Motivo da Queda:</strong>
+                                <span class="text-danger fw-medium">@(Instance.DisconnectReason ?? "Nenhum erro registrado")</span>
+                            </div>
+                            <div class="col-sm-6 mt-2">
+                                <strong>Alertas Enviados:</strong> @Instance.AlertCount
+                            </div>
+                            <div class="col-sm-6 mt-2">
+                                <strong>Último Alerta:</strong> @(Instance.LastAlertSentAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nenhum")
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (_probeResult is not null)
+                    {
+                        <div class="alert @(_probeResult.IsReachable ? "alert-success" : "alert-danger") p-3 rounded-3 mb-4">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <strong>Resultado da Sondagem (Probe):</strong>
+                                <span class="small text-muted">@_probeResult.CheckedAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+                            </div>
+                            <p class="m-0 small">@_probeResult.Message</p>
+                        </div>
+                    }
+
+                    <div class="actions-section">
+                        <label class="form-label fw-semibold small text-secondary">Ações de Contingência</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="HandleRunProbe" disabled="@IsBusy">
+                                @if (_isProbing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    <span>Sondando...</span>
+                                }
+                                else
+                                {
+                                    <span>🔍 Executar Teste de Conexão (Probe)</span>
+                                }
+                            </button>
+
+                            <button type="button" class="btn btn-outline-warning btn-sm" @onclick="HandleTriggerAlert" disabled="@IsBusy">
+                                @if (_isSendingAlert)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    <span>Enviando...</span>
+                                }
+                                else
+                                {
+                                    <span>📧 Reenviar Alerta de QR Code para Lojista</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-top px-4 py-3 bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="CloseModal" disabled="@IsBusy">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; } = false;
+
+    [Parameter]
+    public PlatformWhatsAppInstanceItemDto? Instance { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnRunProbe { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnTriggerAlert { get; set; }
+
+    private bool _isProbing = false;
+    private bool _isSendingAlert = false;
+    private ProbeWhatsAppInstanceResultDto? _probeResult;
+
+    private bool IsBusy => _isProbing || _isSendingAlert;
+
+    public void SetProbeResult(ProbeWhatsAppInstanceResultDto result)
+    {
+        _probeResult = result;
+        StateHasChanged();
+    }
+
+    private async Task HandleRunProbe()
+    {
+        if (Instance is null) return;
+        _isProbing = true;
+        try
+        {
+            await OnRunProbe.InvokeAsync(Instance.TenantId);
+        }
+        finally
+        {
+            _isProbing = false;
+        }
+    }
+
+    private async Task HandleTriggerAlert()
+    {
+        if (Instance is null) return;
+        _isSendingAlert = true;
+        try
+        {
+            await OnTriggerAlert.InvokeAsync(Instance.TenantId);
+        }
+        finally
+        {
+            _isSendingAlert = false;
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        _probeResult = null;
+        await OnClose.InvokeAsync();
+    }
+}

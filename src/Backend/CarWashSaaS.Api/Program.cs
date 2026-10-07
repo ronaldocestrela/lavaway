@@ -178,12 +178,17 @@ builder.Services.AddHttpClient<IWhatsAppMessageSender, EvolutionApiWhatsAppMessa
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
+builder.Services.AddScoped<IWhatsAppConnectionIncidentRepository, WhatsAppConnectionIncidentRepository>();
+builder.Services.AddScoped<IWhatsAppHealthAlertSender, SimulatedWhatsAppHealthAlertSender>();
+builder.Services.AddScoped<IWhatsAppHealthCheckProvider>(sp => (EvolutionApiWhatsAppPairingProvider)sp.GetRequiredService<IWhatsAppPairingProvider>());
+builder.Services.AddScoped<ITenantNotificationContactLookup>(sp => sp.GetRequiredService<GlobalTenantApplicationService>());
 builder.Services.AddScoped<IOutboundWhatsAppMessageRepository, OutboundWhatsAppMessageRepository>();
 builder.Services.AddScoped<ITenantWhatsAppQuotaRepository, TenantWhatsAppQuotaRepository>();
 builder.Services.AddScoped<ICustomerCommunicationPreferenceRepository, CustomerCommunicationPreferenceRepository>();
 builder.Services.AddScoped<ICustomerCommunicationPreferenceLookup, CustomerCommunicationPreferenceLookupService>();
 builder.Services.AddScoped<IChatbotSessionRepository, ChatbotSessionRepository>();
 builder.Services.AddScoped<WhatsAppConnectionApplicationService>();
+builder.Services.AddScoped<PlatformWhatsAppHealthApplicationService>();
 builder.Services.AddScoped<WhatsAppMessageApplicationService>();
 builder.Services.AddScoped<ChatbotConversationEngine>();
 builder.Services.AddScoped<IOutboundWhatsAppDispatcher>(sp => sp.GetRequiredService<WhatsAppMessageApplicationService>());
@@ -191,6 +196,7 @@ builder.Services.AddScoped<ITenantQueueMessageHandler, OutboundWhatsAppMessageQu
 builder.Services.AddScoped<ITenantQueueMessageHandler, InboundWhatsAppMessageHandler>();
 builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReadyNotificationQueueHandler>();
 builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReceiptNotificationQueueHandler>();
+builder.Services.AddHostedService<WhatsAppHealthMonitoringHostedService>();
 
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));
@@ -302,6 +308,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 app.MapIdentityEndpoints();
 app.MapPlatformEndpoints();
+app.MapPlatformWhatsAppEndpoints();
 app.MapWhatsAppEndpoints();
 app.MapTenantEndpoints();
 app.MapYardOperationsEndpoints();
