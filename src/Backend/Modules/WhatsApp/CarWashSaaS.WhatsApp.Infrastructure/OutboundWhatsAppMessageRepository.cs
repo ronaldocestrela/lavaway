@@ -37,6 +37,21 @@ public sealed class OutboundWhatsAppMessageRepository(WhatsAppDbContext dbContex
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<OutboundWhatsAppMessage>> ListForPlatformMetricsAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, Guid? tenantId = null, CancellationToken ct = default)
+    {
+        var query = dbContext.OutboundWhatsAppMessages
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(m => m.CreatedAt >= fromUtc && m.CreatedAt <= toUtc);
+
+        if (tenantId.HasValue)
+        {
+            query = query.Where(m => m.TenantId == tenantId.Value);
+        }
+
+        return await query.OrderByDescending(m => m.CreatedAt).ToListAsync(ct);
+    }
+
     public async Task AddAsync(OutboundWhatsAppMessage message, CancellationToken ct = default)
     {
         await dbContext.OutboundWhatsAppMessages.AddAsync(message, ct);

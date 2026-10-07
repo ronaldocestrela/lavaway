@@ -141,6 +141,10 @@ builder.Services.AddScoped<ITenantPlanQuotaLookup>(sp => sp.GetRequiredService<T
 builder.Services.AddScoped<SaasBillingWebhookApplicationService>();
 builder.Services.AddScoped<TenantSaasSubscriptionApplicationService>();
 builder.Services.AddScoped<PlatformSaasBillingApplicationService>();
+builder.Services.AddScoped<IPlatformBillingMetricsLookup, PlatformBillingMetricsService>();
+builder.Services.AddScoped<IPlatformYardMetricsLookup, PlatformYardMetricsService>();
+builder.Services.AddScoped<IPlatformWhatsAppObservabilityLookup, PlatformWhatsAppObservabilityService>();
+builder.Services.AddScoped<PlatformObservabilityApplicationService>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
@@ -309,6 +313,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapIdentityEndpoints();
 app.MapPlatformEndpoints();
 app.MapPlatformWhatsAppEndpoints();
+app.MapPlatformObservabilityEndpoints();
 app.MapWhatsAppEndpoints();
 app.MapTenantEndpoints();
 app.MapYardOperationsEndpoints();

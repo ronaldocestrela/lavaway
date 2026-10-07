@@ -11,6 +11,16 @@ public sealed class ProcessedSaasWebhookEventRepository(BillingDbContext dbConte
             .AnyAsync(e => e.EventId == eventId, ct);
     }
 
+    public async Task<IReadOnlyList<ProcessedSaasWebhookEvent>> ListInPeriodAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken ct = default)
+    {
+        return await dbContext.ProcessedSaasWebhookEvents
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(e => e.ReceivedAtUtc >= fromUtc && e.ReceivedAtUtc <= toUtc)
+            .OrderByDescending(e => e.ReceivedAtUtc)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(ProcessedSaasWebhookEvent webhookEvent, CancellationToken ct = default)
     {
         await dbContext.ProcessedSaasWebhookEvents.AddAsync(webhookEvent, ct);

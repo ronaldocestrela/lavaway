@@ -1,0 +1,83 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen && Failure is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm"
+         role="dialog" aria-modal="true" aria-labelledby="whatsapp-failure-modal-title">
+        <div class="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl transition-all">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="whatsapp-failure-modal-title" class="text-base font-bold text-slate-900">Diagnóstico de Falha de Mensageria</h3>
+                        <p class="text-xs text-slate-500">Detalhes da mensagem bloqueada ou rejeitada pelo WhatsApp</p>
+                    </div>
+                </div>
+                <button type="button" @onclick="OnClose" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="mt-4 space-y-4 text-xs">
+                <!-- Informações do Estabelecimento e Destinatário -->
+                <div class="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5">
+                    <div>
+                        <span class="font-medium text-slate-400">Estabelecimento:</span>
+                        <div class="font-bold text-slate-900">@Failure.TenantName</div>
+                        <div class="font-mono text-[11px] text-slate-400">@Failure.TenantId</div>
+                    </div>
+                    <div>
+                        <span class="font-medium text-slate-400">Destinatário (Protegido):</span>
+                        <div class="font-mono font-bold text-slate-800">@Failure.RecipientPhoneMasked</div>
+                    </div>
+                    <div>
+                        <span class="font-medium text-slate-400">Tentativas Realizadas:</span>
+                        <div class="font-bold text-slate-900">@Failure.AttemptCount tentativa(s)</div>
+                    </div>
+                    <div>
+                        <span class="font-medium text-slate-400">Data da Criação / Última Tentativa:</span>
+                        <div class="font-mono text-slate-700">@Failure.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm:ss")</div>
+                    </div>
+                </div>
+
+                <!-- Motivo do Erro -->
+                <div class="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
+                    <span class="font-bold text-rose-800">Causa da Falha / Resposta do Provedor:</span>
+                    <p class="mt-1 font-mono text-xs text-rose-700 select-all">
+                        @Failure.FailureReason
+                    </p>
+                </div>
+
+                <!-- Prévia do Conteúdo -->
+                <div>
+                    <span class="font-medium text-slate-500">Prévia da Mensagem Transmitida:</span>
+                    <div class="mt-1 rounded-xl border border-slate-200 bg-white p-3 font-mono text-xs text-slate-700">
+                        @Failure.BodyPreview
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button type="button" @onclick="OnClose"
+                        class="rounded-lg bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public PlatformWhatsAppFailureDto? Failure { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}

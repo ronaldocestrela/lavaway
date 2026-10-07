@@ -1,0 +1,528 @@
+@page "/platform/metrics"
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "SuperAdmin,PlatformAuditor,PlatformSupport,PlatformBillingAdmin")]
+@inject PlatformObservabilityApiClient ObservabilityClient
+@inject GlobalTenantApiClient GlobalTenantClient
+@inject IToastService ToastService
+
+<PageTitle>Métricas & Observabilidade Global — Lavaway Backoffice</PageTitle>
+
+<div class="mx-auto max-w-7xl space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <div class="inline-flex items-center gap-2 rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                <span>Backoffice Plataforma</span>
+            </div>
+            <h1 class="mt-1 text-xl font-bold tracking-tight text-slate-900">Métricas &amp; Observabilidade Global</h1>
+            <p class="text-xs text-slate-500">Monitore receita recorrente (MRR/ARR/LTV), volume de veículos e Pix, webhooks e telemetria de mensageria.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+            <!-- Seletor de Período -->
+            <div class="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                <button type="button" @onclick='() => ChangeDaysWindow(7)'
+                        class="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors @(SelectedDaysWindow == 7 ? "bg-indigo-600 text-white" : "text-slate-600 hover:text-slate-900")">
+                    7d
+                </button>
+                <button type="button" @onclick='() => ChangeDaysWindow(30)'
+                        class="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors @(SelectedDaysWindow == 30 ? "bg-indigo-600 text-white" : "text-slate-600 hover:text-slate-900")">
+                    30d
+                </button>
+                <button type="button" @onclick='() => ChangeDaysWindow(90)'
+                        class="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors @(SelectedDaysWindow == 90 ? "bg-indigo-600 text-white" : "text-slate-600 hover:text-slate-900")">
+                    90d
+                </button>
+                <button type="button" @onclick='() => ChangeDaysWindow(365)'
+                        class="rounded-md px-2.5 py-1 text-xs font-semibold transition-colors @(SelectedDaysWindow == 365 ? "bg-indigo-600 text-white" : "text-slate-600 hover:text-slate-900")">
+                    12m
+                </button>
+            </div>
+
+            <!-- Botão Atualizar -->
+            <button type="button" @onclick="LoadOverviewAsync" disabled="@IsLoading"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50">
+                <svg class="h-4 w-4 @(IsLoading ? "animate-spin text-indigo-600" : "text-slate-500")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- 4 Cards Executivos -->
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <!-- Card 1: MRR & ARR -->
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-500">MRR / ARR</span>
+                <span class="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">Recorrência</span>
+            </div>
+            <p class="mt-2 text-2xl font-black text-slate-900">R$ @(Overview?.SaasRevenue.Mrr.ToString("N2") ?? "0,00")</p>
+            <div class="mt-1 flex items-center justify-between text-[11px] text-slate-400">
+                <span>ARR: R$ @(Overview?.SaasRevenue.Arr.ToString("N2") ?? "0,00")</span>
+                <span class="font-semibold text-rose-600">Churn: @(Overview?.SaasRevenue.ChurnRatePercentage.ToString("F1") ?? "0,0")%</span>
+            </div>
+        </div>
+
+        <!-- Card 2: LTV & ARPU -->
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-500">LTV Médio</span>
+                <span class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Valor Vitalício</span>
+            </div>
+            <p class="mt-2 text-2xl font-black text-emerald-600">R$ @(Overview?.SaasRevenue.Ltv.ToString("N2") ?? "0,00")</p>
+            <div class="mt-1 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Assinaturas Ativas: @(Overview?.SaasRevenue.ActiveSubscriptionsCount ?? 0)</span>
+                <span>Trial: @(Overview?.SaasRevenue.TrialSubscriptionsCount ?? 0)</span>
+            </div>
+        </div>
+
+        <!-- Card 3: Veículos Atendidos -->
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-500">Veículos Atendidos</span>
+                <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">Pátio</span>
+            </div>
+            <p class="mt-2 text-2xl font-black text-blue-600">@(Overview?.YardOperations.TotalAttendedVehicles ?? 0)</p>
+            <div class="mt-1 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Média: @(Overview?.YardOperations.AverageDailyAttendedVehicles.ToString("F1") ?? "0,0")/dia</span>
+                <span>Em andamento: @(Overview?.YardOperations.InProgressWorkOrders ?? 0)</span>
+            </div>
+        </div>
+
+        <!-- Card 4: Volume Pix Transacionado -->
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-500">Volume Transacionado Pix</span>
+                <span class="rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-bold text-teal-700">Pagamentos</span>
+            </div>
+            <p class="mt-2 text-2xl font-black text-slate-900">R$ @(Overview?.PixTransactions.TotalAmountTransacted.ToString("N2") ?? "0,00")</p>
+            <div class="mt-1 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Transações: @(Overview?.PixTransactions.TotalTransactionsCount ?? 0)</span>
+                <span>Ticket Médio: R$ @(Overview?.PixTransactions.AverageTicket.ToString("N2") ?? "0,00")</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegação em Abas -->
+    <div class="border-b border-slate-200">
+        <nav class="-mb-px flex space-x-6">
+            <button type="button" @onclick='() => ActiveTab = "overview"'
+                    class="py-3 text-xs font-bold border-b-2 transition-colors @(ActiveTab == "overview" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-800")">
+                Inteligência de Negócio &amp; Tendências
+            </button>
+            <button type="button" @onclick='() => SelectTab("webhooks")'
+                    class="py-3 text-xs font-bold border-b-2 transition-colors @(ActiveTab == "webhooks" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-800")">
+                Logs de Webhooks Recebidos
+            </button>
+            <button type="button" @onclick='() => SelectTab("whatsapp")'
+                    class="py-3 text-xs font-bold border-b-2 transition-colors @(ActiveTab == "whatsapp" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-800")">
+                Falhas de Mensageria (WhatsApp)
+            </button>
+        </nav>
+    </div>
+
+    <!-- Conteúdo da Aba 1: Inteligência de Negócio & Tendências -->
+    @if (ActiveTab == "overview")
+    {
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <!-- Distribuição de Planos SaaS -->
+            <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-900">Distribuição Comercial de Planos SaaS</h3>
+                <p class="text-xs text-slate-500">Participação de cada plano na receita mensal recorrente</p>
+
+                <div class="mt-4 divide-y divide-slate-100">
+                    @if (Overview?.SaasRevenue.PlanDistribution is { Count: > 0 } plans)
+                    {
+                        @foreach (var plan in plans)
+                        {
+                            <div class="flex items-center justify-between py-3 text-xs">
+                                <div>
+                                    <span class="font-bold text-slate-800">@plan.PlanName</span>
+                                    <span class="ml-2 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                                        @plan.SubscriptionsCount assinante(s)
+                                    </span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="font-bold text-slate-900">R$ @plan.TotalMonthlyContribution.ToString("N2")</span>
+                                    <span class="block text-[11px] text-slate-400">/mês</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="py-6 text-center text-xs text-slate-400">Nenhuma assinatura contratada no momento.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Saúde Resumida do WhatsApp na Plataforma -->
+            <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-900">Telemetria de Entrega WhatsApp</h3>
+                <p class="text-xs text-slate-500">Índice de entrega e saúde das conexões de mensageria</p>
+
+                <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                    <div class="rounded-xl bg-slate-50 p-3">
+                        <span class="font-medium text-slate-500">Instâncias Online</span>
+                        <p class="mt-1 text-lg font-bold text-emerald-600">
+                            @(Overview?.WhatsAppSummary.OnlineInstancesCount ?? 0) / @(Overview?.WhatsAppSummary.TotalConfiguredInstances ?? 0)
+                        </p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-3">
+                        <span class="font-medium text-slate-500">Taxa de Sucesso na Janela</span>
+                        <p class="mt-1 text-lg font-bold text-indigo-600">
+                            @(Overview?.WhatsAppSummary.DeliverySuccessRatePercentage.ToString("F1") ?? "100,0")%
+                        </p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-3">
+                        <span class="font-medium text-slate-500">Total Transmitidas</span>
+                        <p class="mt-1 text-base font-bold text-slate-800">
+                            @(Overview?.WhatsAppSummary.TotalMessagesDispatchedInPeriod ?? 0)
+                        </p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-3">
+                        <span class="font-medium text-slate-500">Falhas Registradas</span>
+                        <p class="mt-1 text-base font-bold text-rose-600">
+                            @(Overview?.WhatsAppSummary.FailedMessagesInPeriod ?? 0)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Série Temporal de Veículos e Pix -->
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-900">Evolução de Atendimento e Pagamentos na Janela</h3>
+            <p class="text-xs text-slate-500">Detalhamento diário consolidado de veículos atendidos e volume financeiro</p>
+
+            <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <!-- Tabela Diária de Veículos -->
+                <div class="overflow-hidden rounded-xl border border-slate-100">
+                    <div class="bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700">Veículos Atendidos por Dia</div>
+                    <table class="w-full text-left text-xs">
+                        <thead class="border-b border-slate-100 bg-white text-slate-500">
+                            <tr>
+                                <th class="px-4 py-2">Data</th>
+                                <th class="px-4 py-2 text-right">Veículos</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @if (Overview?.YardOperations.DailyVolume is { Count: > 0 } dailyYard)
+                            {
+                                @foreach (var item in dailyYard.Take(7))
+                                {
+                                    <tr class="hover:bg-slate-50/50">
+                                        <td class="px-4 py-2 font-mono text-slate-700">@item.Date.ToString("dd/MM/yyyy")</td>
+                                        <td class="px-4 py-2 text-right font-bold text-blue-600">@item.VehiclesAttendedCount</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="2" class="p-4 text-center text-slate-400">Sem atendimentos concluídos no período.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tabela Diária de Pix -->
+                <div class="overflow-hidden rounded-xl border border-slate-100">
+                    <div class="bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700">Volume Pix por Dia</div>
+                    <table class="w-full text-left text-xs">
+                        <thead class="border-b border-slate-100 bg-white text-slate-500">
+                            <tr>
+                                <th class="px-4 py-2">Data</th>
+                                <th class="px-4 py-2">Qtd</th>
+                                <th class="px-4 py-2 text-right">Valor Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @if (Overview?.PixTransactions.DailyVolume is { Count: > 0 } dailyPix)
+                            {
+                                @foreach (var item in dailyPix.Take(7))
+                                {
+                                    <tr class="hover:bg-slate-50/50">
+                                        <td class="px-4 py-2 font-mono text-slate-700">@item.Date.ToString("dd/MM/yyyy")</td>
+                                        <td class="px-4 py-2 text-slate-600">@item.TransactionsCount</td>
+                                        <td class="px-4 py-2 text-right font-bold text-emerald-600">R$ @item.TotalAmount.ToString("N2")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="3" class="p-4 text-center text-slate-400">Sem transações Pix liquidadas no período.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Conteúdo da Aba 2: Logs de Webhooks -->
+    @if (ActiveTab == "webhooks")
+    {
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900">Logs de Eventos Recebidos por Webhook</h3>
+                    <p class="text-xs text-slate-500">Eventos notificados assincronamente pelos gateways externos (Asaas, Pix, Provedores)</p>
+                </div>
+            </div>
+
+            @if (IsLoadingWebhooks)
+            {
+                <div class="p-12 text-center text-xs text-slate-400">Carregando logs de webhooks...</div>
+            }
+            else if (WebhookLogs.Count == 0)
+            {
+                <div class="p-12 text-center text-xs text-slate-400">Nenhum evento de webhook registrado no período.</div>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="border-b border-slate-100 bg-slate-50 font-semibold text-slate-600">
+                            <tr>
+                                <th class="px-5 py-3">Data/Hora UTC</th>
+                                <th class="px-5 py-3">Provedor</th>
+                                <th class="px-5 py-3">Evento</th>
+                                <th class="px-5 py-3">Estabelecimento</th>
+                                <th class="px-5 py-3">Status</th>
+                                <th class="px-5 py-3 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach (var log in WebhookLogs)
+                            {
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="px-5 py-3 font-mono text-slate-700">@log.ReceivedAtUtc.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                    <td class="px-5 py-3 font-medium text-slate-900">@log.Provider</td>
+                                    <td class="px-5 py-3 font-mono text-indigo-600 font-semibold">@log.EventType</td>
+                                    <td class="px-5 py-3 text-slate-700">@(log.TenantName ?? "Global / Plataforma")</td>
+                                    <td class="px-5 py-3">
+                                        <span class="inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold @GetStatusBadgeClass(log.Status)">
+                                            @log.Status
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-3 text-right">
+                                        <button type="button" @onclick="() => OpenWebhookInspection(log)"
+                                                class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                                            Inspecionar
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Conteúdo da Aba 3: Falhas de WhatsApp -->
+    @if (ActiveTab == "whatsapp")
+    {
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <div class="border-b border-slate-100 px-5 py-4">
+                <h3 class="text-sm font-bold text-slate-900">Auditoria de Falhas de Mensageria (WhatsApp)</h3>
+                <p class="text-xs text-slate-500">Mensagens rejeitadas pelo provedor ou com erro de conexão para investigação técnica</p>
+            </div>
+
+            @if (IsLoadingWhatsAppFailures)
+            {
+                <div class="p-12 text-center text-xs text-slate-400">Carregando histórico de falhas de envio...</div>
+            }
+            else if (WhatsAppFailures.Count == 0)
+            {
+                <div class="p-12 text-center text-xs text-slate-400">Zero falhas de envio registradas no período selecionado. Excelente saúde operacional!</div>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="border-b border-slate-100 bg-slate-50 font-semibold text-slate-600">
+                            <tr>
+                                <th class="px-5 py-3">Data/Hora UTC</th>
+                                <th class="px-5 py-3">Estabelecimento</th>
+                                <th class="px-5 py-3">Destinatário</th>
+                                <th class="px-5 py-3">Tentativas</th>
+                                <th class="px-5 py-3">Motivo da Falha</th>
+                                <th class="px-5 py-3 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach (var failure in WhatsAppFailures)
+                            {
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="px-5 py-3 font-mono text-slate-700">@failure.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                    <td class="px-5 py-3 font-medium text-slate-900">@failure.TenantName</td>
+                                    <td class="px-5 py-3 font-mono text-slate-600">@failure.RecipientPhoneMasked</td>
+                                    <td class="px-5 py-3 font-semibold text-slate-800">@failure.AttemptCount</td>
+                                    <td class="px-5 py-3">
+                                        <span class="inline-block max-w-xs truncate rounded bg-rose-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-rose-700" title="@failure.FailureReason">
+                                            @failure.FailureReason
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-3 text-right">
+                                        <button type="button" @onclick="() => OpenWhatsAppFailureModal(failure)"
+                                                class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                                            Detalhes
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Modais -->
+<WebhookPayloadInspectionModal IsOpen="@IsWebhookModalOpen" Log="@SelectedWebhookLog" OnClose="@CloseWebhookModal" />
+<WhatsAppFailureDetailsModal IsOpen="@IsWhatsAppModalOpen" Failure="@SelectedWhatsAppFailure" OnClose="@CloseWhatsAppModal" />
+
+@code {
+    private bool IsLoading = true;
+    private bool IsLoadingWebhooks = false;
+    private bool IsLoadingWhatsAppFailures = false;
+
+    private int SelectedDaysWindow = 30;
+    private string ActiveTab = "overview";
+
+    private PlatformMetricsOverviewDto? Overview;
+    private List<PlatformWebhookLogDto> WebhookLogs = [];
+    private List<PlatformWhatsAppFailureDto> WhatsAppFailures = [];
+
+    private bool IsWebhookModalOpen = false;
+    private PlatformWebhookLogDto? SelectedWebhookLog;
+
+    private bool IsWhatsAppModalOpen = false;
+    private PlatformWhatsAppFailureDto? SelectedWhatsAppFailure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOverviewAsync();
+    }
+
+    private async Task ChangeDaysWindow(int days)
+    {
+        SelectedDaysWindow = days;
+        await LoadOverviewAsync();
+        if (ActiveTab == "webhooks") await LoadWebhookLogsAsync();
+        if (ActiveTab == "whatsapp") await LoadWhatsAppFailuresAsync();
+    }
+
+    private async Task SelectTab(string tab)
+    {
+        ActiveTab = tab;
+        if (tab == "webhooks" && WebhookLogs.Count == 0)
+        {
+            await LoadWebhookLogsAsync();
+        }
+        else if (tab == "whatsapp" && WhatsAppFailures.Count == 0)
+        {
+            await LoadWhatsAppFailuresAsync();
+        }
+    }
+
+    private async Task LoadOverviewAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var to = DateTimeOffset.UtcNow;
+            var from = to.AddDays(-SelectedDaysWindow);
+            Overview = await ObservabilityClient.GetOverviewAsync(from, to, null);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao carregar métricas da plataforma: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task LoadWebhookLogsAsync()
+    {
+        IsLoadingWebhooks = true;
+        try
+        {
+            var to = DateTimeOffset.UtcNow;
+            var from = to.AddDays(-SelectedDaysWindow);
+            var logs = await ObservabilityClient.GetWebhookLogsAsync(from, to, null, null, 1, 50);
+            WebhookLogs = logs.ToList();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao carregar logs de webhooks: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingWebhooks = false;
+        }
+    }
+
+    private async Task LoadWhatsAppFailuresAsync()
+    {
+        IsLoadingWhatsAppFailures = true;
+        try
+        {
+            var to = DateTimeOffset.UtcNow;
+            var from = to.AddDays(-SelectedDaysWindow);
+            var failures = await ObservabilityClient.GetWhatsAppFailuresAsync(from, to, null, 1, 50);
+            WhatsAppFailures = failures.ToList();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao carregar falhas de WhatsApp: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingWhatsAppFailures = false;
+        }
+    }
+
+    private void OpenWebhookInspection(PlatformWebhookLogDto log)
+    {
+        SelectedWebhookLog = log;
+        IsWebhookModalOpen = true;
+    }
+
+    private void CloseWebhookModal()
+    {
+        IsWebhookModalOpen = false;
+        SelectedWebhookLog = null;
+    }
+
+    private void OpenWhatsAppFailureModal(PlatformWhatsAppFailureDto failure)
+    {
+        SelectedWhatsAppFailure = failure;
+        IsWhatsAppModalOpen = true;
+    }
+
+    private void CloseWhatsAppModal()
+    {
+        IsWhatsAppModalOpen = false;
+        SelectedWhatsAppFailure = null;
+    }
+
+    private static string GetStatusBadgeClass(string status) => status.ToLowerInvariant() switch
+    {
+        "processed" or "success" => "bg-emerald-50 text-emerald-700 border border-emerald-200",
+        "pending" => "bg-amber-50 text-amber-700 border border-amber-200",
+        _ => "bg-rose-50 text-rose-700 border border-rose-200"
+    };
+}

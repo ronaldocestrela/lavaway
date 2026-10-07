@@ -37,6 +37,16 @@ public sealed class SaasInvoiceRepository(BillingDbContext dbContext) : ISaasInv
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<IReadOnlyList<SaasInvoice>> ListPaidInPeriodAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken ct = default)
+    {
+        return await dbContext.SaasInvoices
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(i => i.Status == "Paid" && i.PaidAtUtc >= fromUtc && i.PaidAtUtc <= toUtc)
+            .OrderByDescending(i => i.PaidAtUtc)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(SaasInvoice invoice, CancellationToken ct = default)
     {
         await dbContext.SaasInvoices.AddAsync(invoice, ct);
