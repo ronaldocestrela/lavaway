@@ -3,6 +3,7 @@ using CarWashSaaS.Billing.Application;
 using CarWashSaaS.Billing.Domain;
 using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
+using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Tenants.Application;
 using CarWashSaaS.Tenants.Domain;
@@ -60,6 +61,32 @@ public sealed class TenantOnboardingServiceTests
         Assert.Single(_subscriptionRepository.Subscriptions);
         Assert.Equal(SaasPlanTier.Pro, _subscriptionRepository.Subscriptions[0].PlanTier);
         Assert.Equal(TenantSubscriptionStatus.Trial, _subscriptionRepository.Subscriptions[0].Status);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithCurrentTenantAccessor_ShouldSetTenantOnAccessor()
+    {
+        var accessor = new CurrentTenantAccessor();
+        var service = new TenantOnboardingService(
+            _tenantRepository,
+            _userRepository,
+            _subscriptionRepository,
+            _tokenService,
+            _refreshTokenRepository,
+            accessor);
+
+        var request = new RegisterTenantRequest(
+            StoreName: "Lava Jato Teste",
+            AdminName: "João",
+            Email: "joao@teste.com",
+            Password: "Password123!",
+            Phone: "(11) 99999-0000");
+
+        var result = await service.RegisterAsync(request);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(accessor.TenantId);
+        Assert.Equal(result.Value!.TenantId, accessor.TenantId);
     }
 
     [Fact]

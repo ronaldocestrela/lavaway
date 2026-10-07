@@ -2,6 +2,7 @@ using CarWashSaaS.Billing.Application;
 using CarWashSaaS.Billing.Domain;
 using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
+using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Tenants.Application;
 using CarWashSaaS.Tenants.Domain;
@@ -13,7 +14,8 @@ public sealed class TenantOnboardingService(
     IIdentityUserRepository userRepository,
     ITenantSaasSubscriptionRepository subscriptionRepository,
     ITokenService tokenService,
-    IRefreshTokenRepository refreshTokenRepository)
+    IRefreshTokenRepository refreshTokenRepository,
+    ICurrentTenantAccessor? currentTenantAccessor = null)
 {
     public async Task<Result<AuthTokenResponse>> RegisterAsync(
         RegisterTenantRequest request,
@@ -54,6 +56,11 @@ public sealed class TenantOnboardingService(
         }
 
         var tenant = tenantResult.Value!;
+        if (currentTenantAccessor is CurrentTenantAccessor mutableAccessor)
+        {
+            mutableAccessor.SetTenant(tenant.Id);
+        }
+
         await tenantRepository.AddAsync(tenant, ct);
 
         var subscriptionResult = TenantSaasSubscription.CreateTrial(
@@ -64,6 +71,7 @@ public sealed class TenantOnboardingService(
         if (subscriptionResult.IsSuccess && subscriptionResult.Value is not null)
         {
             await subscriptionRepository.AddAsync(subscriptionResult.Value, ct);
+            await subscriptionRepository.SaveChangesAsync(ct);
         }
 
         var createUserResult = await userRepository.CreateUserAsync(
