@@ -24,6 +24,7 @@ public sealed class BillingDbContext(
     public DbSet<TenantQuotaUsage> TenantQuotaUsages => Set<TenantQuotaUsage>();
     public DbSet<SaasInvoice> SaasInvoices => Set<SaasInvoice>();
     public DbSet<ProcessedSaasWebhookEvent> ProcessedSaasWebhookEvents => Set<ProcessedSaasWebhookEvent>();
+    public DbSet<TenantPaymentGatewayConfig> TenantPaymentGatewayConfigs => Set<TenantPaymentGatewayConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

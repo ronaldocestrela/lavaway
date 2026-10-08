@@ -58,6 +58,28 @@ public sealed class BillingApiClient(HttpClient httpClient)
         return await ReadResponseAsync<WorkOrderPixChargeDto>(response, ct);
     }
 
+    public async Task<TenantPaymentGatewayConfigDto> GetGatewayConfigAsync(CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync("billing/gateway-config", ct);
+        return await ReadResponseAsync<TenantPaymentGatewayConfigDto>(response, ct);
+    }
+
+    public async Task<TenantPaymentGatewayConfigDto> SaveGatewayConfigAsync(
+        SaveTenantPaymentGatewayConfigRequest request,
+        CancellationToken ct = default)
+    {
+        using var response = await httpClient.PutAsJsonAsync("billing/gateway-config", request, ct);
+        return await ReadResponseAsync<TenantPaymentGatewayConfigDto>(response, ct);
+    }
+
+    public async Task<TestTenantGatewayConnectionResultDto> TestGatewayConnectionAsync(
+        TestTenantGatewayConnectionRequest request,
+        CancellationToken ct = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync("billing/gateway-config/test", request, ct);
+        return await ReadResponseAsync<TestTenantGatewayConnectionResultDto>(response, ct);
+    }
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (response.IsSuccessStatusCode)

@@ -97,6 +97,79 @@ public sealed class PaymentWebhookValidator : IPaymentWebhookValidator
         return Result.Success();
     }
 
+    public Result ValidatePagarMeWebhook(
+        string? signatureHeader,
+        string rawBody,
+        string webhookSecret)
+    {
+        if (string.IsNullOrWhiteSpace(webhookSecret))
+        {
+            return Result.Failure(new Error("webhook.secret_not_configured", "Segredo do webhook Pagar.me não configurado.", ErrorType.Validation));
+        }
+
+        if (string.IsNullOrWhiteSpace(signatureHeader))
+        {
+            return Result.Failure(new Error("webhook.signature_missing", "Cabeçalho de assinatura do webhook Pagar.me ausente.", ErrorType.Unauthorized));
+        }
+
+        var trimmedSig = signatureHeader.Trim();
+
+        // 1. Suporte a HMAC SHA256 (ex: sha256=abcdef...)
+        if (trimmedSig.StartsWith("sha256=", StringComparison.OrdinalIgnoreCase))
+        {
+            var expectedHash = trimmedSig[7..].Trim().ToLowerInvariant();
+            var secretBytes = Encoding.UTF8.GetBytes(webhookSecret);
+            var bodyBytes = Encoding.UTF8.GetBytes(rawBody ?? string.Empty);
+
+            using var hmac = new HMACSHA256(secretBytes);
+            var computedBytes = hmac.ComputeHash(bodyBytes);
+            var computedHex = Convert.ToHexStringLower(computedBytes);
+
+            var expBytes = Encoding.UTF8.GetBytes(computedHex);
+            var provBytes = Encoding.UTF8.GetBytes(expectedHash);
+
+            if (expBytes.Length != provBytes.Length || !CryptographicOperations.FixedTimeEquals(expBytes, provBytes))
+            {
+                return Result.Failure(new Error("webhook.signature_invalid", "Assinatura HMAC SHA256 do webhook Pagar.me inválida.", ErrorType.Unauthorized));
+            }
+
+            return Result.Success();
+        }
+
+        // 2. Suporte a HMAC SHA1 (ex: sha1=abcdef...)
+        if (trimmedSig.StartsWith("sha1=", StringComparison.OrdinalIgnoreCase))
+        {
+            var expectedHash = trimmedSig[5..].Trim().ToLowerInvariant();
+            var secretBytes = Encoding.UTF8.GetBytes(webhookSecret);
+            var bodyBytes = Encoding.UTF8.GetBytes(rawBody ?? string.Empty);
+
+            using var hmac = new HMACSHA1(secretBytes);
+            var computedBytes = hmac.ComputeHash(bodyBytes);
+            var computedHex = Convert.ToHexStringLower(computedBytes);
+
+            var expBytes = Encoding.UTF8.GetBytes(computedHex);
+            var provBytes = Encoding.UTF8.GetBytes(expectedHash);
+
+            if (expBytes.Length != provBytes.Length || !CryptographicOperations.FixedTimeEquals(expBytes, provBytes))
+            {
+                return Result.Failure(new Error("webhook.signature_invalid", "Assinatura HMAC SHA1 do webhook Pagar.me inválida.", ErrorType.Unauthorized));
+            }
+
+            return Result.Success();
+        }
+
+        // 3. Suporte a comparação de segredo em tempo constante (secret token / basic auth secret)
+        var expectedSecretBytes = Encoding.UTF8.GetBytes(webhookSecret);
+        var providedSecretBytes = Encoding.UTF8.GetBytes(trimmedSig);
+
+        if (expectedSecretBytes.Length != providedSecretBytes.Length || !CryptographicOperations.FixedTimeEquals(expectedSecretBytes, providedSecretBytes))
+        {
+            return Result.Failure(new Error("webhook.secret_invalid", "Segredo do webhook Pagar.me inválido.", ErrorType.Unauthorized));
+        }
+
+        return Result.Success();
+    }
+
     public Result ValidateSimulatedSecret(
         string? providedSecret,
         string expectedSecret)
