@@ -1,0 +1,249 @@
+name: lavaway-prod
+
+services:
+  # ==========================================
+  # Database: Microsoft SQL Server 2022
+  # ==========================================
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: ${MSSQL_PID:-Standard}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD obrigatoria}
+    volumes:
+      - sqlserver-prod-data:/var/opt/mssql
+    networks:
+      - backend-net
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" >/dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  # ==========================================
+  # Object Storage: MinIO (S3 Compatible)
+  # ==========================================
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-lavaway}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD obrigatoria}
+    volumes:
+      - minio-prod-data:/data
+    networks:
+      - backend-net
+
+  # ==========================================
+  # Message Broker: RabbitMQ 4
+  # ==========================================
+  rabbitmq:
+    image: rabbitmq:4-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-lavaway}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS obrigatoria}
+    volumes:
+      - rabbitmq-prod-data:/var/lib/rabbitmq
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ==========================================
+  # WhatsApp Database: PostgreSQL 15
+  # ==========================================
+  evolution-postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${EVOLUTION_POSTGRES_DB:-evolution}
+      POSTGRES_USER: ${EVOLUTION_POSTGRES_USER:-evolution}
+      POSTGRES_PASSWORD: ${EVOLUTION_POSTGRES_PASSWORD:?EVOLUTION_POSTGRES_PASSWORD obrigatoria}
+    volumes:
+      - evolution-postgres-prod-data:/var/lib/postgresql/data
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ==========================================
+  # WhatsApp Cache: Redis 7
+  # ==========================================
+  evolution-redis:
+    image: redis:7-alpine
+    command: redis-server --port 6379 --appendonly yes
+    restart: unless-stopped
+    volumes:
+      - evolution-redis-prod-data:/data
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # ==========================================
+  # WhatsApp Provider: Evolution API v2.3.7
+  # ==========================================
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8080"
+      SERVER_URL: ${EVOLUTION_SERVER_URL:-http://evolution-api:8080}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?EVOLUTION_API_KEY obrigatoria}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${EVOLUTION_POSTGRES_USER:-evolution}:${EVOLUTION_POSTGRES_PASSWORD}@evolution-postgres:5432/${EVOLUTION_POSTGRES_DB:-evolution}?schema=evolution_api
+      DATABASE_CONNECTION_CLIENT_NAME: lavaway
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
+      DATABASE_SAVE_MESSAGE_UPDATE: "false"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      DATABASE_SAVE_DATA_LABELS: "false"
+      DATABASE_SAVE_DATA_HISTORIC: "false"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://evolution-redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: lavaway:evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
+    volumes:
+      - evolution-instances-prod-data:/evolution/instances
+    networks:
+      - backend-net
+
+  # ==========================================
+  # Database Migrations: EF Core Migrator Init
+  # ==========================================
+  db-migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrator
+    restart: on-failure
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__CarWashSaaS: Server=sqlserver,1433;Database=${SQL_DATABASE:-CarWashSaaS};User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True;Encrypt=True;
+    networks:
+      - backend-net
+
+  # ==========================================
+  # Backend: CarWashSaaS ASP.NET Core API
+  # ==========================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      db-migrator:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      evolution-api:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__CarWashSaaS: Server=sqlserver,1433;Database=${SQL_DATABASE:-CarWashSaaS};User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True;Encrypt=True;
+      Authentication__Authority: ${AUTH_AUTHORITY:-http://api:8080}
+      Authentication__Issuer: ${AUTH_ISSUER:-http://api:8080}
+      Authentication__Audience: ${AUTH_AUDIENCE:-CarWashSaaS.Client}
+      Authentication__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY obrigatoria}
+      Authentication__AccessTokenLifetimeMinutes: ${JWT_LIFETIME_MINUTES:-60}
+      Storage__Minio__Endpoint: minio:9000
+      Storage__Minio__AccessKey: ${MINIO_ROOT_USER:-lavaway}
+      Storage__Minio__SecretKey: ${MINIO_ROOT_PASSWORD}
+      Storage__Minio__Bucket: ${MINIO_BUCKET:-lavaway-private}
+      Storage__Minio__UseSSL: "false"
+      Messaging__RabbitMq__Uri: amqp://${RABBITMQ_DEFAULT_USER:-lavaway}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+      Messaging__RabbitMq__Queue: ${RABBITMQ_QUEUE:-lavaway.tenant-events}
+      WhatsApp__EvolutionApi__BaseUrl: http://evolution-api:8080/
+      WhatsApp__EvolutionApi__ApiKey: ${EVOLUTION_API_KEY}
+      WhatsApp__EvolutionApi__InstanceNamePrefix: ${WHATSAPP_INSTANCE_PREFIX:-lavaway}
+      WhatsApp__EvolutionApi__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:?WHATSAPP_WEBHOOK_SECRET obrigatoria}
+      WhatsApp__EvolutionApi__WebhookUrl: http://api:8080/whatsapp/webhooks/evolution?secret=${WHATSAPP_WEBHOOK_SECRET}
+      Cors__AllowedOrigins__0: ${APP_URL:-http://localhost}
+      Cors__AllowedOrigins__1: http://localhost:${WEB_PORT:-80}
+      Cors__AllowedOrigins__2: http://127.0.0.1:${WEB_PORT:-80}
+      Cors__AllowedOrigins__3: "*"
+      SEED_DATABASE: "true"
+      Seed__AdminEmail: ${SEED_ADMIN_EMAIL:-admin@lavaway.com}
+      Seed__AdminPassword: ${SEED_ADMIN_PASSWORD:-Admin123!}
+      Seed__ReceptionEmail: ${SEED_RECEPTION_EMAIL:-recepcao@lavaway.com}
+      Seed__ReceptionPassword: ${SEED_RECEPTION_PASSWORD:-Recepcao123!}
+      Seed__PlatformAdminEmail: ${SEED_PLATFORM_ADMIN_EMAIL:-platform@lavaway.com}
+      Seed__PlatformAdminPassword: ${SEED_PLATFORM_ADMIN_PASSWORD:-PlatformAdmin123!}
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ==========================================
+  # Frontend & Reverse Proxy: Blazor WASM + Nginx
+  # ==========================================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-80}:80"
+    networks:
+      - backend-net
+      - frontend-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  backend-net:
+    driver: bridge
+  frontend-net:
+    driver: bridge
+
+volumes:
+  sqlserver-prod-data:
+  minio-prod-data:
+  rabbitmq-prod-data:
+  evolution-postgres-prod-data:
+  evolution-redis-prod-data:
+  evolution-instances-prod-data:
