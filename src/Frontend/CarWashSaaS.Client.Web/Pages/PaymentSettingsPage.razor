@@ -9,9 +9,9 @@
 @inject IToastService ToastService
 @inject IJSRuntime JSRuntime
 
-<PageTitle>Configuração de Pagamentos | Lavaway</PageTitle>
+<PageTitle>Configurações de Pagamento &amp; Gateway — Lavaway</PageTitle>
 
-<section class="payment-settings-page">
+<div class="payment-settings-page">
     <PageHeading Eyebrow="PAGAMENTOS & GATEWAYS"
                  Title="Emissor de Cobrança e Pix"
                  Subtitle="Configure as credenciais da sua conta Pagar.me (Stone Co.) para receber pagamentos Pix diretamente na sua conta bancária e conciliar baixas no sistema em tempo real." />
@@ -28,12 +28,16 @@
         <div class="settings-layout-grid">
             <!-- Coluna Principal: Provedor e Credenciais -->
             <div class="settings-card provider-selection-card">
-                <div class="card-header-styled">
-                    <div class="header-icon-pill">💳</div>
-                    <div>
-                        <h2 class="card-title">Provedor de Pagamento</h2>
-                        <p class="card-subtitle">Escolha o gateway responsável por gerar os QR Codes e receber as notificações.</p>
+                <div class="card-meta-header">
+                    <div class="card-label-group">
+                        <svg class="card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        <span class="card-label">PROVEDOR ATIVO</span>
                     </div>
+                    <span class="status-pill @(_isActive ? "status-active" : "status-inactive")">
+                        @(_isActive ? "Ativo no Estabelecimento" : "Emissão Desativada")
+                    </span>
                 </div>
 
                 <div class="provider-options-grid">
@@ -41,7 +45,7 @@
                          @onclick="() => SelectProvider(PaymentGatewayProviderConstants.PagarMe)">
                         <div class="provider-card-top">
                             <span class="provider-name">Pagar.me (Stone Co.)</span>
-                            <span class="badge-recommended">RECOMENDADO</span>
+                            <span class="badge badge-recommended">RECOMENDADO</span>
                         </div>
                         <p class="provider-desc">Taxas competitivas, liquidação Pix veloz e integração nativa com o ecossistema Stone.</p>
                     </div>
@@ -50,7 +54,7 @@
                          @onclick="() => SelectProvider(PaymentGatewayProviderConstants.MercadoPago)">
                         <div class="provider-card-top">
                             <span class="provider-name">Mercado Pago</span>
-                            <span class="badge-neutral">ALTERNATIVO</span>
+                            <span class="badge badge-neutral">ALTERNATIVO</span>
                         </div>
                         <p class="provider-desc">Integração padrão com conta PJ e checkout Pix do Mercado Pago.</p>
                     </div>
@@ -59,7 +63,7 @@
                          @onclick="() => SelectProvider(PaymentGatewayProviderConstants.Simulated)">
                         <div class="provider-card-top">
                             <span class="provider-name">Ambiente Simulado</span>
-                            <span class="badge-dev">TESTES / HOMOLOGAÇÃO</span>
+                            <span class="badge badge-dev">TESTES</span>
                         </div>
                         <p class="provider-desc">Gera códigos Pix fictícios no padrão Bacen sem movimentação financeira real.</p>
                     </div>
@@ -69,7 +73,10 @@
                 {
                     <div class="credentials-section">
                         <div class="section-divider"></div>
-                        <h3 class="section-subtitle">Credenciais da API Pagar.me v5</h3>
+                        <div class="section-title-group">
+                            <h3 class="section-subtitle">Credenciais da API Pagar.me v5</h3>
+                            <span class="section-subtitle-tag">Criptografado AES-GCM</span>
+                        </div>
 
                         <div class="form-group">
                             <label class="form-label" for="pagarme-secret-key">
@@ -86,13 +93,23 @@
                                         class="button-toggle-visibility"
                                         @onclick="() => _showSecretKey = !_showSecretKey"
                                         title="@(_showSecretKey ? "Ocultar chave" : "Exibir chave")">
-                                    @(_showSecretKey ? "👁️" : "🔒")
+                                    <svg class="toggle-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        @if (_showSecretKey)
+                                        {
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                        }
+                                        else
+                                        {
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        }
+                                    </svg>
                                 </button>
                             </div>
                             @if (_config?.HasSecretKey == true && string.IsNullOrWhiteSpace(_secretKeyInput))
                             {
                                 <div class="key-status-hint">
-                                    <span class="key-status-badge">✅ Chave ativa gravada: @_config.PagarMeSecretKeyMasked</span>
+                                    <span class="key-status-badge">Chave ativa gravada: @_config.PagarMeSecretKeyMasked</span>
                                     <span class="key-status-text">(Deixe em branco para manter a chave atual)</span>
                                 </div>
                             }
@@ -101,7 +118,7 @@
                                 <span class="field-error-text">@_secretKeyError</span>
                             }
                             <span class="form-help-text">
-                                Localize no Dashboard Pagar.me em <strong>Configurações &gt; Chaves de API</strong>. Criptografada com AES-GCM 256 bits.
+                                Localize no Dashboard Pagar.me em <strong>Configurações &gt; Chaves de API</strong>. Criptografada em repouso.
                             </span>
                         </div>
 
@@ -126,7 +143,17 @@
                                 <button type="button"
                                         class="button-toggle-visibility"
                                         @onclick="() => _showWebhookSecret = !_showWebhookSecret">
-                                    @(_showWebhookSecret ? "👁️" : "🔒")
+                                    <svg class="toggle-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        @if (_showWebhookSecret)
+                                        {
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                        }
+                                        else
+                                        {
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        }
+                                    </svg>
                                 </button>
                             </div>
                             <span class="form-help-text">Chave secreta de autenticação de webhooks para proteção criptográfica adicional.</span>
@@ -144,7 +171,7 @@
 
                 <div class="card-actions-bar">
                     <button type="button"
-                            class="button button-outline"
+                            class="button button-secondary button-outline"
                             disabled="@_isTesting"
                             @onclick="TestConnectionAsync">
                         @if (_isTesting)
@@ -154,7 +181,10 @@
                         }
                         else
                         {
-                            <span>🧪 Testar Conexão</span>
+                            <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            <span>Testar Conexão</span>
                         }
                     </button>
 
@@ -169,6 +199,9 @@
                         }
                         else
                         {
+                            <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
                             <span>Salvar Configurações</span>
                         }
                     </button>
@@ -177,7 +210,20 @@
                 @if (_testResult is not null)
                 {
                     <div class="test-feedback-card @(_testResult.Success ? "feedback-success" : "feedback-error")">
-                        <div class="feedback-icon">@(_testResult.Success ? "✅" : "⚠️")</div>
+                        <div class="feedback-icon">
+                            @if (_testResult.Success)
+                            {
+                                <svg class="feedback-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg class="feedback-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            }
+                        </div>
                         <div class="feedback-content">
                             <div class="feedback-title">@(_testResult.Success ? "Conexão Validada com Sucesso" : "Falha na Verificação da Conexão")</div>
                             <p class="feedback-msg">@_testResult.Message</p>
@@ -190,16 +236,17 @@
             <!-- Coluna Lateral: Guia do Webhook & Status -->
             <div class="settings-sidebar-column">
                 <div class="settings-card webhook-guide-card">
-                    <div class="card-header-styled">
-                        <div class="header-icon-pill">🔔</div>
-                        <div>
-                            <h3 class="card-title">Webhook de Notificação</h3>
-                            <p class="card-subtitle">Receba a confirmação dos pagamentos automaticamente.</p>
+                    <div class="card-meta-header">
+                        <div class="card-label-group">
+                            <svg class="card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <span class="card-label">WEBHOOK DE NOTIFICAÇÃO</span>
                         </div>
                     </div>
 
                     <p class="guide-text">
-                        Para que o Lavaway confirme o recebimento do Pix e baixe a Ordem de Serviço na hora, cadastre a URL abaixo no painel da sua conta Pagar.me:
+                        Para que o Lavaway confirme o recebimento do Pix e baixe a Ordem de Serviço automaticamente, cadastre a URL abaixo no painel da sua conta Pagar.me:
                     </p>
 
                     <div class="webhook-url-box">
@@ -234,20 +281,24 @@
                 </div>
 
                 <div class="settings-card security-info-card">
-                    <div class="security-badge-header">
-                        <span class="lock-icon">🔒</span>
-                        <h4>Segurança &amp; Isolamento</h4>
+                    <div class="card-meta-header">
+                        <div class="card-label-group">
+                            <svg class="card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <span class="card-label">SEGURANÇA &amp; ISOLAMENTO</span>
+                        </div>
                     </div>
                     <ul class="security-features-list">
-                        <li><strong>Criptografia em Repouso:</strong> Chaves protegidas por criptografia militar AEAD AES-GCM.</li>
-                        <li><strong>Conta Direta:</strong> O dinheiro das OS é depositado diretamente na conta bancária vinculada ao seu CNPJ na Pagar.me.</li>
-                        <li><strong>Idempotência:</strong> O sistema previne baixas duplicadas de uma mesma transação.</li>
+                        <li><strong>Criptografia em Repouso:</strong> Chaves protegidas por criptografia militar autenticada AEAD AES-GCM 256 bits.</li>
+                        <li><strong>Conta Direta:</strong> O valor das Ordens de Serviço cai diretamente na sua conta bancária sem intermediação de custódia.</li>
+                        <li><strong>Idempotência:</strong> O sistema previne baixas financeiras duplicadas de uma mesma transação.</li>
                     </ul>
                 </div>
             </div>
         </div>
     }
-</section>
+</div>
 
 @code {
     private bool _isLoading = true;
