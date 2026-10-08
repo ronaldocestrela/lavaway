@@ -43,8 +43,15 @@ public sealed class PaymentSettingsComponentTests : BunitContext
             HasSecretKey: true,
             PagarMeWebhookSecretMasked: null,
             HasWebhookSecret: false,
+            MercadoPagoPublicKey: null,
+            MercadoPagoAccessTokenMasked: null,
+            HasMercadoPagoAccessToken: false,
+            MercadoPagoWebhookSecretMasked: null,
+            HasMercadoPagoWebhookSecret: false,
             IsActive: true,
             WebhookUrl: "https://api.lavaway.com.br/billing/webhooks/pagarme/11111111-1111-1111-1111-111111111111",
+            PagarMeWebhookUrl: "https://api.lavaway.com.br/billing/webhooks/pagarme/11111111-1111-1111-1111-111111111111",
+            MercadoPagoWebhookUrl: "https://api.lavaway.com.br/billing/webhooks/mercadopago/11111111-1111-1111-1111-111111111111",
             LastTestedAtUtc: DateTimeOffset.UtcNow,
             LastTestSuccess: true,
             LastTestMessage: "Conexão validada com sucesso.");
@@ -129,5 +136,28 @@ public sealed class PaymentSettingsComponentTests : BunitContext
         testBtn.Click();
 
         Assert.Contains("Conexão bem sucedida.", cut.Markup);
+    }
+
+    [Fact]
+    public void PaymentSettingsPage_WhenSwitchingToMercadoPago_ShouldRenderMercadoPagoFields()
+    {
+        var handler = new MockPaymentHttpHandler();
+        handler.ConfigResponse = handler.ConfigResponse with
+        {
+            HasMercadoPagoAccessToken = true,
+            MercadoPagoAccessTokenMasked = "APP_USR-••••••••1234",
+            MercadoPagoWebhookUrl = "https://api.lavaway.com.br/billing/webhooks/mercadopago/11111111-1111-1111-1111-111111111111"
+        };
+        SetupServices(handler);
+
+        var cut = Render<PaymentSettingsPage>();
+
+        var mpCard = cut.FindAll(".provider-radio-card").First(c => c.TextContent.Contains("Mercado Pago"));
+        mpCard.Click();
+
+        Assert.Contains("Credenciais da API Mercado Pago", cut.Markup);
+        Assert.Contains("Access Token de Produção", cut.Markup);
+        Assert.Contains("Token ativo gravado: APP_USR-••••••••1234", cut.Markup);
+        Assert.Contains("https://api.lavaway.com.br/billing/webhooks/mercadopago/11111111-1111-1111-1111-111111111111", cut.Markup);
     }
 }

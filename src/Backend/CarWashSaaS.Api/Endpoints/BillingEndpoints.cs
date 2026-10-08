@@ -168,9 +168,19 @@ public static class BillingEndpoints
 
             if (provider.Equals("mercadopago", StringComparison.OrdinalIgnoreCase))
             {
-                var webhookSecret = configuration["Billing:MercadoPago:WebhookSecret"]
-                    ?? configuration["Billing:MercadoPago:AccessToken"]
-                    ?? "dev-mercadopago-webhook-secret";
+                var configRepo = request.HttpContext.RequestServices.GetService<ITenantPaymentGatewayConfigRepository>();
+                var encryptor = request.HttpContext.RequestServices.GetService<IPaymentCredentialsEncryptor>();
+                var tenantConfig = configRepo is not null ? await configRepo.GetByTenantIdAsync(tenantId, ct) : null;
+
+                var tenantWebhookSecret = tenantConfig is not null && !string.IsNullOrWhiteSpace(tenantConfig.MercadoPagoWebhookSecretEncrypted) && encryptor is not null
+                    ? encryptor.Decrypt(tenantConfig.MercadoPagoWebhookSecretEncrypted)
+                    : null;
+
+                var webhookSecret = !string.IsNullOrWhiteSpace(tenantWebhookSecret)
+                    ? tenantWebhookSecret
+                    : (configuration["Billing:MercadoPago:WebhookSecret"]
+                        ?? configuration["Billing:MercadoPago:AccessToken"]
+                        ?? "dev-mercadopago-webhook-secret");
 
                 var xSignature = request.Headers["x-signature"].ToString();
                 var xRequestId = request.Headers["x-request-id"].ToString();

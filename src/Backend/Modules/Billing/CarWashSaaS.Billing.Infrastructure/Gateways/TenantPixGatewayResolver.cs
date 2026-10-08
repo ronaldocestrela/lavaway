@@ -30,8 +30,12 @@ public sealed class TenantPixGatewayResolver(
                 }
                 else if (string.Equals(config.Provider, PaymentGatewayProviderConstants.MercadoPago, StringComparison.OrdinalIgnoreCase))
                 {
-                    var mpLogger = loggerFactory.CreateLogger<MercadoPagoPixGatewayProvider>();
-                    return new MercadoPagoPixGatewayProvider(httpClient, configuration, mpLogger);
+                    var mpToken = encryptor.Decrypt(config.MercadoPagoAccessTokenEncrypted ?? string.Empty);
+                    if (!string.IsNullOrWhiteSpace(mpToken))
+                    {
+                        var mpLogger = loggerFactory.CreateLogger<MercadoPagoPixGatewayProvider>();
+                        return new MercadoPagoPixGatewayProvider(httpClient, mpToken, config.MercadoPagoPublicKey, mpLogger);
+                    }
                 }
                 else if (string.Equals(config.Provider, PaymentGatewayProviderConstants.Simulated, StringComparison.OrdinalIgnoreCase))
                 {

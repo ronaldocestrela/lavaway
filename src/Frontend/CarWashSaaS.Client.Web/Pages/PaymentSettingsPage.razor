@@ -14,7 +14,7 @@
 <div class="payment-settings-page">
     <PageHeading Eyebrow="PAGAMENTOS & GATEWAYS"
                  Title="Emissor de Cobrança e Pix"
-                 Subtitle="Configure as credenciais da sua conta Pagar.me (Stone Co.) para receber pagamentos Pix diretamente na sua conta bancária e conciliar baixas no sistema em tempo real." />
+                 Subtitle="Escolha o provedor de pagamento do seu lava-jato (Pagar.me ou Mercado Pago) para receber cobranças Pix diretamente na sua conta bancária e conciliar baixas no sistema em tempo real." />
 
     @if (_isLoading)
     {
@@ -54,9 +54,9 @@
                          @onclick="() => SelectProvider(PaymentGatewayProviderConstants.MercadoPago)">
                         <div class="provider-card-top">
                             <span class="provider-name">Mercado Pago</span>
-                            <span class="badge badge-neutral">ALTERNATIVO</span>
+                            <span class="badge badge-neutral">POPULAR</span>
                         </div>
-                        <p class="provider-desc">Integração padrão com conta PJ e checkout Pix do Mercado Pago.</p>
+                        <p class="provider-desc">Integração com conta PJ e checkout Pix do Mercado Pago / Mercado Livre.</p>
                     </div>
 
                     <div class="provider-radio-card @(_selectedProvider == PaymentGatewayProviderConstants.Simulated ? "selected" : "")"
@@ -160,6 +160,119 @@
                         </div>
                     </div>
                 }
+                else if (_selectedProvider == PaymentGatewayProviderConstants.MercadoPago)
+                {
+                    <div class="credentials-section">
+                        <div class="section-divider"></div>
+                        <div class="section-title-group">
+                            <h3 class="section-subtitle">Credenciais da API Mercado Pago</h3>
+                            <span class="section-subtitle-tag">Criptografado AES-GCM</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="mp-access-token">
+                                Access Token de Produção <span class="required">*</span>
+                            </label>
+                            <div class="input-password-wrapper">
+                                <input id="mp-access-token"
+                                       type="@(_showMpAccessToken ? "text" : "password")"
+                                       class="form-input @(!string.IsNullOrWhiteSpace(_mpAccessTokenError) ? "input-error" : "")"
+                                       placeholder="@(_config?.HasMercadoPagoAccessToken == true ? "••••••••••••••••••••••••••••••••" : "APP_USR-... ou TEST-...")"
+                                       @bind="_mpAccessTokenInput"
+                                       @bind:event="oninput" />
+                                <button type="button"
+                                        class="button-toggle-visibility"
+                                        @onclick="() => _showMpAccessToken = !_showMpAccessToken"
+                                        title="@(_showMpAccessToken ? "Ocultar token" : "Exibir token")">
+                                    <svg class="toggle-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        @if (_showMpAccessToken)
+                                        {
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                        }
+                                        else
+                                        {
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        }
+                                    </svg>
+                                </button>
+                            </div>
+                            @if (_config?.HasMercadoPagoAccessToken == true && string.IsNullOrWhiteSpace(_mpAccessTokenInput))
+                            {
+                                <div class="key-status-hint">
+                                    <span class="key-status-badge">Token ativo gravado: @_config.MercadoPagoAccessTokenMasked</span>
+                                    <span class="key-status-text">(Deixe em branco para manter o token atual)</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(_mpAccessTokenError))
+                            {
+                                <span class="field-error-text">@_mpAccessTokenError</span>
+                            }
+                            <span class="form-help-text">
+                                Localize no Mercado Pago Developers em <strong>Suas integrações &gt; Credenciais de produção</strong>.
+                            </span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="mp-public-key">Chave Pública (Public Key) - Opcional</label>
+                            <input id="mp-public-key"
+                                   type="text"
+                                   class="form-input"
+                                   placeholder="APP_USR-... ou TEST-..."
+                                   @bind="_mpPublicKeyInput" />
+                            <span class="form-help-text">Chave pública da sua aplicação no Mercado Pago.</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="mp-webhook-secret">Segredo do Webhook (Assinatura HMAC - Opcional)</label>
+                            <div class="input-password-wrapper">
+                                <input id="mp-webhook-secret"
+                                       type="@(_showMpWebhookSecret ? "text" : "password")"
+                                       class="form-input"
+                                       placeholder="@(_config?.HasMercadoPagoWebhookSecret == true ? "••••••••••••••••" : "Chave de assinatura configurada no painel de Webhooks")"
+                                       @bind="_mpWebhookSecretInput" />
+                                <button type="button"
+                                        class="button-toggle-visibility"
+                                        @onclick="() => _showMpWebhookSecret = !_showMpWebhookSecret">
+                                    <svg class="toggle-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        @if (_showMpWebhookSecret)
+                                        {
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                        }
+                                        else
+                                        {
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        }
+                                    </svg>
+                                </button>
+                            </div>
+                            @if (_config?.HasMercadoPagoWebhookSecret == true && string.IsNullOrWhiteSpace(_mpWebhookSecretInput))
+                            {
+                                <div class="key-status-hint">
+                                    <span class="key-status-badge">Assinatura ativa gravada: @_config.MercadoPagoWebhookSecretMasked</span>
+                                    <span class="key-status-text">(Deixe em branco para manter a atual)</span>
+                                </div>
+                            }
+                            <span class="form-help-text">Assinatura secreta de validação HMAC (cabeçalho x-signature).</span>
+                        </div>
+                    </div>
+                }
+                else if (_selectedProvider == PaymentGatewayProviderConstants.Simulated)
+                {
+                    <div class="credentials-section">
+                        <div class="section-divider"></div>
+                        <div class="simulated-info-box">
+                            <div class="simulated-info-header">
+                                <svg class="simulated-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <strong>Ambiente de Testes / Simulado</strong>
+                            </div>
+                            <p>Nenhuma credencial bancária é exigida neste modo. O sistema gera payloads Pix fictícios no padrão do Banco Central e as baixas financeiras podem ser confirmadas diretamente pelos operadores.</p>
+                        </div>
+                    </div>
+                }
 
                 <div class="form-group toggle-group">
                     <label class="toggle-container">
@@ -245,39 +358,84 @@
                         </div>
                     </div>
 
-                    <p class="guide-text">
-                        Para que o Lavaway confirme o recebimento do Pix e baixe a Ordem de Serviço automaticamente, cadastre a URL abaixo no painel da sua conta Pagar.me:
-                    </p>
+                    @if (_selectedProvider == PaymentGatewayProviderConstants.MercadoPago)
+                    {
+                        <p class="guide-text">
+                            Para que o Lavaway confirme o recebimento do Pix e baixe a Ordem de Serviço automaticamente via Mercado Pago, cadastre a URL abaixo:
+                        </p>
 
-                    <div class="webhook-url-box">
-                        <label class="url-label">URL exclusiva do seu estabelecimento:</label>
-                        <div class="url-copy-wrapper">
-                            <input type="text"
-                                   readonly
-                                   class="url-input"
-                                   value="@(_config?.WebhookUrl ?? "Carregando...")" />
-                            <button type="button"
-                                    class="button-copy @(_isUrlCopied ? "copied" : "")"
-                                    @onclick="CopyWebhookUrlAsync">
-                                @(_isUrlCopied ? "Copiado! ✓" : "Copiar")
-                            </button>
+                        <div class="webhook-url-box">
+                            <label class="url-label">URL exclusiva no Mercado Pago:</label>
+                            <div class="url-copy-wrapper">
+                                <input type="text"
+                                       readonly
+                                       class="url-input"
+                                       value="@(_config?.MercadoPagoWebhookUrl ?? _config?.WebhookUrl ?? "Carregando...")" />
+                                <button type="button"
+                                        class="button-copy @(_isUrlCopied ? "copied" : "")"
+                                        @onclick="CopyWebhookUrlAsync">
+                                    @(_isUrlCopied ? "Copiado! ✓" : "Copiar")
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="guide-steps-list">
-                        <div class="step-item">
-                            <span class="step-num">1</span>
-                            <span>Acesse o <strong>Dashboard da Pagar.me</strong> &gt; <strong>Configurações</strong> &gt; <strong>Webhooks</strong>.</span>
+                        <div class="guide-steps-list">
+                            <div class="step-item">
+                                <span class="step-num">1</span>
+                                <span>Acesse o <strong>Mercado Pago Developers</strong> &gt; <strong>Suas integrações</strong>.</span>
+                            </div>
+                            <div class="step-item">
+                                <span class="step-num">2</span>
+                                <span>Abra sua aplicação, vá em <strong>Webhooks</strong> e clique em <strong>Configurar Webhooks</strong>.</span>
+                            </div>
+                            <div class="step-item">
+                                <span class="step-num">3</span>
+                                <span>Cole a URL acima no campo de notificação e marque o evento <strong>Pagamentos (payment)</strong>.</span>
+                            </div>
                         </div>
-                        <div class="step-item">
-                            <span class="step-num">2</span>
-                            <span>Clique em <strong>Criar Webhook</strong> e cole a URL acima.</span>
+                    }
+                    else if (_selectedProvider == PaymentGatewayProviderConstants.PagarMe)
+                    {
+                        <p class="guide-text">
+                            Para que o Lavaway confirme o recebimento do Pix e baixe a Ordem de Serviço automaticamente, cadastre a URL abaixo no painel da sua conta Pagar.me:
+                        </p>
+
+                        <div class="webhook-url-box">
+                            <label class="url-label">URL exclusiva na Pagar.me:</label>
+                            <div class="url-copy-wrapper">
+                                <input type="text"
+                                       readonly
+                                       class="url-input"
+                                       value="@(_config?.PagarMeWebhookUrl ?? _config?.WebhookUrl ?? "Carregando...")" />
+                                <button type="button"
+                                        class="button-copy @(_isUrlCopied ? "copied" : "")"
+                                        @onclick="CopyWebhookUrlAsync">
+                                    @(_isUrlCopied ? "Copiado! ✓" : "Copiar")
+                                </button>
+                            </div>
                         </div>
-                        <div class="step-item">
-                            <span class="step-num">3</span>
-                            <span>Marque os eventos <code>charge.paid</code> e <code>order.paid</code> e salve.</span>
+
+                        <div class="guide-steps-list">
+                            <div class="step-item">
+                                <span class="step-num">1</span>
+                                <span>Acesse o <strong>Dashboard da Pagar.me</strong> &gt; <strong>Configurações</strong> &gt; <strong>Webhooks</strong>.</span>
+                            </div>
+                            <div class="step-item">
+                                <span class="step-num">2</span>
+                                <span>Clique em <strong>Criar Webhook</strong> e cole a URL acima.</span>
+                            </div>
+                            <div class="step-item">
+                                <span class="step-num">3</span>
+                                <span>Marque os eventos <code>charge.paid</code> e <code>order.paid</code> e salve.</span>
+                            </div>
                         </div>
-                    </div>
+                    }
+                    else
+                    {
+                        <p class="guide-text">
+                            No Ambiente Simulado, nenhum webhook externo é necessário. Todas as confirmações de pagamento são disparadas localmente.
+                        </p>
+                    }
                 </div>
 
                 <div class="settings-card security-info-card">
@@ -307,15 +465,23 @@
     private bool _isUrlCopied;
     private bool _showSecretKey;
     private bool _showWebhookSecret;
+    private bool _showMpAccessToken;
+    private bool _showMpWebhookSecret;
 
     private TenantPaymentGatewayConfigDto? _config;
     private string _selectedProvider = PaymentGatewayProviderConstants.PagarMe;
     private string _secretKeyInput = string.Empty;
     private string _publicKeyInput = string.Empty;
     private string _webhookSecretInput = string.Empty;
+
+    private string _mpAccessTokenInput = string.Empty;
+    private string _mpPublicKeyInput = string.Empty;
+    private string _mpWebhookSecretInput = string.Empty;
+
     private bool _isActive = true;
 
     private string? _secretKeyError;
+    private string? _mpAccessTokenError;
     private TestTenantGatewayConnectionResultDto? _testResult;
 
     protected override async Task OnInitializedAsync()
@@ -333,6 +499,7 @@
             {
                 _selectedProvider = _config.Provider;
                 _publicKeyInput = _config.PagarMePublicKey ?? string.Empty;
+                _mpPublicKeyInput = _config.MercadoPagoPublicKey ?? string.Empty;
                 _isActive = _config.IsActive;
 
                 if (_config.LastTestedAtUtc.HasValue && _config.LastTestSuccess.HasValue)
@@ -358,17 +525,27 @@
     {
         _selectedProvider = provider;
         _secretKeyError = null;
+        _mpAccessTokenError = null;
     }
 
     private async Task SaveSettingsAsync()
     {
         _secretKeyError = null;
+        _mpAccessTokenError = null;
 
         if (_selectedProvider == PaymentGatewayProviderConstants.PagarMe &&
             _config?.HasSecretKey != true &&
             string.IsNullOrWhiteSpace(_secretKeyInput))
         {
             _secretKeyError = "A Chave Secreta da Pagar.me é obrigatória para este provedor.";
+            return;
+        }
+
+        if (_selectedProvider == PaymentGatewayProviderConstants.MercadoPago &&
+            _config?.HasMercadoPagoAccessToken != true &&
+            string.IsNullOrWhiteSpace(_mpAccessTokenInput))
+        {
+            _mpAccessTokenError = "O Access Token do Mercado Pago é obrigatório para este provedor.";
             return;
         }
 
@@ -380,11 +557,16 @@
                 PagarMePublicKey: string.IsNullOrWhiteSpace(_publicKeyInput) ? null : _publicKeyInput.Trim(),
                 PagarMeSecretKey: string.IsNullOrWhiteSpace(_secretKeyInput) ? null : _secretKeyInput.Trim(),
                 PagarMeWebhookSecret: string.IsNullOrWhiteSpace(_webhookSecretInput) ? null : _webhookSecretInput.Trim(),
+                MercadoPagoPublicKey: string.IsNullOrWhiteSpace(_mpPublicKeyInput) ? null : _mpPublicKeyInput.Trim(),
+                MercadoPagoAccessToken: string.IsNullOrWhiteSpace(_mpAccessTokenInput) ? null : _mpAccessTokenInput.Trim(),
+                MercadoPagoWebhookSecret: string.IsNullOrWhiteSpace(_mpWebhookSecretInput) ? null : _mpWebhookSecretInput.Trim(),
                 IsActive: _isActive);
 
             _config = await BillingApi.SaveGatewayConfigAsync(request);
             _secretKeyInput = string.Empty;
             _webhookSecretInput = string.Empty;
+            _mpAccessTokenInput = string.Empty;
+            _mpWebhookSecretInput = string.Empty;
             ToastService.ShowSuccess("Configurações do gateway de pagamento salvas com sucesso!");
         }
         catch (Exception ex)
@@ -406,12 +588,14 @@
         {
             var request = new TestTenantGatewayConnectionRequest(
                 Provider: _selectedProvider,
-                PagarMeSecretKey: string.IsNullOrWhiteSpace(_secretKeyInput) ? null : _secretKeyInput.Trim());
+                PagarMeSecretKey: string.IsNullOrWhiteSpace(_secretKeyInput) ? null : _secretKeyInput.Trim(),
+                MercadoPagoAccessToken: string.IsNullOrWhiteSpace(_mpAccessTokenInput) ? null : _mpAccessTokenInput.Trim());
 
             _testResult = await BillingApi.TestGatewayConnectionAsync(request);
             if (_testResult.Success)
             {
-                ToastService.ShowSuccess("Conexão com a Pagar.me autenticada com sucesso!");
+                var providerDisplayName = PaymentGatewayProviderConstants.ToDisplayName(_selectedProvider);
+                ToastService.ShowSuccess($"Conexão com {providerDisplayName} validada com sucesso!");
             }
             else
             {
@@ -434,11 +618,18 @@
 
     private async Task CopyWebhookUrlAsync()
     {
-        if (string.IsNullOrWhiteSpace(_config?.WebhookUrl)) return;
+        var urlToCopy = _selectedProvider switch
+        {
+            PaymentGatewayProviderConstants.MercadoPago => _config?.MercadoPagoWebhookUrl ?? _config?.WebhookUrl,
+            PaymentGatewayProviderConstants.PagarMe => _config?.PagarMeWebhookUrl ?? _config?.WebhookUrl,
+            _ => _config?.WebhookUrl
+        };
+
+        if (string.IsNullOrWhiteSpace(urlToCopy)) return;
 
         try
         {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _config.WebhookUrl);
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", urlToCopy);
             _isUrlCopied = true;
             ToastService.ShowSuccess("URL do Webhook copiada para a área de transferência!");
             StateHasChanged();

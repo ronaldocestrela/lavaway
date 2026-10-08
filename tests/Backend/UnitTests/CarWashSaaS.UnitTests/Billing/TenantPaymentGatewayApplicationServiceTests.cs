@@ -109,4 +109,35 @@ public sealed class TenantPaymentGatewayApplicationServiceTests
         Assert.True(result.Value.Success);
         Assert.Contains("Simulado", result.Value.Message);
     }
+
+    [Fact]
+    public async Task SaveConfigAsync_WithMercadoPago_ShouldEncryptTokenAndMaskInResponse()
+    {
+        var repo = new FakePaymentConfigRepo();
+        var service = new TenantPaymentGatewayApplicationService(
+            repo,
+            new FakeEncryptor(),
+            new HttpClient());
+
+        var tenantId = Guid.NewGuid();
+        var request = new SaveTenantPaymentGatewayConfigRequest(
+            Provider: PaymentGatewayProviderConstants.MercadoPago,
+            MercadoPagoPublicKey: "APP_USR-pk-12345",
+            MercadoPagoAccessToken: "APP_USR-secret-token-abcdef123456",
+            MercadoPagoWebhookSecret: "mp_wh_secret_xyz",
+            IsActive: true);
+
+        var result = await service.SaveConfigAsync(tenantId, request, "https://api.lavaway.com.br");
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(PaymentGatewayProviderConstants.MercadoPago, result.Value.Provider);
+        Assert.True(result.Value.HasMercadoPagoAccessToken);
+        Assert.True(result.Value.HasMercadoPagoWebhookSecret);
+        Assert.Contains("••••••••", result.Value.MercadoPagoAccessTokenMasked!);
+        Assert.DoesNotContain("secret-token", result.Value.MercadoPagoAccessTokenMasked!);
+
+        var stored = repo.Storage[tenantId];
+        Assert.Equal("ENC:APP_USR-secret-token-abcdef123456", stored.MercadoPagoAccessTokenEncrypted);
+    }
 }

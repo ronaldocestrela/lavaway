@@ -16,6 +16,11 @@ public sealed class TenantPaymentGatewayConfig : IMustHaveTenant
     public string? PagarMeSecretKeyEncrypted { get; private set; }
     public string? PagarMePublicKey { get; private set; }
     public string? PagarMeWebhookSecretEncrypted { get; private set; }
+
+    public string? MercadoPagoAccessTokenEncrypted { get; private set; }
+    public string? MercadoPagoPublicKey { get; private set; }
+    public string? MercadoPagoWebhookSecretEncrypted { get; private set; }
+
     public bool IsActive { get; private set; } = true;
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset? UpdatedAtUtc { get; private set; }
@@ -33,6 +38,9 @@ public sealed class TenantPaymentGatewayConfig : IMustHaveTenant
         string? pagarMeSecretKeyEncrypted = null,
         string? pagarMePublicKey = null,
         string? pagarMeWebhookSecretEncrypted = null,
+        string? mercadoPagoAccessTokenEncrypted = null,
+        string? mercadoPagoPublicKey = null,
+        string? mercadoPagoWebhookSecretEncrypted = null,
         bool isActive = true)
     {
         if (tenantId == Guid.Empty)
@@ -53,6 +61,9 @@ public sealed class TenantPaymentGatewayConfig : IMustHaveTenant
             PagarMeSecretKeyEncrypted = pagarMeSecretKeyEncrypted?.Trim(),
             PagarMePublicKey = pagarMePublicKey?.Trim(),
             PagarMeWebhookSecretEncrypted = pagarMeWebhookSecretEncrypted?.Trim(),
+            MercadoPagoAccessTokenEncrypted = mercadoPagoAccessTokenEncrypted?.Trim(),
+            MercadoPagoPublicKey = mercadoPagoPublicKey?.Trim(),
+            MercadoPagoWebhookSecretEncrypted = mercadoPagoWebhookSecretEncrypted?.Trim(),
             IsActive = isActive,
             CreatedAtUtc = DateTimeOffset.UtcNow
         };
@@ -65,6 +76,9 @@ public sealed class TenantPaymentGatewayConfig : IMustHaveTenant
         string? pagarMeSecretKeyEncrypted,
         string? pagarMePublicKey,
         string? pagarMeWebhookSecretEncrypted,
+        string? mercadoPagoAccessTokenEncrypted,
+        string? mercadoPagoPublicKey,
+        string? mercadoPagoWebhookSecretEncrypted,
         bool isActive)
     {
         if (!PaymentGatewayProviderConstants.IsValid(provider))
@@ -84,6 +98,18 @@ public sealed class TenantPaymentGatewayConfig : IMustHaveTenant
         if (pagarMeWebhookSecretEncrypted is not null)
         {
             PagarMeWebhookSecretEncrypted = string.IsNullOrWhiteSpace(pagarMeWebhookSecretEncrypted) ? null : pagarMeWebhookSecretEncrypted.Trim();
+        }
+
+        if (mercadoPagoAccessTokenEncrypted is not null)
+        {
+            MercadoPagoAccessTokenEncrypted = string.IsNullOrWhiteSpace(mercadoPagoAccessTokenEncrypted) ? null : mercadoPagoAccessTokenEncrypted.Trim();
+        }
+
+        MercadoPagoPublicKey = string.IsNullOrWhiteSpace(mercadoPagoPublicKey) ? null : mercadoPagoPublicKey.Trim();
+
+        if (mercadoPagoWebhookSecretEncrypted is not null)
+        {
+            MercadoPagoWebhookSecretEncrypted = string.IsNullOrWhiteSpace(mercadoPagoWebhookSecretEncrypted) ? null : mercadoPagoWebhookSecretEncrypted.Trim();
         }
 
         IsActive = isActive;

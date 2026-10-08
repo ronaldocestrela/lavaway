@@ -28,6 +28,15 @@ public sealed class TenantPaymentGatewayConfigConfiguration : IEntityTypeConfigu
         builder.Property(c => c.PagarMeWebhookSecretEncrypted)
             .HasMaxLength(1000);
 
+        builder.Property(c => c.MercadoPagoAccessTokenEncrypted)
+            .HasMaxLength(1000);
+
+        builder.Property(c => c.MercadoPagoPublicKey)
+            .HasMaxLength(200);
+
+        builder.Property(c => c.MercadoPagoWebhookSecretEncrypted)
+            .HasMaxLength(1000);
+
         builder.Property(c => c.IsActive)
             .IsRequired();
 

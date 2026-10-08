@@ -29,8 +29,15 @@ public sealed record TenantPaymentGatewayConfigDto(
     bool HasSecretKey,
     string? PagarMeWebhookSecretMasked,
     bool HasWebhookSecret,
+    string? MercadoPagoPublicKey,
+    string? MercadoPagoAccessTokenMasked,
+    bool HasMercadoPagoAccessToken,
+    string? MercadoPagoWebhookSecretMasked,
+    bool HasMercadoPagoWebhookSecret,
     bool IsActive,
     string WebhookUrl,
+    string PagarMeWebhookUrl,
+    string MercadoPagoWebhookUrl,
     DateTimeOffset? LastTestedAtUtc,
     bool? LastTestSuccess,
     string? LastTestMessage);
@@ -40,11 +47,15 @@ public sealed record SaveTenantPaymentGatewayConfigRequest(
     string? PagarMePublicKey = null,
     string? PagarMeSecretKey = null,
     string? PagarMeWebhookSecret = null,
+    string? MercadoPagoPublicKey = null,
+    string? MercadoPagoAccessToken = null,
+    string? MercadoPagoWebhookSecret = null,
     bool IsActive = true);
 
 public sealed record TestTenantGatewayConnectionRequest(
     string Provider,
-    string? PagarMeSecretKey = null);
+    string? PagarMeSecretKey = null,
+    string? MercadoPagoAccessToken = null);
 
 public sealed record TestTenantGatewayConnectionResultDto(
     bool Success,

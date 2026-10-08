@@ -56,24 +56,50 @@ public sealed class TenantPaymentGatewayConfigDomainTests
         var config = TenantPaymentGatewayConfig.Create(
             Guid.NewGuid(),
             PaymentGatewayProviderConstants.PagarMe,
-            "old_secret",
-            "old_pk",
-            "old_wh",
-            false).Value!;
+            pagarMeSecretKeyEncrypted: "old_secret",
+            pagarMePublicKey: "old_pk",
+            pagarMeWebhookSecretEncrypted: "old_wh",
+            isActive: false).Value!;
 
         var updateResult = config.Update(
-            PaymentGatewayProviderConstants.Simulated,
+            PaymentGatewayProviderConstants.MercadoPago,
             "new_secret",
             "new_pk",
             "new_wh",
+            "mp_token_enc",
+            "mp_pk",
+            "mp_wh_enc",
             true);
 
         Assert.True(updateResult.IsSuccess);
-        Assert.Equal(PaymentGatewayProviderConstants.Simulated, config.Provider);
+        Assert.Equal(PaymentGatewayProviderConstants.MercadoPago, config.Provider);
         Assert.Equal("new_secret", config.PagarMeSecretKeyEncrypted);
         Assert.Equal("new_pk", config.PagarMePublicKey);
+        Assert.Equal("mp_token_enc", config.MercadoPagoAccessTokenEncrypted);
+        Assert.Equal("mp_pk", config.MercadoPagoPublicKey);
+        Assert.Equal("mp_wh_enc", config.MercadoPagoWebhookSecretEncrypted);
         Assert.True(config.IsActive);
         Assert.NotNull(config.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void Create_WithMercadoPago_ShouldSucceed()
+    {
+        var tenantId = Guid.NewGuid();
+        var result = TenantPaymentGatewayConfig.Create(
+            tenantId,
+            PaymentGatewayProviderConstants.MercadoPago,
+            mercadoPagoAccessTokenEncrypted: "enc_mp_token",
+            mercadoPagoPublicKey: "APP_USR_PK",
+            mercadoPagoWebhookSecretEncrypted: "enc_mp_webhook",
+            isActive: true);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(PaymentGatewayProviderConstants.MercadoPago, result.Value.Provider);
+        Assert.Equal("enc_mp_token", result.Value.MercadoPagoAccessTokenEncrypted);
+        Assert.Equal("APP_USR_PK", result.Value.MercadoPagoPublicKey);
+        Assert.Equal("enc_mp_webhook", result.Value.MercadoPagoWebhookSecretEncrypted);
     }
 
     [Fact]
