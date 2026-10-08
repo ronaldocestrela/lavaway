@@ -3,11 +3,13 @@
 @layout LandingLayout
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 @inject AuthApiClient AuthApi
 @inject ITokenStorage TokenStorage
 @inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject IConfiguration Configuration
+@inject IWebAssemblyHostEnvironment HostEnvironment
 
 <PageTitle>Acessar Conta | Lavaway</PageTitle>
 
@@ -109,20 +111,23 @@
                         </div>
                     </div>
 
-                    <div class="dev-quick-fill">
-                        <span class="quick-title">Credenciais de Teste / Dev:</span>
-                        <div class="quick-tags">
-                            <button type="button" class="quick-btn" @onclick='() => FillCredentials("admin@lavaway.com", "Admin123!")'>
-                                👤 Admin Loja (admin@lavaway.com)
-                            </button>
-                            <button type="button" class="quick-btn" @onclick='() => FillCredentials("recepcao@lavaway.com", "Recepcao123!")'>
-                                📋 Recepção (recepcao@lavaway.com)
-                            </button>
-                            <button type="button" class="quick-btn" @onclick='() => FillCredentials("platform@lavaway.com", "PlatformAdmin123!")'>
-                                🛡️ Admin Plataforma (platform@lavaway.com)
-                            </button>
+                    @if (HostEnvironment.IsDevelopment())
+                    {
+                        <div class="dev-quick-fill">
+                            <span class="quick-title">Credenciais de Teste / Dev:</span>
+                            <div class="quick-tags">
+                                <button type="button" class="quick-btn" @onclick='() => FillCredentials("admin@lavaway.com", "Admin123!")'>
+                                    👤 Admin Loja (admin@lavaway.com)
+                                </button>
+                                <button type="button" class="quick-btn" @onclick='() => FillCredentials("recepcao@lavaway.com", "Recepcao123!")'>
+                                    📋 Recepção (recepcao@lavaway.com)
+                                </button>
+                                <button type="button" class="quick-btn" @onclick='() => FillCredentials("platform@lavaway.com", "PlatformAdmin123!")'>
+                                    🛡️ Admin Plataforma (platform@lavaway.com)
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    }
 
 
                     <button class="btn-primary full glow" type="submit" disabled="@_isLoading" id="btn-login-submit">
