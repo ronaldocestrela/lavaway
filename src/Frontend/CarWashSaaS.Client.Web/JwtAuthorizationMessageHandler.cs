@@ -11,8 +11,13 @@ public sealed class JwtAuthorizationMessageHandler(
 {
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        var isAnonymousAuthRequest = request.RequestUri is not null &&
+            (request.RequestUri.AbsolutePath.EndsWith("auth/login", StringComparison.OrdinalIgnoreCase) ||
+             request.RequestUri.AbsolutePath.EndsWith("auth/register-tenant", StringComparison.OrdinalIgnoreCase) ||
+             request.RequestUri.AbsolutePath.EndsWith("auth/seed", StringComparison.OrdinalIgnoreCase));
+
         var token = await tokenStorage.GetAccessTokenAsync();
-        if (!string.IsNullOrWhiteSpace(token) && request.Headers.Authorization is null)
+        if (!isAnonymousAuthRequest && !string.IsNullOrWhiteSpace(token) && request.Headers.Authorization is null)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }

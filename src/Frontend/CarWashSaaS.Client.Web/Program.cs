@@ -34,7 +34,28 @@ builder.Services.AddScoped<ImpersonationSessionState>();
 builder.Services.AddScoped<IToastService, ToastService>();
 
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+var configuredApiBaseUrl = builder.Configuration["ApiBaseUrl"];
+var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
+Uri apiBaseUri;
+if (string.IsNullOrWhiteSpace(configuredApiBaseUrl) || configuredApiBaseUrl.Trim() == "/")
+{
+    apiBaseUri = baseUri;
+}
+else if (Uri.TryCreate(configuredApiBaseUrl, UriKind.Absolute, out var absUri) &&
+         (absUri.Scheme == Uri.UriSchemeHttp || absUri.Scheme == Uri.UriSchemeHttps))
+{
+    var absStr = absUri.ToString();
+    apiBaseUri = absStr.EndsWith('/') ? absUri : new Uri(absStr + "/");
+}
+else
+{
+    var relativePath = configuredApiBaseUrl.Trim().TrimStart('/');
+    if (!relativePath.EndsWith('/'))
+    {
+        relativePath += "/";
+    }
+    apiBaseUri = new Uri(baseUri, relativePath);
+}
 var authority = builder.Configuration["Authentication:Authority"];
 
 builder.Services.AddScoped<ITokenStorage, LocalStorageTokenStorage>();
@@ -46,7 +67,7 @@ builder.Services.AddScoped(sp =>
 {
     var handler = sp.GetRequiredService<JwtAuthorizationMessageHandler>();
     handler.InnerHandler = new HttpClientHandler();
-    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+    return new HttpClient(handler) { BaseAddress = apiBaseUri };
 });
 
 builder.Services.AddScoped<AuthApiClient>();

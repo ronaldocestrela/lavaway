@@ -281,25 +281,38 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddCors(options => options.AddPolicy("Client", policy =>
 {
-    if (allowedOrigins.Length > 0)
+    if (allowedOrigins.Length > 0 && !allowedOrigins.Contains("*"))
     {
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+    }
+    else
+    {
+        policy.SetIsOriginAllowed(_ => true).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     }
 }));
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+var shouldSeed = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue<bool>("SEED_DATABASE")
+    || app.Configuration.GetValue<bool>("Seed:AutoSeedOnStartup")
+    || string.Equals(Environment.GetEnvironmentVariable("SEED_DATABASE"), "true", StringComparison.OrdinalIgnoreCase);
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
+
+if (shouldSeed)
+{
     try
     {
         await DevDatabaseSeeder.SeedAsync(app.Services);
     }
     catch (Exception ex)
     {
-        app.Logger.LogWarning(ex, "Failed to run development database seeder.");
+        app.Logger.LogWarning(ex, "Failed to run database seeder.");
     }
 }
 

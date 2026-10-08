@@ -269,9 +269,11 @@
                 _errorMessage = TranslateError(result.Error?.Code, result.Error?.Description);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _errorMessage = "Não foi possível conectar ao servidor de autenticação. Verifique se o backend está em execução.";
+            _errorMessage = !string.IsNullOrWhiteSpace(ex.Message)
+                ? $"Falha ao conectar com o servidor: {ex.Message}"
+                : "Não foi possível conectar ao servidor de autenticação. Verifique se o backend está em execução.";
         }
         finally
         {

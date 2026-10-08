@@ -1,0 +1,37 @@
+# ==========================================
+# Build Stage - Blazor WebAssembly
+# ==========================================
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy project files for caching dotnet restore
+COPY ["CarWashSaaS.sln", "./"]
+COPY ["src/Shared/CarWashSaaS.Shared.Contracts/CarWashSaaS.Shared.Contracts.csproj", "src/Shared/CarWashSaaS.Shared.Contracts/"]
+COPY ["src/Frontend/CarWashSaaS.Client.Core/CarWashSaaS.Client.Core.csproj", "src/Frontend/CarWashSaaS.Client.Core/"]
+COPY ["src/Frontend/CarWashSaaS.Client.Components/CarWashSaaS.Client.Components.csproj", "src/Frontend/CarWashSaaS.Client.Components/"]
+COPY ["src/Frontend/CarWashSaaS.Client.Web/CarWashSaaS.Client.Web.csproj", "src/Frontend/CarWashSaaS.Client.Web/"]
+
+RUN dotnet restore "src/Frontend/CarWashSaaS.Client.Web/CarWashSaaS.Client.Web.csproj"
+
+# Copy full source and publish
+COPY src/ ./src/
+RUN dotnet publish "src/Frontend/CarWashSaaS.Client.Web/CarWashSaaS.Client.Web.csproj" \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# ==========================================
+# Runtime Stage - Nginx Alpine
+# ==========================================
+FROM nginx:alpine AS runtime
+
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/publish/wwwroot /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
+    CMD wget -q -O - http://127.0.0.1/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

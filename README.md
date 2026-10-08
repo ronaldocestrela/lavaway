@@ -17,6 +17,7 @@ SaaS para gestão de lava-jatos e estética automotiva, construído como um mon�
   - [4. Executar a API Backend](#4-executar-a-api-backend)
   - [5. Executar o Frontend Blazor](#5-executar-o-frontend-blazor)
 - [Painéis e URLs dos Serviços](#painéis-e-urls-dos-serviços)
+- [Deploy em Produção (Docker Compose)](#deploy-em-produção-docker-compose)
 - [Testes e Garantia de Qualidade](#testes-e-garantia-de-qualidade)
 - [Comandos Úteis de Desenvolvimento](#comandos-úteis-de-desenvolvimento)
 - [Documentação Adicional](#documentação-adicional)
@@ -239,6 +240,54 @@ dotnet run --project src/Frontend/CarWashSaaS.Client.Web
 | **RabbitMQ AMQP** | Porta do broker de mensagens | `localhost:5672` | Idem |
 | **SQL Server 2022** | Banco de dados relacional | `localhost:1433` | Usuário: `sa`<br>Senha: `LavawaySqlDev2026!` |
 | **Evolution API v2.3.7** | API WhatsApp / Provedor | `http://localhost:8080` | Header `apikey`: `CHANGE_ME` |
+
+---
+
+## Deploy em Produção (Docker Compose)
+
+O ambiente de produção é orquestrado de forma totalmente autônoma pelo arquivo `docker-compose.prod.yml`, empacotando todos os serviços necessários em containers otimizados e seguros:
+
+### Serviços Incluídos na Stack de Produção
+
+1. **`sqlserver`:** Microsoft SQL Server 2022 com volume persistente e verificação de integridade via `sqlcmd`.
+2. **`minio`:** Object Storage S3 privado com volume persistente e healthcheck ativo.
+3. **`rabbitmq`:** Broker RabbitMQ 4 com quorum queues persistentes e healthcheck via `rabbitmq-diagnostics`.
+4. **`evolution-postgres`:** PostgreSQL 15 dedicado ao armazenamento de sessões da Evolution API.
+5. **`evolution-redis`:** Redis 7 dedicado ao cache de instâncias da Evolution API.
+6. **`evolution-api`:** Evolution API v2.3.7 para pareamento e comunicação oficial do WhatsApp.
+7. **`db-migrator`:** Container *init* que compila e executa bundles autocontidos de migration do EF Core para todos os 5 módulos (`tenants`, `identity`, `yard`, `whatsapp`, `billing`) antes da API iniciar.
+8. **`api`:** Backend ASP.NET Core (.NET 10) Minimal APIs rodando como usuário não-root `app`, dependente da conclusão do migrator e da saúde dos bancos/filas.
+9. **`web`:** Frontend Blazor WebAssembly (.NET 10) compilado em modo *Release* e servido por Nginx Alpine, atuando também como *Reverse Proxy* e *Gateway*:
+   - Entrega estática de assets SPA com fallback para `index.html`.
+   - Proxy reverso para `/api/` direcionando chamadas ao backend.
+   - Suporte a WebSockets para os hubs SignalR em `/hubs/`.
+   - Compressão Gzip para arquivos `.wasm`, `.js`, `.css` e `.json`.
+   - Cabeçalhos de segurança HTTP e limite de payload de 50MB para vistorias fotográficas.
+
+### Como Iniciar em Produção
+
+1. Copie o arquivo de exemplo de ambiente e preencha as credenciais seguras:
+   ```sh
+   cp .env.prod.example .env.prod
+   nano .env.prod
+   ```
+
+2. Construa as imagens e inicie a stack completa:
+   ```sh
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+   ```
+
+3. Acompanhe os logs dos serviços:
+   ```sh
+   docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f
+   ```
+
+4. Verifique o status e integridade dos containers:
+   ```sh
+   docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+   ```
+
+5. Acesse o sistema no navegador na porta configurada (padrão: `http://localhost` ou `http://seu-dominio.com`).
 
 ---
 

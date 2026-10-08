@@ -1,0 +1,61 @@
+# ==========================================
+# Build Stage
+# ==========================================
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy project files for caching dotnet restore
+COPY ["CarWashSaaS.sln", "./"]
+COPY ["src/Shared/CarWashSaaS.Shared.Contracts/CarWashSaaS.Shared.Contracts.csproj", "src/Shared/CarWashSaaS.Shared.Contracts/"]
+COPY ["src/Shared/CarWashSaaS.Shared.Configuration/CarWashSaaS.Shared.Configuration.csproj", "src/Shared/CarWashSaaS.Shared.Configuration/"]
+COPY ["src/Backend/CarWashSaaS.Api/CarWashSaaS.Api.csproj", "src/Backend/CarWashSaaS.Api/"]
+COPY ["src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Application/CarWashSaaS.Tenants.Application.csproj", "src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Application/"]
+COPY ["src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Domain/CarWashSaaS.Tenants.Domain.csproj", "src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Domain/"]
+COPY ["src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Infrastructure/CarWashSaaS.Tenants.Infrastructure.csproj", "src/Backend/Modules/Tenants/CarWashSaaS.Tenants.Infrastructure/"]
+COPY ["src/Backend/Modules/Identity/CarWashSaaS.Identity.Application/CarWashSaaS.Identity.Application.csproj", "src/Backend/Modules/Identity/CarWashSaaS.Identity.Application/"]
+COPY ["src/Backend/Modules/Identity/CarWashSaaS.Identity.Domain/CarWashSaaS.Identity.Domain.csproj", "src/Backend/Modules/Identity/CarWashSaaS.Identity.Domain/"]
+COPY ["src/Backend/Modules/Identity/CarWashSaaS.Identity.Infrastructure/CarWashSaaS.Identity.Infrastructure.csproj", "src/Backend/Modules/Identity/CarWashSaaS.Identity.Infrastructure/"]
+COPY ["src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Application/CarWashSaaS.YardOperations.Application.csproj", "src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Application/"]
+COPY ["src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Domain/CarWashSaaS.YardOperations.Domain.csproj", "src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Domain/"]
+COPY ["src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Infrastructure/CarWashSaaS.YardOperations.Infrastructure.csproj", "src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Infrastructure/"]
+COPY ["src/Backend/Modules/WhatsApp/CarWashSaaS.WhatsApp.Application/CarWashSaaS.WhatsApp.Application.csproj", "src/Backend/Modules/WhatsApp/CarWashSaaS.WhatsApp.Application/"]
+COPY ["src/Backend/Modules/WhatsApp/CarWashSaaS.WhatsApp.Domain/CarWashSaaS.WhatsApp.Domain.csproj", "src/Backend/Modules/WhatsApp/CarWashSaaS.WhatsApp.Domain/"]
+COPY ["src/Backend/Modules/WhatsApp/CarWashSaaS.WhatsApp.Infrastructure/CarWashSaaS.WhatsApp.Infrastructure.csproj", "src/Backend/Modules/WhatsApp/CarWashSaaS.WhatsApp.Infrastructure/"]
+COPY ["src/Backend/Modules/Billing/CarWashSaaS.Billing.Application/CarWashSaaS.Billing.Application.csproj", "src/Backend/Modules/Billing/CarWashSaaS.Billing.Application/"]
+COPY ["src/Backend/Modules/Billing/CarWashSaaS.Billing.Domain/CarWashSaaS.Billing.Domain.csproj", "src/Backend/Modules/Billing/CarWashSaaS.Billing.Domain/"]
+COPY ["src/Backend/Modules/Billing/CarWashSaaS.Billing.Infrastructure/CarWashSaaS.Billing.Infrastructure.csproj", "src/Backend/Modules/Billing/CarWashSaaS.Billing.Infrastructure/"]
+
+RUN dotnet restore "src/Backend/CarWashSaaS.Api/CarWashSaaS.Api.csproj"
+
+# Copy full source and publish
+COPY src/ ./src/
+RUN dotnet publish "src/Backend/CarWashSaaS.Api/CarWashSaaS.Api.csproj" \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# ==========================================
+# Runtime Stage
+# ==========================================
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+# Install curl for healthcheck
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build --chown=app:app /app/publish .
+
+ENV ASPNETCORE_ENVIRONMENT=Production \
+    ASPNETCORE_HTTP_PORTS=8080 \
+    DOTNET_ENABLE_DIAGNOSTICS=0
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=5 --start-period=15s \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+USER app
+ENTRYPOINT ["dotnet", "CarWashSaaS.Api.dll"]
