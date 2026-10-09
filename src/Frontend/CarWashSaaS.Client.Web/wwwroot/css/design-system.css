@@ -18,7 +18,8 @@
     .whatsapp-page,
     .workorder-page,
     .reception-page,
-    .tenant-subscription-page
+    .tenant-subscription-page,
+    .payment-settings-page
 ) {
     width: 100%;
     max-width: 1400px;

@@ -184,7 +184,8 @@ public sealed class ModuleBoundaryTests
             typeof(SubscriptionPlan),
             typeof(CustomerSubscription),
             typeof(SubscriptionVehiclePlate),
-            typeof(SubscriptionUsage)
+            typeof(SubscriptionUsage),
+            typeof(TenantPaymentGatewayConfig)
         };
 
         Assert.All(tenantOwnedTypes, type =>
@@ -217,7 +218,8 @@ public sealed class ModuleBoundaryTests
             typeof(SubscriptionPlan),
             typeof(CustomerSubscription),
             typeof(PlatformUser),
-            typeof(AdministrativeAuditEvent)
+            typeof(AdministrativeAuditEvent),
+            typeof(TenantPaymentGatewayConfig)
         };
 
 

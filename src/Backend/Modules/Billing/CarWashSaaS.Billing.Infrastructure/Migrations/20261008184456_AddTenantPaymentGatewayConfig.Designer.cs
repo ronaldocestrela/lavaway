@@ -4,6 +4,7 @@ using CarWashSaaS.Billing.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CarWashSaaS.Billing.Infrastructure.Migrations
 {
     [DbContext(typeof(BillingDbContext))]
-    partial class BillingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008184456_AddTenantPaymentGatewayConfig")]
+    partial class AddTenantPaymentGatewayConfig
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -628,18 +631,6 @@ namespace CarWashSaaS.Billing.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset?>("LastTestedAtUtc")
                         .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("MercadoPagoAccessTokenEncrypted")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("MercadoPagoPublicKey")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("MercadoPagoWebhookSecretEncrypted")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("PagarMePublicKey")
                         .HasMaxLength(200)

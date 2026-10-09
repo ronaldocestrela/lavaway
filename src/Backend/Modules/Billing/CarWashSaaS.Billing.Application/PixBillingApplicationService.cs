@@ -13,9 +13,20 @@ public sealed class PixBillingApplicationService(
     IWorkOrderPaymentSettlementService? workOrderSettlementService = null,
     IOutboundWhatsAppDispatcher? whatsAppDispatcher = null,
     ICashTransactionRepository? cashTransactionRepository = null,
+    ITenantPixGatewayResolver? gatewayResolver = null,
     ILogger<PixBillingApplicationService>? logger = null) : IPixBillingLookup
 {
     private static readonly CultureInfo PtBrCulture = new("pt-BR");
+
+    private async Task<IPixGatewayProvider> GetProviderForTenantAsync(Guid tenantId, CancellationToken ct)
+    {
+        if (gatewayResolver is not null)
+        {
+            return await gatewayResolver.ResolveForTenantAsync(tenantId, ct);
+        }
+
+        return pixGatewayProvider;
+    }
 
     public async Task<Result<WorkOrderPixChargeDto>> GetOrCreatePixChargeForWorkOrderAsync(
         Guid tenantId,
@@ -81,7 +92,8 @@ public sealed class PixBillingApplicationService(
             workOrder.CustomerPhone,
             expiration);
 
-        var gatewayResult = await pixGatewayProvider.CreateImmediateChargeAsync(gatewayRequest, ct);
+        var provider = await GetProviderForTenantAsync(tenantId, ct);
+        var gatewayResult = await provider.CreateImmediateChargeAsync(gatewayRequest, ct);
         if (!gatewayResult.IsSuccess || gatewayResult.Value is null)
         {
             return Result<WorkOrderPixChargeDto>.Failure(
@@ -264,7 +276,8 @@ public sealed class PixBillingApplicationService(
 
         if (!string.IsNullOrWhiteSpace(payload.PaymentId) && (!isApproved || string.IsNullOrWhiteSpace(matchedTxId)))
         {
-            var queryResult = await pixGatewayProvider.GetPaymentDetailsAsync(tenantId, payload.PaymentId, ct);
+            var provider = await GetProviderForTenantAsync(tenantId, ct);
+            var queryResult = await provider.GetPaymentDetailsAsync(tenantId, payload.PaymentId, ct);
             if (queryResult.IsSuccess && queryResult.Value is not null)
             {
                 var details = queryResult.Value;

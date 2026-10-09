@@ -135,6 +135,7 @@ public sealed class RouteAuthorizationTests : BunitContext
     [InlineData("http://localhost/settings/services", "http://localhost/login?returnUrl=settings%2Fservices")]
     [InlineData("http://localhost/settings/team", "http://localhost/login?returnUrl=settings%2Fteam")]
     [InlineData("http://localhost/settings/whatsapp", "http://localhost/login?returnUrl=settings%2Fwhatsapp")]
+    [InlineData("http://localhost/settings/payments", "http://localhost/login?returnUrl=settings%2Fpayments")]
     public void RedirectToLogin_ShouldRedirectToLoginWithReturnUrl_WhenNavigatingProtectedRoutes(
         string currentUri,
         string expectedRedirectUri)
@@ -160,6 +161,7 @@ public sealed class RouteAuthorizationTests : BunitContext
     [InlineData(typeof(ServicesPage), "Administrator")]
     [InlineData(typeof(CapacityAndTeamPage), "Administrator")]
     [InlineData(typeof(WhatsAppSettingsPage), "Administrator")]
+    [InlineData(typeof(PaymentSettingsPage), "Administrator")]
     [InlineData(typeof(NewWorkOrderPage), "Administrator,Receptionist")]
     [InlineData(typeof(InspectionPage), "Administrator,Receptionist,Operator")]
     public void ProtectedPages_MustHaveAuthorizeAttributeWithProperRoles(Type pageType, string expectedRoles)

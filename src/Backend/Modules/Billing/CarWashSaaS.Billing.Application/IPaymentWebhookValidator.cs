@@ -10,6 +10,11 @@ public interface IPaymentWebhookValidator
         string? dataId,
         string webhookSecret);
 
+    Result ValidatePagarMeWebhook(
+        string? signatureHeader,
+        string rawBody,
+        string webhookSecret);
+
     Result ValidateSimulatedSecret(
         string? providedSecret,
         string expectedSecret);

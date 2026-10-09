@@ -99,4 +99,43 @@ public sealed class BillingPixTenantIntegrationTests(SqlServerFixture fixture)
         var foundTenantB = await repoB.GetByEventIdAsync(tenantB, "MercadoPago", eventId);
         Assert.Null(foundTenantB);
     }
+
+    [Fact]
+    public async Task TenantPaymentGatewayConfig_ShouldBeIsolatedByTenant_AndPersistCredentials()
+    {
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+
+        var accessorA = new CurrentTenantAccessor();
+        accessorA.SetTenant(tenantA);
+
+        await using var dbA = new BillingDbContext(fixture.CreateBillingOptions(), accessorA);
+        var repoA = new TenantPaymentGatewayConfigRepository(dbA);
+
+        var configA = TenantPaymentGatewayConfig.Create(
+            tenantA,
+            PaymentGatewayProviderConstants.PagarMe,
+            pagarMeSecretKeyEncrypted: "enc_sk_test_123",
+            pagarMePublicKey: "pk_test_123",
+            isActive: true).Value!;
+
+        await repoA.AddAsync(configA);
+        await repoA.SaveChangesAsync();
+
+        // Tenant A must find its config
+        var foundA = await repoA.GetByTenantIdAsync(tenantA);
+        Assert.NotNull(foundA);
+        Assert.Equal(PaymentGatewayProviderConstants.PagarMe, foundA.Provider);
+        Assert.Equal("enc_sk_test_123", foundA.PagarMeSecretKeyEncrypted);
+
+        // Tenant B must not see Tenant A's config
+        var accessorB = new CurrentTenantAccessor();
+        accessorB.SetTenant(tenantB);
+
+        await using var dbB = new BillingDbContext(fixture.CreateBillingOptions(), accessorB);
+        var repoB = new TenantPaymentGatewayConfigRepository(dbB);
+
+        var foundB = await repoB.GetByTenantIdAsync(tenantB);
+        Assert.Null(foundB);
+    }
 }

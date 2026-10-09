@@ -92,6 +92,63 @@ public static class BillingEndpoints
                 : MapErrorToResult(result.Error!);
         }).RequireAuthorization(AuthorizationPolicyNames.Receptionist);
 
+        group.MapGet("/gateway-config", async (
+            ICurrentTenantAccessor currentTenantAccessor,
+            TenantPaymentGatewayApplicationService service,
+            HttpRequest request,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var baseUrl = $"{request.Scheme}://{request.Host}";
+            var result = await service.GetConfigAsync(tenantId, baseUrl, ct);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : MapErrorToResult(result.Error!);
+        }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+        group.MapPut("/gateway-config", async (
+            SaveTenantPaymentGatewayConfigRequest saveRequest,
+            ICurrentTenantAccessor currentTenantAccessor,
+            TenantPaymentGatewayApplicationService service,
+            HttpRequest request,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var baseUrl = $"{request.Scheme}://{request.Host}";
+            var result = await service.SaveConfigAsync(tenantId, saveRequest, baseUrl, ct);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : MapErrorToResult(result.Error!);
+        }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+        group.MapPost("/gateway-config/test", async (
+            TestTenantGatewayConnectionRequest testRequest,
+            ICurrentTenantAccessor currentTenantAccessor,
+            TenantPaymentGatewayApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.TestConnectionAsync(tenantId, testRequest, ct);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : MapErrorToResult(result.Error!);
+        }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
         group.MapPost("/webhooks/{provider}/{tenantId:guid}", async (
             string provider,
             Guid tenantId,
@@ -111,9 +168,19 @@ public static class BillingEndpoints
 
             if (provider.Equals("mercadopago", StringComparison.OrdinalIgnoreCase))
             {
-                var webhookSecret = configuration["Billing:MercadoPago:WebhookSecret"]
-                    ?? configuration["Billing:MercadoPago:AccessToken"]
-                    ?? "dev-mercadopago-webhook-secret";
+                var configRepo = request.HttpContext.RequestServices.GetService<ITenantPaymentGatewayConfigRepository>();
+                var encryptor = request.HttpContext.RequestServices.GetService<IPaymentCredentialsEncryptor>();
+                var tenantConfig = configRepo is not null ? await configRepo.GetByTenantIdAsync(tenantId, ct) : null;
+
+                var tenantWebhookSecret = tenantConfig is not null && !string.IsNullOrWhiteSpace(tenantConfig.MercadoPagoWebhookSecretEncrypted) && encryptor is not null
+                    ? encryptor.Decrypt(tenantConfig.MercadoPagoWebhookSecretEncrypted)
+                    : null;
+
+                var webhookSecret = !string.IsNullOrWhiteSpace(tenantWebhookSecret)
+                    ? tenantWebhookSecret
+                    : (configuration["Billing:MercadoPago:WebhookSecret"]
+                        ?? configuration["Billing:MercadoPago:AccessToken"]
+                        ?? "dev-mercadopago-webhook-secret");
 
                 var xSignature = request.Headers["x-signature"].ToString();
                 var xRequestId = request.Headers["x-request-id"].ToString();
@@ -121,6 +188,24 @@ public static class BillingEndpoints
                 string? dataId = null;
                 string? action = null;
                 string? eventId = null;
+
+                if (request.Query.TryGetValue("data.id", out var qDataId) && !string.IsNullOrWhiteSpace(qDataId))
+                {
+                    dataId = qDataId.ToString();
+                }
+                else if (request.Query.TryGetValue("id", out var qId) && !string.IsNullOrWhiteSpace(qId))
+                {
+                    dataId = qId.ToString();
+                }
+
+                if (request.Query.TryGetValue("topic", out var qTopic) && !string.IsNullOrWhiteSpace(qTopic))
+                {
+                    action = qTopic.ToString();
+                }
+                else if (request.Query.TryGetValue("type", out var qType) && !string.IsNullOrWhiteSpace(qType))
+                {
+                    action = qType.ToString();
+                }
 
                 if (!string.IsNullOrWhiteSpace(bodyText))
                 {
@@ -131,21 +216,25 @@ public static class BillingEndpoints
 
                         if (root.TryGetProperty("data", out var dataElem) && dataElem.TryGetProperty("id", out var idElem))
                         {
-                            dataId = idElem.GetString();
+                            dataId ??= GetJsonElementAsString(idElem);
                         }
                         else if (root.TryGetProperty("id", out var rootId))
                         {
-                            dataId = rootId.GetString();
+                            dataId ??= GetJsonElementAsString(rootId);
                         }
 
                         if (root.TryGetProperty("action", out var actionElem))
                         {
-                            action = actionElem.GetString();
+                            action = GetJsonElementAsString(actionElem) ?? action;
+                        }
+                        else if (root.TryGetProperty("type", out var typeElem))
+                        {
+                            action = GetJsonElementAsString(typeElem) ?? action;
                         }
 
                         if (root.TryGetProperty("id", out var evIdElem))
                         {
-                            eventId = evIdElem.GetString();
+                            eventId = GetJsonElementAsString(evIdElem);
                         }
                     }
                     catch (System.Text.Json.JsonException)
@@ -173,6 +262,123 @@ public static class BillingEndpoints
                     OccurredAtUtc: DateTimeOffset.UtcNow,
                     RawPayload: bodyText);
             }
+            else if (provider.Equals("pagarme", StringComparison.OrdinalIgnoreCase))
+            {
+                var configRepo = request.HttpContext.RequestServices.GetService<ITenantPaymentGatewayConfigRepository>();
+                var encryptor = request.HttpContext.RequestServices.GetService<IPaymentCredentialsEncryptor>();
+                var tenantConfig = configRepo is not null ? await configRepo.GetByTenantIdAsync(tenantId, ct) : null;
+
+                var tenantWebhookSecret = tenantConfig is not null && !string.IsNullOrWhiteSpace(tenantConfig.PagarMeWebhookSecretEncrypted) && encryptor is not null
+                    ? encryptor.Decrypt(tenantConfig.PagarMeWebhookSecretEncrypted)
+                    : null;
+
+                var webhookSecret = !string.IsNullOrWhiteSpace(tenantWebhookSecret)
+                    ? tenantWebhookSecret
+                    : (configuration["Billing:PagarMe:WebhookSecret"] ?? "dev-pagarme-webhook-secret");
+
+                var signature = request.Headers["X-Hub-Signature"].ToString();
+                if (string.IsNullOrWhiteSpace(signature))
+                {
+                    signature = request.Headers["X-Webhook-Secret"].ToString();
+                }
+                if (string.IsNullOrWhiteSpace(signature) && request.Query.TryGetValue("secret", out var secretQuery))
+                {
+                    signature = secretQuery.ToString();
+                }
+
+                var validationResult = webhookValidator.ValidatePagarMeWebhook(signature, bodyText, webhookSecret);
+                if (!validationResult.IsSuccess)
+                {
+                    return Results.Unauthorized();
+                }
+
+                string? eventId = null;
+                string? eventType = null;
+                string? chargeId = null;
+                string? transactionId = null;
+                string? status = null;
+                decimal? amount = null;
+                DateTimeOffset? paidAtUtc = null;
+
+                if (!string.IsNullOrWhiteSpace(bodyText))
+                {
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(bodyText);
+                        var root = doc.RootElement;
+
+                        if (root.TryGetProperty("id", out var idElem))
+                        {
+                            eventId = GetJsonElementAsString(idElem);
+                        }
+
+                        if (root.TryGetProperty("type", out var typeElem))
+                        {
+                            eventType = GetJsonElementAsString(typeElem);
+                        }
+
+                        if (root.TryGetProperty("data", out var dataElem))
+                        {
+                            if (dataElem.TryGetProperty("id", out var dataIdElem))
+                            {
+                                chargeId = GetJsonElementAsString(dataIdElem);
+                            }
+
+                            if (dataElem.TryGetProperty("status", out var statusElem))
+                            {
+                                status = GetJsonElementAsString(statusElem);
+                            }
+
+                            if (dataElem.TryGetProperty("paid_amount", out var paidAmountElem) && paidAmountElem.TryGetInt64(out var cents))
+                            {
+                                amount = cents / 100m;
+                            }
+                            else if (dataElem.TryGetProperty("amount", out var amountElem) && amountElem.TryGetInt64(out var amtCents))
+                            {
+                                amount = amtCents / 100m;
+                            }
+
+                            if (dataElem.TryGetProperty("paid_at", out var paidAtElem) && DateTimeOffset.TryParse(GetJsonElementAsString(paidAtElem), out var parsedPaidAt))
+                            {
+                                paidAtUtc = parsedPaidAt;
+                            }
+
+                            if (dataElem.TryGetProperty("last_transaction", out var lastTxElem))
+                            {
+                                if (lastTxElem.TryGetProperty("id", out var txIdElem))
+                                {
+                                    transactionId = GetJsonElementAsString(txIdElem);
+                                }
+                                if (lastTxElem.TryGetProperty("status", out var txStatusElem))
+                                {
+                                    status ??= GetJsonElementAsString(txStatusElem);
+                                }
+                            }
+                        }
+                    }
+                    catch (System.Text.Json.JsonException)
+                    {
+                        return Results.BadRequest(new { error = "Invalid JSON payload." });
+                    }
+                }
+
+                eventId ??= chargeId ?? Guid.NewGuid().ToString();
+
+                var isPaid = string.Equals(status, "paid", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(eventType, "charge.paid", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(eventType, "order.paid", StringComparison.OrdinalIgnoreCase);
+
+                payloadDto = new PaymentWebhookPayloadDto(
+                    Provider: "PagarMe",
+                    EventId: eventId,
+                    Action: eventType,
+                    PaymentId: chargeId,
+                    TxId: transactionId ?? chargeId,
+                    Status: isPaid ? "approved" : (status ?? "pending"),
+                    Amount: amount,
+                    OccurredAtUtc: paidAtUtc ?? DateTimeOffset.UtcNow,
+                    RawPayload: bodyText);
+            }
             else
             {
                 // Provedor simulado / genérico
@@ -196,10 +402,10 @@ public static class BillingEndpoints
                         using var doc = System.Text.Json.JsonDocument.Parse(bodyText);
                         var root = doc.RootElement;
 
-                        var eventId = root.TryGetProperty("eventId", out var ev) ? ev.GetString() ?? Guid.NewGuid().ToString() : Guid.NewGuid().ToString();
-                        var paymentId = root.TryGetProperty("paymentId", out var p) ? p.GetString() : null;
-                        var txId = root.TryGetProperty("txId", out var t) ? t.GetString() : null;
-                        var status = root.TryGetProperty("status", out var s) ? s.GetString() ?? "approved" : "approved";
+                        var eventId = root.TryGetProperty("eventId", out var ev) ? GetJsonElementAsString(ev) ?? Guid.NewGuid().ToString() : Guid.NewGuid().ToString();
+                        var paymentId = root.TryGetProperty("paymentId", out var p) ? GetJsonElementAsString(p) : null;
+                        var txId = root.TryGetProperty("txId", out var t) ? GetJsonElementAsString(t) : null;
+                        var status = root.TryGetProperty("status", out var s) ? GetJsonElementAsString(s) ?? "approved" : "approved";
                         decimal? amount = root.TryGetProperty("amount", out var a) && a.TryGetDecimal(out var parsedAmount) ? parsedAmount : null;
 
                         payloadDto = new PaymentWebhookPayloadDto(
@@ -232,6 +438,16 @@ public static class BillingEndpoints
 
         return app;
     }
+
+    private static string? GetJsonElementAsString(System.Text.Json.JsonElement element) =>
+        element.ValueKind switch
+        {
+            System.Text.Json.JsonValueKind.String => element.GetString(),
+            System.Text.Json.JsonValueKind.Number => element.GetRawText(),
+            System.Text.Json.JsonValueKind.True => "true",
+            System.Text.Json.JsonValueKind.False => "false",
+            _ => null
+        };
 
     private static IResult MapErrorToResult(Error error) =>
         error.Type switch

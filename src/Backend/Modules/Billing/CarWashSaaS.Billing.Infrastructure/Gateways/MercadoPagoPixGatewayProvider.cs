@@ -9,19 +9,44 @@ using Microsoft.Extensions.Logging;
 
 namespace CarWashSaaS.Billing.Infrastructure.Gateways;
 
-public sealed class MercadoPagoPixGatewayProvider(
-    HttpClient httpClient,
-    IConfiguration configuration,
-    ILogger<MercadoPagoPixGatewayProvider>? logger = null) : IPixGatewayProvider
+public sealed class MercadoPagoPixGatewayProvider : IPixGatewayProvider
 {
+    private readonly HttpClient _httpClient;
+    private readonly string? _accessToken;
+    private readonly string? _publicKey;
+    private readonly ILogger<MercadoPagoPixGatewayProvider>? _logger;
+
     public string ProviderName => "MercadoPago";
+
+    public MercadoPagoPixGatewayProvider(
+        HttpClient httpClient,
+        string accessToken,
+        string? publicKey = null,
+        ILogger<MercadoPagoPixGatewayProvider>? logger = null)
+    {
+        _httpClient = httpClient;
+        _accessToken = accessToken?.Trim();
+        _publicKey = publicKey?.Trim();
+        _logger = logger;
+    }
+
+    public MercadoPagoPixGatewayProvider(
+        HttpClient httpClient,
+        IConfiguration configuration,
+        ILogger<MercadoPagoPixGatewayProvider>? logger = null)
+        : this(
+            httpClient,
+            configuration["Billing:MercadoPago:AccessToken"] ?? string.Empty,
+            configuration["Billing:MercadoPago:PublicKey"],
+            logger)
+    {
+    }
 
     public async Task<Result<PixGatewayChargeResponse>> CreateImmediateChargeAsync(
         PixGatewayChargeRequest request,
         CancellationToken ct = default)
     {
-        var accessToken = configuration["Billing:MercadoPago:AccessToken"];
-        if (string.IsNullOrWhiteSpace(accessToken))
+        if (string.IsNullOrWhiteSpace(_accessToken))
         {
             // Se não configurado credencial de produção, delega para fallback simulado
             var simulated = new SimulatedPixGatewayProvider();
@@ -31,25 +56,27 @@ public sealed class MercadoPagoPixGatewayProvider(
         try
         {
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.mercadopago.com/v1/payments");
-            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
             httpRequest.Headers.Add("X-Idempotency-Key", $"pix-{request.TenantId}-{request.WorkOrderId}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+
+            var (payerEmail, payerFirstName) = BuildPayerInfo(request.CustomerName, request.CustomerPhone, request.WorkOrderId);
 
             var payload = new MercadoPagoPaymentRequest(
                 TransactionAmount: request.Amount,
                 Description: request.Description,
                 PaymentMethodId: "pix",
                 Payer: new MercadoPagoPayer(
-                    Email: string.IsNullOrWhiteSpace(request.CustomerPhone) ? "cliente@lavaway.com.br" : $"{request.CustomerPhone}@lavaway.com.br",
-                    FirstName: request.CustomerName),
+                    Email: payerEmail,
+                    FirstName: payerFirstName),
                 DateOfExpiration: DateTimeOffset.UtcNow.Add(request.Expiration).ToString("yyyy-MM-dd'T'HH:mm:ss.fffzzz"));
 
             httpRequest.Content = JsonContent.Create(payload);
 
-            var httpResponse = await httpClient.SendAsync(httpRequest, ct);
+            var httpResponse = await _httpClient.SendAsync(httpRequest, ct);
             if (!httpResponse.IsSuccessStatusCode)
             {
                 var errorBody = await httpResponse.Content.ReadAsStringAsync(ct);
-                logger?.LogWarning("Mercado Pago API error ({StatusCode}): {Body}", httpResponse.StatusCode, errorBody);
+                _logger?.LogWarning("Mercado Pago API error ({StatusCode}): {Body}", httpResponse.StatusCode, errorBody);
                 return Result<PixGatewayChargeResponse>.Failure(new Error("mercadopago.error", $"Falha na comunicação com o Mercado Pago: {httpResponse.StatusCode}", ErrorType.Validation));
             }
 
@@ -73,7 +100,7 @@ public sealed class MercadoPagoPixGatewayProvider(
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Unexpected error calling Mercado Pago Pix API");
+            _logger?.LogError(ex, "Unexpected error calling Mercado Pago Pix API");
             return Result<PixGatewayChargeResponse>.Failure(new Error("mercadopago.exception", ex.Message, ErrorType.Validation));
         }
     }
@@ -83,8 +110,7 @@ public sealed class MercadoPagoPixGatewayProvider(
         string paymentIdOrTxId,
         CancellationToken ct = default)
     {
-        var accessToken = configuration["Billing:MercadoPago:AccessToken"];
-        if (string.IsNullOrWhiteSpace(accessToken))
+        if (string.IsNullOrWhiteSpace(_accessToken))
         {
             var simulated = new SimulatedPixGatewayProvider();
             return await simulated.GetPaymentDetailsAsync(tenantId, paymentIdOrTxId, ct);
@@ -93,13 +119,13 @@ public sealed class MercadoPagoPixGatewayProvider(
         try
         {
             using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"https://api.mercadopago.com/v1/payments/{paymentIdOrTxId}");
-            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
 
-            var httpResponse = await httpClient.SendAsync(httpRequest, ct);
+            var httpResponse = await _httpClient.SendAsync(httpRequest, ct);
             if (!httpResponse.IsSuccessStatusCode)
             {
                 var errorBody = await httpResponse.Content.ReadAsStringAsync(ct);
-                logger?.LogWarning("Mercado Pago GET payment error ({StatusCode}): {Body}", httpResponse.StatusCode, errorBody);
+                _logger?.LogWarning("Mercado Pago GET payment error ({StatusCode}): {Body}", httpResponse.StatusCode, errorBody);
                 return Result<PixGatewayPaymentDetails>.Failure(new Error("mercadopago.error", $"Falha ao consultar pagamento no Mercado Pago: {httpResponse.StatusCode}", ErrorType.Validation));
             }
 
@@ -123,9 +149,26 @@ public sealed class MercadoPagoPixGatewayProvider(
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Unexpected error querying Mercado Pago payment {PaymentId}", paymentIdOrTxId);
+            _logger?.LogError(ex, "Unexpected error querying Mercado Pago payment {PaymentId}", paymentIdOrTxId);
             return Result<PixGatewayPaymentDetails>.Failure(new Error("mercadopago.exception", ex.Message, ErrorType.Validation));
         }
+    }
+
+    public static (string Email, string FirstName) BuildPayerInfo(string? customerName, string? customerPhone, Guid workOrderId)
+    {
+        var phoneDigits = new string((customerPhone ?? string.Empty).Where(char.IsAsciiDigit).ToArray());
+        var email = phoneDigits.Length >= 8
+            ? $"cliente{phoneDigits}@lavaway.com.br"
+            : (workOrderId != Guid.Empty
+                ? $"cliente.os{workOrderId.ToString()[..8].ToLowerInvariant()}@lavaway.com.br"
+                : "cliente@lavaway.com.br");
+
+        var trimmedName = customerName?.Trim();
+        var firstName = string.IsNullOrWhiteSpace(trimmedName)
+            ? "Cliente"
+            : (trimmedName.Length > 60 ? trimmedName[..60] : trimmedName);
+
+        return (email, firstName);
     }
 
     private sealed record MercadoPagoPaymentQueryResponse(
