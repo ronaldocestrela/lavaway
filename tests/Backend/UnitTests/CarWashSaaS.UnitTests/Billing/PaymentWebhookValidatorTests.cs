@@ -80,4 +80,25 @@ public sealed class PaymentWebhookValidatorTests
         Assert.False(result.IsSuccess);
         Assert.Equal("webhook.secret_mismatch", result.Error?.Code);
     }
+
+    [Fact]
+    public void ValidateMercadoPagoSignature_WhenDataIdHasUppercase_ShouldNormalizeAndSucceed()
+    {
+        var secret = "secret_key_12345";
+        var dataIdProvided = "AbC-123-XyZ";
+        var requestId = "req-abc-987";
+        var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+
+        // Mercado Pago spec requires lowercase dataId in manifest
+        var manifest = $"id:{dataIdProvided.ToLowerInvariant()};request-id:{requestId};ts:{ts};";
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var hash = Convert.ToHexStringLower(hmac.ComputeHash(Encoding.UTF8.GetBytes(manifest)));
+
+        var xSignature = $"ts={ts},v1={hash}";
+
+        var result = _validator.ValidateMercadoPagoSignature(xSignature, requestId, dataIdProvided, secret);
+
+        Assert.True(result.IsSuccess);
+    }
 }
+

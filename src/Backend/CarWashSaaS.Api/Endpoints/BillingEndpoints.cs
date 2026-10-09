@@ -189,6 +189,24 @@ public static class BillingEndpoints
                 string? action = null;
                 string? eventId = null;
 
+                if (request.Query.TryGetValue("data.id", out var qDataId) && !string.IsNullOrWhiteSpace(qDataId))
+                {
+                    dataId = qDataId.ToString();
+                }
+                else if (request.Query.TryGetValue("id", out var qId) && !string.IsNullOrWhiteSpace(qId))
+                {
+                    dataId = qId.ToString();
+                }
+
+                if (request.Query.TryGetValue("topic", out var qTopic) && !string.IsNullOrWhiteSpace(qTopic))
+                {
+                    action = qTopic.ToString();
+                }
+                else if (request.Query.TryGetValue("type", out var qType) && !string.IsNullOrWhiteSpace(qType))
+                {
+                    action = qType.ToString();
+                }
+
                 if (!string.IsNullOrWhiteSpace(bodyText))
                 {
                     try
@@ -198,21 +216,25 @@ public static class BillingEndpoints
 
                         if (root.TryGetProperty("data", out var dataElem) && dataElem.TryGetProperty("id", out var idElem))
                         {
-                            dataId = idElem.GetString();
+                            dataId ??= GetJsonElementAsString(idElem);
                         }
                         else if (root.TryGetProperty("id", out var rootId))
                         {
-                            dataId = rootId.GetString();
+                            dataId ??= GetJsonElementAsString(rootId);
                         }
 
                         if (root.TryGetProperty("action", out var actionElem))
                         {
-                            action = actionElem.GetString();
+                            action = GetJsonElementAsString(actionElem) ?? action;
+                        }
+                        else if (root.TryGetProperty("type", out var typeElem))
+                        {
+                            action = GetJsonElementAsString(typeElem) ?? action;
                         }
 
                         if (root.TryGetProperty("id", out var evIdElem))
                         {
-                            eventId = evIdElem.GetString();
+                            eventId = GetJsonElementAsString(evIdElem);
                         }
                     }
                     catch (System.Text.Json.JsonException)
@@ -287,24 +309,24 @@ public static class BillingEndpoints
 
                         if (root.TryGetProperty("id", out var idElem))
                         {
-                            eventId = idElem.GetString();
+                            eventId = GetJsonElementAsString(idElem);
                         }
 
                         if (root.TryGetProperty("type", out var typeElem))
                         {
-                            eventType = typeElem.GetString();
+                            eventType = GetJsonElementAsString(typeElem);
                         }
 
                         if (root.TryGetProperty("data", out var dataElem))
                         {
                             if (dataElem.TryGetProperty("id", out var dataIdElem))
                             {
-                                chargeId = dataIdElem.GetString();
+                                chargeId = GetJsonElementAsString(dataIdElem);
                             }
 
                             if (dataElem.TryGetProperty("status", out var statusElem))
                             {
-                                status = statusElem.GetString();
+                                status = GetJsonElementAsString(statusElem);
                             }
 
                             if (dataElem.TryGetProperty("paid_amount", out var paidAmountElem) && paidAmountElem.TryGetInt64(out var cents))
@@ -316,7 +338,7 @@ public static class BillingEndpoints
                                 amount = amtCents / 100m;
                             }
 
-                            if (dataElem.TryGetProperty("paid_at", out var paidAtElem) && DateTimeOffset.TryParse(paidAtElem.GetString(), out var parsedPaidAt))
+                            if (dataElem.TryGetProperty("paid_at", out var paidAtElem) && DateTimeOffset.TryParse(GetJsonElementAsString(paidAtElem), out var parsedPaidAt))
                             {
                                 paidAtUtc = parsedPaidAt;
                             }
@@ -325,11 +347,11 @@ public static class BillingEndpoints
                             {
                                 if (lastTxElem.TryGetProperty("id", out var txIdElem))
                                 {
-                                    transactionId = txIdElem.GetString();
+                                    transactionId = GetJsonElementAsString(txIdElem);
                                 }
                                 if (lastTxElem.TryGetProperty("status", out var txStatusElem))
                                 {
-                                    status ??= txStatusElem.GetString();
+                                    status ??= GetJsonElementAsString(txStatusElem);
                                 }
                             }
                         }
@@ -380,10 +402,10 @@ public static class BillingEndpoints
                         using var doc = System.Text.Json.JsonDocument.Parse(bodyText);
                         var root = doc.RootElement;
 
-                        var eventId = root.TryGetProperty("eventId", out var ev) ? ev.GetString() ?? Guid.NewGuid().ToString() : Guid.NewGuid().ToString();
-                        var paymentId = root.TryGetProperty("paymentId", out var p) ? p.GetString() : null;
-                        var txId = root.TryGetProperty("txId", out var t) ? t.GetString() : null;
-                        var status = root.TryGetProperty("status", out var s) ? s.GetString() ?? "approved" : "approved";
+                        var eventId = root.TryGetProperty("eventId", out var ev) ? GetJsonElementAsString(ev) ?? Guid.NewGuid().ToString() : Guid.NewGuid().ToString();
+                        var paymentId = root.TryGetProperty("paymentId", out var p) ? GetJsonElementAsString(p) : null;
+                        var txId = root.TryGetProperty("txId", out var t) ? GetJsonElementAsString(t) : null;
+                        var status = root.TryGetProperty("status", out var s) ? GetJsonElementAsString(s) ?? "approved" : "approved";
                         decimal? amount = root.TryGetProperty("amount", out var a) && a.TryGetDecimal(out var parsedAmount) ? parsedAmount : null;
 
                         payloadDto = new PaymentWebhookPayloadDto(
@@ -416,6 +438,16 @@ public static class BillingEndpoints
 
         return app;
     }
+
+    private static string? GetJsonElementAsString(System.Text.Json.JsonElement element) =>
+        element.ValueKind switch
+        {
+            System.Text.Json.JsonValueKind.String => element.GetString(),
+            System.Text.Json.JsonValueKind.Number => element.GetRawText(),
+            System.Text.Json.JsonValueKind.True => "true",
+            System.Text.Json.JsonValueKind.False => "false",
+            _ => null
+        };
 
     private static IResult MapErrorToResult(Error error) =>
         error.Type switch

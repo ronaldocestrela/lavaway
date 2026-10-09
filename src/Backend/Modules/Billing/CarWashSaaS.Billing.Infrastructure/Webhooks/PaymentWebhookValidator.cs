@@ -68,7 +68,7 @@ public sealed class PaymentWebhookValidator : IPaymentWebhookValidator
         var manifestBuilder = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(dataId))
         {
-            manifestBuilder.Append($"id:{dataId};");
+            manifestBuilder.Append($"id:{dataId.ToLowerInvariant()};");
         }
 
         if (!string.IsNullOrWhiteSpace(xRequestIdHeader))
