@@ -59,13 +59,15 @@ public sealed class MercadoPagoPixGatewayProvider : IPixGatewayProvider
             httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
             httpRequest.Headers.Add("X-Idempotency-Key", $"pix-{request.TenantId}-{request.WorkOrderId}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
 
+            var (payerEmail, payerFirstName) = BuildPayerInfo(request.CustomerName, request.CustomerPhone, request.WorkOrderId);
+
             var payload = new MercadoPagoPaymentRequest(
                 TransactionAmount: request.Amount,
                 Description: request.Description,
                 PaymentMethodId: "pix",
                 Payer: new MercadoPagoPayer(
-                    Email: string.IsNullOrWhiteSpace(request.CustomerPhone) ? "cliente@lavaway.com.br" : $"{request.CustomerPhone}@lavaway.com.br",
-                    FirstName: request.CustomerName),
+                    Email: payerEmail,
+                    FirstName: payerFirstName),
                 DateOfExpiration: DateTimeOffset.UtcNow.Add(request.Expiration).ToString("yyyy-MM-dd'T'HH:mm:ss.fffzzz"));
 
             httpRequest.Content = JsonContent.Create(payload);
@@ -150,6 +152,23 @@ public sealed class MercadoPagoPixGatewayProvider : IPixGatewayProvider
             _logger?.LogError(ex, "Unexpected error querying Mercado Pago payment {PaymentId}", paymentIdOrTxId);
             return Result<PixGatewayPaymentDetails>.Failure(new Error("mercadopago.exception", ex.Message, ErrorType.Validation));
         }
+    }
+
+    public static (string Email, string FirstName) BuildPayerInfo(string? customerName, string? customerPhone, Guid workOrderId)
+    {
+        var phoneDigits = new string((customerPhone ?? string.Empty).Where(char.IsAsciiDigit).ToArray());
+        var email = phoneDigits.Length >= 8
+            ? $"cliente{phoneDigits}@lavaway.com.br"
+            : (workOrderId != Guid.Empty
+                ? $"cliente.os{workOrderId.ToString()[..8].ToLowerInvariant()}@lavaway.com.br"
+                : "cliente@lavaway.com.br");
+
+        var trimmedName = customerName?.Trim();
+        var firstName = string.IsNullOrWhiteSpace(trimmedName)
+            ? "Cliente"
+            : (trimmedName.Length > 60 ? trimmedName[..60] : trimmedName);
+
+        return (email, firstName);
     }
 
     private sealed record MercadoPagoPaymentQueryResponse(
