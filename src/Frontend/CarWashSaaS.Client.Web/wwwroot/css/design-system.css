@@ -19,7 +19,12 @@
     .workorder-page,
     .reception-page,
     .tenant-subscription-page,
-    .payment-settings-page
+    .payment-settings-page,
+    .audit-page,
+    .tenants-page-container,
+    .platform-billing-page,
+    .platform-whatsapp-page,
+    .platform-metrics-page
 ) {
     width: 100%;
     max-width: 1400px;

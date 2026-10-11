@@ -1,27 +1,25 @@
 @page "/platform/tenants"
 @attribute [Authorize(Roles = "SuperAdmin,PlatformSupport,PlatformBillingAdmin,PlatformAuditor")]
+@using CarWashSaaS.Client.Components
 @using CarWashSaaS.Shared.Contracts
 @inject GlobalTenantApiClient TenantApiClient
 @inject ImpersonationSessionState ImpersonationSession
 @inject IToastService ToastService
 @inject NavigationManager Navigation
 
+<PageTitle>Estabelecimentos da Plataforma — Lavaway</PageTitle>
+
 <div class="tenants-page-container">
-    <header class="page-header">
-        <div class="header-intro">
-            <div class="header-badge">BACKOFFICE DA PLATAFORMA</div>
-            <h1 class="header-title">Gestão Global de Estabelecimentos (Tenants)</h1>
-            <p class="header-description">
-                Controle operacional de assinantes, ciclo de vida comercial e ferramenta de suporte técnico por impersonation.
-            </p>
-        </div>
-        <div class="header-actions">
-            <button type="button" class="btn-refresh" @onclick="LoadTenantsAsync" disabled="@isLoading">
+    <PageHeading Eyebrow="BACKOFFICE DA PLATAFORMA"
+                 Title="Gestão Global de Estabelecimentos (Tenants)"
+                 Subtitle="Controle operacional de assinantes, ciclo de vida comercial e ferramenta de suporte técnico por impersonation.">
+        <Actions>
+            <button type="button" class="btn-refresh" @onclick="LoadTenantsAsync" disabled="@isLoading" id="btn-refresh-tenants">
                 <span class="@(isLoading ? "spin-icon" : "")">↻</span>
                 <span>Atualizar</span>
             </button>
-        </div>
-    </header>
+        </Actions>
+    </PageHeading>
 
     <!-- KPIs de Visão Global -->
     <section class="kpi-grid" aria-label="Indicadores Globais de Tenants">

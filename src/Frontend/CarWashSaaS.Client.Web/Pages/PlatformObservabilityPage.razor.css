@@ -1,0 +1,500 @@
+.platform-metrics-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.period-selector {
+    display: inline-flex;
+    background: var(--lw-color-surface, #ffffff);
+    border: 1px solid var(--lw-color-border-strong, #d8e3db);
+    border-radius: var(--lw-radius-control, 6px);
+    padding: 2px;
+    gap: 2px;
+}
+
+.btn-period {
+    background: transparent;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'DM Sans', sans-serif;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.btn-period:hover {
+    color: var(--lw-color-text, #20352f);
+    background: var(--lw-color-surface-muted, #f8fafc);
+}
+
+.btn-period.active {
+    background: #1b302d;
+    color: #ffffff;
+}
+
+.btn-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--lw-color-surface, #ffffff);
+    color: #365148;
+    border: 1px solid var(--lw-color-border-strong, #d8e3db);
+    padding: 8px 16px;
+    border-radius: var(--lw-radius-control, 6px);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.btn-refresh:hover:not(:disabled) {
+    border-color: #a9c2b0;
+    background: var(--lw-color-surface-muted, #f8fafc);
+    color: var(--lw-color-text, #20352f);
+}
+
+.btn-refresh:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.spin-icon {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================================================
+   KPIs Executivos
+   ========================================================================== */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.kpi-card {
+    background: var(--lw-color-surface, #ffffff);
+    border: 1px solid var(--lw-color-border, #e1e9e3);
+    border-radius: var(--lw-radius-panel, 12px);
+    padding: 20px;
+    box-shadow: var(--lw-shadow-card, 0 2px 6px rgba(30, 53, 43, 0.04));
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(30, 53, 43, 0.06);
+}
+
+.kpi-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.kpi-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--lw-color-text-muted, #77867f);
+}
+
+.kpi-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.kpi-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--lw-color-text, #20352f);
+    margin: 4px 0 2px;
+}
+
+.kpi-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--lw-color-text-subtle, #94a3b8);
+}
+
+.text-emerald {
+    color: var(--lw-color-success, #047857) !important;
+}
+
+.text-blue {
+    color: var(--lw-color-info, #1d4ed8) !important;
+}
+
+.text-rose {
+    color: var(--lw-color-danger, #b91c1c) !important;
+}
+
+/* ==========================================================================
+   Navegação em Abas
+   ========================================================================== */
+.tabs-nav {
+    display: flex;
+    border-bottom: 1px solid var(--lw-color-border, #e1e9e3);
+    gap: 8px;
+    overflow-x: auto;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--lw-color-text-muted, #77867f);
+    cursor: pointer;
+    transition: all 0.16s ease;
+    white-space: nowrap;
+}
+
+.tab-btn:hover {
+    color: var(--lw-color-text, #20352f);
+}
+
+.tab-btn.active {
+    color: #1b302d;
+    border-bottom-color: var(--lw-color-accent, #10b981);
+}
+
+/* ==========================================================================
+   Grids e Painéis da Visão Geral
+   ========================================================================== */
+.overview-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 1024px) {
+    .overview-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.card-panel {
+    background: var(--lw-color-surface, #ffffff);
+    border: 1px solid var(--lw-color-border, #e1e9e3);
+    border-radius: var(--lw-radius-panel, 12px);
+    padding: 20px;
+    box-shadow: var(--lw-shadow-card, 0 2px 6px rgba(30, 53, 43, 0.04));
+}
+
+.card-header-title {
+    margin: 0;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--lw-color-text, #20352f);
+}
+
+.card-header-sub {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--lw-color-text-muted, #77867f);
+}
+
+.plan-list {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.plan-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--lw-color-border, #e1e9e3);
+    font-size: 13px;
+}
+
+.plan-item:last-child {
+    border-bottom: none;
+}
+
+.plan-name {
+    font-weight: 700;
+    color: var(--lw-color-text, #20352f);
+}
+
+.plan-badge {
+    margin-left: 8px;
+    background: #f1f5f9;
+    color: #475569;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.plan-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 800;
+    color: var(--lw-color-text, #20352f);
+}
+
+.telemetry-grid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.telemetry-card {
+    background: var(--lw-color-surface-muted, #f8fafc);
+    border: 1px solid var(--lw-color-border, #e1e9e3);
+    border-radius: var(--lw-radius-card, 8px);
+    padding: 14px;
+}
+
+.telemetry-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--lw-color-text-muted, #77867f);
+}
+
+.telemetry-val {
+    margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+/* Série Temporal */
+.timeseries-panel {
+    background: var(--lw-color-surface, #ffffff);
+    border: 1px solid var(--lw-color-border, #e1e9e3);
+    border-radius: var(--lw-radius-panel, 12px);
+    padding: 20px;
+    box-shadow: var(--lw-shadow-card, 0 2px 6px rgba(30, 53, 43, 0.04));
+}
+
+.timeseries-grid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 1024px) {
+    .timeseries-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.subtable-container {
+    border: 1px solid var(--lw-color-border, #e1e9e3);
+    border-radius: var(--lw-radius-card, 8px);
+    overflow: hidden;
+}
+
+.subtable-title {
+    background: var(--lw-color-surface-muted, #f8fafc);
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--lw-color-text, #20352f);
+    border-bottom: 1px solid var(--lw-color-border, #e1e9e3);
+}
+
+.mini-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.mini-table th {
+    padding: 8px 14px;
+    color: var(--lw-color-text-muted, #77867f);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--lw-color-border, #e1e9e3);
+}
+
+.mini-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--lw-color-border, #e1e9e3);
+    color: #365148;
+}
+
+.mini-table tr:hover td {
+    background: #f8fafc;
+}
+
+.mini-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   Tabelas de Webhooks e WhatsApp
+   ========================================================================== */
+.table-panel {
+    background: var(--lw-color-surface, #ffffff);
+    border: 1px solid var(--lw-color-border, #e1e9e3);
+    border-radius: var(--lw-radius-panel, 12px);
+    box-shadow: var(--lw-shadow-card, 0 2px 6px rgba(30, 53, 43, 0.04));
+    overflow: hidden;
+}
+
+.panel-header {
+    border-bottom: 1px solid var(--lw-color-border, #e1e9e3);
+    padding: 16px 20px;
+    background: var(--lw-color-surface, #ffffff);
+}
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    color: var(--lw-color-text, #20352f);
+    text-align: left;
+}
+
+.metrics-table th {
+    background: var(--lw-color-surface-muted, #f8fafc);
+    color: #64748b;
+    padding: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--lw-color-border, #e1e9e3);
+    white-space: nowrap;
+}
+
+.metrics-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--lw-color-border, #e1e9e3);
+    color: #365148;
+    vertical-align: middle;
+}
+
+.metrics-table tr:hover td {
+    background: #f8fafc;
+}
+
+.metrics-table tr:last-child td {
+    border-bottom: none;
+}
+
+.font-mono {
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.btn-inspect {
+    background: var(--lw-color-surface, #ffffff);
+    color: #20352f;
+    border: 1px solid var(--lw-color-border-strong, #d8e3db);
+    padding: 5px 12px;
+    border-radius: var(--lw-radius-control, 6px);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.btn-inspect:hover {
+    background: var(--lw-color-surface-muted, #f8fafc);
+    border-color: #a9c2b0;
+    color: var(--lw-color-text, #20352f);
+}
+
+.status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    letter-spacing: 0.02em;
+}
+
+.status-processed {
+    background: var(--lw-color-success-surface, #ecfdf5);
+    color: var(--lw-color-success, #047857);
+    border: 1px solid #a7f3d0;
+}
+
+.status-failed {
+    background: var(--lw-color-danger-surface, #fef2f2);
+    color: var(--lw-color-danger, #b91c1c);
+    border: 1px solid #fecaca;
+}
+
+.status-ignored {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+}
+
+.loading-state,
+.empty-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--lw-color-text-muted, #77867f);
+    font-size: 13px;
+}
+
+.text-right {
+    text-align: right;
+}

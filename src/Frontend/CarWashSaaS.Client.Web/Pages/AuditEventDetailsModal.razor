@@ -6,7 +6,10 @@
         <div class="modal-content" @onclick:stopPropagation="true">
             <header class="modal-header">
                 <div class="header-title-group">
-                    <span class="modal-tag">Auditoria &bull; Detalhes do Evento</span>
+                    <span class="modal-tag">
+                        <span class="tag-mark"></span>
+                        Auditoria &bull; Detalhes do Evento
+                    </span>
                     <h2 class="modal-title">@Event.Action</h2>
                 </div>
                 <button type="button" class="btn-close" @onclick="Close" aria-label="Fechar">&times;</button>

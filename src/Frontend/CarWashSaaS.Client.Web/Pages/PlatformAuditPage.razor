@@ -2,21 +2,22 @@
 @attribute [Authorize]
 @inject PlatformAuditApiClient AuditApi
 @inject IToastService Toast
+@using CarWashSaaS.Client.Components
 @using CarWashSaaS.Shared.Contracts
 
+<PageTitle>Trilha de Auditoria Administrativa — Lavaway</PageTitle>
+
 <div class="audit-page">
-    <header class="page-header">
-        <div class="header-left">
-            <span class="badge-tag">GOVERNANÇA &bull; SEGURANÇA &bull; PLATAFORMA</span>
-            <h1 class="page-title">Trilha de Auditoria Administrativa</h1>
-            <p class="page-subtitle">Rastreabilidade completa de ações sensíveis com registro inviolável de autor, data e alvo.</p>
-        </div>
-        <div class="header-actions">
-            <button type="button" class="btn-refresh" @onclick="LoadAuditEventsAsync" disabled="@isLoading">
-                <span class="@(isLoading ? "spin" : "")">🔄</span> Atualizar
+    <PageHeading Eyebrow="GOVERNANÇA • SEGURANÇA • PLATAFORMA"
+                 Title="Trilha de Auditoria Administrativa"
+                 Subtitle="Rastreabilidade completa de ações sensíveis com registro inviolável de autor, data e alvo.">
+        <Actions>
+            <button type="button" class="btn-refresh" @onclick="LoadAuditEventsAsync" disabled="@isLoading" id="btn-refresh-audit">
+                <span class="@(isLoading ? "spin" : "")">🔄</span>
+                <span>Atualizar</span>
             </button>
-        </div>
-    </header>
+        </Actions>
+    </PageHeading>
 
     <!-- KPI Cards -->
     <section class="kpi-grid">
@@ -116,53 +117,55 @@
         }
         else
         {
-            <table class="audit-table">
-                <thead>
-                    <tr>
-                        <th>Data/Hora (UTC)</th>
-                        <th>Autor (Operador)</th>
-                        <th>Realm / Papel</th>
-                        <th>Ação Auditada</th>
-                        <th>Alvo</th>
-                        <th>Desfecho</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var evt in events)
-                    {
+            <div class="table-responsive">
+                <table class="audit-table">
+                    <thead>
                         <tr>
-                            <td class="font-mono text-small">
-                                @evt.TimestampUtc.ToString("dd/MM/yyyy HH:mm:ss")
-                            </td>
-                            <td>
-                                <strong>@evt.ActorEmail</strong>
-                            </td>
-                            <td>
-                                <span class="role-pill">@evt.ActorRole</span>
-                                <span class="realm-pill">@evt.ActorRealm</span>
-                            </td>
-                            <td>
-                                <span class="action-tag">@evt.Action</span>
-                            </td>
-                            <td>
-                                <span class="target-type">@evt.TargetType:</span>
-                                <span class="font-mono text-small">@(evt.TargetId.Length > 16 ? evt.TargetId[..16] + "..." : evt.TargetId)</span>
-                            </td>
-                            <td>
-                                <span class="status-badge status-@evt.Outcome.ToLowerInvariant()">
-                                    @evt.Outcome
-                                </span>
-                            </td>
-                            <td>
-                                <button type="button" class="btn-inspect" @onclick="() => InspectEvent(evt)">
-                                    Inspecionar
-                                </button>
-                            </td>
+                            <th>Data/Hora (UTC)</th>
+                            <th>Autor (Operador)</th>
+                            <th>Realm / Papel</th>
+                            <th>Ação Auditada</th>
+                            <th>Alvo</th>
+                            <th>Desfecho</th>
+                            <th>Ações</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var evt in events)
+                        {
+                            <tr>
+                                <td class="font-mono text-small">
+                                    @evt.TimestampUtc.ToString("dd/MM/yyyy HH:mm:ss")
+                                </td>
+                                <td>
+                                    <strong>@evt.ActorEmail</strong>
+                                </td>
+                                <td>
+                                    <span class="role-pill">@evt.ActorRole</span>
+                                    <span class="realm-pill">@evt.ActorRealm</span>
+                                </td>
+                                <td>
+                                    <span class="action-tag">@evt.Action</span>
+                                </td>
+                                <td>
+                                    <span class="target-type">@evt.TargetType:</span>
+                                    <span class="font-mono text-small">@(evt.TargetId.Length > 16 ? evt.TargetId[..16] + "..." : evt.TargetId)</span>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-@evt.Outcome.ToLowerInvariant()">
+                                        @evt.Outcome
+                                    </span>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn-inspect" @onclick="() => InspectEvent(evt)">
+                                        Inspecionar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
 
             <!-- Paginação -->
             <footer class="pagination-bar">
