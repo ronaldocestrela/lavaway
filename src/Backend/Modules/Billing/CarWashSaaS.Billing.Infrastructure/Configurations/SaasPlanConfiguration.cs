@@ -51,6 +51,10 @@ public sealed class SaasPlanConfiguration : IEntityTypeConfiguration<SaasPlan>
         builder.Property(p => p.MaxTeamMembers)
             .IsRequired();
 
+        builder.Property(p => p.MaxBoxes)
+            .IsRequired()
+            .HasDefaultValue(0);
+
         builder.Property(p => p.IsActive)
             .IsRequired();
     }

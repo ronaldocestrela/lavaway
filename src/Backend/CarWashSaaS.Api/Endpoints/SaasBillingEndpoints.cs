@@ -69,6 +69,24 @@ public static class SaasBillingEndpoints
             return result.IsSuccess ? Results.Ok(result.Value) : MapErrorToResult(result.Error!);
         });
 
+        platformBilling.MapGet("/plans", async (
+            PlatformSaasBillingApplicationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.ListAllPlansAsync(ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : MapErrorToResult(result.Error!);
+        });
+
+        platformBilling.MapPut("/plans/{tier}", async (
+            SaasPlanTier tier,
+            UpdateSaasPlanRequest request,
+            PlatformSaasBillingApplicationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.UpdatePlanAsync(tier, request, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : MapErrorToResult(result.Error!);
+        });
+
         // 3. Portal do Lojista (Tenant) - Visão da Própria Assinatura, Cotas e Faturas
         var tenantSettings = app.MapGroup("/settings/subscription")
             .RequireAuthorization();

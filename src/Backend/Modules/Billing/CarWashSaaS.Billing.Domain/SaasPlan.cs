@@ -21,6 +21,7 @@ public sealed class SaasPlan
         bool hasCommissions,
         bool hasAiChatbot,
         int maxTeamMembers,
+        int maxBoxes,
         bool isActive)
     {
         Id = id;
@@ -35,6 +36,7 @@ public sealed class SaasPlan
         HasCommissions = hasCommissions;
         HasAiChatbot = hasAiChatbot;
         MaxTeamMembers = maxTeamMembers;
+        MaxBoxes = maxBoxes;
         IsActive = isActive;
     }
 
@@ -50,6 +52,7 @@ public sealed class SaasPlan
     public bool HasCommissions { get; private set; }
     public bool HasAiChatbot { get; private set; }
     public int MaxTeamMembers { get; private set; }
+    public int MaxBoxes { get; private set; }
     public bool IsActive { get; private set; }
 
     public static Result<SaasPlan> Create(
@@ -64,6 +67,7 @@ public sealed class SaasPlan
         bool hasCommissions,
         bool hasAiChatbot,
         int maxTeamMembers,
+        int maxBoxes = 0,
         bool isActive = true)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -74,6 +78,26 @@ public sealed class SaasPlan
         if (monthlyPrice < 0)
         {
             return Result<SaasPlan>.Failure(new Error("saas_plan.price.invalid", "Preço mensal não pode ser negativo.", ErrorType.Validation));
+        }
+
+        if (maxBoxes < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.boxes.invalid", "Quantidade de boxes não pode ser negativa.", ErrorType.Validation));
+        }
+
+        if (maxTeamMembers < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.team.invalid", "Tamanho da equipe não pode ser negativo.", ErrorType.Validation));
+        }
+
+        if (maxWorkOrdersPerCycle < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.work_orders.invalid", "Limite de ordens de serviço não pode ser negativo.", ErrorType.Validation));
+        }
+
+        if (maxWhatsAppMessagesPerCycle < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.whatsapp.invalid", "Limite de mensagens de WhatsApp não pode ser negativo.", ErrorType.Validation));
         }
 
         return Result<SaasPlan>.Success(new SaasPlan(
@@ -89,7 +113,68 @@ public sealed class SaasPlan
             hasCommissions,
             hasAiChatbot,
             maxTeamMembers,
+            maxBoxes,
             isActive));
+    }
+
+    public Result<SaasPlan> UpdateDetails(
+        string name,
+        string description,
+        decimal monthlyPrice,
+        int maxWorkOrdersPerCycle,
+        int maxWhatsAppMessagesPerCycle,
+        int maxTeamMembers,
+        int maxBoxes,
+        bool hasCustomerSubscriptions,
+        bool hasLoyalty,
+        bool hasCommissions,
+        bool hasAiChatbot,
+        bool isActive)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.name.required", "Nome do plano é obrigatório.", ErrorType.Validation));
+        }
+
+        if (monthlyPrice < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.price.invalid", "Preço mensal não pode ser negativo.", ErrorType.Validation));
+        }
+
+        if (maxBoxes < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.boxes.invalid", "Quantidade de boxes não pode ser negativa.", ErrorType.Validation));
+        }
+
+        if (maxTeamMembers < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.team.invalid", "Tamanho da equipe não pode ser negativo.", ErrorType.Validation));
+        }
+
+        if (maxWorkOrdersPerCycle < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.work_orders.invalid", "Limite de ordens de serviço não pode ser negativo.", ErrorType.Validation));
+        }
+
+        if (maxWhatsAppMessagesPerCycle < 0)
+        {
+            return Result<SaasPlan>.Failure(new Error("saas_plan.whatsapp.invalid", "Limite de mensagens de WhatsApp não pode ser negativo.", ErrorType.Validation));
+        }
+
+        Name = name.Trim();
+        Description = description.Trim();
+        MonthlyPrice = monthlyPrice;
+        MaxWorkOrdersPerCycle = maxWorkOrdersPerCycle;
+        MaxWhatsAppMessagesPerCycle = maxWhatsAppMessagesPerCycle;
+        MaxTeamMembers = maxTeamMembers;
+        MaxBoxes = maxBoxes;
+        HasCustomerSubscriptions = hasCustomerSubscriptions;
+        HasLoyalty = hasLoyalty;
+        HasCommissions = hasCommissions;
+        HasAiChatbot = hasAiChatbot;
+        IsActive = isActive;
+
+        return Result<SaasPlan>.Success(this);
     }
 
     public static IReadOnlyList<SaasPlan> GetStandardPlans()
@@ -109,6 +194,7 @@ public sealed class SaasPlan
                 hasCommissions: false,
                 hasAiChatbot: false,
                 maxTeamMembers: 3,
+                maxBoxes: 2,
                 isActive: true),
 
             new SaasPlan(
@@ -124,6 +210,7 @@ public sealed class SaasPlan
                 hasCommissions: true,
                 hasAiChatbot: true,
                 maxTeamMembers: 10,
+                maxBoxes: 5,
                 isActive: true),
 
             new SaasPlan(
@@ -139,6 +226,7 @@ public sealed class SaasPlan
                 hasCommissions: true,
                 hasAiChatbot: true,
                 maxTeamMembers: 999,
+                maxBoxes: 0, // 0 = ilimitado
                 isActive: true)
         ];
     }

@@ -145,6 +145,53 @@ public sealed class SaasBillingApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<Result<IReadOnlyList<SaasPlanDto>>> ListAllPlansForPlatformAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await httpClient.GetAsync("platform/billing/plans", ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<IReadOnlyList<SaasPlanDto>>(JsonOptions, ct);
+                return data is not null
+                    ? Result<IReadOnlyList<SaasPlanDto>>.Success(data)
+                    : Result<IReadOnlyList<SaasPlanDto>>.Success([]);
+            }
+
+            var error = await ReadErrorAsync(response, ct);
+            return Result<IReadOnlyList<SaasPlanDto>>.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<SaasPlanDto>>.Failure(new Error("saas_billing.network_error", ex.Message, ErrorType.Validation));
+        }
+    }
+
+    public async Task<Result<SaasPlanDto>> UpdatePlanAsync(
+        SaasPlanTier tier,
+        UpdateSaasPlanRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await httpClient.PutAsJsonAsync($"platform/billing/plans/{tier}", request, JsonOptions, ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<SaasPlanDto>(JsonOptions, ct);
+                return data is not null
+                    ? Result<SaasPlanDto>.Success(data)
+                    : Result<SaasPlanDto>.Failure(new Error("saas_billing.empty_response", "Resposta vazia do servidor.", ErrorType.Validation));
+            }
+
+            var error = await ReadErrorAsync(response, ct);
+            return Result<SaasPlanDto>.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<SaasPlanDto>.Failure(new Error("saas_billing.network_error", ex.Message, ErrorType.Validation));
+        }
+    }
+
     private static async Task<Error> ReadErrorAsync(HttpResponseMessage response, CancellationToken ct)
     {
         try

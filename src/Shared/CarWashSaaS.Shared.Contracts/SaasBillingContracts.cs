@@ -11,7 +11,23 @@ public sealed record SaasPlanDto(
     bool HasLoyalty,
     bool HasCommissions,
     bool HasAiChatbot,
-    int MaxTeamMembers);
+    int MaxTeamMembers,
+    int MaxBoxes = 0,
+    bool IsActive = true);
+
+public sealed record UpdateSaasPlanRequest(
+    string Name,
+    string Description,
+    decimal MonthlyPrice,
+    int MaxWorkOrdersPerCycle,
+    int MaxWhatsAppMessagesPerCycle,
+    int MaxTeamMembers,
+    int MaxBoxes,
+    bool HasCustomerSubscriptions,
+    bool HasLoyalty,
+    bool HasCommissions,
+    bool HasAiChatbot,
+    bool IsActive);
 
 public sealed record TenantQuotaStatusDto(
     bool CanProceed,

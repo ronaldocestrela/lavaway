@@ -9,8 +9,8 @@
 
 <div class="platform-billing-page">
     <PageHeading Eyebrow="BACKOFFICE DA PLATAFORMA"
-                 Title="Faturamento Global &amp; Assinaturas SaaS"
-                 Subtitle="Monitore as assinaturas de todos os estabelecimentos, receita recorrente (MRR) e inadimplência.">
+                 Title="Faturamento Global &amp; Planos SaaS"
+                 Subtitle="Monitore as assinaturas de todos os estabelecimentos, receita recorrente (MRR) e gerencie o catálogo de planos comerciais.">
         <Actions>
             <button type="button" class="btn-refresh" @onclick="LoadDataAsync" disabled="@IsLoading" id="btn-refresh-billing">
                 <span class="@(IsLoading ? "spin-icon" : "")">↻</span>
@@ -19,105 +19,254 @@
         </Actions>
     </PageHeading>
 
-    <!-- KPIs Globais -->
-    <section class="kpi-grid" aria-label="Indicadores Globais de Faturamento">
-        <div class="kpi-card">
-            <span class="kpi-label">MRR DA PLATAFORMA</span>
-            <strong class="kpi-value">R$ @TotalMrr.ToString("N2")</strong>
-            <span class="kpi-subtext">Receita mensal recorrente contratada</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">ASSINATURAS ATIVAS</span>
-            <strong class="kpi-value text-emerald">@ActiveCount</strong>
-            <span class="kpi-subtext">Estabelecimentos em dia</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">EM AVALIAÇÃO (TRIAL)</span>
-            <strong class="kpi-value text-blue">@TrialCount</strong>
-            <span class="kpi-subtext">Potenciais novas contratações</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">INADIMPLENTES / CARÊNCIA</span>
-            <strong class="kpi-value text-rose">@DelinquentCount</strong>
-            <span class="kpi-subtext">Ação de cobrança necessária</span>
-        </div>
-    </section>
+    <!-- Navegação por Abas -->
+    <div class="billing-tabs-nav" role="tablist">
+        <button type="button"
+                role="tab"
+                class="tab-btn @(_activeTab == "subscriptions" ? "is-active" : "")"
+                id="tab-btn-subscriptions"
+                @onclick="@(() => SetTab("subscriptions"))">
+            📊 Assinaturas dos Estabelecimentos
+            @if (Subscriptions.Count > 0)
+            {
+                <span class="tab-badge">@Subscriptions.Count</span>
+            }
+        </button>
+        <button type="button"
+                role="tab"
+                class="tab-btn @(_activeTab == "plans" ? "is-active" : "")"
+                id="tab-btn-plans"
+                @onclick="@(() => SetTab("plans"))">
+            ⚙️ Gestão de Planos do SaaS
+            @if (Plans.Count > 0)
+            {
+                <span class="tab-badge">@Plans.Count</span>
+            }
+        </button>
+    </div>
 
-    <!-- Tabela de Assinaturas -->
-    <section class="table-panel" aria-label="Assinaturas dos Estabelecimentos">
-        <div class="panel-header">
-            <h3 class="panel-title">Assinaturas dos Estabelecimentos</h3>
-            <p class="panel-subtitle">Listagem de todos os tenants cadastrados e seu consumo de cotas</p>
-        </div>
+    @if (_activeTab == "subscriptions")
+    {
+        <!-- KPIs Globais -->
+        <section class="kpi-grid" aria-label="Indicadores Globais de Faturamento">
+            <div class="kpi-card">
+                <span class="kpi-label">MRR DA PLATAFORMA</span>
+                <strong class="kpi-value">R$ @TotalMrr.ToString("N2")</strong>
+                <span class="kpi-subtext">Receita mensal recorrente contratada</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">ASSINATURAS ATIVAS</span>
+                <strong class="kpi-value text-emerald">@ActiveCount</strong>
+                <span class="kpi-subtext">Estabelecimentos em dia</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">EM AVALIAÇÃO (TRIAL)</span>
+                <strong class="kpi-value text-blue">@TrialCount</strong>
+                <span class="kpi-subtext">Potenciais novas contratações</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">INADIMPLENTES / CARÊNCIA</span>
+                <strong class="kpi-value text-rose">@DelinquentCount</strong>
+                <span class="kpi-subtext">Ação de cobrança necessária</span>
+            </div>
+        </section>
 
-        @if (IsLoading)
-        {
-            <div class="loading-state">
-                Carregando assinaturas da plataforma...
+        <!-- Tabela de Assinaturas -->
+        <section class="table-panel" aria-label="Assinaturas dos Estabelecimentos">
+            <div class="panel-header">
+                <h3 class="panel-title">Assinaturas dos Estabelecimentos</h3>
+                <p class="panel-subtitle">Listagem de todos os tenants cadastrados e seu consumo de cotas</p>
             </div>
-        }
-        else if (Subscriptions.Count == 0)
-        {
-            <div class="empty-state">
-                Nenhum estabelecimento encontrado.
-            </div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="billing-table">
-                    <thead>
-                        <tr>
-                            <th>Estabelecimento</th>
-                            <th>Plano</th>
-                            <th>Mensalidade</th>
-                            <th>Cotas Consumidas</th>
-                            <th>Status</th>
-                            <th>Vigência</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var sub in Subscriptions)
-                        {
+
+            @if (IsLoading)
+            {
+                <div class="loading-state">
+                    Carregando assinaturas da plataforma...
+                </div>
+            }
+            else if (Subscriptions.Count == 0)
+            {
+                <div class="empty-state">
+                    Nenhum estabelecimento encontrado.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="billing-table">
+                        <thead>
                             <tr>
-                                <td class="tenant-primary-cell">
-                                    <strong class="tenant-name">@sub.TenantName</strong>
-                                    <span class="tenant-id">ID: @sub.TenantId</span>
-                                </td>
-                                <td>
-                                    <strong>@sub.PlanName</strong>
-                                </td>
-                                <td>
-                                    <span class="price-text">R$ @sub.MonthlyPrice.ToString("N2")</span>
-                                </td>
-                                <td>
-                                    <div class="quota-cell">
-                                        <span class="quota-item">OS: <strong>@sub.UsedWorkOrders</strong> / @(sub.MaxWorkOrders > 0 ? sub.MaxWorkOrders.ToString() : "∞")</span>
-                                        <span class="quota-item">Whats: <strong>@sub.UsedWhatsAppMessages</strong> / @(sub.MaxWhatsAppMessages > 0 ? sub.MaxWhatsAppMessages.ToString() : "∞")</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="status-badge @GetStatusBadgeClass(sub.Status)">
-                                        @GetStatusDisplay(sub.Status)
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="period-text">
-                                        @sub.CurrentPeriodStartUtc.ToString("dd/MM") a @sub.CurrentPeriodEndUtc.ToString("dd/MM/yyyy")
-                                    </span>
-                                </td>
+                                <th>Estabelecimento</th>
+                                <th>Plano</th>
+                                <th>Mensalidade</th>
+                                <th>Cotas Consumidas</th>
+                                <th>Status</th>
+                                <th>Vigência</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach (var sub in Subscriptions)
+                            {
+                                <tr>
+                                    <td class="tenant-primary-cell">
+                                        <strong class="tenant-name">@sub.TenantName</strong>
+                                        <span class="tenant-id">ID: @sub.TenantId</span>
+                                    </td>
+                                    <td>
+                                        <strong>@sub.PlanName</strong>
+                                    </td>
+                                    <td>
+                                        <span class="price-text">R$ @sub.MonthlyPrice.ToString("N2")</span>
+                                    </td>
+                                    <td>
+                                        <div class="quota-cell">
+                                            <span class="quota-item">OS: <strong>@sub.UsedWorkOrders</strong> / @(sub.MaxWorkOrders > 0 ? sub.MaxWorkOrders.ToString() : "∞")</span>
+                                            <span class="quota-item">Whats: <strong>@sub.UsedWhatsAppMessages</strong> / @(sub.MaxWhatsAppMessages > 0 ? sub.MaxWhatsAppMessages.ToString() : "∞")</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge @GetStatusBadgeClass(sub.Status)">
+                                            @GetStatusDisplay(sub.Status)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="period-text">
+                                            @sub.CurrentPeriodStartUtc.ToString("dd/MM") a @sub.CurrentPeriodEndUtc.ToString("dd/MM/yyyy")
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+    else if (_activeTab == "plans")
+    {
+        <!-- Catálogo e Gestão de Planos -->
+        <section class="plans-management-panel" aria-label="Gestão de Planos do SaaS">
+            <div class="panel-header">
+                <div>
+                    <h3 class="panel-title">Catálogo de Planos do SaaS</h3>
+                    <p class="panel-subtitle">Configure preços, limites de equipe, quantidade de boxes e funções disponíveis para cada plano.</p>
+                </div>
             </div>
-        }
-    </section>
+
+            @if (IsLoadingPlans)
+            {
+                <div class="loading-state">
+                    Carregando catálogo de planos do SaaS...
+                </div>
+            }
+            else if (Plans.Count == 0)
+            {
+                <div class="empty-state">
+                    Nenhum plano configurado no catálogo.
+                </div>
+            }
+            else
+            {
+                <div class="plans-cards-grid">
+                    @foreach (var plan in Plans)
+                    {
+                        <div class="admin-plan-card @(!plan.IsActive ? "is-inactive" : "")" id="plan-card-@plan.Tier.ToString().ToLowerInvariant()">
+                            <div class="admin-plan-header">
+                                <div>
+                                    <span class="tier-pill tier-@plan.Tier.ToString().ToLowerInvariant()">@plan.Tier.ToString().ToUpperInvariant()</span>
+                                    <h4 class="admin-plan-name">@plan.Name</h4>
+                                </div>
+                                <span class="plan-status-badge @(plan.IsActive ? "badge-active" : "badge-inactive")">
+                                    @(plan.IsActive ? "Ativo" : "Inativo")
+                                </span>
+                            </div>
+
+                            <p class="admin-plan-desc">@plan.Description</p>
+
+                            <div class="admin-plan-price-row">
+                                <span class="currency">R$</span>
+                                <strong class="price-value">@plan.MonthlyPrice.ToString("N2")</strong>
+                                <span class="period">/mês</span>
+                            </div>
+
+                            <!-- Limites e Capacidade -->
+                            <div class="admin-plan-specs">
+                                <span class="specs-title">Limites de Capacidade:</span>
+                                <div class="spec-row">
+                                    <span class="spec-label">👥 Tamanho da Equipe:</span>
+                                    <strong class="spec-val">@(plan.MaxTeamMembers >= 999 ? "Ilimitado" : $"{plan.MaxTeamMembers} membros")</strong>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-label">🚗 Boxes de Atendimento:</span>
+                                    <strong class="spec-val">@(plan.MaxBoxes <= 0 ? "Ilimitado" : $"{plan.MaxBoxes} boxes")</strong>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-label">📋 Ordens de Serviço:</span>
+                                    <strong class="spec-val">@(plan.MaxWorkOrdersPerCycle <= 0 ? "Ilimitadas" : $"{plan.MaxWorkOrdersPerCycle}/mês")</strong>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-label">💬 WhatsApp Automático:</span>
+                                    <strong class="spec-val">@(plan.MaxWhatsAppMessagesPerCycle <= 0 ? "Ilimitado" : $"{plan.MaxWhatsAppMessagesPerCycle}/mês")</strong>
+                                </div>
+                            </div>
+
+                            <!-- Funções e Módulos -->
+                            <div class="admin-plan-features">
+                                <span class="specs-title">Funções &amp; Módulos Habilitados:</span>
+                                <ul class="features-badge-list">
+                                    <li class="feature-badge @(plan.HasCustomerSubscriptions ? "is-enabled" : "is-disabled")">
+                                        <span>@(plan.HasCustomerSubscriptions ? "✓" : "✕")</span>
+                                        <span>Clube de Assinaturas</span>
+                                    </li>
+                                    <li class="feature-badge @(plan.HasLoyalty ? "is-enabled" : "is-disabled")">
+                                        <span>@(plan.HasLoyalty ? "✓" : "✕")</span>
+                                        <span>Fidelidade &amp; Pontos</span>
+                                    </li>
+                                    <li class="feature-badge @(plan.HasCommissions ? "is-enabled" : "is-disabled")">
+                                        <span>@(plan.HasCommissions ? "✓" : "✕")</span>
+                                        <span>Gestão de Comissões</span>
+                                    </li>
+                                    <li class="feature-badge @(plan.HasAiChatbot ? "is-enabled" : "is-disabled")">
+                                        <span>@(plan.HasAiChatbot ? "✓" : "✕")</span>
+                                        <span>Chatbot IA (WhatsApp)</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="admin-plan-actions">
+                                <button type="button"
+                                        class="btn-edit-plan"
+                                        id="btn-edit-plan-@plan.Tier.ToString().ToLowerInvariant()"
+                                        @onclick="@(() => OpenEditPlanModal(plan))">
+                                    ⚙️ Editar Plano
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    }
 </div>
 
+<!-- Modal de Edição de Plano -->
+<EditSaasPlanModal IsOpen="@_isEditModalOpen"
+                   Plan="@_selectedPlan"
+                   IsSubmitting="@_isSavingPlan"
+                   OnClose="@CloseEditPlanModal"
+                   OnSave="@HandleSavePlanAsync" />
+
 @code {
+    private string _activeTab = "subscriptions";
     private IReadOnlyList<TenantSubscriptionOverviewDto> Subscriptions { get; set; } = [];
+    private IReadOnlyList<SaasPlanDto> Plans { get; set; } = [];
     private bool IsLoading { get; set; } = true;
+    private bool IsLoadingPlans { get; set; } = true;
+
+    // Modal de Edição
+    private bool _isEditModalOpen;
+    private SaasPlanDto? _selectedPlan;
+    private bool _isSavingPlan;
 
     private decimal TotalMrr => Subscriptions
         .Where(s => s.Status == TenantSubscriptionStatus.Active)
@@ -132,15 +281,61 @@
         await LoadDataAsync();
     }
 
+    private void SetTab(string tab)
+    {
+        _activeTab = tab;
+        if (tab == "plans" && Plans.Count == 0)
+        {
+            _ = LoadPlansAsync();
+        }
+    }
+
     private async Task LoadDataAsync()
     {
         IsLoading = true;
         try
         {
-            var result = await BillingClient.ListAllSubscriptionsForPlatformAsync();
+            var subTask = BillingClient.ListAllSubscriptionsForPlatformAsync();
+            var plansTask = BillingClient.ListAllPlansForPlatformAsync();
+
+            await Task.WhenAll(subTask, plansTask);
+
+            var subResult = await subTask;
+            if (subResult.IsSuccess)
+            {
+                Subscriptions = subResult.Value!;
+            }
+            else
+            {
+                ToastService.ShowError(subResult.Error!.Description);
+            }
+
+            var plansResult = await plansTask;
+            if (plansResult.IsSuccess)
+            {
+                Plans = plansResult.Value!;
+            }
+            else
+            {
+                ToastService.ShowError(plansResult.Error!.Description);
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+            IsLoadingPlans = false;
+        }
+    }
+
+    private async Task LoadPlansAsync()
+    {
+        IsLoadingPlans = true;
+        try
+        {
+            var result = await BillingClient.ListAllPlansForPlatformAsync();
             if (result.IsSuccess)
             {
-                Subscriptions = result.Value!;
+                Plans = result.Value!;
             }
             else
             {
@@ -149,7 +344,44 @@
         }
         finally
         {
-            IsLoading = false;
+            IsLoadingPlans = false;
+        }
+    }
+
+    private void OpenEditPlanModal(SaasPlanDto plan)
+    {
+        _selectedPlan = plan;
+        _isEditModalOpen = true;
+    }
+
+    private void CloseEditPlanModal()
+    {
+        _isEditModalOpen = false;
+        _selectedPlan = null;
+    }
+
+    private async Task HandleSavePlanAsync(UpdateSaasPlanRequest request)
+    {
+        if (_selectedPlan is null) return;
+
+        _isSavingPlan = true;
+        try
+        {
+            var result = await BillingClient.UpdatePlanAsync(_selectedPlan.Tier, request);
+            if (result.IsSuccess)
+            {
+                ToastService.ShowSuccess($"Plano '{result.Value!.Name}' atualizado com sucesso!");
+                CloseEditPlanModal();
+                await LoadPlansAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result.Error!.Description);
+            }
+        }
+        finally
+        {
+            _isSavingPlan = false;
         }
     }
 

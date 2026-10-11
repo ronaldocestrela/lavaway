@@ -280,3 +280,279 @@
     color: var(--lw-color-text-muted, #77867f);
     font-size: 13px;
 }
+
+/* ==========================================================================
+   Navegação por Abas
+   ========================================================================== */
+.billing-tabs-nav {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid var(--lw-color-border, #e1e9e3);
+    padding-bottom: 2px;
+}
+
+.tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 10px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--lw-color-text-muted, #64748b);
+    cursor: pointer;
+    transition: all 0.16s ease;
+    margin-bottom: -2px;
+}
+
+.tab-btn:hover {
+    color: var(--lw-color-text, #1e293b);
+}
+
+.tab-btn.is-active {
+    color: #0284c7;
+    border-bottom-color: #0284c7;
+    font-weight: 700;
+}
+
+.tab-badge {
+    background: #e2e8f0;
+    color: #334155;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+}
+
+.tab-btn.is-active .tab-badge {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+/* ==========================================================================
+   Gestão do Catálogo de Planos
+   ========================================================================== */
+.plans-management-panel {
+    background: var(--lw-color-surface, #ffffff);
+    border: 1px solid var(--lw-color-border, #e1e9e3);
+    border-radius: var(--lw-radius-panel, 12px);
+    box-shadow: var(--lw-shadow-card, 0 2px 6px rgba(30, 53, 43, 0.04));
+    overflow: hidden;
+}
+
+.plans-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    padding: 24px;
+    background: #f8fafc;
+}
+
+.admin-plan-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 22px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-plan-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
+}
+
+.admin-plan-card.is-inactive {
+    opacity: 0.65;
+    border-style: dashed;
+}
+
+.admin-plan-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.tier-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.tier-basic {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.tier-pro {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.tier-enterprise {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.admin-plan-name {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.plan-status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.badge-active {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.badge-inactive {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.admin-plan-desc {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.4;
+    min-height: 36px;
+}
+
+.admin-plan-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 10px 0;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-plan-price-row .currency {
+    font-size: 15px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.admin-plan-price-row .price-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #0f172a;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.admin-plan-price-row .period {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.admin-plan-specs, .admin-plan-features {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.specs-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #475569;
+}
+
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px dashed #f1f5f9;
+}
+
+.spec-label {
+    color: #475569;
+}
+
+.spec-val {
+    font-weight: 600;
+    color: #1e293b;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.features-badge-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feature-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.feature-badge.is-enabled {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.feature-badge.is-disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+
+.admin-plan-actions {
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.btn-edit-plan {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #0284c7;
+    color: #ffffff;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.btn-edit-plan:hover {
+    background: #0369a1;
+    transform: translateY(-1px);
+}
+

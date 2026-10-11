@@ -166,5 +166,7 @@ public sealed class TenantSaasSubscriptionApplicationService(
         plan.HasLoyalty,
         plan.HasCommissions,
         plan.HasAiChatbot,
-        plan.MaxTeamMembers);
+        plan.MaxTeamMembers,
+        plan.MaxBoxes,
+        plan.IsActive);
 }
