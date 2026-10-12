@@ -47,6 +47,15 @@ public static class SaasBillingEndpoints
             return result.IsSuccess ? Results.Ok(new { status = "processed" }) : MapErrorToResult(result.Error!);
         }).AllowAnonymous();
 
+        // 1.1 Catálogo Público de Planos do SaaS (Landing Page / Home / Contratação)
+        app.MapGet("/public/saas-plans", async (
+            TenantSaasSubscriptionApplicationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.ListPlansAsync(ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : MapErrorToResult(result.Error!);
+        }).AllowAnonymous();
+
         // 2. Backoffice da Plataforma - Gestão de Assinaturas de Todos os Estabelecimentos
         var platformBilling = app.MapGroup("/platform/billing")
             .RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformBillingAdmin);

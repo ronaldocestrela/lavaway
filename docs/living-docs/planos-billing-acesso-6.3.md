@@ -178,3 +178,10 @@ erDiagram
 * **Então** ele pode verificar a quantidade de boxes (`MaxBoxes`), tamanho da equipe (`MaxTeamMembers`), cotas e os módulos habilitados (Clube de Assinaturas, Fidelidade, Comissões e Chatbot IA).
 * **E quando** ele abre o modal `EditSaasPlanModal` e altera os limites ou ativa/desativa funções do plano,
 * **Então** o endpoint `PUT /platform/billing/plans/{tier}` valida as invariantes de negócio via `Result<SaasPlan>` e persiste a atualização no schema `billing.SaasPlans`, refletindo imediatamente no catálogo da plataforma.
+
+### Cenário 5: Catálogo Dinâmico e Público na Landing Page (`Home.razor`)
+* **Dado** um visitante anônimo acessando a landing page principal do Lavaway (`/`),
+* **Quando** a seção de preços é renderizada,
+* **Então** a página consome o endpoint público `GET /public/saas-plans` e renderiza dinamicamente os planos ativos cadastrados no catálogo oficial (`Basic`, `Pro`, `Enterprise`).
+* **E quando** o visitante clica para contratar qualquer plano,
+* **Então** o modal de onboarding recebe o `SaasPlanTier` exato do plano escolhido, integrando diretamente com o fluxo de registro e período de testes sem dados estáticos divergentes.

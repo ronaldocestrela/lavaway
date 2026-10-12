@@ -53,6 +53,28 @@ public sealed class SaasBillingApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<Result<IReadOnlyList<SaasPlanDto>>> ListPublicPlansAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await httpClient.GetAsync("public/saas-plans", ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<IReadOnlyList<SaasPlanDto>>(JsonOptions, ct);
+                return data is not null
+                    ? Result<IReadOnlyList<SaasPlanDto>>.Success(data)
+                    : Result<IReadOnlyList<SaasPlanDto>>.Success([]);
+            }
+
+            var error = await ReadErrorAsync(response, ct);
+            return Result<IReadOnlyList<SaasPlanDto>>.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<SaasPlanDto>>.Failure(new Error("saas_billing.network_error", ex.Message, ErrorType.Validation));
+        }
+    }
+
     public async Task<Result<TenantSubscriptionOverviewDto>> ChangePlanAsync(SaasPlanTier targetTier, CancellationToken ct = default)
     {
         try
