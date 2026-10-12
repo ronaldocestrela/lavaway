@@ -3,6 +3,7 @@
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
 @inject AuthApiClient AuthApi
+@inject SaasBillingApiClient BillingClient
 @inject ITokenStorage TokenStorage
 @inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
@@ -681,92 +682,76 @@
                 </div>
 
                 <div class="pricing-grid">
-                    <!-- PLAN 1: START -->
-                    <div class="pricing-card">
-                        <div class="p-header">
-                            <span class="p-tier-name">PÁTIO START</span>
-                            <p class="p-desc">Para lava-jatos iniciantes e pequenos pátios individuais.</p>
-                            <div class="p-price">
-                                <span class="currency">R$</span>
-                                <span class="amount">@(_isAnnualBilling ? "79" : "99")</span>
-                                <span class="period">/mês</span>
-                            </div>
-                            @if (_isAnnualBilling)
-                            {
-                                <span class="billing-note">Faturado anualmente (R$ 948/ano)</span>
-                            }
-                        </div>
-                        <button class="btn-outline-card" type="button" @onclick='() => OpenContractModal("Start")' id="btn-plan-start">
-                            Contratar Start
-                        </button>
-                        <ul class="p-features">
-                            <li><span>&#10003;</span> Até 2 boxes de atendimento</li>
-                            <li><span>&#10003;</span> Check-in digital ilimitado</li>
-                            <li><span>&#10003;</span> Cadastro de clientes e veículos</li>
-                            <li><span>&#10003;</span> Tabela de preços por porte</li>
-                            <li><span>&#10003;</span> Comprovantes em PDF / Térmica</li>
-                            <li class="muted"><span>&times;</span> Sem automação de WhatsApp</li>
-                            <li class="muted"><span>&times;</span> Sem vistoria fotográfica</li>
-                        </ul>
-                    </div>
+                    @foreach (var plan in _plans)
+                    {
+                        var isPopular = plan.Tier == SaasPlanTier.Pro;
+                        var monthlyPrice = _isAnnualBilling
+                            ? Math.Round((plan.MonthlyPrice * 10m) / 12m, 0)
+                            : plan.MonthlyPrice;
+                        var annualTotal = plan.MonthlyPrice * 10m;
 
-                    <!-- PLAN 2: PRO (HIGHLIGHTED) -->
-                    <div class="pricing-card popular">
-                        <div class="popular-ribbon">MAIS ESCOLHIDO</div>
-                        <div class="p-header">
-                            <span class="p-tier-name">ESTÉTICA PRO</span>
-                            <p class="p-desc">O pacote completo para estéticas automotivas que buscam escala e credibilidade.</p>
-                            <div class="p-price">
-                                <span class="currency">R$</span>
-                                <span class="amount">@(_isAnnualBilling ? "149" : "189")</span>
-                                <span class="period">/mês</span>
-                            </div>
-                            @if (_isAnnualBilling)
+                        <div class="pricing-card @(isPopular ? "popular" : "")" id="pricing-card-@plan.Tier.ToString().ToLowerInvariant()">
+                            @if (isPopular)
                             {
-                                <span class="billing-note">Faturado anualmente (R$ 1.788/ano)</span>
+                                <div class="popular-ribbon">MAIS ESCOLHIDO</div>
                             }
-                        </div>
-                        <button class="btn-primary full glow" type="button" @onclick='() => OpenContractModal("Pro")' id="btn-plan-pro">
-                            Contratar Plano Pro (14 Dias Grátis)
-                        </button>
-                        <ul class="p-features">
-                            <li><span>&#10003;</span> <strong>Boxes e vagas ilimitadas</strong></li>
-                            <li><span>&#10003;</span> <strong>WhatsApp Integrado nativo (disparos ilimitados)</strong></li>
-                            <li><span>&#10003;</span> <strong>Vistoria Digital com fotos e diagrama de avarias</strong></li>
-                            <li><span>&#10003;</span> <strong>Link público de acompanhamento com sua logo</strong></li>
-                            <li><span>&#10003;</span> <strong>Cálculo automático de comissões da equipe</strong></li>
-                            <li><span>&#10003;</span> Gestão de pátio em tempo real</li>
-                            <li><span>&#10003;</span> Suporte prioritário via WhatsApp</li>
-                        </ul>
-                    </div>
+                            <div class="p-header">
+                                <span class="p-tier-name">@plan.Name.ToUpperInvariant()</span>
+                                <p class="p-desc">@plan.Description</p>
+                                <div class="p-price">
+                                    <span class="currency">R$</span>
+                                    <span class="amount">@monthlyPrice.ToString("N0")</span>
+                                    <span class="period">/mês</span>
+                                </div>
+                                @if (_isAnnualBilling)
+                                {
+                                    <span class="billing-note">Faturado anualmente (R$ @annualTotal.ToString("N0")/ano)</span>
+                                }
+                            </div>
 
-                    <!-- PLAN 3: MULTI-LOJAS / REDES -->
-                    <div class="pricing-card">
-                        <div class="p-header">
-                            <span class="p-tier-name">REDES &amp; FRANQUIAS</span>
-                            <p class="p-desc">Para grupos com múltiplas unidades ou alto volume de operações.</p>
-                            <div class="p-price">
-                                <span class="currency">R$</span>
-                                <span class="amount">@(_isAnnualBilling ? "299" : "369")</span>
-                                <span class="period">/mês</span>
-                            </div>
-                            @if (_isAnnualBilling)
-                            {
-                                <span class="billing-note">Faturado anualmente (R$ 3.588/ano)</span>
-                            }
+                            <button class="@(isPopular ? "btn-primary full glow" : "btn-outline-card")"
+                                    type="button"
+                                    @onclick='() => OpenContractModal(plan.Tier)'
+                                    id="btn-plan-@plan.Tier.ToString().ToLowerInvariant()">
+                                Contratar @plan.Name @(isPopular ? "(14 Dias Grátis)" : "")
+                            </button>
+
+                            <ul class="p-features">
+                                <li>
+                                    <span>&#10003;</span>
+                                    <strong>@(plan.MaxBoxes <= 0 ? "Boxes de atendimento ilimitados" : $"Até {plan.MaxBoxes} boxes de atendimento")</strong>
+                                </li>
+                                <li>
+                                    <span>&#10003;</span>
+                                    <strong>@(plan.MaxTeamMembers >= 999 ? "Equipe e usuários ilimitados" : $"Até {plan.MaxTeamMembers} membros na equipe")</strong>
+                                </li>
+                                <li>
+                                    <span>&#10003;</span>
+                                    @(plan.MaxWorkOrdersPerCycle <= 0 ? "Ordens de serviço ilimitadas" : $"Até {plan.MaxWorkOrdersPerCycle} OS/mês")
+                                </li>
+                                <li>
+                                    <span>&#10003;</span>
+                                    @(plan.MaxWhatsAppMessagesPerCycle <= 0 ? "WhatsApp automático ilimitado" : $"Até {plan.MaxWhatsAppMessagesPerCycle} msgs WhatsApp/mês")
+                                </li>
+                                <li class="@(plan.HasCustomerSubscriptions ? "" : "muted")">
+                                    <span>@(plan.HasCustomerSubscriptions ? "✓" : "×")</span>
+                                    @(plan.HasCustomerSubscriptions ? "Clube de Assinaturas para clientes" : "Sem Clube de Assinaturas")
+                                </li>
+                                <li class="@(plan.HasLoyalty ? "" : "muted")">
+                                    <span>@(plan.HasLoyalty ? "✓" : "×")</span>
+                                    @(plan.HasLoyalty ? "Programa de Fidelidade e Pontos" : "Sem Programa de Fidelidade")
+                                </li>
+                                <li class="@(plan.HasCommissions ? "" : "muted")">
+                                    <span>@(plan.HasCommissions ? "✓" : "×")</span>
+                                    @(plan.HasCommissions ? "Cálculo e rateio de comissões" : "Sem Gestão de Comissões")
+                                </li>
+                                <li class="@(plan.HasAiChatbot ? "" : "muted")">
+                                    <span>@(plan.HasAiChatbot ? "✓" : "×")</span>
+                                    @(plan.HasAiChatbot ? "Chatbot Inteligente com IA no WhatsApp" : "Sem Chatbot com IA")
+                                </li>
+                            </ul>
                         </div>
-                        <button class="btn-outline-card" type="button" @onclick='() => OpenContractModal("Redes")' id="btn-plan-redes">
-                            Falar com Consultor
-                        </button>
-                        <ul class="p-features">
-                            <li><span>&#10003;</span> <strong>Tudo do Plano Pro incluído</strong></li>
-                            <li><span>&#10003;</span> Multi-estabelecimentos integrados</li>
-                            <li><span>&#10003;</span> Relatórios consolidados da rede</li>
-                            <li><span>&#10003;</span> Acesso de múltiplos gerentes e perfis</li>
-                            <li><span>&#10003;</span> Treinamento individual para sua equipe</li>
-                            <li><span>&#10003;</span> SLA de suporte em até 1 hora</li>
-                        </ul>
-                    </div>
+                    }
                 </div>
             </div>
         </section>
@@ -910,9 +895,10 @@
 
                     <div class="fcol">
                         <h4>CONTRATAÇÃO</h4>
-                        <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal("Start")'>Plano Start</button>
-                        <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal("Pro")'>Plano Pro</button>
-                        <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal("Redes")'>Redes &amp; Franquias</button>
+                        @foreach (var plan in _plans)
+                        {
+                            <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal(plan.Tier)'>Plano @plan.Name</button>
+                        }
                         <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer">Suporte Comercial</a>
                     </div>
                 </div>
@@ -942,7 +928,7 @@
                 {
                     <div class="modal-header">
                         <div class="modal-pill">14 DIAS GRÁTIS • SEM CARTÃO</div>
-                        <h2>Contratar o Lavaway — Plano @_selectedPlan</h2>
+                        <h2>Contratar o Lavaway — Plano @GetSelectedPlanName()</h2>
                         <p>Preencha os dados do seu lava-jato ou estética para liberar seu acesso imediatamente.</p>
                     </div>
 
@@ -988,10 +974,11 @@
 
                             <label class="modal-field">
                                 <span>Plano Selecionado</span>
-                                <select @bind="_selectedPlan" disabled="@_isSubmitting">
-                                    <option value="Start">Plano Pátio Start (R$ 99/mês)</option>
-                                    <option value="Pro">Plano Estética Pro (R$ 189/mês) — Recomendado</option>
-                                    <option value="Redes">Plano Redes &amp; Franquias (R$ 369/mês)</option>
+                                <select @bind="_selectedTier" disabled="@_isSubmitting">
+                                    @foreach (var plan in _plans)
+                                    {
+                                        <option value="@plan.Tier">Plano @plan.Name (R$ @plan.MonthlyPrice.ToString("N2")/mês) @(plan.Tier == SaasPlanTier.Pro ? "— Mais Escolhido" : "")</option>
+                                    }
                                 </select>
                             </label>
                         </div>
@@ -1018,7 +1005,7 @@
                         <h2>Conta Criada com Sucesso!</h2>
                         <p>
                             Bem-vindo, <strong>@_hireContactName</strong>! Seu ambiente para o lava-jato
-                            <strong>@_hireStoreName</strong> foi configurado com <strong>14 dias de teste grátis</strong> no <strong>Plano @_selectedPlan</strong>.
+                            <strong>@_hireStoreName</strong> foi configurado com <strong>14 dias de teste grátis</strong> no <strong>Plano @GetSelectedPlanName()</strong>.
                         </p>
                         <div class="success-box">
                             <p>Sua sessão foi iniciada automaticamente. Você já pode gerenciar ordens de serviço, clientes e pátio!</p>
@@ -1048,9 +1035,12 @@
     private int _calcAvgTicket = 85;
     private int _openFaqIndex = 0;
 
+    // Planos Dinâmicos do Catálogo
+    private IReadOnlyList<SaasPlanDto> _plans = GetInitialFallbackPlans();
+
     // Contract / Lead modal state
     private bool _isContractModalOpen;
-    private string _selectedPlan = "Pro";
+    private SaasPlanTier _selectedTier = SaasPlanTier.Pro;
     private string _hireStoreName = string.Empty;
     private string _hireContactName = string.Empty;
     private string _hireEmail = string.Empty;
@@ -1060,6 +1050,34 @@
     private bool _hireSubmitted;
     private bool _isSubmitting;
     private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlansAsync();
+    }
+
+    private async Task LoadPlansAsync()
+    {
+        try
+        {
+            var result = await BillingClient.ListPublicPlansAsync();
+            if (result.IsSuccess && result.Value is { Count: > 0 } plans)
+            {
+                _plans = plans;
+            }
+        }
+        catch
+        {
+            // Mantém fallback seguro para não quebrar a landing page se a API estiver indisponível
+        }
+    }
+
+    private static IReadOnlyList<SaasPlanDto> GetInitialFallbackPlans() =>
+    [
+        new(SaasPlanTier.Basic, "Básico", "Ideal para lava-jatos iniciantes com operação ágil de pátio e controle essencial.", 149.00m, 150, 300, false, false, false, false, 3, 2, true),
+        new(SaasPlanTier.Pro, "Pro", "Completo para centros de estética e lava-jatos com clube de assinaturas, fidelidade e WhatsApp.", 299.00m, 600, 1500, true, true, true, true, 10, 5, true),
+        new(SaasPlanTier.Enterprise, "Enterprise", "Sem limites de volume para operações corporativas, redes de filiais e alto fluxo de veículos.", 599.00m, 0, 0, true, true, true, true, 999, 0, true)
+    ];
 
     private void ToggleMobileMenu() => _isMobileMenuOpen = !_isMobileMenuOpen;
     private void CloseMobileMenu() => _isMobileMenuOpen = false;
@@ -1099,13 +1117,30 @@
         return (int)Math.Max(1, Math.Round(extra / planCost));
     }
 
-    private void OpenContractModal(string plan)
+    private string GetSelectedPlanName()
     {
-        _selectedPlan = plan;
+        var plan = _plans.FirstOrDefault(p => p.Tier == _selectedTier);
+        return plan?.Name ?? _selectedTier.ToString();
+    }
+
+    private void OpenContractModal(SaasPlanTier tier)
+    {
+        _selectedTier = tier;
         _hireSubmitted = false;
         _isSubmitting = false;
         _errorMessage = null;
         _isContractModalOpen = true;
+    }
+
+    private void OpenContractModal(string plan)
+    {
+        var tier = plan switch
+        {
+            "Start" or "Basic" or "Básico" => SaasPlanTier.Basic,
+            "Redes" or "Enterprise" => SaasPlanTier.Enterprise,
+            _ => SaasPlanTier.Pro
+        };
+        OpenContractModal(tier);
     }
 
     private void CloseContractModal()
@@ -1136,13 +1171,6 @@
         _isSubmitting = true;
         try
         {
-            var planTier = _selectedPlan switch
-            {
-                "Start" => SaasPlanTier.Basic,
-                "Redes" => SaasPlanTier.Enterprise,
-                _ => SaasPlanTier.Pro
-            };
-
             var request = new RegisterTenantRequest(
                 StoreName: _hireStoreName.Trim(),
                 AdminName: _hireContactName.Trim(),
@@ -1151,7 +1179,7 @@
                 Phone: _hirePhone.Trim(),
                 City: string.IsNullOrWhiteSpace(_hireCity) ? null : _hireCity.Trim(),
                 State: null,
-                PlanTier: planTier);
+                PlanTier: _selectedTier);
 
             var result = await AuthApi.RegisterTenantAsync(request);
             if (result.IsSuccess && result.Value is not null)
@@ -1188,7 +1216,7 @@
 
     private string GetWhatsAppDirectLink()
     {
-        var message = $"Olá! Acabei de ativar meu teste no Lavaway para o plano {_selectedPlan}. Meu estabelecimento: {_hireStoreName} ({_hireCity}), responsável: {_hireContactName}.";
+        var message = $"Olá! Acabei de ativar meu teste no Lavaway para o plano {GetSelectedPlanName()}. Meu estabelecimento: {_hireStoreName} ({_hireCity}), responsável: {_hireContactName}.";
         return $"https://wa.me/5511999999999?text={Uri.EscapeDataString(message)}";
     }
 }

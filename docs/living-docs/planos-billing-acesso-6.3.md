@@ -100,6 +100,7 @@ erDiagram
         bool HasCommissions
         bool HasAiChatbot
         int MaxTeamMembers
+        int MaxBoxes
         bool IsActive
     }
 
@@ -170,3 +171,17 @@ erDiagram
 * **Quando** ele atinge 150 ordens de serviço geradas no ciclo atual,
 * **Então** a 151ª tentativa de abertura de OS é rejeitada com o erro `tenant.quota.work_orders_exceeded` informando a necessidade de upgrade.
 * **E quando** o lojista faz upgrade para o plano `Pro` (600 OS/mês), a nova capacidade passa a valer imediatamente.
+
+### Cenário 4: Governança e Gestão de Planos no Backoffice (`/platform/billing`)
+* **Dado** um operador com a role `PlatformBillingAdmin` acessando a aba "Gestão de Planos do SaaS",
+* **Quando** ele visualiza os cards comerciais de cada tier (`Basic`, `Pro`, `Enterprise`),
+* **Então** ele pode verificar a quantidade de boxes (`MaxBoxes`), tamanho da equipe (`MaxTeamMembers`), cotas e os módulos habilitados (Clube de Assinaturas, Fidelidade, Comissões e Chatbot IA).
+* **E quando** ele abre o modal `EditSaasPlanModal` e altera os limites ou ativa/desativa funções do plano,
+* **Então** o endpoint `PUT /platform/billing/plans/{tier}` valida as invariantes de negócio via `Result<SaasPlan>` e persiste a atualização no schema `billing.SaasPlans`, refletindo imediatamente no catálogo da plataforma.
+
+### Cenário 5: Catálogo Dinâmico e Público na Landing Page (`Home.razor`)
+* **Dado** um visitante anônimo acessando a landing page principal do Lavaway (`/`),
+* **Quando** a seção de preços é renderizada,
+* **Então** a página consome o endpoint público `GET /public/saas-plans` e renderiza dinamicamente os planos ativos cadastrados no catálogo oficial (`Basic`, `Pro`, `Enterprise`).
+* **E quando** o visitante clica para contratar qualquer plano,
+* **Então** o modal de onboarding recebe o `SaasPlanTier` exato do plano escolhido, integrando diretamente com o fluxo de registro e período de testes sem dados estáticos divergentes.

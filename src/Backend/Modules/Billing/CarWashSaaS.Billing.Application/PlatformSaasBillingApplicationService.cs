@@ -75,4 +75,61 @@ public sealed class PlatformSaasBillingApplicationService(
 
         return await quotaLookup.GetSubscriptionOverviewAsync(tenantId, ct);
     }
+
+    public async Task<Result<IReadOnlyList<SaasPlanDto>>> ListAllPlansAsync(CancellationToken ct = default)
+    {
+        var plans = await planRepository.ListAllAsync(ct);
+        var dtos = plans.Select(ToPlanDto).ToList();
+        return Result<IReadOnlyList<SaasPlanDto>>.Success(dtos);
+    }
+
+    public async Task<Result<SaasPlanDto>> UpdatePlanAsync(
+        SaasPlanTier tier,
+        UpdateSaasPlanRequest request,
+        CancellationToken ct = default)
+    {
+        var plan = await planRepository.GetByTierAsync(tier, ct);
+        if (plan is null)
+        {
+            return Result<SaasPlanDto>.Failure(new Error("saas_plan.not_found", $"Plano com tier '{tier}' não foi encontrado.", ErrorType.NotFound));
+        }
+
+        var updateResult = plan.UpdateDetails(
+            request.Name,
+            request.Description,
+            request.MonthlyPrice,
+            request.MaxWorkOrdersPerCycle,
+            request.MaxWhatsAppMessagesPerCycle,
+            request.MaxTeamMembers,
+            request.MaxBoxes,
+            request.HasCustomerSubscriptions,
+            request.HasLoyalty,
+            request.HasCommissions,
+            request.HasAiChatbot,
+            request.IsActive);
+
+        if (!updateResult.IsSuccess)
+        {
+            return Result<SaasPlanDto>.Failure(updateResult.Error!);
+        }
+
+        await planRepository.UpdateAsync(plan, ct);
+
+        return Result<SaasPlanDto>.Success(ToPlanDto(plan));
+    }
+
+    private static SaasPlanDto ToPlanDto(SaasPlan plan) => new(
+        plan.Tier,
+        plan.Name,
+        plan.Description,
+        plan.MonthlyPrice,
+        plan.MaxWorkOrdersPerCycle,
+        plan.MaxWhatsAppMessagesPerCycle,
+        plan.HasCustomerSubscriptions,
+        plan.HasLoyalty,
+        plan.HasCommissions,
+        plan.HasAiChatbot,
+        plan.MaxTeamMembers,
+        plan.MaxBoxes,
+        plan.IsActive);
 }

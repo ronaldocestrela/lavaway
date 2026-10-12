@@ -1,0 +1,257 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsOpen && Plan is not null)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-card" @onclick:stopPropagation>
+            <header class="modal-header">
+                <div>
+                    <span class="modal-badge">TIER: @Plan.Tier.ToString().ToUpperInvariant()</span>
+                    <h3 class="modal-title">⚙️ Gerenciar Plano SaaS: @Plan.Name</h3>
+                    <p class="modal-subtitle">Configure preços, limites operacionais de pátio e permissões de módulos.</p>
+                </div>
+                <button class="btn-close" type="button" @onclick="HandleCancel" aria-label="Fechar">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <!-- Seção 1: Dados Comerciais -->
+                <div class="section-title">Dados Comerciais &amp; Precificação</div>
+                <div class="form-row">
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-name">Nome Comercial *</label>
+                        <input id="plan-name" class="form-input" type="text" @bind="_name" placeholder="Ex: Pro" />
+                    </div>
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-price">Mensalidade (R$) *</label>
+                        <input id="plan-price" class="form-input" type="number" step="0.01" min="0" @bind="_monthlyPrice" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="plan-description">Descrição Comercial</label>
+                    <textarea id="plan-description" class="form-textarea" rows="2" @bind="_description" placeholder="Resumo dos benefícios do plano para o lojista"></textarea>
+                </div>
+
+                <!-- Seção 2: Capacidade e Limites Operacionais -->
+                <div class="section-title">Capacidade Operacional &amp; Limites do Estabelecimento</div>
+                <div class="form-row">
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-team-members">
+                            Tamanho Máximo da Equipe *
+                            <span class="label-hint">(usuários/funcionários)</span>
+                        </label>
+                        <input id="plan-team-members" class="form-input" type="number" min="1" max="9999" @bind="_maxTeamMembers" />
+                        <span class="input-helper">Ex: 3 membros (ou 999 para ilimitado)</span>
+                    </div>
+
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-boxes">
+                            Quantidade de Boxes de Atendimento *
+                            <span class="label-hint">(baias de lavagem)</span>
+                        </label>
+                        <input id="plan-boxes" class="form-input" type="number" min="0" max="999" @bind="_maxBoxes" />
+                        <span class="input-helper">0 = Ilimitado; ou especifique a quantidade exata (ex: 2, 5)</span>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-work-orders">
+                            Limite de OS por Ciclo
+                            <span class="label-hint">(mensal)</span>
+                        </label>
+                        <input id="plan-work-orders" class="form-input" type="number" min="0" @bind="_maxWorkOrdersPerCycle" />
+                        <span class="input-helper">0 = Ilimitado (ex: Basic: 150, Pro: 600)</span>
+                    </div>
+
+                    <div class="form-group col-half">
+                        <label class="form-label" for="plan-whatsapp">
+                            Disparos de WhatsApp por Ciclo
+                            <span class="label-hint">(mensal)</span>
+                        </label>
+                        <input id="plan-whatsapp" class="form-input" type="number" min="0" @bind="_maxWhatsAppMessagesPerCycle" />
+                        <span class="input-helper">0 = Ilimitado (ex: Basic: 300, Pro: 1500)</span>
+                    </div>
+                </div>
+
+                <!-- Seção 3: Acesso a Funções e Módulos do Sistema -->
+                <div class="section-title">Funções &amp; Módulos Habilitados no Plano</div>
+                <div class="features-grid">
+                    <label class="feature-toggle-card @(_hasCustomerSubscriptions ? "is-enabled" : "")">
+                        <div class="toggle-content">
+                            <input type="checkbox" @bind="_hasCustomerSubscriptions" id="toggle-customer-subs" />
+                            <div>
+                                <strong class="feature-title">Clube de Assinaturas</strong>
+                                <p class="feature-desc">Permite ao lava-jato criar planos recorrentes para seus clientes.</p>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="feature-toggle-card @(_hasLoyalty ? "is-enabled" : "")">
+                        <div class="toggle-content">
+                            <input type="checkbox" @bind="_hasLoyalty" id="toggle-loyalty" />
+                            <div>
+                                <strong class="feature-title">Programa de Fidelidade</strong>
+                                <p class="feature-desc">Acúmulo de pontos, resgate de lavagens e campanhas de retenção.</p>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="feature-toggle-card @(_hasCommissions ? "is-enabled" : "")">
+                        <div class="toggle-content">
+                            <input type="checkbox" @bind="_hasCommissions" id="toggle-commissions" />
+                            <div>
+                                <strong class="feature-title">Rateio &amp; Comissões</strong>
+                                <p class="feature-desc">Cálculo automatizado de comissões por serviço para lavadores.</p>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="feature-toggle-card @(_hasAiChatbot ? "is-enabled" : "")">
+                        <div class="toggle-content">
+                            <input type="checkbox" @bind="_hasAiChatbot" id="toggle-ai-chatbot" />
+                            <div>
+                                <strong class="feature-title">Chatbot com IA no WhatsApp</strong>
+                                <p class="feature-desc">Agente conversacional autônomo com agendamento inteligente via IA.</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Seção 4: Status do Plano -->
+                <div class="status-container">
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_isActive" id="plan-is-active" />
+                        <span><strong>Plano Ativo no Catálogo</strong> (visível para contratação e upgrade de lojistas)</span>
+                    </label>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        ⚠️ @_errorMessage
+                    </div>
+                }
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn-cancel" @onclick="HandleCancel" disabled="@IsSubmitting">
+                    Cancelar
+                </button>
+                <button type="button" class="btn-save" @onclick="HandleSave" disabled="@IsSubmitting" id="btn-save-plan">
+                    @if (IsSubmitting)
+                    {
+                        <span class="spinner-sm"></span>
+                        <span>Salvando alterações...</span>
+                    }
+                    else
+                    {
+                        <span>Salvar Configurações do Plano</span>
+                    }
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public SaasPlanDto? Plan { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<UpdateSaasPlanRequest> OnSave { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private decimal _monthlyPrice;
+    private int _maxWorkOrdersPerCycle;
+    private int _maxWhatsAppMessagesPerCycle;
+    private int _maxTeamMembers;
+    private int _maxBoxes;
+    private bool _hasCustomerSubscriptions;
+    private bool _hasLoyalty;
+    private bool _hasCommissions;
+    private bool _hasAiChatbot;
+    private bool _isActive;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (Plan is not null)
+        {
+            _name = Plan.Name;
+            _description = Plan.Description;
+            _monthlyPrice = Plan.MonthlyPrice;
+            _maxWorkOrdersPerCycle = Plan.MaxWorkOrdersPerCycle;
+            _maxWhatsAppMessagesPerCycle = Plan.MaxWhatsAppMessagesPerCycle;
+            _maxTeamMembers = Plan.MaxTeamMembers;
+            _maxBoxes = Plan.MaxBoxes;
+            _hasCustomerSubscriptions = Plan.HasCustomerSubscriptions;
+            _hasLoyalty = Plan.HasLoyalty;
+            _hasCommissions = Plan.HasCommissions;
+            _hasAiChatbot = Plan.HasAiChatbot;
+            _isActive = Plan.IsActive;
+            _errorMessage = null;
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        if (IsSubmitting) return;
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleSave()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _errorMessage = "O nome comercial do plano é obrigatório.";
+            return;
+        }
+
+        if (_monthlyPrice < 0)
+        {
+            _errorMessage = "A mensalidade do plano não pode ser negativa.";
+            return;
+        }
+
+        if (_maxTeamMembers < 0)
+        {
+            _errorMessage = "O tamanho máximo da equipe não pode ser negativo.";
+            return;
+        }
+
+        if (_maxBoxes < 0)
+        {
+            _errorMessage = "A quantidade de boxes não pode ser negativa.";
+            return;
+        }
+
+        _errorMessage = null;
+
+        var request = new UpdateSaasPlanRequest(
+            _name.Trim(),
+            _description?.Trim() ?? string.Empty,
+            _monthlyPrice,
+            _maxWorkOrdersPerCycle,
+            _maxWhatsAppMessagesPerCycle,
+            _maxTeamMembers,
+            _maxBoxes,
+            _hasCustomerSubscriptions,
+            _hasLoyalty,
+            _hasCommissions,
+            _hasAiChatbot,
+            _isActive);
+
+        await OnSave.InvokeAsync(request);
+    }
+}

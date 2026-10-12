@@ -48,6 +48,18 @@
                                     <svg class="feature-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
+                                    <span>@(plan.MaxBoxes <= 0 ? "Boxes Ilimitados" : $"Até {plan.MaxBoxes} boxes de pátio")</span>
+                                </li>
+                                <li class="plan-feature-item">
+                                    <svg class="feature-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span>@(plan.MaxTeamMembers >= 999 ? "Equipe Ilimitada" : $"Até {plan.MaxTeamMembers} membros na equipe")</span>
+                                </li>
+                                <li class="plan-feature-item">
+                                    <svg class="feature-check" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
                                     <span>@(plan.MaxWorkOrdersPerCycle > 0 ? $"Até {plan.MaxWorkOrdersPerCycle} OS/mês" : "OS Ilimitadas")</span>
                                 </li>
                                 <li class="plan-feature-item">

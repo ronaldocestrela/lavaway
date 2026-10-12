@@ -14,6 +14,13 @@ public sealed class SaasPlanRepository(BillingDbContext dbContext) : ISaasPlanRe
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<SaasPlan>> ListAllAsync(CancellationToken ct = default)
+    {
+        return await dbContext.SaasPlans
+            .OrderBy(p => p.MonthlyPrice)
+            .ToListAsync(ct);
+    }
+
     public async Task<SaasPlan?> GetByTierAsync(SaasPlanTier tier, CancellationToken ct = default)
     {
         return await dbContext.SaasPlans
@@ -23,6 +30,12 @@ public sealed class SaasPlanRepository(BillingDbContext dbContext) : ISaasPlanRe
     public async Task AddAsync(SaasPlan plan, CancellationToken ct = default)
     {
         await dbContext.SaasPlans.AddAsync(plan, ct);
+    }
+
+    public async Task UpdateAsync(SaasPlan plan, CancellationToken ct = default)
+    {
+        dbContext.SaasPlans.Update(plan);
+        await dbContext.SaveChangesAsync(ct);
     }
 
     public async Task EnsureSeedDataAsync(CancellationToken ct = default)

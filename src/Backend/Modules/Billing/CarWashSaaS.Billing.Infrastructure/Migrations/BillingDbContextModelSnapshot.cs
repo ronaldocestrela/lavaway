@@ -454,6 +454,11 @@ namespace CarWashSaaS.Billing.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<int>("MaxBoxes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("MaxTeamMembers")
                         .HasColumnType("int");
 

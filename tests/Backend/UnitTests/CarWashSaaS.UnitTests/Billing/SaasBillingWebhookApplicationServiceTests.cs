@@ -115,10 +115,21 @@ public sealed class SaasBillingWebhookApplicationServiceTests
         public Task<IReadOnlyList<SaasPlan>> ListActiveAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<SaasPlan>>(Plans.Where(p => p.IsActive).ToList());
 
+        public Task<IReadOnlyList<SaasPlan>> ListAllAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<SaasPlan>>(Plans.ToList());
+
         public Task<SaasPlan?> GetByTierAsync(SaasPlanTier tier, CancellationToken ct = default) =>
             Task.FromResult(Plans.FirstOrDefault(p => p.Tier == tier));
 
         public Task AddAsync(SaasPlan plan, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task UpdateAsync(SaasPlan plan, CancellationToken ct = default)
+        {
+            var idx = Plans.FindIndex(p => p.Tier == plan.Tier);
+            if (idx >= 0) Plans[idx] = plan;
+            return Task.CompletedTask;
+        }
+
         public Task EnsureSeedDataAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 

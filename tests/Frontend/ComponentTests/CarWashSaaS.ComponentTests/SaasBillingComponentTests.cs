@@ -96,4 +96,81 @@ public sealed class SaasBillingComponentTests : BunitContext
         Assert.Contains("299", cut.Markup);
         Assert.Contains("599", cut.Markup);
     }
+
+    [Fact]
+    public void EditSaasPlanModal_WhenClosed_ShouldRenderNothing()
+    {
+        var cut = Render<EditSaasPlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, false)
+            .Add(p => p.Plan, null));
+
+        Assert.Empty(cut.Markup.Trim());
+    }
+
+    [Fact]
+    public void EditSaasPlanModal_WhenOpen_ShouldRenderPlanDetailsAndBoxesAndTeamMembers()
+    {
+        var plan = new SaasPlanDto(
+            Tier: SaasPlanTier.Pro,
+            Name: "Plano Pro Estética",
+            Description: "Ideal para estética",
+            MonthlyPrice: 299.90m,
+            MaxWorkOrdersPerCycle: 600,
+            MaxWhatsAppMessagesPerCycle: 1500,
+            HasCustomerSubscriptions: true,
+            HasLoyalty: true,
+            HasCommissions: true,
+            HasAiChatbot: true,
+            MaxTeamMembers: 12,
+            MaxBoxes: 6,
+            IsActive: true);
+
+        var cut = Render<EditSaasPlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, true)
+            .Add(p => p.Plan, plan));
+
+        Assert.Contains("Gerenciar Plano SaaS: Plano Pro Estética", cut.Markup);
+        Assert.Contains("Tamanho Máximo da Equipe", cut.Markup);
+        Assert.Contains("Quantidade de Boxes de Atendimento", cut.Markup);
+        Assert.Contains("Funções &amp; Módulos Habilitados no Plano", cut.Markup);
+        Assert.Contains("Clube de Assinaturas", cut.Markup);
+        Assert.Contains("Programa de Fidelidade", cut.Markup);
+        Assert.Contains("Rateio &amp; Comissões", cut.Markup);
+        Assert.Contains("Chatbot com IA no WhatsApp", cut.Markup);
+    }
+
+    [Fact]
+    public async Task EditSaasPlanModal_WhenSaveClicked_ShouldTriggerOnSaveWithUpdatedRequest()
+    {
+        var plan = new SaasPlanDto(
+            Tier: SaasPlanTier.Basic,
+            Name: "Básico",
+            Description: "Entrada",
+            MonthlyPrice: 149m,
+            MaxWorkOrdersPerCycle: 150,
+            MaxWhatsAppMessagesPerCycle: 300,
+            HasCustomerSubscriptions: false,
+            HasLoyalty: false,
+            HasCommissions: false,
+            HasAiChatbot: false,
+            MaxTeamMembers: 3,
+            MaxBoxes: 2,
+            IsActive: true);
+
+        UpdateSaasPlanRequest? savedRequest = null;
+
+        var cut = Render<EditSaasPlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, true)
+            .Add(p => p.Plan, plan)
+            .Add(p => p.OnSave, (UpdateSaasPlanRequest req) => { savedRequest = req; }));
+
+        var saveButton = cut.Find("#btn-save-plan");
+        await saveButton.ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        Assert.NotNull(savedRequest);
+        Assert.Equal("Básico", savedRequest.Name);
+        Assert.Equal(149m, savedRequest.MonthlyPrice);
+        Assert.Equal(3, savedRequest.MaxTeamMembers);
+        Assert.Equal(2, savedRequest.MaxBoxes);
+    }
 }
