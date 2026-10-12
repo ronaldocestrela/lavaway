@@ -23,6 +23,13 @@ public sealed class TenantSaasSubscriptionRepository(
             .FirstOrDefaultAsync(s => s.GatewaySubscriptionId == gatewaySubscriptionId, ct);
     }
 
+    public async Task<TenantSaasSubscription?> GetByGatewayCustomerIdAsync(string gatewayCustomerId, CancellationToken ct = default)
+    {
+        return await dbContext.TenantSaasSubscriptions
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.GatewayCustomerId == gatewayCustomerId, ct);
+    }
+
     public async Task<IReadOnlyList<TenantSaasSubscription>> ListAllAsync(CancellationToken ct = default)
     {
         return await dbContext.TenantSaasSubscriptions
@@ -41,6 +48,11 @@ public sealed class TenantSaasSubscriptionRepository(
     {
         EnsureTenantContext(subscription.TenantId);
         dbContext.TenantSaasSubscriptions.Update(subscription);
+    }
+
+    public void SetTenantContext(Guid tenantId)
+    {
+        EnsureTenantContext(tenantId);
     }
 
     public async Task SaveChangesAsync(CancellationToken ct = default)

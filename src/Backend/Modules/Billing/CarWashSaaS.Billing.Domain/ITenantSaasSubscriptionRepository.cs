@@ -4,8 +4,10 @@ public interface ITenantSaasSubscriptionRepository
 {
     Task<TenantSaasSubscription?> GetByTenantIdAsync(Guid tenantId, CancellationToken ct = default);
     Task<TenantSaasSubscription?> GetByGatewaySubscriptionIdAsync(string gatewaySubscriptionId, CancellationToken ct = default);
+    Task<TenantSaasSubscription?> GetByGatewayCustomerIdAsync(string gatewayCustomerId, CancellationToken ct = default);
     Task<IReadOnlyList<TenantSaasSubscription>> ListAllAsync(CancellationToken ct = default);
     Task AddAsync(TenantSaasSubscription subscription, CancellationToken ct = default);
     void Update(TenantSaasSubscription subscription);
+    void SetTenantContext(Guid tenantId);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

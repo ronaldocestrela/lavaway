@@ -97,6 +97,80 @@ public sealed class SaasBillingApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<Result<StripeCheckoutSessionDto>> CreateCheckoutSessionAsync(
+        SaasPlanTier targetTier,
+        string? successUrl = null,
+        string? cancelUrl = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var request = new CreateStripeCheckoutSessionRequest(targetTier, successUrl, cancelUrl);
+            using var response = await httpClient.PostAsJsonAsync("settings/subscription/checkout-session", request, JsonOptions, ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<StripeCheckoutSessionDto>(JsonOptions, ct);
+                return data is not null
+                    ? Result<StripeCheckoutSessionDto>.Success(data)
+                    : Result<StripeCheckoutSessionDto>.Failure(new Error("saas_billing.empty_response", "Resposta vazia do servidor.", ErrorType.Validation));
+            }
+
+            var error = await ReadErrorAsync(response, ct);
+            return Result<StripeCheckoutSessionDto>.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<StripeCheckoutSessionDto>.Failure(new Error("saas_billing.network_error", ex.Message, ErrorType.Validation));
+        }
+    }
+
+    public async Task<Result<TenantSubscriptionOverviewDto>> SyncCheckoutSessionAsync(
+        string sessionId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var request = new SyncStripeCheckoutSessionRequest(sessionId);
+            using var response = await httpClient.PostAsJsonAsync("settings/subscription/checkout-session/sync", request, JsonOptions, ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<TenantSubscriptionOverviewDto>(JsonOptions, ct);
+                return data is not null
+                    ? Result<TenantSubscriptionOverviewDto>.Success(data)
+                    : Result<TenantSubscriptionOverviewDto>.Failure(new Error("saas_billing.empty_response", "Resposta vazia do servidor.", ErrorType.Validation));
+            }
+
+            var error = await ReadErrorAsync(response, ct);
+            return Result<TenantSubscriptionOverviewDto>.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<TenantSubscriptionOverviewDto>.Failure(new Error("saas_billing.network_error", ex.Message, ErrorType.Validation));
+        }
+    }
+
+    public async Task<Result<StripeCustomerPortalSessionDto>> CreateCustomerPortalSessionAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await httpClient.PostAsync("settings/subscription/portal-session", null, ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<StripeCustomerPortalSessionDto>(JsonOptions, ct);
+                return data is not null
+                    ? Result<StripeCustomerPortalSessionDto>.Success(data)
+                    : Result<StripeCustomerPortalSessionDto>.Failure(new Error("saas_billing.empty_response", "Resposta vazia do servidor.", ErrorType.Validation));
+            }
+
+            var error = await ReadErrorAsync(response, ct);
+            return Result<StripeCustomerPortalSessionDto>.Failure(error);
+        }
+        catch (Exception ex)
+        {
+            return Result<StripeCustomerPortalSessionDto>.Failure(new Error("saas_billing.network_error", ex.Message, ErrorType.Validation));
+        }
+    }
+
     public async Task<Result<TenantSubscriptionOverviewDto>> SettleInvoiceAsync(Guid invoiceId, CancellationToken ct = default)
     {
         try

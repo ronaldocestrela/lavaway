@@ -19,6 +19,9 @@ public sealed class TenantSaasSubscriptionApplicationServiceTests
         public Task<TenantSaasSubscription?> GetByGatewaySubscriptionIdAsync(string gatewaySubscriptionId, CancellationToken ct = default) =>
             Task.FromResult(Subscriptions.Values.FirstOrDefault(s => s.GatewaySubscriptionId == gatewaySubscriptionId));
 
+        public Task<TenantSaasSubscription?> GetByGatewayCustomerIdAsync(string gatewayCustomerId, CancellationToken ct = default) =>
+            Task.FromResult(Subscriptions.Values.FirstOrDefault(s => s.GatewayCustomerId == gatewayCustomerId));
+
         public Task<IReadOnlyList<TenantSaasSubscription>> ListAllAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TenantSaasSubscription>>(Subscriptions.Values.ToList());
 
@@ -29,6 +32,8 @@ public sealed class TenantSaasSubscriptionApplicationServiceTests
         }
 
         public void Update(TenantSaasSubscription subscription) => Subscriptions[subscription.TenantId] = subscription;
+
+        public void SetTenantContext(Guid tenantId) { }
 
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
@@ -113,6 +118,15 @@ public sealed class TenantSaasSubscriptionApplicationServiceTests
 
         public Task<Result<GatewayInvoiceResult>> GenerateInvoiceAsync(Guid tenantId, string gatewayCustomerId, decimal amount, DateTimeOffset dueDateUtc, CancellationToken ct = default) =>
             Task.FromResult(Result<GatewayInvoiceResult>.Success(new GatewayInvoiceResult("inv_1", amount, dueDateUtc, "https://pay/1", "qr", "copia")));
+
+        public Task<Result<GatewayCheckoutSessionResult>> CreateSubscriptionCheckoutSessionAsync(Guid tenantId, string customerName, string customerEmail, SaasPlan plan, string successUrl, string cancelUrl, CancellationToken ct = default) =>
+            Task.FromResult(Result<GatewayCheckoutSessionResult>.Success(new GatewayCheckoutSessionResult("cs_1", "https://checkout.stripe.com/1")));
+
+        public Task<Result<GatewayCheckoutSessionDetails>> GetCheckoutSessionAsync(string sessionId, CancellationToken ct = default) =>
+            Task.FromResult(Result<GatewayCheckoutSessionDetails>.Success(new GatewayCheckoutSessionDetails("cs_1", Guid.Empty, SaasPlanTier.Enterprise, "cus_1", "sub_1", "paid", "complete")));
+
+        public Task<Result<GatewayPortalSessionResult>> CreateCustomerPortalSessionAsync(string gatewayCustomerId, string returnUrl, CancellationToken ct = default) =>
+            Task.FromResult(Result<GatewayPortalSessionResult>.Success(new GatewayPortalSessionResult("https://billing.stripe.com/p/1")));
 
         public bool VerifyWebhookSignature(string payload, string signatureHeader, string secret) => true;
     }
@@ -209,4 +223,76 @@ public sealed class TenantSaasSubscriptionApplicationServiceTests
         Assert.Equal("Paid", invoice.Status);
         Assert.NotNull(invoice.PaidAtUtc);
     }
+
+    [Fact]
+    public async Task CreateCheckoutSessionAsync_WithValidTier_Should_Return_Session_Url()
+    {
+        var subRepo = new FakeSubscriptionRepository();
+        var quotaRepo = new FakeQuotaUsageRepository();
+        var invoiceRepo = new FakeInvoiceRepository();
+        var planRepo = new FakePlanRepository();
+        var gateway = new FakeGatewayProvider();
+        var tenantLookup = new FakeGlobalTenantLookup();
+        var quotaLookup = new TenantPlanQuotaApplicationService(subRepo, quotaRepo, planRepo, invoiceRepo, tenantLookup);
+
+        var service = new TenantSaasSubscriptionApplicationService(
+            subRepo, quotaRepo, invoiceRepo, planRepo, gateway, tenantLookup, quotaLookup);
+
+        var result = await service.CreateCheckoutSessionAsync(_tenantId, SaasPlanTier.Enterprise);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("cs_1", result.Value!.SessionId);
+        Assert.Equal("https://checkout.stripe.com/1", result.Value.CheckoutUrl);
+    }
+
+    [Fact]
+    public async Task CreateCustomerPortalSessionAsync_WhenCustomerExists_Should_Return_Portal_Url()
+    {
+        var subRepo = new FakeSubscriptionRepository();
+        var quotaRepo = new FakeQuotaUsageRepository();
+        var invoiceRepo = new FakeInvoiceRepository();
+        var planRepo = new FakePlanRepository();
+        var gateway = new FakeGatewayProvider();
+        var tenantLookup = new FakeGlobalTenantLookup();
+        var quotaLookup = new TenantPlanQuotaApplicationService(subRepo, quotaRepo, planRepo, invoiceRepo, tenantLookup);
+
+        var plan = planRepo.Plans.First(p => p.Tier == SaasPlanTier.Pro);
+        var sub = TenantSaasSubscription.CreateActive(_tenantId, plan, "cus_stripe_123", "sub_stripe_123").Value!;
+        subRepo.Subscriptions[_tenantId] = sub;
+
+        var service = new TenantSaasSubscriptionApplicationService(
+            subRepo, quotaRepo, invoiceRepo, planRepo, gateway, tenantLookup, quotaLookup);
+
+        var result = await service.CreateCustomerPortalSessionAsync(_tenantId);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("https://billing.stripe.com/p/1", result.Value!.PortalUrl);
+    }
+
+    [Fact]
+    public async Task SyncCheckoutSessionAsync_WhenSessionPaid_Should_Upgrade_Plan_And_Activate()
+    {
+        var subRepo = new FakeSubscriptionRepository();
+        var quotaRepo = new FakeQuotaUsageRepository();
+        var invoiceRepo = new FakeInvoiceRepository();
+        var planRepo = new FakePlanRepository();
+        var gateway = new FakeGatewayProvider();
+        var tenantLookup = new FakeGlobalTenantLookup();
+        var quotaLookup = new TenantPlanQuotaApplicationService(subRepo, quotaRepo, planRepo, invoiceRepo, tenantLookup);
+
+        var basicPlan = planRepo.Plans.First(p => p.Tier == SaasPlanTier.Basic);
+        var sub = TenantSaasSubscription.CreateActive(_tenantId, basicPlan, "cus_old", "sub_old").Value!;
+        subRepo.Subscriptions[_tenantId] = sub;
+
+        var service = new TenantSaasSubscriptionApplicationService(
+            subRepo, quotaRepo, invoiceRepo, planRepo, gateway, tenantLookup, quotaLookup);
+
+        var result = await service.SyncCheckoutSessionAsync(_tenantId, "cs_1");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(SaasPlanTier.Enterprise, result.Value!.PlanTier);
+        Assert.Equal(TenantSubscriptionStatus.Active, result.Value.Status);
+        Assert.Equal(SaasPlanTier.Enterprise, sub.PlanTier);
+    }
 }
+

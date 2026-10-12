@@ -212,6 +212,15 @@ dotnet run --project src/Backend/CarWashSaaS.Api
   ```
 - O documento OpenAPI pode ser consultado em: `http://localhost:5225/openapi/v1.json`.
 
+> [!TIP]
+> **Configuração do Stripe Billing (Assinaturas SaaS)**:
+> Por padrão em desenvolvimento, se as chaves da Stripe não estiverem configuradas, a API utiliza o provedor simulado (`SimulatedSaasBillingGatewayProvider`).
+> Para habilitar o Stripe Checkout e Portal reais, configure as chaves em `src/Backend/CarWashSaaS.Api/appsettings.Development.json` ou variáveis de ambiente:
+> - `Stripe:SecretKey` (ou `Stripe__SecretKey`): chave secreta (`sk_test_...`)
+> - `Stripe:PublishableKey` (ou `Stripe__PublishableKey`): chave pública (`pk_test_...`)
+> - `Stripe:WebhookSecret` (ou `Stripe__WebhookSecret`): segredo de assinatura do webhook (`whsec_...`)
+> - O endpoint de webhook do Stripe na plataforma é: `POST /platform/billing/webhooks`
+
 ---
 
 ### 5. Executar o Frontend Blazor

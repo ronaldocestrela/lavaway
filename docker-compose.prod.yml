@@ -202,6 +202,12 @@ services:
       Seed__ReceptionPassword: ${SEED_RECEPTION_PASSWORD:-Recepcao123!}
       Seed__PlatformAdminEmail: ${SEED_PLATFORM_ADMIN_EMAIL:-platform@lavaway.com}
       Seed__PlatformAdminPassword: ${SEED_PLATFORM_ADMIN_PASSWORD:-PlatformAdmin123!}
+      Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+      Stripe__PublishableKey: ${STRIPE_PUBLISHABLE_KEY:-}
+      Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+      Stripe__DefaultSuccessUrl: ${STRIPE_SUCCESS_URL:-${APP_URL:-http://localhost}/settings/subscription?session_id={CHECKOUT_SESSION_ID}}
+      Stripe__DefaultCancelUrl: ${STRIPE_CANCEL_URL:-${APP_URL:-http://localhost}/settings/subscription}
+      Stripe__Currency: ${STRIPE_CURRENCY:-brl}
     networks:
       - backend-net
     healthcheck:

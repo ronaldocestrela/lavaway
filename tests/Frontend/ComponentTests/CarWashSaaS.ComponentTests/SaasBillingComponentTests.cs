@@ -173,4 +173,45 @@ public sealed class SaasBillingComponentTests : BunitContext
         Assert.Equal(3, savedRequest.MaxTeamMembers);
         Assert.Equal(2, savedRequest.MaxBoxes);
     }
+
+    [Fact]
+    public void UpgradePlanModal_When_Open_Should_Render_Stripe_Checkout_Button()
+    {
+        var plans = new List<SaasPlanDto>
+        {
+            new(SaasPlanTier.Basic, "Basic", "Básico", 99m, 150, 300, false, false, false, false, 3),
+            new(SaasPlanTier.Pro, "Pro", "Profissional", 199m, 600, 1500, true, true, true, true, 10)
+        };
+
+        var cut = Render<UpgradePlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, true)
+            .Add(p => p.CurrentTier, SaasPlanTier.Basic)
+            .Add(p => p.Plans, plans));
+
+        Assert.Contains("Contratar no Cartão (Stripe)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UpgradePlanModal_When_StripeCheckoutClicked_Should_Trigger_OnConfirmCheckout()
+    {
+        var plans = new List<SaasPlanDto>
+        {
+            new(SaasPlanTier.Basic, "Basic", "Básico", 99m, 150, 300, false, false, false, false, 3),
+            new(SaasPlanTier.Pro, "Pro", "Profissional", 199m, 600, 1500, true, true, true, true, 10)
+        };
+
+        SaasPlanTier? checkoutTier = null;
+
+        var cut = Render<UpgradePlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, true)
+            .Add(p => p.CurrentTier, SaasPlanTier.Basic)
+            .Add(p => p.Plans, plans)
+            .Add(p => p.OnConfirmCheckout, (SaasPlanTier tier) => { checkoutTier = tier; }));
+
+        var stripeButton = cut.Find(".btn-modal-stripe-checkout");
+        await stripeButton.ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        Assert.Equal(SaasPlanTier.Pro, checkoutTier);
+    }
 }
+

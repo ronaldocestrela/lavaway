@@ -143,7 +143,15 @@ builder.Services.AddScoped<ITenantSaasSubscriptionRepository, TenantSaasSubscrip
 builder.Services.AddScoped<ITenantQuotaUsageRepository, TenantQuotaUsageRepository>();
 builder.Services.AddScoped<ISaasInvoiceRepository, SaasInvoiceRepository>();
 builder.Services.AddScoped<IProcessedSaasWebhookEventRepository, ProcessedSaasWebhookEventRepository>();
-builder.Services.AddScoped<ISaasBillingGatewayProvider, SimulatedSaasBillingGatewayProvider>();
+builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection(StripeBillingOptions.SectionName));
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Stripe:SecretKey"]))
+{
+    builder.Services.AddScoped<ISaasBillingGatewayProvider, StripeSaasBillingGatewayProvider>();
+}
+else
+{
+    builder.Services.AddScoped<ISaasBillingGatewayProvider, SimulatedSaasBillingGatewayProvider>();
+}
 builder.Services.AddScoped<TenantPlanQuotaApplicationService>();
 builder.Services.AddScoped<ITenantPlanQuotaLookup>(sp => sp.GetRequiredService<TenantPlanQuotaApplicationService>());
 builder.Services.AddScoped<SaasBillingWebhookApplicationService>();
