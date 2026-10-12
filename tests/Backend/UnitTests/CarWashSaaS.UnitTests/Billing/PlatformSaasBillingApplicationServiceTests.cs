@@ -44,11 +44,15 @@ public sealed class PlatformSaasBillingApplicationServiceTests
         public Task<TenantSaasSubscription?> GetByGatewaySubscriptionIdAsync(string gatewaySubscriptionId, CancellationToken ct = default) =>
             Task.FromResult<TenantSaasSubscription?>(null);
 
+        public Task<TenantSaasSubscription?> GetByGatewayCustomerIdAsync(string gatewayCustomerId, CancellationToken ct = default) =>
+            Task.FromResult<TenantSaasSubscription?>(null);
+
         public Task<IReadOnlyList<TenantSaasSubscription>> ListAllAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TenantSaasSubscription>>([]);
 
         public Task AddAsync(TenantSaasSubscription subscription, CancellationToken ct = default) => Task.CompletedTask;
         public void Update(TenantSaasSubscription subscription) { }
+        public void SetTenantContext(Guid tenantId) { }
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 

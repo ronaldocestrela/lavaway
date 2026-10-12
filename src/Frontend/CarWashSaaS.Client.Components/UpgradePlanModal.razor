@@ -134,7 +134,26 @@
                 <button type="button" @onclick="Close" class="btn-modal-cancel">
                     Cancelar
                 </button>
-                <button type="button" @onclick="ConfirmPlanChange"
+                <button type="button" @onclick="ConfirmStripeCheckout"
+                        disabled="@(SelectedTier == null || SelectedTier == CurrentTier || IsLoading)"
+                        class="btn-modal-stripe-checkout">
+                    @if (IsLoading)
+                    {
+                        <svg class="spinner-icon" fill="none" viewBox="0 0 24 24">
+                            <circle opacity="0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path opacity="0.75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <span>Aguarde...</span>
+                    }
+                    else
+                    {
+                        <svg class="card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        <span>Contratar no Cartão (Stripe)</span>
+                    }
+                </button>
+                @*<button type="button" @onclick="ConfirmPlanChange"
                         disabled="@(SelectedTier == null || SelectedTier == CurrentTier || IsLoading)"
                         class="btn-modal-confirm">
                     @if (IsLoading)
@@ -147,9 +166,9 @@
                     }
                     else
                     {
-                        <span>Confirmar Alteração de Plano</span>
+                        <span>Confirmar Alteração</span>
                     }
-                </button>
+                </button>*@
             </div>
         </div>
     </div>
@@ -170,6 +189,9 @@
 
     [Parameter]
     public EventCallback<SaasPlanTier> OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback<SaasPlanTier> OnConfirmCheckout { get; set; }
 
     private SaasPlanTier? SelectedTier { get; set; }
     private bool IsLoading { get; set; }
@@ -194,6 +216,29 @@
             try
             {
                 await OnConfirm.InvokeAsync(SelectedTier.Value);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+    }
+
+    private async Task ConfirmStripeCheckout()
+    {
+        if (SelectedTier.HasValue && SelectedTier != CurrentTier)
+        {
+            IsLoading = true;
+            try
+            {
+                if (OnConfirmCheckout.HasDelegate)
+                {
+                    await OnConfirmCheckout.InvokeAsync(SelectedTier.Value);
+                }
+                else
+                {
+                    await OnConfirm.InvokeAsync(SelectedTier.Value);
+                }
             }
             finally
             {

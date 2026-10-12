@@ -68,10 +68,25 @@ public sealed record TenantSubscriptionOverviewDto(
     int MaxWhatsAppMessages,
     string? GatewaySubscriptionId,
     SaasInvoiceDto? PendingInvoice,
-    IReadOnlyList<SaasInvoiceDto> Invoices);
+    IReadOnlyList<SaasInvoiceDto> Invoices,
+    string? GatewayCustomerId = null,
+    string? StripePortalUrl = null,
+    string? PaymentMethodType = null);
 
 public sealed record ChangePlanRequest(
     SaasPlanTier TargetTier);
+
+public sealed record CreateStripeCheckoutSessionRequest(
+    SaasPlanTier TargetTier,
+    string? SuccessUrl = null,
+    string? CancelUrl = null);
+
+public sealed record StripeCheckoutSessionDto(
+    string SessionId,
+    string CheckoutUrl);
+
+public sealed record StripeCustomerPortalSessionDto(
+    string PortalUrl);
 
 public sealed record AdminOverridePlanRequest(
     SaasPlanTier TargetTier,
@@ -81,6 +96,9 @@ public sealed record AdminOverridePlanRequest(
 public sealed record SettleInvoiceRequest(
     bool SimulateFailure = false);
 
+public sealed record SyncStripeCheckoutSessionRequest(
+    string SessionId);
+
 public sealed record SaasBillingWebhookPayload(
     string EventId,
     string EventType,
@@ -89,4 +107,6 @@ public sealed record SaasBillingWebhookPayload(
     string? GatewayInvoiceId,
     decimal? Amount,
     DateTimeOffset TimestampUtc,
-    string? Signature = null);
+    string? Signature = null,
+    string? GatewayCustomerId = null,
+    SaasPlanTier? PlanTier = null);

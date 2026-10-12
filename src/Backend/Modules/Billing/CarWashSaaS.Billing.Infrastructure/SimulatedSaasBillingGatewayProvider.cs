@@ -31,6 +31,43 @@ public sealed class SimulatedSaasBillingGatewayProvider : ISaasBillingGatewayPro
             PixCopiaECola: pixCopiaECola)));
     }
 
+    public Task<Result<GatewayCheckoutSessionResult>> CreateSubscriptionCheckoutSessionAsync(
+        Guid tenantId,
+        string customerName,
+        string customerEmail,
+        SaasPlan plan,
+        string successUrl,
+        string cancelUrl,
+        CancellationToken ct = default)
+    {
+        var sessionId = $"cs_simulated_{tenantId:N}[..8]_{Guid.NewGuid():N}[..8]";
+        var checkoutUrl = $"https://checkout.stripe.com/pay/{sessionId}";
+        return Task.FromResult(Result<GatewayCheckoutSessionResult>.Success(new GatewayCheckoutSessionResult(sessionId, checkoutUrl)));
+    }
+
+    public Task<Result<GatewayCheckoutSessionDetails>> GetCheckoutSessionAsync(
+        string sessionId,
+        CancellationToken ct = default)
+    {
+        return Task.FromResult(Result<GatewayCheckoutSessionDetails>.Success(new GatewayCheckoutSessionDetails(
+            SessionId: sessionId,
+            TenantId: Guid.Empty,
+            PlanTier: null,
+            GatewayCustomerId: "cus_simulated",
+            GatewaySubscriptionId: "sub_simulated",
+            PaymentStatus: "paid",
+            Status: "complete")));
+    }
+
+    public Task<Result<GatewayPortalSessionResult>> CreateCustomerPortalSessionAsync(
+        string gatewayCustomerId,
+        string returnUrl,
+        CancellationToken ct = default)
+    {
+        var portalUrl = $"https://billing.stripe.com/p/session/simulated_{Guid.NewGuid():N}[..12]";
+        return Task.FromResult(Result<GatewayPortalSessionResult>.Success(new GatewayPortalSessionResult(portalUrl)));
+    }
+
     public Task<Result<bool>> ChangeSubscriptionPlanAsync(
         string gatewaySubscriptionId,
         SaasPlan newPlan,

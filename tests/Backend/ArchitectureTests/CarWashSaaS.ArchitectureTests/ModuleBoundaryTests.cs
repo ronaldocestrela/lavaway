@@ -102,6 +102,22 @@ public sealed class ModuleBoundaryTests
     }
 
     [Fact]
+    public void DomainAssemblies_ShouldNotReferenceStripe()
+    {
+        foreach (var assembly in DomainAssemblies)
+        {
+            var result = Types.InAssembly(assembly)
+                .ShouldNot()
+                .HaveDependencyOnAny("Stripe")
+                .GetResult();
+
+            Assert.True(
+                result.IsSuccessful,
+                $"Domain assembly {assembly.GetName().Name} should not depend on Stripe: {string.Join(", ", result.FailingTypeNames ?? [])}");
+        }
+    }
+
+    [Fact]
     public void ApplicationAssemblies_ShouldNotReferenceInfrastructureOrPresentation()
     {
         var forbiddenDependencies = new[]

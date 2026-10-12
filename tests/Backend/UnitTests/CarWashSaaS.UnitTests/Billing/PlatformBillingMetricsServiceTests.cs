@@ -17,6 +17,9 @@ public sealed class PlatformBillingMetricsServiceTests
         public Task<TenantSaasSubscription?> GetByGatewaySubscriptionIdAsync(string gatewaySubscriptionId, CancellationToken ct = default) =>
             Task.FromResult(Subscriptions.FirstOrDefault(s => s.GatewaySubscriptionId == gatewaySubscriptionId));
 
+        public Task<TenantSaasSubscription?> GetByGatewayCustomerIdAsync(string gatewayCustomerId, CancellationToken ct = default) =>
+            Task.FromResult(Subscriptions.FirstOrDefault(s => s.GatewayCustomerId == gatewayCustomerId));
+
         public Task<IReadOnlyList<TenantSaasSubscription>> ListAllAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TenantSaasSubscription>>(Subscriptions);
 
@@ -27,7 +30,7 @@ public sealed class PlatformBillingMetricsServiceTests
         }
 
         public void Update(TenantSaasSubscription subscription) { }
-
+        public void SetTenantContext(Guid tenantId) { }
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 

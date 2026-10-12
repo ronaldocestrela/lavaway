@@ -4,6 +4,7 @@
 @using CarWashSaaS.Shared.Contracts
 @inject SaasBillingApiClient BillingClient
 @inject IToastService ToastService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Meu Plano &amp; Assinatura — Lavaway</PageTitle>
 
@@ -12,6 +13,15 @@
                  Title="Meu Plano & Assinatura"
                  Subtitle="Acompanhe seu consumo mensal de cotas, vigência da assinatura e faturas da plataforma.">
         <Actions>
+            @if (!string.IsNullOrWhiteSpace(Overview?.GatewayCustomerId))
+            {
+                <button type="button" @onclick="OpenCustomerPortal" class="btn-portal-action">
+                    <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    <span>Cartão &amp; Assinatura</span>
+                </button>
+            }
             <button type="button" @onclick="OpenUpgradeModal" class="btn-upgrade-action">
                 <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -183,7 +193,8 @@
                   CurrentTier="@(Overview?.PlanTier ?? SaasPlanTier.Basic)"
                   Plans="AvailablePlans"
                   OnClose="() => IsUpgradeModalOpen = false"
-                  OnConfirm="HandlePlanChange" />
+                  OnConfirm="HandlePlanChange"
+                  OnConfirmCheckout="HandleStripeCheckout" />
 
 <SettleInvoiceModal IsOpen="IsInvoiceModalOpen"
                     Invoice="SelectedInvoice"
@@ -201,7 +212,37 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await CheckReturnUrlAsync();
         await LoadDataAsync();
+    }
+
+    private async Task CheckReturnUrlAsync()
+    {
+        try
+        {
+            var uri = new Uri(NavigationManager.Uri);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var sessionId = query["session_id"];
+            var canceled = query["canceled"];
+
+            if (!string.IsNullOrWhiteSpace(sessionId))
+            {
+                var syncResult = await BillingClient.SyncCheckoutSessionAsync(sessionId);
+                if (syncResult.IsSuccess)
+                {
+                    Overview = syncResult.Value;
+                    ToastService.ShowSuccess("Assinatura confirmada e plano atualizado com sucesso!");
+                }
+            }
+            else if (string.Equals(canceled, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                ToastService.ShowInfo("Processo de contratação cancelado.");
+            }
+        }
+        catch
+        {
+            // fallback
+        }
     }
 
     private async Task LoadDataAsync()
@@ -256,6 +297,37 @@
             Overview = result.Value;
             IsUpgradeModalOpen = false;
             ToastService.ShowSuccess("Plano atualizado com sucesso!");
+        }
+        else
+        {
+            ToastService.ShowError(result.Error!.Description);
+        }
+    }
+
+    private async Task HandleStripeCheckout(SaasPlanTier newTier)
+    {
+        var returnUrl = NavigationManager.BaseUri + "settings/subscription?session_id={CHECKOUT_SESSION_ID}";
+        var cancelUrl = NavigationManager.BaseUri + "settings/subscription?canceled=true";
+        var result = await BillingClient.CreateCheckoutSessionAsync(newTier, returnUrl, cancelUrl);
+        if (result.IsSuccess)
+        {
+            IsUpgradeModalOpen = false;
+            ToastService.ShowInfo("Redirecionando para o Stripe Checkout seguro...");
+            NavigationManager.NavigateTo(result.Value!.CheckoutUrl, forceLoad: true);
+        }
+        else
+        {
+            ToastService.ShowError(result.Error!.Description);
+        }
+    }
+
+    private async Task OpenCustomerPortal()
+    {
+        var result = await BillingClient.CreateCustomerPortalSessionAsync();
+        if (result.IsSuccess)
+        {
+            ToastService.ShowInfo("Abrindo portal do cliente...");
+            NavigationManager.NavigateTo(result.Value!.PortalUrl, forceLoad: true);
         }
         else
         {
