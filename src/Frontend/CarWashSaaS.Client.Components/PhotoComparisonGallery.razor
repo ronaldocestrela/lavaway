@@ -375,6 +375,8 @@
 @code {
     [Parameter, EditorRequired] public Guid WorkOrderId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string? AccessToken { get; set; }
+    [Inject] private IServiceProvider ServiceProvider { get; set; } = default!;
 
     private WorkOrderComparisonGalleryDto? Gallery { get; set; }
     private bool IsLoading { get; set; } = true;
@@ -398,6 +400,15 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (string.IsNullOrWhiteSpace(AccessToken))
+        {
+            var tokenStorage = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ITokenStorage>(ServiceProvider);
+            if (tokenStorage is not null)
+            {
+                AccessToken = await tokenStorage.GetAccessTokenAsync();
+            }
+        }
+
         if (WorkOrderId != Guid.Empty)
         {
             await LoadGalleryAsync();
@@ -444,10 +455,10 @@
     }
 
     private string GetAfterPhotoUrl(Guid photoId) =>
-        WorkOrderClient.GetPostServicePhotoUrl(WorkOrderId, photoId);
+        WorkOrderClient.GetPostServicePhotoUrl(WorkOrderId, photoId, AccessToken);
 
     private string GetBeforePhotoUrl(Guid photoId) =>
-        WorkOrderClient.GetInspectionPhotoUrl(WorkOrderId, photoId);
+        WorkOrderClient.GetInspectionPhotoUrl(WorkOrderId, photoId, AccessToken);
 
     private string FormatPlate(string? plate)
     {

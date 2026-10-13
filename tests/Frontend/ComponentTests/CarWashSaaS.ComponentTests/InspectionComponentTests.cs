@@ -75,6 +75,26 @@ public sealed class InspectionComponentTests : BunitContext
     }
 
     [Fact]
+    public void InspectionPhotoGallery_ShouldIncludeAccessTokenInPhotoStreamUrl_WhenAccessTokenIsProvided()
+    {
+        var photoId = Guid.NewGuid();
+        var photos = new List<InspectionPhotoDto>
+        {
+            new(photoId, InspectionPhotoCategory.Front, "front.jpg", "image/jpeg", 2048, null, DateTimeOffset.UtcNow)
+        };
+
+        var cut = Render<InspectionPhotoGallery>(parameters => parameters
+            .Add(p => p.WorkOrderId, Guid.NewGuid())
+            .Add(p => p.Photos, photos)
+            .Add(p => p.IsReadOnly, false)
+            .Add(p => p.PhotoBaseUrl, "https://api.test/")
+            .Add(p => p.AccessToken, "secret_jwt_token_123"));
+
+        Assert.Contains($"https://api.test/work-orders/", cut.Markup);
+        Assert.Contains($"access_token=secret_jwt_token_123", cut.Markup);
+    }
+
+    [Fact]
     public void WorkOrderCreatedModal_ShouldTriggerOnGoToInspectionWhenClicked()
     {
         Guid? clickedWoId = null;

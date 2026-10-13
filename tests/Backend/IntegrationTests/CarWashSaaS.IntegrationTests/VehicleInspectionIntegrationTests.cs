@@ -143,6 +143,57 @@ public sealed class VehicleInspectionIntegrationTests(SqlServerFixture fixture)
         }
     }
 
+    [Fact]
+    public async Task CrossTenant_InspectionPhotoStream_ShouldReturnNotFound()
+    {
+        var tenantA = await CreateTenantAsync("Tenant A Photo Stream");
+        var tenantB = await CreateTenantAsync("Tenant B Photo Stream");
+
+        Guid tenantAWorkOrderId;
+        Guid photoId;
+
+        await using (var contextA = CreateYardContext(tenantA))
+        {
+            var (workOrderServiceA, inspectionServiceA) = CreateServices(contextA);
+            var customer = Customer.Create(tenantA, "Alice", "11999990000").Value!;
+            var vehicle = Vehicle.Create(tenantA, customer.Id, "XYZ9999", VehicleSize.HatchSedan).Value!;
+            var price = ServicePrice.Create(tenantA, VehicleSize.HatchSedan, 40m, 20).Value!;
+            var service = Service.Create(tenantA, "Ducha", "Lavagem", [price]).Value!;
+            contextA.Customers.Add(customer);
+            contextA.Vehicles.Add(vehicle);
+            contextA.Services.Add(service);
+            await contextA.SaveChangesAsync();
+
+            var wo = await workOrderServiceA.CreateAsync(tenantA, new CreateWorkOrderCommand(
+                customer.Id,
+                vehicle.Id,
+                [new CreateWorkOrderItemInput(service.Id, 1)]));
+            tenantAWorkOrderId = wo.Value!.Id;
+
+            await inspectionServiceA.CreateOrGetInspectionAsync(tenantA, tenantAWorkOrderId, new CreateInspectionRequest());
+            var bytes = Encoding.UTF8.GetBytes("sample image payload");
+            using var ms = new MemoryStream(bytes);
+            var uploadRes = await inspectionServiceA.UploadPhotoAsync(
+                tenantA, tenantAWorkOrderId, InspectionPhotoCategory.Front, ms, "front.jpg", "image/jpeg", bytes.Length);
+            Assert.True(uploadRes.IsSuccess);
+            photoId = uploadRes.Value!.Id;
+
+            // Tenant A can read its own photo stream
+            var photoStreamA = await inspectionServiceA.GetPhotoStreamAsync(tenantA, tenantAWorkOrderId, photoId);
+            Assert.True(photoStreamA.IsSuccess);
+            Assert.NotNull(photoStreamA.Value);
+        }
+
+        // Tenant B attempts to read Tenant A's photo stream
+        await using (var contextB = CreateYardContext(tenantB))
+        {
+            var (_, inspectionServiceB) = CreateServices(contextB);
+            var crossPhotoStream = await inspectionServiceB.GetPhotoStreamAsync(tenantB, tenantAWorkOrderId, photoId);
+            Assert.False(crossPhotoStream.IsSuccess);
+            Assert.Equal(ErrorType.NotFound, crossPhotoStream.Error!.Type);
+        }
+    }
+
     private async Task<Guid> CreateTenantAsync(string name)
     {
         await using var context = new TenantsDbContext(fixture.CreateTenantsOptions(), new CurrentTenantAccessor());

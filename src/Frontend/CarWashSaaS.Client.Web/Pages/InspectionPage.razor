@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject IToastService ToastService
+@inject ITokenStorage TokenStorage
 
 <PageTitle>Vistoria Digital de Entrada — Lavaway</PageTitle>
 
@@ -98,6 +99,7 @@
                                         Photos="@_inspection.Photos"
                                         IsReadOnly="@IsReadOnly"
                                         PhotoBaseUrl="@(Http.BaseAddress?.ToString() ?? string.Empty)"
+                                        AccessToken="@_accessToken"
                                         OnUploadPhoto="HandleUploadPhoto" />
             }
         </main>
@@ -157,6 +159,7 @@
 
     private WorkOrderDto? _workOrder;
     private VehicleInspectionDto? _inspection;
+    private string? _accessToken;
 
     private bool IsReadOnly => _inspection?.Status == InspectionStatus.Completed;
 
@@ -177,6 +180,7 @@
     {
         _isLoading = true;
         _errorMessage = null;
+        _accessToken = await TokenStorage.GetAccessTokenAsync();
 
         try
         {

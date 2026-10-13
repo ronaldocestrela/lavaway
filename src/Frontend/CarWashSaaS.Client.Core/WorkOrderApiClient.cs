@@ -110,14 +110,23 @@ public sealed class WorkOrderApiClient(HttpClient httpClient)
         }
     }
 
-    public string GetPostServicePhotoUrl(Guid workOrderId, Guid photoId) =>
-        $"{httpClient.BaseAddress}work-orders/{workOrderId}/post-service-photos/{photoId}";
+    public string GetPostServicePhotoUrl(Guid workOrderId, Guid photoId, string? accessToken = null)
+    {
+        var url = $"{httpClient.BaseAddress}work-orders/{workOrderId}/post-service-photos/{photoId}";
+        return string.IsNullOrWhiteSpace(accessToken) ? url : $"{url}?access_token={Uri.EscapeDataString(accessToken)}";
+    }
 
-    public string GetInspectionPhotoUrl(Guid workOrderId, Guid photoId) =>
-        $"{httpClient.BaseAddress}work-orders/{workOrderId}/inspection/photos/{photoId}";
+    public string GetInspectionPhotoUrl(Guid workOrderId, Guid photoId, string? accessToken = null)
+    {
+        var url = $"{httpClient.BaseAddress}work-orders/{workOrderId}/inspection/photos/{photoId}";
+        return string.IsNullOrWhiteSpace(accessToken) ? url : $"{url}?access_token={Uri.EscapeDataString(accessToken)}";
+    }
 
-    public string GetReceiptPdfUrl(Guid workOrderId) =>
-        $"{httpClient.BaseAddress}work-orders/{workOrderId}/receipt-pdf";
+    public string GetReceiptPdfUrl(Guid workOrderId, string? accessToken = null)
+    {
+        var url = $"{httpClient.BaseAddress}work-orders/{workOrderId}/receipt-pdf";
+        return string.IsNullOrWhiteSpace(accessToken) ? url : $"{url}?access_token={Uri.EscapeDataString(accessToken)}";
+    }
 
     public async Task<WhatsAppMessageDto> SendReceiptNotificationAsync(Guid workOrderId, SendWorkOrderNotificationRequest? request = null, CancellationToken ct = default)
     {
