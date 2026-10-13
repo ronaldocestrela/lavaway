@@ -1,3 +1,4 @@
+@using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
 @using Microsoft.AspNetCore.Components.Forms
 
@@ -64,7 +65,21 @@
     [Parameter] public IReadOnlyCollection<InspectionPhotoDto> Photos { get; set; } = [];
     [Parameter] public bool IsReadOnly { get; set; }
     [Parameter] public string PhotoBaseUrl { get; set; } = string.Empty;
+    [Parameter] public string? AccessToken { get; set; }
     [Parameter] public EventCallback<(InspectionPhotoCategory Category, IBrowserFile File)> OnUploadPhoto { get; set; }
+    [Inject] private IServiceProvider ServiceProvider { get; set; } = default!;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AccessToken))
+        {
+            var tokenStorage = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ITokenStorage>(ServiceProvider);
+            if (tokenStorage is not null)
+            {
+                AccessToken = await tokenStorage.GetAccessTokenAsync();
+            }
+        }
+    }
 
     private bool HasFront => Photos.Any(p => p.Category == InspectionPhotoCategory.Front);
     private bool HasRear => Photos.Any(p => p.Category == InspectionPhotoCategory.Rear);
@@ -80,8 +95,11 @@
                        && p.Category != InspectionPhotoCategory.LeftSide
                        && p.Category != InspectionPhotoCategory.RightSide);
 
-    private string GetPhotoStreamUrl(Guid photoId) =>
-        $"{PhotoBaseUrl.TrimEnd('/')}/work-orders/{WorkOrderId}/inspection/photos/{photoId}";
+    private string GetPhotoStreamUrl(Guid photoId)
+    {
+        var url = $"{PhotoBaseUrl.TrimEnd('/')}/work-orders/{WorkOrderId}/inspection/photos/{photoId}";
+        return string.IsNullOrWhiteSpace(AccessToken) ? url : $"{url}?access_token={Uri.EscapeDataString(AccessToken)}";
+    }
 
     private async Task HandleUpload(InputFileChangeEventArgs e, InspectionPhotoCategory category)
     {

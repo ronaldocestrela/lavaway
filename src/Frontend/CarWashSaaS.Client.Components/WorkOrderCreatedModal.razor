@@ -87,12 +87,26 @@
     [Parameter] public EventCallback OnNewReception { get; set; }
     [Parameter] public EventCallback OnGoToYard { get; set; }
     [Parameter] public EventCallback<Guid> OnGoToInspection { get; set; }
+    [Parameter] public string? AccessToken { get; set; }
+    [Inject] private IServiceProvider ServiceProvider { get; set; } = default!;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AccessToken))
+        {
+            var tokenStorage = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ITokenStorage>(ServiceProvider);
+            if (tokenStorage is not null)
+            {
+                AccessToken = await tokenStorage.GetAccessTokenAsync();
+            }
+        }
+    }
 
     private bool _isSendingWhatsApp;
     private bool _receiptSentSuccess;
     private string? _notificationFeedback;
 
-    private string ReceiptPdfUrl => WorkOrderClient.GetReceiptPdfUrl(WorkOrder.Id);
+    private string ReceiptPdfUrl => WorkOrderClient.GetReceiptPdfUrl(WorkOrder.Id, AccessToken);
 
     private async Task HandleSendReceiptWhatsApp()
     {

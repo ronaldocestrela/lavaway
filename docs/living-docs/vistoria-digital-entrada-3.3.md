@@ -64,8 +64,8 @@ flowchart TD
 - `PUT /work-orders/{workOrderId}/inspection/checklist`: Atualiza nível de combustível, odômetro, observações e itens de conferência (`UpdateInspectionChecklistRequest`).
 - `POST /work-orders/{workOrderId}/inspection/damages`: Registra avaria com coordenadas no diagrama (`AddInspectionDamageRequest`).
 - `DELETE /work-orders/{workOrderId}/inspection/damages/{damageId}`: Remove uma avaria marcada.
-- `POST /work-orders/{workOrderId}/inspection/photos`: Upload multipart de foto com categoria e associação opcional a avaria.
-- `GET /work-orders/{workOrderId}/inspection/photos/{photoId}`: Stream da foto com isolamento multi-tenant e Content-Type correto.
+- `POST /work-orders/{workOrderId}/inspection/photos`: Upload multipart de foto com categoria e associação opcional a avaria (requer cabeçalho `Authorization: Bearer <token>`).
+- `GET /work-orders/{workOrderId}/inspection/photos/{photoId}`: Stream da foto com isolamento multi-tenant e Content-Type correto. Suporta autenticação tanto via cabeçalho `Authorization: Bearer <token>` quanto via query string `?access_token=<token>` (através de `JwtQueryTokenEvents`), viabilizando a renderização imediata por tags nativas de imagem `<img src="...">` no navegador sem exposição anônima.
 - `POST /work-orders/{workOrderId}/inspection/complete`: Valida fotos obrigatórias e conclui a vistoria.
 
 ---
@@ -74,8 +74,8 @@ flowchart TD
 
 - `VehicleInspectionDiagram.razor` (`CarWashSaaS.Client.Components`): Diagrama SVG interativo de 5 vistas (Superior, Lateral Esquerda, Lateral Direita, Frente, Traseira) com toque na lataria/vidros, modal de seleção de tipo/severidade e pinos pulsantes.
 - `InspectionChecklistCard.razor` (`CarWashSaaS.Client.Components`): Seletor de combustível tipo pill (Reserva a Cheio), input numérico de odômetro e lista de itens rápidos (estepe, macaco, pertences, tapetes, painel).
-- `InspectionPhotoGallery.razor` (`CarWashSaaS.Client.Components`): Grade tátil com 4 slots obrigatórios destacados, suporte a disparo de câmera nativa de smartphone (`capture="environment"`), preview imediato e galeria de fotos adicionais.
-- `WorkOrderCreatedModal.razor` (`CarWashSaaS.Client.Components`): Modal de sucesso pós-check-in com novo botão em destaque "Fazer Vistoria".
+- `InspectionPhotoGallery.razor` (`CarWashSaaS.Client.Components`): Grade tátil com 4 slots obrigatórios destacados, suporte a disparo de câmera nativa de smartphone (`capture="environment"`), preview imediato com URLs autenticadas (`?access_token=...`) e galeria de fotos adicionais.
+- `WorkOrderCreatedModal.razor` (`CarWashSaaS.Client.Components`): Modal de sucesso pós-check-in com novo botão em destaque "Fazer Vistoria" e link direto autenticado para download do PDF da OS.
 - `InspectionPage.razor` (`CarWashSaaS.Client.Web`): Página orquestradora em `/work-orders/{workOrderId}/inspection` com abas ágeis e barra fixa inferior de conclusão.
 
 ---
@@ -101,3 +101,11 @@ flowchart TD
 - **Quando** um usuário autenticado no Lava-Jato B tenta consultar ou baixar a foto dessa vistoria
 - **Então** o sistema retorna `404 Not Found`
 - **E** nenhum dado ou imagem do Lava-Jato A é exposto.
+
+### Cenário 4: Carregamento Seguro de Imagem via Query Token no Navegador
+- **Dado** que um usuário autenticado acessa a galeria de vistoria
+- **Quando** o navegador renderiza as tags `<img src="/work-orders/{id}/inspection/photos/{photoId}?access_token={token}">`
+- **Então** o middleware JWT extrai e valida o token via `JwtQueryTokenEvents`
+- **E** o backend valida a permissão `ViewCustomers` e o `tenant_id`
+- **E** o stream da foto é retornado com HTTP 200 OK
+- **E** requisições sem token continuam protegidas, retornando HTTP 401 Unauthorized.

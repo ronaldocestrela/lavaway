@@ -76,8 +76,11 @@ public sealed class InspectionApiClient(HttpClient httpClient)
         return await ReadResponseAsync<InspectionPhotoDto>(response, ct);
     }
 
-    public string GetPhotoUrl(Guid workOrderId, Guid photoId) =>
-        $"{httpClient.BaseAddress}work-orders/{workOrderId}/inspection/photos/{photoId}";
+    public string GetPhotoUrl(Guid workOrderId, Guid photoId, string? accessToken = null)
+    {
+        var url = $"{httpClient.BaseAddress}work-orders/{workOrderId}/inspection/photos/{photoId}";
+        return string.IsNullOrWhiteSpace(accessToken) ? url : $"{url}?access_token={Uri.EscapeDataString(accessToken)}";
+    }
 
     public async Task<VehicleInspectionDto> CompleteInspectionAsync(Guid workOrderId, CancellationToken ct = default)
     {

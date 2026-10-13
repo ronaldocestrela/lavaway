@@ -259,6 +259,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             RoleClaimType = "role",
             ClockSkew = TimeSpan.FromSeconds(30)
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = CarWashSaaS.Api.Authentication.JwtQueryTokenEvents.HandleMessageReceivedAsync
+        };
     });
 builder.Services.AddAuthorization(options =>
 {
