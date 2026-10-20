@@ -71,14 +71,30 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Greeting
     Greeting --> Menu: Primeira interação ou comando "menu"
-    Menu --> SelectingService: Opção 1 ou 2
-    Menu --> ViewingBookings: Opção 3
+    
+    Menu --> SelectingService: Opção 2 (Catálogo)
+    Menu --> ViewingBookings: Opção 3 (Minhas Reservas)
+    
+    Menu --> CheckingCustomer: Opção 1 (Agendar)
+    CheckingCustomer --> SelectingService: Cliente já cadastrado
+    CheckingCustomer --> ConfirmingCustomerName: Não cadastrado & possui PushName
+    CheckingCustomer --> CollectingCustomerName: Não cadastrado & sem PushName
+    
+    ConfirmingCustomerName --> SelectingService: Opção 1 (Confirma PushName) -> Cadastra Cliente
+    ConfirmingCustomerName --> CollectingCustomerName: Opção 2 (Informar outro nome)
+    CollectingCustomerName --> SelectingService: Envia nome completo válido -> Cadastra Cliente
+    
     SelectingService --> SelectingVehicleSize: Escolhe número do serviço
     SelectingVehicleSize --> SelectingDate: Escolhe porte (1: Hatch, 2: SUV, 3: Picape, 4: Moto)
     SelectingDate --> SelectingTimeSlot: Informa data (Hoje, Amanhã ou DD/MM)
-    SelectingTimeSlot --> CollectingPlate: Escolhe horário vago disponível
+    
+    SelectingTimeSlot --> SelectingRegisteredVehicle: Possui veículos salvos no cadastro
+    SelectingRegisteredVehicle --> AwaitingConfirmation: Seleciona veículo salvo (1..N)
+    SelectingRegisteredVehicle --> CollectingPlate: Seleciona "Outro veículo"
+    
+    SelectingTimeSlot --> CollectingPlate: Não possui veículos salvos
     CollectingPlate --> AwaitingConfirmation: Informa placa válida
-    AwaitingConfirmation --> Completed: Digita 1 (Confirmar)
+    AwaitingConfirmation --> Completed: Digita 1 (Confirmar) -> Salva Veículo & Confirma Reserva
     AwaitingConfirmation --> Menu: Digita 2 (Cancelar)
     Completed --> [*]
 ```
@@ -108,6 +124,18 @@ stateDiagram-v2
 - **Quando** o cliente chega à loja e o operador clica no botão "Iniciar Atendimento" no card da reserva,
 - **Então** o sistema redireciona para a tela de Recepção com a placa e o telefone pré-preenchidos,
 - **E** a busca automática é disparada para agilizar a criação da Ordem de Serviço.
+
+### Cenário 4: Cliente não cadastrado inicia agendamento e confirma PushName
+- **Dado** que um cliente não cadastrado no lava-jato envia mensagem com PushName "Mariana",
+- **Quando** seleciona a opção 1 para agendar,
+- **Então** o chatbot pergunta se confirma o cadastro com o nome "Mariana",
+- **E** ao responder "1" (Sim), o sistema cadastra o cliente no tenant e avança diretamente para a escolha do serviço.
+
+### Cenário 5: Cliente recorrente com veículos cadastrados seleciona veículo por atalho
+- **Dado** que um cliente já possui cadastro com os veículos "ABC-1D23" e "XYZ-9876",
+- **Quando** escolhe agendar,
+- **Então** o chatbot o saúda pelo nome ("Que bom ter você de volta, {Nome}!"),
+- **E** após a escolha de data e horário, apresenta a lista numerada dos seus veículos cadastrados para seleção rápida.
 
 ---
 

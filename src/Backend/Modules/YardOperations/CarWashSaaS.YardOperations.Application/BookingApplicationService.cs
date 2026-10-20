@@ -124,6 +124,12 @@ public sealed class BookingApplicationService(
 
         await bookingRepository.AddAsync(booking, ct);
         var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        for (var attempt = 0; !saveResult.IsSuccess && saveResult.Error?.Code == "booking.protocol.duplicate" && attempt < 3; attempt++)
+        {
+            booking.RegenerateProtocol();
+            saveResult = await unitOfWork.SaveChangesAsync(ct);
+        }
+
         if (!saveResult.IsSuccess)
         {
             return Result<BookingConfirmationDto>.Failure(saveResult.Error!);
@@ -269,6 +275,12 @@ public sealed class BookingApplicationService(
 
         await bookingRepository.AddAsync(booking, ct);
         var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        for (var attempt = 0; !saveResult.IsSuccess && saveResult.Error?.Code == "booking.protocol.duplicate" && attempt < 3; attempt++)
+        {
+            booking.RegenerateProtocol();
+            saveResult = await unitOfWork.SaveChangesAsync(ct);
+        }
+
         if (!saveResult.IsSuccess)
         {
             return Result<BookingConfirmationDto>.Failure(saveResult.Error!);

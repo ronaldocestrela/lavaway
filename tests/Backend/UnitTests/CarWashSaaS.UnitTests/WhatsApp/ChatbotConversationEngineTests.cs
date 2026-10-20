@@ -619,6 +619,207 @@ public sealed class ChatbotConversationEngineTests
         Assert.Contains("10/10 selos", reply);
     }
 
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerNotRegistered_WithPushName_ShouldAskForNameConfirmation()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        // Msg 1: Oi -> Menu
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "Oi");
+        _dispatcher.SentMessages.Clear();
+
+        // Msg 2: 1 (Agendar) -> Detecta PushName e pergunta se confirma
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "1");
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        var reply = _dispatcher.SentMessages[0].Text;
+        Assert.Contains("Notamos que seu nome no WhatsApp é *João*", reply);
+        Assert.Contains("1️⃣ - Sim, está correto", reply);
+        Assert.Contains("2️⃣ - Não, quero informar outro nome", reply);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerConfirmsPushName_ShouldRegisterAndShowCatalog()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "Oi");
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "1");
+        _dispatcher.SentMessages.Clear();
+
+        // Confirma nome com 1
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "1");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, _dispatcher.SentMessages.Count);
+        Assert.Contains("Cadastro realizado com sucesso, *João*", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("Escolha o serviço para agendamento", _dispatcher.SentMessages[1].Text);
+        Assert.Single(customerLookup.Customers);
+        Assert.Equal("João", customerLookup.Customers[0].CustomerName);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerRejectsPushName_ShouldAskFullNameAndRegister()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "Oi");
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "1");
+        _dispatcher.SentMessages.Clear();
+
+        // Rejeita nome com 2
+        var rejResult = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "2");
+        Assert.True(rejResult.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("Por favor, digite seu *nome completo*", _dispatcher.SentMessages[0].Text);
+
+        _dispatcher.SentMessages.Clear();
+
+        // Envia nome completo
+        var regResult = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "João", "João da Silva");
+        Assert.True(regResult.IsSuccess);
+        Assert.Equal(2, _dispatcher.SentMessages.Count);
+        Assert.Contains("Prazer em te conhecer, *João da Silva*", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("Escolha o serviço para agendamento", _dispatcher.SentMessages[1].Text);
+        Assert.Single(customerLookup.Customers);
+        Assert.Equal("João da Silva", customerLookup.Customers[0].CustomerName);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerNotRegistered_WithoutPushName_ShouldAskFullNameDirectly()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, null, "Oi");
+        _dispatcher.SentMessages.Clear();
+
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, null, "1");
+        Assert.True(result.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("por favor informe seu *nome completo*", _dispatcher.SentMessages[0].Text);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerAlreadyRegistered_ShouldGreetByNameAndShowCatalog()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        customerLookup.Customers.Add(new CustomerVehicleMatchDto(Guid.NewGuid(), "Carlos Andrade", _customerPhone, []));
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "Oi");
+        _dispatcher.SentMessages.Clear();
+
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1");
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, _dispatcher.SentMessages.Count);
+        Assert.Contains("Que bom ter você de volta, *Carlos Andrade*", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("Escolha o serviço para agendamento", _dispatcher.SentMessages[1].Text);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerHasSavedVehicles_ShouldOfferVehiclesList()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var vehicles = new List<VehicleSummaryDto>
+        {
+            new(Guid.NewGuid(), "ABC1D23", "HatchSedan"),
+            new(Guid.NewGuid(), "XYZ9876", "Suv")
+        };
+        customerLookup.Customers.Add(new CustomerVehicleMatchDto(Guid.NewGuid(), "Carlos Andrade", _customerPhone, vehicles));
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "Oi");
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Agendar
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Serviço
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Porte
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Data
+        _dispatcher.SentMessages.Clear();
+
+        // Escolhe Horário (1) -> Sistema deve listar os veículos salvos
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1");
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        var reply = _dispatcher.SentMessages[0].Text;
+        Assert.Contains("Encontramos o(s) seguinte(s) veículo(s) no seu cadastro", reply);
+        Assert.Contains("1 - *ABC1D23*", reply);
+        Assert.Contains("2 - *XYZ9876*", reply);
+        Assert.Contains("3 - *Outro veículo*", reply);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerSelectsSavedVehicle_ShouldProceedDirectlyToConfirmation()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var vehicles = new List<VehicleSummaryDto>
+        {
+            new(Guid.NewGuid(), "ABC1D23", "HatchSedan"),
+            new(Guid.NewGuid(), "XYZ9876", "Suv")
+        };
+        customerLookup.Customers.Add(new CustomerVehicleMatchDto(Guid.NewGuid(), "Carlos Andrade", _customerPhone, vehicles));
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "Oi");
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Agendar
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Serviço
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Porte
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Data
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Horário
+        _dispatcher.SentMessages.Clear();
+
+        // Escolhe veículo 2 (XYZ9876)
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "2");
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        var reply = _dispatcher.SentMessages[0].Text;
+        Assert.Contains("confira os dados do seu agendamento", reply);
+        Assert.Contains("XYZ9876", reply);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerSelectsOtherVehicle_ShouldAskForNewPlate()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var vehicles = new List<VehicleSummaryDto>
+        {
+            new(Guid.NewGuid(), "ABC1D23", "HatchSedan")
+        };
+        customerLookup.Customers.Add(new CustomerVehicleMatchDto(Guid.NewGuid(), "Carlos Andrade", _customerPhone, vehicles));
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "Oi");
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Agendar
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Serviço
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Porte
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Data
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Horário
+        _dispatcher.SentMessages.Clear();
+
+        // Opção 2 = Outro veículo
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "2");
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("Digite a *placa do veículo*", _dispatcher.SentMessages[0].Text);
+    }
+
+    private ChatbotConversationEngine CreateSutWithCustomerLookup(ICustomerLookup customerLookup) =>
+        new(
+            _sessionRepo,
+            _schedulingLookup,
+            _storeProfileLookup,
+            _dispatcher,
+            _preferenceRepo,
+            _afterSalesLookup,
+            loyaltyLookup: _loyaltyLookup,
+            customerLookup: customerLookup);
+
     private sealed class FakeLoyaltyLookup : ILoyaltyLookup
     {
         public CustomerLoyaltySummaryDto? Summary { get; set; }
@@ -628,5 +829,34 @@ public sealed class ChatbotConversationEngineTests
 
         public Task<Result<CustomerLoyaltySummaryDto?>> GetLoyaltySummaryByCustomerIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
             Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Success(Summary));
+    }
+
+    private sealed class FakeCustomerLookup : ICustomerLookup
+    {
+        public List<CustomerVehicleMatchDto> Customers { get; } = [];
+        public List<VehicleSummaryDto> AddedVehicles { get; } = [];
+
+        public Task<Result<CustomerVehicleMatchDto?>> GetByPhoneAsync(Guid tenantId, string phone, CancellationToken ct = default)
+        {
+            var match = Customers.FirstOrDefault(c => c.Phone.Contains(phone) || phone.Contains(c.Phone));
+            return Task.FromResult(Result<CustomerVehicleMatchDto?>.Success(match));
+        }
+
+        public Task<Result<CustomerVehicleMatchDto>> RegisterCustomerAsync(Guid tenantId, string name, string phone, CancellationToken ct = default)
+        {
+            var existing = Customers.FirstOrDefault(c => c.Phone.Contains(phone) || phone.Contains(c.Phone));
+            if (existing is not null) return Task.FromResult(Result<CustomerVehicleMatchDto>.Success(existing));
+
+            var newCustomer = new CustomerVehicleMatchDto(Guid.NewGuid(), name, phone, []);
+            Customers.Add(newCustomer);
+            return Task.FromResult(Result<CustomerVehicleMatchDto>.Success(newCustomer));
+        }
+
+        public Task<Result<VehicleSummaryDto>> RegisterVehicleForCustomerAsync(Guid tenantId, Guid customerId, string plate, string size, CancellationToken ct = default)
+        {
+            var vehicle = new VehicleSummaryDto(Guid.NewGuid(), plate, size);
+            AddedVehicles.Add(vehicle);
+            return Task.FromResult(Result<VehicleSummaryDto>.Success(vehicle));
+        }
     }
 }

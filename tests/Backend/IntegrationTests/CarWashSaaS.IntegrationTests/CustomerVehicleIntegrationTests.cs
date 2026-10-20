@@ -87,6 +87,44 @@ public sealed class CustomerVehicleIntegrationTests(SqlServerFixture fixture)
         return new YardOperationsDbContext(fixture.CreateYardOperationsOptions(), accessor);
     }
 
+    [Fact]
+    public async Task CustomerLookupService_ShouldRegisterAndQueryCustomer_AndIsolateBetweenTenants()
+    {
+        var tenantA = await CreateTenantAsync("Lookup Tenant A");
+        var tenantB = await CreateTenantAsync("Lookup Tenant B");
+
+        await using (var tenantAContext = CreateYardContext(tenantA))
+        {
+            var lookupA = CreateLookupService(tenantAContext);
+            var regA = await lookupA.RegisterCustomerAsync(tenantA, "Carlos Teste", "11999990001");
+            Assert.True(regA.IsSuccess);
+
+            var regVehicle = await lookupA.RegisterVehicleForCustomerAsync(tenantA, regA.Value!.CustomerId, "ABC-1234", "HatchSedan");
+            Assert.True(regVehicle.IsSuccess);
+
+            var queryA = await lookupA.GetByPhoneAsync(tenantA, "11999990001");
+            Assert.True(queryA.IsSuccess);
+            Assert.NotNull(queryA.Value);
+            Assert.Equal("Carlos Teste", queryA.Value!.CustomerName);
+            Assert.Single(queryA.Value.Vehicles);
+            Assert.Equal("ABC1234", queryA.Value.Vehicles.First().Plate);
+        }
+
+        await using var tenantBContext = CreateYardContext(tenantB);
+        var lookupB = CreateLookupService(tenantBContext);
+
+        // Tenant B must not see Tenant A customer
+        var queryB = await lookupB.GetByPhoneAsync(tenantB, "11999990001");
+        Assert.True(queryB.IsSuccess);
+        Assert.Null(queryB.Value);
+    }
+
+    private static CustomerLookupService CreateLookupService(YardOperationsDbContext context) => new(
+        new CustomerVehicleSearchRepository(context),
+        new CustomerRepository(context),
+        new VehicleRepository(context),
+        new YardOperationsUnitOfWork(context));
+
     private static CustomerVehicleApplicationService CreateService(YardOperationsDbContext context) => new(
         new CustomerVehicleSearchRepository(context),
         new CustomerRepository(context),

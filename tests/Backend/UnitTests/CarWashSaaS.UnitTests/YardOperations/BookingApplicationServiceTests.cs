@@ -248,6 +248,51 @@ public sealed class BookingApplicationServiceTests
         Assert.Equal("booking.capacity.exceeded", result.Error!.Code);
     }
 
+    [Fact]
+    public void Booking_GenerateProtocol_ConsecutiveCalls_ShouldGenerateUniqueProtocols()
+    {
+        var protocols = new HashSet<string>();
+        for (var i = 0; i < 100; i++)
+        {
+            var protocol = Booking.GenerateProtocol();
+            Assert.StartsWith("BK-", protocol);
+            Assert.True(protocols.Add(protocol), $"Duplicate protocol generated: {protocol}");
+        }
+        Assert.Equal(100, protocols.Count);
+    }
+
+    [Fact]
+    public async Task CreateBookingFromChatbotAsync_WhenProtocolCollidesOnce_ShouldRegenerateAndSucceed()
+    {
+        var prices = new[]
+        {
+            ServicePrice.Create(_tenantId, VehicleSize.HatchSedan, 60m, 45).Value!
+        };
+        var service = Service.Create(_tenantId, "Ducha", "Lavagens", prices).Value!;
+        await _serviceRepo.AddAsync(service);
+
+        var capacity = YardCapacity.Create(_tenantId, 2, "Pátio").Value!;
+        await _capacityRepo.AddAsync(capacity);
+
+        _unitOfWork.FailTimesWithDuplicateProtocol = 1;
+
+        var request = new CreateBookingFromChatbotRequest(
+            "11988887777",
+            "Carlos",
+            "ABC-1234",
+            "Gol",
+            VehicleSizeConstants.HatchSedan,
+            service.Id,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            new TimeOnly(10, 0));
+
+        var result = await _sut.CreateBookingFromChatbotAsync(_tenantId, request);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, _unitOfWork.SaveCount);
+        Assert.NotNull(result.Value!.Protocol);
+    }
+
     private sealed class InMemoryBookingRepository : IBookingRepository
     {
         public readonly List<Booking> Bookings = [];
@@ -376,10 +421,16 @@ public sealed class BookingApplicationServiceTests
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
         public int SaveCount { get; private set; }
+        public int FailTimesWithDuplicateProtocol { get; set; }
 
         public Task<Result<int>> SaveChangesAsync(CancellationToken ct = default)
         {
             SaveCount++;
+            if (FailTimesWithDuplicateProtocol > 0)
+            {
+                FailTimesWithDuplicateProtocol--;
+                return Task.FromResult(Result<int>.Failure(new Error("booking.protocol.duplicate", "Duplicate protocol", ErrorType.Conflict)));
+            }
             return Task.FromResult(Result<int>.Success(1));
         }
     }

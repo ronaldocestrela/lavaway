@@ -89,6 +89,8 @@ builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IUnitOfWork, YardOperationsUnitOfWork>();
 builder.Services.AddScoped<CustomerVehicleApplicationService>();
+builder.Services.AddScoped<CustomerLookupService>();
+builder.Services.AddScoped<ICustomerLookup>(sp => sp.GetRequiredService<CustomerLookupService>());
 builder.Services.AddScoped<IWorkOrderReceiptPdfGenerator, WorkOrderReceiptPdfGenerator>();
 builder.Services.AddScoped<WorkOrderApplicationService>();
 builder.Services.AddScoped<WorkOrderNotificationApplicationService>();
