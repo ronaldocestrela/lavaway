@@ -13,7 +13,8 @@ public sealed class ChatbotConversationEngine(
     IAfterSalesLookup? afterSalesLookup = null,
     IWorkOrderPaymentLookup? workOrderPaymentLookup = null,
     IPixBillingLookup? pixBillingLookup = null,
-    ILoyaltyLookup? loyaltyLookup = null)
+    ILoyaltyLookup? loyaltyLookup = null,
+    ICustomerLookup? customerLookup = null)
 {
     private static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(30);
 
@@ -242,10 +243,13 @@ public sealed class ChatbotConversationEngine(
         {
             ChatbotStep.Greeting => await HandleGreetingAsync(tenantId, session, text, ct),
             ChatbotStep.Menu => await HandleMenuChoiceAsync(tenantId, session, text, ct),
+            ChatbotStep.ConfirmingCustomerName => await HandleConfirmingCustomerNameAsync(tenantId, session, text, ct),
+            ChatbotStep.CollectingCustomerName => await HandleCollectingCustomerNameAsync(tenantId, session, text, ct),
             ChatbotStep.SelectingService => await HandleSelectingServiceAsync(tenantId, session, text, ct),
             ChatbotStep.SelectingVehicleSize => await HandleSelectingVehicleSizeAsync(tenantId, session, text, ct),
             ChatbotStep.SelectingDate => await HandleSelectingDateAsync(tenantId, session, text, ct),
             ChatbotStep.SelectingTimeSlot => await HandleSelectingTimeSlotAsync(tenantId, session, text, ct),
+            ChatbotStep.SelectingRegisteredVehicle => await HandleSelectingRegisteredVehicleAsync(tenantId, session, text, ct),
             ChatbotStep.CollectingPlate => await HandleCollectingPlateAsync(tenantId, session, text, ct),
             ChatbotStep.AwaitingConfirmation => await HandleAwaitingConfirmationAsync(tenantId, session, text, ct),
             ChatbotStep.AwaitingReminderAction => await HandleAwaitingReminderActionAsync(tenantId, session, text, ct),
@@ -267,7 +271,7 @@ public sealed class ChatbotConversationEngine(
     {
         if (text is "1")
         {
-            return await PresentServiceCatalogAsync(tenantId, session, isDirectBooking: true, ct);
+            return await StartBookingFlowAsync(tenantId, session, ct);
         }
 
         if (text is "2")
@@ -283,6 +287,109 @@ public sealed class ChatbotConversationEngine(
         var reply = "Opção inválida. Por favor, digite:\n*1* para Agendar um serviço\n*2* para Ver catálogo e preços\n*3* para Consultar meus agendamentos";
         return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
     }
+
+    private async Task<Result> StartBookingFlowAsync(Guid tenantId, ChatbotConversationSession session, CancellationToken ct)
+    {
+        if (customerLookup is not null)
+        {
+            var customerResult = await customerLookup.GetByPhoneAsync(tenantId, session.CustomerPhone, ct);
+            if (customerResult.IsSuccess && customerResult.Value is not null)
+            {
+                var customer = customerResult.Value;
+                session.SetCustomerId(customer.CustomerId);
+                session.SetCustomerName(customer.CustomerName);
+
+                var welcomeBack = $"Que bom ter você de volta, *{customer.CustomerName}*! Vamos agendar seu serviço. 🚗✨";
+                await SendBotReplyAsync(tenantId, session.CustomerPhone, welcomeBack, ct);
+                return await PresentServiceCatalogAsync(tenantId, session, isDirectBooking: true, ct);
+            }
+
+            if (!string.IsNullOrWhiteSpace(session.CustomerName))
+            {
+                session.SetPendingCustomerName(session.CustomerName);
+                session.MoveToStep(ChatbotStep.ConfirmingCustomerName);
+
+                var confirmPrompt = $"Olá! Notamos que seu nome no WhatsApp é *{session.CustomerName}*. Podemos te cadastrar com esse nome?\n\n" +
+                                    "1️⃣ - Sim, está correto\n" +
+                                    "2️⃣ - Não, quero informar outro nome\n\n" +
+                                    "Digite *1* ou *2*:";
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, confirmPrompt, ct);
+            }
+
+            session.MoveToStep(ChatbotStep.CollectingCustomerName);
+            var askNamePrompt = "Para prosseguirmos com seu agendamento, por favor informe seu *nome completo*:";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, askNamePrompt, ct);
+        }
+
+        return await PresentServiceCatalogAsync(tenantId, session, isDirectBooking: true, ct);
+    }
+
+    private async Task<Result> HandleConfirmingCustomerNameAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
+    {
+        var lower = text.Trim().ToLowerInvariant();
+        if (lower is "1" or "sim" or "s" or "correto")
+        {
+            var nameToRegister = session.PendingCustomerName ?? session.CustomerName ?? "Cliente WhatsApp";
+            if (customerLookup is not null)
+            {
+                var regResult = await customerLookup.RegisterCustomerAsync(tenantId, nameToRegister, session.CustomerPhone, ct);
+                if (regResult.IsSuccess && regResult.Value is not null)
+                {
+                    session.SetCustomerId(regResult.Value.CustomerId);
+                    session.SetCustomerName(regResult.Value.CustomerName);
+                }
+            }
+            session.SetPendingCustomerName(null);
+
+            var reply = $"Cadastro realizado com sucesso, *{session.CustomerName}*! 🎉\n\nAgora vamos escolher o serviço para o seu veículo:";
+            await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+            return await PresentServiceCatalogAsync(tenantId, session, isDirectBooking: true, ct);
+        }
+
+        if (lower is "2" or "não" or "nao" or "outro")
+        {
+            session.MoveToStep(ChatbotStep.CollectingCustomerName);
+            var reply = "Por favor, digite seu *nome completo*:";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
+        var invalidReply = $"Opção inválida. Digite:\n1️⃣ para confirmar o nome *{session.PendingCustomerName}*\n2️⃣ para informar outro nome";
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, invalidReply, ct);
+    }
+
+    private async Task<Result> HandleCollectingCustomerNameAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
+    {
+        var trimmedName = text.Trim();
+        if (trimmedName.Length < 2 || trimmedName.Length > 200)
+        {
+            var reply = "Por favor, informe um nome válido (entre 2 e 200 caracteres):";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
+        if (customerLookup is not null)
+        {
+            var regResult = await customerLookup.RegisterCustomerAsync(tenantId, trimmedName, session.CustomerPhone, ct);
+            if (!regResult.IsSuccess)
+            {
+                var errorReply = $"Não foi possível realizar o cadastro: {regResult.Error?.Description}. Por favor, tente novamente:";
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, errorReply, ct);
+            }
+
+            session.SetCustomerId(regResult.Value!.CustomerId);
+            session.SetCustomerName(regResult.Value!.CustomerName);
+        }
+        else
+        {
+            session.SetCustomerName(trimmedName);
+        }
+
+        session.SetPendingCustomerName(null);
+
+        var successReply = $"Prazer em te conhecer, *{session.CustomerName}*! Seu cadastro foi realizado com sucesso. 🎉\n\nAgora vamos escolher o serviço para o seu veículo:";
+        await SendBotReplyAsync(tenantId, session.CustomerPhone, successReply, ct);
+        return await PresentServiceCatalogAsync(tenantId, session, isDirectBooking: true, ct);
+    }
+
 
     private async Task<Result> HandleSelectingServiceAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
     {
@@ -417,13 +524,62 @@ public sealed class ChatbotConversationEngine(
 
         if (string.IsNullOrWhiteSpace(session.VehiclePlate))
         {
+            if (customerLookup is not null)
+            {
+                var custResult = await customerLookup.GetByPhoneAsync(tenantId, session.CustomerPhone, ct);
+                var vehicles = custResult.Value?.Vehicles.ToList() ?? [];
+                if (vehicles.Count > 0)
+                {
+                    session.MoveToStep(ChatbotStep.SelectingRegisteredVehicle);
+                    var lines = vehicles.Select((v, i) => $"{i + 1} - *{v.Plate}* ({VehicleSizeConstants.GetDisplayName(v.Size)})");
+                    var reply = "🚘 *Encontramos o(s) seguinte(s) veículo(s) no seu cadastro:*\n\n" +
+                                string.Join("\n", lines) + "\n" +
+                                $"{vehicles.Count + 1} - *Outro veículo* (informar nova placa)\n\n" +
+                                "Digite o *número do veículo* desejado:";
+                    return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+                }
+            }
+
             session.MoveToStep(ChatbotStep.CollectingPlate);
-            var reply = "🚘 Por favor, digite a *placa do seu veículo* (Ex: ABC-1234 ou ABC1D23):";
-            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+            var plateReply = "🚘 Por favor, digite a *placa do seu veículo* (Ex: ABC-1234 ou ABC1D23):";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, plateReply, ct);
         }
 
         session.MoveToStep(ChatbotStep.AwaitingConfirmation);
         return await SendConfirmationSummaryAsync(tenantId, session, ct);
+    }
+
+    private async Task<Result> HandleSelectingRegisteredVehicleAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
+    {
+        if (customerLookup is null)
+        {
+            session.MoveToStep(ChatbotStep.CollectingPlate);
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, "🚘 Por favor, digite a *placa do seu veículo* (Ex: ABC-1234 ou ABC1D23):", ct);
+        }
+
+        var custResult = await customerLookup.GetByPhoneAsync(tenantId, session.CustomerPhone, ct);
+        var vehicles = custResult.Value?.Vehicles.ToList() ?? [];
+
+        if (int.TryParse(text.Trim(), out var index))
+        {
+            if (index >= 1 && index <= vehicles.Count)
+            {
+                var selectedVehicle = vehicles[index - 1];
+                session.SetVehiclePlate(selectedVehicle.Plate);
+                session.MoveToStep(ChatbotStep.AwaitingConfirmation);
+                return await SendConfirmationSummaryAsync(tenantId, session, ct);
+            }
+
+            if (index == vehicles.Count + 1)
+            {
+                session.MoveToStep(ChatbotStep.CollectingPlate);
+                var reply = "🚘 Digite a *placa do veículo* (Ex: ABC-1234 ou ABC1D23):";
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+            }
+        }
+
+        var invalidReply = $"Por favor, digite um número de *1 a {vehicles.Count + 1}*:";
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, invalidReply, ct);
     }
 
     private async Task<Result> HandleCollectingPlateAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
@@ -476,6 +632,17 @@ public sealed class ChatbotConversationEngine(
             }
 
             var confirmation = createResult.Value!;
+
+            if (customerLookup is not null && session.CustomerId.HasValue && !string.IsNullOrWhiteSpace(session.VehiclePlate))
+            {
+                await customerLookup.RegisterVehicleForCustomerAsync(
+                    tenantId,
+                    session.CustomerId.Value,
+                    session.VehiclePlate,
+                    session.SelectedVehicleSize ?? VehicleSizeConstants.HatchSedan,
+                    ct);
+            }
+
             session.Complete();
 
             var message = "✅ *Agendamento Confirmado com Sucesso!*\n\n" +

@@ -42,6 +42,8 @@ public sealed class ChatbotConversationSession : IMustHaveTenant
     public TimeOnly? SelectedTime { get; private set; }
     public string? VehiclePlate { get; private set; }
     public Guid? TargetBookingId { get; private set; }
+    public Guid? CustomerId { get; private set; }
+    public string? PendingCustomerName { get; private set; }
     public DateTimeOffset LastInteractionAtUtc { get; private set; }
     public bool IsActive { get; private set; }
 
@@ -121,6 +123,18 @@ public sealed class ChatbotConversationSession : IMustHaveTenant
         Touch();
     }
 
+    public void SetCustomerId(Guid? customerId)
+    {
+        CustomerId = customerId;
+        Touch();
+    }
+
+    public void SetPendingCustomerName(string? name)
+    {
+        PendingCustomerName = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        Touch();
+    }
+
     public void Complete()
     {
         CurrentStep = ChatbotStep.Completed;
@@ -139,6 +153,7 @@ public sealed class ChatbotConversationSession : IMustHaveTenant
         SelectedTime = null;
         VehiclePlate = null;
         TargetBookingId = null;
+        PendingCustomerName = null;
         IsActive = true;
         Touch();
     }

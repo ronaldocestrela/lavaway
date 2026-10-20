@@ -32,6 +32,9 @@ namespace CarWashSaaS.WhatsApp.Infrastructure.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("CustomerName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -46,6 +49,10 @@ namespace CarWashSaaS.WhatsApp.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset>("LastInteractionAtUtc")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("PendingCustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateOnly?>("SelectedDate")
                         .HasColumnType("date");

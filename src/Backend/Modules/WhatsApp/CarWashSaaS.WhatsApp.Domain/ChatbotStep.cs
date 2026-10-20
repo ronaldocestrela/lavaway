@@ -4,10 +4,13 @@ public enum ChatbotStep
 {
     Greeting,
     Menu,
+    ConfirmingCustomerName,
+    CollectingCustomerName,
     SelectingService,
     SelectingVehicleSize,
     SelectingDate,
     SelectingTimeSlot,
+    SelectingRegisteredVehicle,
     CollectingPlate,
     AwaitingConfirmation,
     AwaitingReminderAction,

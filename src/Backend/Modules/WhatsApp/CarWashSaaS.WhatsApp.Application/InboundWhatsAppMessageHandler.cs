@@ -33,17 +33,29 @@ public sealed class InboundWhatsAppMessageHandler(
 
         logger.LogInformation("Processing inbound WhatsApp message from {Phone} for tenant {TenantId}.", payload.SenderPhone, message.TenantId);
 
-        var result = await chatbotEngine.ProcessIncomingMessageAsync(
-            message.TenantId,
-            payload.SenderPhone,
-            payload.PushName,
-            payload.MessageText,
-            cancellationToken);
-
-        if (!result.IsSuccess)
+        try
         {
-            logger.LogWarning("Chatbot engine returned failure for {Phone}: {ErrorCode} - {Description}",
-                payload.SenderPhone, result.Error?.Code, result.Error?.Description);
+            var result = await chatbotEngine.ProcessIncomingMessageAsync(
+                message.TenantId,
+                payload.SenderPhone,
+                payload.PushName,
+                payload.MessageText,
+                cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                logger.LogWarning("Chatbot engine returned failure for {Phone}: {ErrorCode} - {Description}",
+                    payload.SenderPhone, result.Error?.Code, result.Error?.Description);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error processing chatbot inbound message for {Phone} in tenant {TenantId}.",
+                payload.SenderPhone, message.TenantId);
         }
     }
 }

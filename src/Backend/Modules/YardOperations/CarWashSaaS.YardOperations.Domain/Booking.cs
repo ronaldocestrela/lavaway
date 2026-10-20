@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using CarWashSaaS.Shared.Contracts;
 
@@ -134,7 +135,7 @@ public sealed partial class Booking : IMustHaveTenant
 
         var duration = estimatedDurationMinutes <= 0 ? 60 : estimatedDurationMinutes;
         var id = Guid.CreateVersion7();
-        var protocol = $"BK-{DateTime.UtcNow:yyMM}-{id.ToString("N")[..6].ToUpperInvariant()}";
+        var protocol = GenerateProtocol();
 
         return Result<Booking>.Success(new Booking(
             id,
@@ -155,6 +156,20 @@ public sealed partial class Booking : IMustHaveTenant
             BookingStatus.Scheduled,
             origin,
             string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()));
+    }
+
+    public static string GenerateProtocol(DateTimeOffset? timestamp = null)
+    {
+        var date = timestamp ?? DateTimeOffset.UtcNow;
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var suffix = RandomNumberGenerator.GetString(alphabet, 6);
+        return $"BK-{date:yyMM}-{suffix}";
+    }
+
+    public void RegenerateProtocol()
+    {
+        Protocol = GenerateProtocol(CreatedAt);
+        UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public Result<Booking> Confirm()
