@@ -50,7 +50,7 @@ public sealed class TenantSaasSubscriptionApplicationService(
 
         var tenantSummaryResult = await globalTenantLookup.GetSummaryAsync(tenantId, ct);
         var customerName = tenantSummaryResult.IsSuccess ? tenantSummaryResult.Value!.Name : "Lava-Jato";
-        var customerEmail = $"{tenantId}@lavaway.com";
+        var customerEmail = $"{tenantId}@lavaae.com";
 
         var sessionResult = await gatewayProvider.CreateSubscriptionCheckoutSessionAsync(
             tenantId,
@@ -217,7 +217,7 @@ public sealed class TenantSaasSubscriptionApplicationService(
         {
             var tenantSummaryResult = await globalTenantLookup.GetSummaryAsync(tenantId, ct);
             var customerName = tenantSummaryResult.IsSuccess ? tenantSummaryResult.Value!.Name : "Lava-Jato";
-            var customerEmail = $"{tenantId}@lavaway.com";
+            var customerEmail = $"{tenantId}@lavaae.com";
 
             var gatewaySubResult = await gatewayProvider.CreateSubscriptionAsync(tenantId, customerName, customerEmail, targetPlan, ct);
             if (gatewaySubResult.IsSuccess)

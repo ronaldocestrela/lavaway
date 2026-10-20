@@ -54,7 +54,7 @@
             <textarea id="messageText"
                       rows="3"
                       class="form-textarea"
-                      placeholder="Ex: Olá! Esta é uma mensagem de teste enviada pela Lavaway para validar nosso canal de WhatsApp."
+                      placeholder="Ex: Olá! Esta é uma mensagem de teste enviada pela Lava Aê para validar nosso canal de WhatsApp."
                       value="@MessageText"
                       @oninput="OnMessageTextChanged"
                       disabled="@(!IsConnected || IsSending)"></textarea>
@@ -99,7 +99,7 @@
     [Parameter] public EventCallback<SendWhatsAppTestMessageRequest> OnSendTestMessage { get; set; }
 
     public string RecipientPhone { get; set; } = string.Empty;
-    public string MessageText { get; set; } = "Olá! Esta é uma mensagem de teste do Lavaway confirmando a integração ativa com o WhatsApp.";
+    public string MessageText { get; set; } = "Olá! Esta é uma mensagem de teste do Lava Aê confirmando a integração ativa com o WhatsApp.";
     public string? PhoneValidationError { get; set; }
 
     private void OnPhoneChanged(ChangeEventArgs e)

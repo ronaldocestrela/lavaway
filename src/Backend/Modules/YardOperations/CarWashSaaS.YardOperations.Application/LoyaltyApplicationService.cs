@@ -290,7 +290,7 @@ public sealed class LoyaltyApplicationService(
         }
 
         var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-        var storeName = storeProfile.Value?.TradeName ?? "Lavaway";
+        var storeName = storeProfile.Value?.TradeName ?? "Lava Aê";
 
         var remaining = account.CalculateRemaining(program.TargetStamps);
         var progressBar = BuildProgressBar(account.Balance, program.TargetStamps);

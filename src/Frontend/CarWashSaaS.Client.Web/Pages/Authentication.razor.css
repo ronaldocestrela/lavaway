@@ -46,14 +46,18 @@
     color: #ffffff;
 }
 
-.brand-mark {
+.brand-mark,
+.brand-logo {
     width: 32px;
     height: 32px;
+    border-radius: 8px;
+}
+
+.brand-mark {
     display: grid;
     place-items: center;
     background: #c6f277;
     color: #122421;
-    border-radius: 8px;
     font: 800 17px 'Manrope', sans-serif;
     box-shadow: 0 0 14px rgba(198, 242, 119, 0.35);
 }

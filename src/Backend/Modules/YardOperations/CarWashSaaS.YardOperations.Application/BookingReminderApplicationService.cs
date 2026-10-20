@@ -24,7 +24,7 @@ public sealed class BookingReminderApplicationService(
         var refTime = referenceTime ?? DateTimeOffset.UtcNow;
         var profileResult = await storeProfileLookup.GetProfileAsync(tenantId, ct);
         var storeProfile = profileResult.IsSuccess ? profileResult.Value : null;
-        var storeName = storeProfile?.TradeName ?? "Lavaway";
+        var storeName = storeProfile?.TradeName ?? "Lava Aê";
         var address = storeProfile is not null
             ? $"{storeProfile.Street}, {storeProfile.City}"
             : "Consulte nosso endereço no perfil";
@@ -116,7 +116,7 @@ public sealed class BookingReminderApplicationService(
 
         var profileResult = await storeProfileLookup.GetProfileAsync(tenantId, ct);
         var storeProfile = profileResult.IsSuccess ? profileResult.Value : null;
-        var storeName = storeProfile?.TradeName ?? "Lavaway";
+        var storeName = storeProfile?.TradeName ?? "Lava Aê";
         var address = storeProfile is not null
             ? $"{storeProfile.Street}, {storeProfile.City}"
             : "Consulte nosso endereço no perfil";

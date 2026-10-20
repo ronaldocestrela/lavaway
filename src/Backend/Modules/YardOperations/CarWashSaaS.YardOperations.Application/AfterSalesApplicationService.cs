@@ -79,7 +79,7 @@ public sealed class AfterSalesApplicationService(
         }
 
         var storeProfileResult = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-        var storeName = storeProfileResult.Value?.TradeName ?? "Lavaway";
+        var storeName = storeProfileResult.Value?.TradeName ?? "Lava Aê";
 
         var dispatchedCount = 0;
 
@@ -157,7 +157,7 @@ public sealed class AfterSalesApplicationService(
 
         var vehicle = await vehicleRepository.GetByIdAsync(tenantId, order.VehicleId, ct);
         var storeProfileResult = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-        var storeName = storeProfileResult.Value?.TradeName ?? "Lavaway";
+        var storeName = storeProfileResult.Value?.TradeName ?? "Lava Aê";
 
         var message = $"👋 Olá, *{customer.Name}*! Como foi sua experiência com a lavagem do seu veículo (*{vehicle?.Plate}*) no *{storeName}*?\n\n" +
                       "Responda de *1 a 5* com sua nota de satisfação (onde 5 é Excelente)!";

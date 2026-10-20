@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Lavaway Main Layout - Desktop & Mobile Styles
+   Lava Aê Main Layout - Desktop & Mobile Styles
    ========================================================================== */
 
 .app-shell {
@@ -32,12 +32,16 @@
     text-decoration: none;
 }
 
+.brand-mark,
+.brand-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+}
+
 .brand-mark {
-    width: 33px;
-    height: 33px;
     display: grid;
     place-items: center;
-    border-radius: 9px;
     background: #c6f277;
     color: #18302b;
     font: 800 18px/1 'Manrope', sans-serif;

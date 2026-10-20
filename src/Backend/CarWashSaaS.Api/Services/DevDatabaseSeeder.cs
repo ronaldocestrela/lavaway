@@ -37,13 +37,13 @@ public static class DevDatabaseSeeder
             ?? configuration["SEED_TENANT_NAME"]
             ?? Environment.GetEnvironmentVariable("Seed__TenantName")
             ?? Environment.GetEnvironmentVariable("SEED_TENANT_NAME")
-            ?? "Lavaway Matriz - Estética & Lava-Jato";
+            ?? "Lava Aê Matriz - Estética & Lava-Jato";
 
         var adminEmail = configuration["Seed:AdminEmail"]
             ?? configuration["SEED_ADMIN_EMAIL"]
             ?? Environment.GetEnvironmentVariable("Seed__AdminEmail")
             ?? Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL")
-            ?? "admin@lavaway.com";
+            ?? "admin@lavaae.com";
 
         var adminPassword = configuration["Seed:AdminPassword"]
             ?? configuration["SEED_ADMIN_PASSWORD"]
@@ -55,7 +55,7 @@ public static class DevDatabaseSeeder
             ?? configuration["SEED_RECEPTION_EMAIL"]
             ?? Environment.GetEnvironmentVariable("Seed__ReceptionEmail")
             ?? Environment.GetEnvironmentVariable("SEED_RECEPTION_EMAIL")
-            ?? "recepcao@lavaway.com";
+            ?? "recepcao@lavaae.com";
 
         var receptionPassword = configuration["Seed:ReceptionPassword"]
             ?? configuration["SEED_RECEPTION_PASSWORD"]
@@ -84,14 +84,14 @@ public static class DevDatabaseSeeder
         {
             var storeProfileResult = StoreProfile.Create(
                 tenantId,
-                "Lavaway Auto Care Ltda",
+                "Lava Aê Auto Care Ltda",
                 tenantName,
                 "11222333000181",
-                "(11) 98765-4321",
-                "Av. Paulista, 1000",
-                "São Paulo",
-                "SP",
-                "01310-100",
+                "(75) 99177-9365",
+                "Av. Getulio Vargas, 1000",
+                "Feira de Santana",
+                "BA",
+                "44004-000",
                 null,
                 "#c6f277",
                 "#182c2b");
@@ -131,7 +131,7 @@ public static class DevDatabaseSeeder
             ?? configuration["SEED_PLATFORM_ADMIN_EMAIL"]
             ?? configuration["Seed:PlatformSuperAdminEmail"]
             ?? configuration["SEED_PLATFORM_SUPERADMIN_EMAIL"]
-            ?? "platform@lavaway.com";
+            ?? "platform@lavaae.com";
 
         var platformAdminPassword = configuration["Seed:PlatformAdminPassword"]
             ?? configuration["SEED_PLATFORM_ADMIN_PASSWORD"]
@@ -145,7 +145,7 @@ public static class DevDatabaseSeeder
             var passwordHash = platformUserRepo.HashPassword(platformAdminPassword);
             var superAdminResult = PlatformUser.Create(
                 platformAdminEmail,
-                "Administrador da Plataforma Lavaway",
+                "Administrador da Plataforma Lava Aê",
                 PlatformRole.SuperAdmin,
                 passwordHash);
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "=========================================================="
-echo "  Lavaway - Executando Migrations em Produção"
+echo "  LavaAe - Executando Migrations em Produção"
 echo "=========================================================="
 
 CONNECTION_STRING="${ConnectionStrings__CarWashSaaS:-${CONNECTION_STRING:-}}"

@@ -358,7 +358,7 @@ public sealed class WorkOrderNotificationApplicationService(
         return new WorkOrderReceiptPdfModel(
             tenantId,
             workOrder.Id,
-            storeProfile?.TradeName ?? "Lavaway Estética Automotiva",
+            storeProfile?.TradeName ?? "Lava Aê Estética Automotiva",
             storeProfile?.Phone,
             storeAddress,
             customer?.Name ?? "Cliente",

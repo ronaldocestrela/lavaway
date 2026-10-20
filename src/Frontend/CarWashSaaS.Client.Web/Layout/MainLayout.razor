@@ -5,9 +5,9 @@
 <div class="app-shell">
     <!-- Sidebar Desktop -->
     <aside class="sidebar">
-        <a class="brand" href="reception" aria-label="Lavaway, recepção">
-            <span class="brand-mark">L</span>
-            <span class="brand-name">lavaway</span>
+        <a class="brand" href="reception" aria-label="Lava Aê, recepção">
+            <img src="/icon-192.png" alt="Lava Aê" class="brand-logo" width="32" height="32" />
+            <span class="brand-name">Lava Aê</span>
         </a>
         <div class="sidebar-caption">OPERAÇÃO</div>
         <NavMenu />
@@ -22,8 +22,8 @@
     <aside class="mobile-drawer @(isMobileDrawerOpen ? "open" : "")" aria-label="Menu móvel de navegação" aria-hidden="@(!isMobileDrawerOpen)">
         <div class="drawer-header">
             <a class="brand" href="reception" @onclick="CloseMobileDrawer">
-                <span class="brand-mark">L</span>
-                <span class="brand-name">lavaway</span>
+                <img src="/icon-192.png" alt="Lava Aê" class="brand-logo" width="32" height="32" />
+                <span class="brand-name">Lava Aê</span>
             </a>
             <button type="button" class="btn-drawer-close" @onclick="CloseMobileDrawer" aria-label="Fechar menu">✕</button>
         </div>

@@ -347,7 +347,7 @@ public sealed class TenantPaymentGatewayApplicationService(
 
     private static string BuildWebhookUrl(string baseUrl, Guid tenantId, string provider)
     {
-        var cleanBase = string.IsNullOrWhiteSpace(baseUrl) ? "https://api.lavaway.com.br" : baseUrl.TrimEnd('/');
+        var cleanBase = string.IsNullOrWhiteSpace(baseUrl) ? "https://api.lavaae.app" : baseUrl.TrimEnd('/');
         var providerRoute = string.Equals(provider, PaymentGatewayProviderConstants.PagarMe, StringComparison.OrdinalIgnoreCase) ? "pagarme" : "mercadopago";
         return $"{cleanBase}/billing/webhooks/{providerRoute}/{tenantId}";
     }
