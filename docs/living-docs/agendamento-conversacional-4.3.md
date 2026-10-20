@@ -36,24 +36,31 @@ sequenceDiagram
     FSM->>SessionRepo: GetActiveByPhoneAsync(tenantId, phone)
 
     alt Sessão Nova ou Expirada (>30 min)
-        FSM->>SessionRepo: Inicia Sessão (Greeting)
+        opt Sessão Expirada
+            FSM->>SessionRepo: Complete() & UpdateAsync(session) [persiste inativação]
+        end
+        FSM->>SessionRepo: Start() & AddAsync(session) [persiste nova sessão]
         FSM->>WAppSender: Envia Menu Principal com Opções (1: Agendar, 2: Catálogo, 3: Minhas Reservas)
+        FSM->>SessionRepo: MoveToStep(Menu) & UpdateAsync(session) [persiste transição]
     else Escolheu Agendar (Opção 1)
         FSM->>SchedContract: GetAvailableServicesCatalogAsync(tenantId)
         SchedContract-->>FSM: Lista de Serviços com Menor Preço
         FSM->>WAppSender: Envia Catálogo Numerado
+        FSM->>SessionRepo: MoveToStep(SelectingService) & UpdateAsync(session)
     else Selecionou Serviço e Porte
         FSM->>SchedContract: GetAvailableTimeSlotsAsync(tenantId, date, serviceId, size)
         SchedContract->>YardApp: Calcula Slots Vagos vs YardCapacity.TotalBoxes
         YardApp-->>SchedContract: Slots com Vagas Disponíveis
         FSM->>WAppSender: Envia Horários Vagos Disponíveis
+        FSM->>SessionRepo: MoveToStep(SelectingDate) & UpdateAsync(session)
     else Confirmou Horário e Placa
         FSM->>SchedContract: CreateBookingFromChatbotAsync(tenantId, request)
         SchedContract->>YardApp: Cria Booking no banco com trava de capacidade
         YardApp-->>SchedContract: BookingConfirmationDto
-        FSM->>SessionRepo: Complete()
+        FSM->>SessionRepo: Complete() & UpdateAsync(session) [persiste conclusão e desativação]
         FSM->>WAppSender: Envia Confirmação Formal com Protocolo
     end
+    Note over SessionRepo: Persistência Atômica via SaveChangesAsync() em cada escopo com isolamento por TenantId
 ```
 
 ---

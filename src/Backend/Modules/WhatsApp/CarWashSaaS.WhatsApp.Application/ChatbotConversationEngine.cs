@@ -35,6 +35,12 @@ public sealed class ChatbotConversationEngine(
         // Se sessão não existe ou expirou, inicia nova sessão
         if (session is null || session.IsExpired(SessionTimeout))
         {
+            if (session is not null && session.IsExpired(SessionTimeout))
+            {
+                session.Complete();
+                await sessionRepository.UpdateAsync(session, ct);
+            }
+
             session = ChatbotConversationSession.Start(tenantId, senderPhone, pushName).Value!;
             await sessionRepository.AddAsync(session, ct);
         }
@@ -47,8 +53,9 @@ public sealed class ChatbotConversationEngine(
         if (IsResetCommand(text))
         {
             session.Reset();
+            var menuResult = await SendMainMenuAsync(tenantId, session, ct);
             await sessionRepository.UpdateAsync(session, ct);
-            return await SendMainMenuAsync(tenantId, session, ct);
+            return menuResult;
         }
 
         var lower = text.ToLowerInvariant().Trim();

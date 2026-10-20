@@ -13,19 +13,25 @@ public sealed class ChatbotSessionRepository(WhatsAppDbContext dbContext) : ICha
     {
         var normalizedPhone = new string(customerPhone.Where(char.IsDigit).ToArray());
         return await dbContext.ChatbotSessions
-            .FirstOrDefaultAsync(s => s.TenantId == tenantId &&
-                                      s.CustomerPhone == normalizedPhone &&
-                                      s.IsActive, ct);
+            .Where(s => s.TenantId == tenantId &&
+                        s.CustomerPhone == normalizedPhone &&
+                        s.IsActive)
+            .OrderByDescending(s => s.LastInteractionAtUtc)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task AddAsync(ChatbotConversationSession session, CancellationToken ct = default)
     {
         await dbContext.ChatbotSessions.AddAsync(session, ct);
+        await dbContext.SaveChangesAsync(ct);
     }
 
-    public Task UpdateAsync(ChatbotConversationSession session, CancellationToken ct = default)
+    public async Task UpdateAsync(ChatbotConversationSession session, CancellationToken ct = default)
     {
-        dbContext.ChatbotSessions.Update(session);
-        return Task.CompletedTask;
+        if (dbContext.Entry(session).State == EntityState.Detached)
+        {
+            dbContext.ChatbotSessions.Update(session);
+        }
+        await dbContext.SaveChangesAsync(ct);
     }
 }
