@@ -87,7 +87,7 @@ public sealed class PixBillingApplicationService(
             tenantId,
             workOrderId,
             workOrder.TotalAmount,
-            $"Pagamento Lavaway OS #{workOrderId.ToString()[..8].ToUpperInvariant()} - Placa {workOrder.Plate}",
+            $"Pagamento Lava Aê OS #{workOrderId.ToString()[..8].ToUpperInvariant()} - Placa {workOrder.Plate}",
             workOrder.CustomerName,
             workOrder.CustomerPhone,
             expiration);

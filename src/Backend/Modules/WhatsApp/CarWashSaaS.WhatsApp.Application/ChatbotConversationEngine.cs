@@ -122,7 +122,7 @@ public sealed class ChatbotConversationEngine(
                 await sessionRepository.UpdateAsync(session, ct);
 
                 var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-                var storeName = storeProfile.Value?.TradeName ?? "Lavaway";
+                var storeName = storeProfile.Value?.TradeName ?? "Lava Aê";
 
                 var surveyReply = rating >= 4
                     ? $"Muito obrigado pela sua avaliação de {rating} estrelas! 🌟\n\nFicamos extremamente felizes que tenha apreciado o serviço no *{storeName}*. Esperamos você em breve para a próxima lavagem!"
@@ -144,7 +144,7 @@ public sealed class ChatbotConversationEngine(
                 {
                     var charge = pixResult.Value;
                     var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-                    var storeName = storeProfile.Value?.TradeName ?? "Lavaway";
+                    var storeName = storeProfile.Value?.TradeName ?? "Lava Aê";
                     var expirationLocal = charge.ExpiresAtUtc.ToOffset(TimeSpan.FromHours(-3)).ToString("HH:mm", CultureInfo.GetCultureInfo("pt-BR"));
 
                     var pixReply =
@@ -168,7 +168,7 @@ public sealed class ChatbotConversationEngine(
             {
                 var loyalty = loyaltyResult.Value;
                 var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-                var storeName = storeProfile.Value?.TradeName ?? "Lavaway";
+                var storeName = storeProfile.Value?.TradeName ?? "Lava Aê";
                 var progressBar = FormatProgressBar(loyalty.Balance, loyalty.TargetStamps);
 
                 string loyaltyReply;
@@ -663,7 +663,7 @@ public sealed class ChatbotConversationEngine(
     {
         session.MoveToStep(ChatbotStep.Menu);
         var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-        var storeName = storeProfile.Value?.TradeName ?? "Lavaway Estética Automotiva";
+        var storeName = storeProfile.Value?.TradeName ?? "Lava Aê Estética Automotiva";
         var nameGreeting = string.IsNullOrWhiteSpace(session.CustomerName) ? "" : $", *{session.CustomerName}*";
 
         var menu = $"👋 Olá{nameGreeting}! Bem-vindo ao *{storeName}* 🚗✨\n" +
@@ -958,7 +958,7 @@ public sealed class ChatbotConversationEngine(
     private async Task<Result> SendConfirmationSummaryAsync(Guid tenantId, ChatbotConversationSession session, CancellationToken ct)
     {
         var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-        var storeName = storeProfile.Value?.TradeName ?? "Lavaway";
+        var storeName = storeProfile.Value?.TradeName ?? "Lava Aê";
         var address = storeProfile.Value is not null
             ? $"{storeProfile.Value.Street}, {storeProfile.Value.City}"
             : "Consulte nosso endereço no perfil";

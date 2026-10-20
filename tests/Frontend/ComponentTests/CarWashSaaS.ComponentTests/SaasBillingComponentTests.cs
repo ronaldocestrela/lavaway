@@ -88,7 +88,7 @@ public sealed class SaasBillingComponentTests : BunitContext
             .Add(p => p.CurrentTier, SaasPlanTier.Basic)
             .Add(p => p.Plans, plans));
 
-        Assert.Contains("Planos de Assinatura Lavaway", cut.Markup);
+        Assert.Contains("Planos de Assinatura Lava Aê", cut.Markup);
         Assert.Contains("Básico", cut.Markup);
         Assert.Contains("Pro", cut.Markup);
         Assert.Contains("Enterprise", cut.Markup);

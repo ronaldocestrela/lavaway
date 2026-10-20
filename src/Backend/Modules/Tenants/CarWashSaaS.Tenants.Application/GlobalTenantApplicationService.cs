@@ -130,7 +130,7 @@ public sealed class GlobalTenantApplicationService(ITenantRepository repository)
         }
 
         var sanitizedName = !string.IsNullOrWhiteSpace(summary.TradeName) ? summary.TradeName : summary.Name;
-        var email = $"{sanitizedName.ToLowerInvariant().Replace(" ", "").Replace("-", "")}@lavaway.com";
+        var email = $"{sanitizedName.ToLowerInvariant().Replace(" ", "").Replace("-", "")}@lavaae.app";
 
         return Result<TenantNotificationContactDto>.Success(new TenantNotificationContactDto(
             tenantId,

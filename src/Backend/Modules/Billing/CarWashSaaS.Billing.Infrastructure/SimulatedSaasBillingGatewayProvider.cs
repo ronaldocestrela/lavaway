@@ -18,9 +18,9 @@ public sealed class SimulatedSaasBillingGatewayProvider : ISaasBillingGatewayPro
         var subscriptionId = $"sub_saas_{Guid.NewGuid():N}[..12]";
         var invoiceId = $"inv_saas_{Guid.NewGuid():N}[..12]";
 
-        var pixCopiaECola = $"00020126580014br.gov.bcb.pix0136{tenantId}520400005303986540{plan.MonthlyPrice:F2}5802BR5915LAVAWAY SAAS6009SAO PAULO62070503***6304ABCD";
+        var pixCopiaECola = $"00020126580014br.gov.bcb.pix0136{tenantId}520400005303986540{plan.MonthlyPrice:F2}5802BR5915LAVAAE SAAS6009SAO PAULO62070503***6304ABCD";
         var pixQrCode = $"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={Uri.EscapeDataString(pixCopiaECola)}";
-        var paymentUrl = $"https://billing.lavaway.com/pay/{invoiceId}";
+        var paymentUrl = $"https://billing.lavaae.com/pay/{invoiceId}";
 
         return Task.FromResult(Result<GatewaySubscriptionResult>.Success(new GatewaySubscriptionResult(
             GatewayCustomerId: customerId,
@@ -84,9 +84,9 @@ public sealed class SimulatedSaasBillingGatewayProvider : ISaasBillingGatewayPro
         CancellationToken ct = default)
     {
         var invoiceId = $"inv_saas_{Guid.NewGuid():N}[..12]";
-        var pixCopiaECola = $"00020126580014br.gov.bcb.pix0136{tenantId}520400005303986540{amount:F2}5802BR5915LAVAWAY SAAS6009SAO PAULO62070503***6304EF12";
+        var pixCopiaECola = $"00020126580014br.gov.bcb.pix0136{tenantId}520400005303986540{amount:F2}5802BR5915LAVAAE SAAS6009SAO PAULO62070503***6304EF12";
         var pixQrCode = $"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={Uri.EscapeDataString(pixCopiaECola)}";
-        var paymentUrl = $"https://billing.lavaway.com/pay/{invoiceId}";
+        var paymentUrl = $"https://billing.lavaae.com/pay/{invoiceId}";
 
         return Task.FromResult(Result<GatewayInvoiceResult>.Success(new GatewayInvoiceResult(
             GatewayInvoiceId: invoiceId,

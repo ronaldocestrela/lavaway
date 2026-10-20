@@ -137,7 +137,7 @@ public sealed class ReactivationCampaignApplicationService(
         var totalSkippedOptOut = 0;
 
         var storeProfileResult = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-        var storeName = storeProfileResult.Value?.TradeName ?? "Lavaway";
+        var storeName = storeProfileResult.Value?.TradeName ?? "Lava Aê";
 
         foreach (var rule in enabledRules)
         {
@@ -213,7 +213,7 @@ public sealed class ReactivationCampaignApplicationService(
         var inactiveCustomers = await campaignRepository.GetInactiveCustomersAsync(tenantId, minDays, maxDays, ct);
 
         var storeProfileResult = await storeProfileLookup.GetProfileAsync(tenantId, ct);
-        var storeName = storeProfileResult.Value?.TradeName ?? "Lavaway";
+        var storeName = storeProfileResult.Value?.TradeName ?? "Lava Aê";
 
         var totalEvaluated = 0;
         var totalDispatched = 0;

@@ -155,7 +155,7 @@ public sealed class WorkOrderReceiptPdfGenerator : IWorkOrderReceiptPdfGenerator
 
         // 6. Rodapé
         sb.AppendLine("0.5 0.5 0.5 rg");
-        sb.AppendLine("BT /F1 7 Tf 36 20 Td (Lavaway SaaS - Gestao Inteligente para Estetica Automotiva e Lava-Jato) Tj ET");
+        sb.AppendLine("BT /F1 7 Tf 36 20 Td (Lava Ae SaaS - Gestao Inteligente para Estetica Automotiva e Lava-Jato) Tj ET");
         sb.AppendLine("BT /F1 7 Tf 420 20 Td (Documento gerado em " + EscapePdfText(DateTimeOffset.UtcNow.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss", PtBr)) + ") Tj ET");
 
         var contentStream = sb.ToString();

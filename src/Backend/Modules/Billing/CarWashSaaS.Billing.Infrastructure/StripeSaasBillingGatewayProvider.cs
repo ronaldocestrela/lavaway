@@ -68,7 +68,7 @@ public sealed class StripeSaasBillingGatewayProvider : ISaasBillingGatewayProvid
                             },
                             ProductData = new Stripe.Checkout.SessionLineItemPriceDataProductDataOptions
                             {
-                                Name = $"Plano {plan.Name} — Lavaway",
+                                Name = $"Plano {plan.Name} — Lava Aê",
                                 Description = plan.Description
                             }
                         },
@@ -88,8 +88,8 @@ public sealed class StripeSaasBillingGatewayProvider : ISaasBillingGatewayProvid
                         ["plan_tier"] = plan.Tier.ToString()
                     }
                 },
-                SuccessUrl = string.IsNullOrWhiteSpace(successUrl) ? _options.DefaultSuccessUrl ?? "https://lavaway.com/settings/subscription?session_id={CHECKOUT_SESSION_ID}" : successUrl,
-                CancelUrl = string.IsNullOrWhiteSpace(cancelUrl) ? _options.DefaultCancelUrl ?? "https://lavaway.com/settings/subscription?canceled=true" : cancelUrl
+                SuccessUrl = string.IsNullOrWhiteSpace(successUrl) ? _options.DefaultSuccessUrl ?? "https://lavaae.app/settings/subscription?session_id={CHECKOUT_SESSION_ID}" : successUrl,
+                CancelUrl = string.IsNullOrWhiteSpace(cancelUrl) ? _options.DefaultCancelUrl ?? "https://lavaae.app/settings/subscription?canceled=true" : cancelUrl
             };
 
             var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: ct);
@@ -178,7 +178,7 @@ public sealed class StripeSaasBillingGatewayProvider : ISaasBillingGatewayProvid
             var portalOptions = new Stripe.BillingPortal.SessionCreateOptions
             {
                 Customer = gatewayCustomerId,
-                ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? _options.DefaultSuccessUrl ?? "https://lavaway.com/settings/subscription" : returnUrl
+                ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? _options.DefaultSuccessUrl ?? "https://lavaae.app/settings/subscription" : returnUrl
             };
 
             var session = await portalService.CreateAsync(portalOptions, cancellationToken: ct);
@@ -326,7 +326,7 @@ public sealed class StripeSaasBillingGatewayProvider : ISaasBillingGatewayProvid
                 Customer = gatewayCustomerId,
                 Amount = (long)(amount * 100),
                 Currency = _options.Currency,
-                Description = "Mensalidade Lavaway SaaS"
+                Description = "Mensalidade Lava Aê SaaS"
             }, cancellationToken: ct);
 
             var invoice = await invoiceService.CreateAsync(new Stripe.InvoiceCreateOptions
@@ -429,7 +429,7 @@ public sealed class StripeSaasBillingGatewayProvider : ISaasBillingGatewayProvid
 
         var newProduct = await productService.CreateAsync(new Stripe.ProductCreateOptions
         {
-            Name = $"Plano {plan.Name} — Lavaway",
+            Name = $"Plano {plan.Name} — Lava Aê",
             Description = plan.Description,
             Metadata = new Dictionary<string, string>
             {
