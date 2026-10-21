@@ -69,6 +69,12 @@ public sealed record TenantSubscriptionOverviewDto(
     string? GatewaySubscriptionId,
     SaasInvoiceDto? PendingInvoice,
     IReadOnlyList<SaasInvoiceDto> Invoices,
+    bool HasCustomerSubscriptions = false,
+    bool HasLoyalty = false,
+    bool HasCommissions = false,
+    bool HasAiChatbot = false,
+    int MaxTeamMembers = 0,
+    int MaxBoxes = 0,
     string? GatewayCustomerId = null,
     string? StripePortalUrl = null,
     string? PaymentMethodType = null);

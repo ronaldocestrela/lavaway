@@ -297,4 +297,125 @@ public sealed class YardSetupApplicationServiceTests
             return Task.CompletedTask;
         }
     }
+
+    [Fact]
+    public async Task When_Feature_Commissions_Not_Allowed_Should_Return_Unauthorized()
+    {
+        var tenantId = Guid.NewGuid();
+        var quotaLookup = new ConfigurableFakeQuotaLookup(allowedFeatures: []);
+        var serviceWithQuota = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, quotaLookup);
+
+        var listResult = await serviceWithQuota.ListCommissionRulesAsync(tenantId);
+        Assert.False(listResult.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, listResult.Error!.Type);
+        Assert.Equal("tenant.plan.commissions_not_allowed", listResult.Error.Code);
+
+        var createResult = await serviceWithQuota.CreateCommissionRuleAsync(tenantId, new CreateCommissionRuleCommand("Lavagem", "Lavador", 10m));
+        Assert.False(createResult.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, createResult.Error!.Type);
+        Assert.Equal("tenant.plan.commissions_not_allowed", createResult.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateTeamMemberAsync_WhenActiveLimitReached_ShouldReturnConflict()
+    {
+        var tenantId = Guid.NewGuid();
+        var quotaLookup = new ConfigurableFakeQuotaLookup(maxTeamMembers: 1);
+        var serviceWithQuota = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, quotaLookup);
+
+        // 1st member: ok
+        var first = await serviceWithQuota.CreateTeamMemberAsync(tenantId, new CreateTeamMemberCommand("João Silva", "Lavador", "joao@teste.com"));
+        Assert.True(first.IsSuccess);
+
+        // 2nd member: should exceed max active members (1)
+        var second = await serviceWithQuota.CreateTeamMemberAsync(tenantId, new CreateTeamMemberCommand("Maria Santos", "Lavador", "maria@teste.com"));
+        Assert.False(second.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, second.Error!.Type);
+        Assert.Equal("tenant.plan.team_limit_reached", second.Error.Code);
+    }
+
+    [Fact]
+    public async Task ToggleTeamMemberStatusAsync_WhenReactivatingAndLimitReached_ShouldReturnConflict()
+    {
+        var tenantId = Guid.NewGuid();
+        var quotaLookup = new ConfigurableFakeQuotaLookup(maxTeamMembers: 1);
+        var serviceWithQuota = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, quotaLookup);
+
+        // Create 1st member
+        var first = await serviceWithQuota.CreateTeamMemberAsync(tenantId, new CreateTeamMemberCommand("João", "Lavador", "joao@teste.com"));
+        Assert.True(first.IsSuccess);
+
+        // Deactivate 1st member
+        var toggledOff = await serviceWithQuota.ToggleTeamMemberStatusAsync(tenantId, first.Value!.Id);
+        Assert.True(toggledOff.IsSuccess);
+        Assert.False(toggledOff.Value!.IsActive);
+
+        // Create 2nd member (now 1 active)
+        var second = await serviceWithQuota.CreateTeamMemberAsync(tenantId, new CreateTeamMemberCommand("Maria", "Lavador", "maria@teste.com"));
+        Assert.True(second.IsSuccess);
+
+        // Attempt to reactivate 1st member (would make 2 active, exceeding limit of 1)
+        var reactivateResult = await serviceWithQuota.ToggleTeamMemberStatusAsync(tenantId, first.Value.Id);
+        Assert.False(reactivateResult.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, reactivateResult.Error!.Type);
+        Assert.Equal("tenant.plan.team_limit_reached", reactivateResult.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateCapacityAsync_WhenBoxesExceedsLimit_ShouldReturnConflict()
+    {
+        var tenantId = Guid.NewGuid();
+        var quotaLookup = new ConfigurableFakeQuotaLookup(maxBoxes: 2);
+        var serviceWithQuota = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, quotaLookup);
+
+        var result = await serviceWithQuota.CreateCapacityAsync(tenantId, new CreateYardCapacityCommand(5, "5 Boxes"));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, result.Error!.Type);
+        Assert.Equal("tenant.plan.boxes_limit_reached", result.Error.Code);
+    }
+
+    private sealed class ConfigurableFakeQuotaLookup(
+        HashSet<SaasFeature>? allowedFeatures = null,
+        int maxTeamMembers = 3,
+        int maxBoxes = 2) : ITenantPlanQuotaLookup
+    {
+        private readonly HashSet<SaasFeature> _allowed = allowedFeatures ?? [];
+
+        public Task<Result<TenantQuotaStatusDto>> CheckWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantQuotaStatusDto>.Success(new(true, SaasPlanTier.Basic, TenantSubscriptionStatus.Active, 0, 100, 0, 100)));
+
+        public Task<Result> ConsumeWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result<TenantQuotaStatusDto>> CheckWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantQuotaStatusDto>.Success(new(true, SaasPlanTier.Basic, TenantSubscriptionStatus.Active, 0, 100, 0, 100)));
+
+        public Task<Result> ConsumeWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result<TenantSubscriptionOverviewDto>> GetSubscriptionOverviewAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantSubscriptionOverviewDto>.Failure(new("not_found", "Not found", ErrorType.NotFound)));
+
+        public Task<Result<bool>> HasFeatureAsync(Guid tenantId, SaasFeature feature, CancellationToken ct = default) =>
+            Task.FromResult(Result<bool>.Success(_allowed.Contains(feature)));
+
+        public Task<Result> ValidateTeamMemberLimitAsync(Guid tenantId, int currentTeamMemberCount, CancellationToken ct = default)
+        {
+            if (maxTeamMembers > 0 && currentTeamMemberCount >= maxTeamMembers)
+            {
+                return Task.FromResult(Result.Failure(new Error("tenant.plan.team_limit_reached", "Limite atingido.", ErrorType.Conflict)));
+            }
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> ValidateBoxesLimitAsync(Guid tenantId, int requestedBoxes, CancellationToken ct = default)
+        {
+            if (maxBoxes > 0 && requestedBoxes > maxBoxes)
+            {
+                return Task.FromResult(Result.Failure(new Error("tenant.plan.boxes_limit_reached", "Limite atingido.", ErrorType.Conflict)));
+            }
+            return Task.FromResult(Result.Success());
+        }
+    }
 }
+

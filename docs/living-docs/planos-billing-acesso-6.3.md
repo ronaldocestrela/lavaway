@@ -185,3 +185,25 @@ erDiagram
 * **Então** a página consome o endpoint público `GET /public/saas-plans` e renderiza dinamicamente os planos ativos cadastrados no catálogo oficial (`Basic`, `Pro`, `Enterprise`).
 * **E quando** o visitante clica para contratar qualquer plano,
 * **Então** o modal de onboarding recebe o `SaasPlanTier` exato do plano escolhido, integrando diretamente com o fluxo de registro e período de testes sem dados estáticos divergentes.
+
+### Cenário 6: Validação Centralizada de Recursos e Limites de Infraestrutura (`ITenantPlanQuotaLookup`)
+* **Dado** um estabelecimento autenticado,
+* **Quando** uma operação consulta o serviço de autorização via `HasFeatureAsync(tenantId, feature)`:
+  * Se o estabelecimento estiver no plano `Basic`, recursos como `CustomerSubscriptions`, `Loyalty`, `Commissions` e `AiChatbot` retornam `false`.
+  * Se o estabelecimento estiver em `Pro` ou `Enterprise`, os recursos habilitados retornam `true`.
+  * Se a assinatura estiver suspensa por inadimplência (`Delinquent`), retorna falha com código `tenant.subscription.delinquent`.
+* **E quando** um estabelecimento tenta cadastrar um novo colaborador via `ValidateTeamMemberLimitAsync(tenantId, currentTeamMemberCount)`:
+  * Se `currentTeamMemberCount >= plan.MaxTeamMembers` (para planos com limite fixo, ex: 3 no Básico), a criação é bloqueada com o erro `tenant.plan.team_limit_reached`.
+  * Se o plano for ilimitado (`MaxTeamMembers <= 0`, ex: Enterprise), a criação é liberada.
+* **E quando** um estabelecimento tenta configurar os boxes do pátio via `ValidateBoxesLimitAsync(tenantId, requestedBoxes)`:
+  * Se `requestedBoxes > plan.MaxBoxes` (ex: 3 boxes no Básico que suporta até 2), a operação é bloqueada com `tenant.plan.boxes_limit_reached`.
+  * Se o plano for ilimitado (`MaxBoxes <= 0`, ex: Enterprise), qualquer quantidade é aceita.
+
+### Cenário 7: Travas no Backend para Proteção de Endpoints e Handlers (Etapa 2)
+* **Dado** um estabelecimento sem permissão para módulos opcionais ou com cotas esgotadas:
+  * **Clube de Assinaturas**: Em `SubscriptionApplicationService`, requisições a planos ou assinaturas de clientes são rejeitadas com erro `tenant.plan.customer_subscriptions_not_allowed` (`ErrorType.Unauthorized`), mapeado nos endpoints para HTTP `403 Forbidden` com payload `{ error.Code, error.Description }`.
+  * **Fidelidade & Bypass Silencioso na OS**: Em `LoyaltyApplicationService`, todas as consultas e resgates de selos são rejeitados com `tenant.plan.loyalty_not_allowed` (`403 Forbidden`). Ao concluir ou registrar pagamento de uma OS em `WorkOrderApplicationService`, o sistema verifica silenciosamente a existência do recurso: se desabilitado, a OS é finalizada com sucesso sem gerar pontos e sem falhar o fluxo operacional.
+  * **Comissões de Operadores**: Em `YardSetupApplicationService` e `CommissionApplicationService`, o cadastro de regras e emissão de relatórios de comissão exigem `SaasFeature.Commissions`, retornando `tenant.plan.commissions_not_allowed` (`403 Forbidden`).
+  * **Capacidade de Boxes e Equipe Ativa**: Em `YardSetupApplicationService`, ultrapassar os boxes permitidos retorna `tenant.plan.boxes_limit_reached` (`409 Conflict`). O cadastro de novos membros ou reativação de colaboradores inativos verifica apenas a contagem de ativos (`IsActive == true`), bloqueando com `tenant.plan.team_limit_reached` (`409 Conflict`) quando atingido o limite.
+  * **Chatbot IA & Fallback Cordial**: Em `InboundWhatsAppMessageHandler`, se o estabelecimento não possui `SaasFeature.AiChatbot`, a mensagem de entrada é interceptada e uma resposta padrão cordial personalizada é enviada (informando que o atendimento automatizado está indisponível e que um atendente responderá em breve), sem iniciar a máquina de estados do chatbot. Se palavras-chave de fidelidade forem digitadas no bot de um tenant sem módulo de fidelidade, uma resposta explicativa amigável é retornada.
+

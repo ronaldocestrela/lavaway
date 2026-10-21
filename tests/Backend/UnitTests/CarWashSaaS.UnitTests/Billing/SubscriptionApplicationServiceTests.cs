@@ -278,4 +278,67 @@ public sealed class SubscriptionApplicationServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(2, sub.AvailableCredits);
     }
+
+    [Fact]
+    public async Task When_Feature_CustomerSubscriptions_Not_Allowed_Should_Return_Unauthorized()
+    {
+        var quotaLookup = new ConfigurableFakeQuotaLookup(allowedFeatures: []);
+        var serviceWithQuota = new SubscriptionApplicationService(
+            _planRepository,
+            _subscriptionRepository,
+            _gatewayProvider,
+            quotaLookup);
+
+        var listResult = await serviceWithQuota.ListPlansAsync(_tenantId);
+        Assert.False(listResult.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, listResult.Error!.Type);
+        Assert.Equal("tenant.plan.customer_subscriptions_not_allowed", listResult.Error.Code);
+
+        var createPlanResult = await serviceWithQuota.CreatePlanAsync(_tenantId, new CreateSubscriptionPlanRequest(
+            "Plano Mensal", "Desc", 100m, 4, 1, 30));
+        Assert.False(createPlanResult.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, createPlanResult.Error!.Type);
+        Assert.Equal("tenant.plan.customer_subscriptions_not_allowed", createPlanResult.Error.Code);
+
+        var createSubResult = await serviceWithQuota.SubscribeCustomerAsync(_tenantId, new SubscribeCustomerRequest(
+            CustomerId: Guid.NewGuid(),
+            CustomerName: "Cliente",
+            CustomerPhone: "11999998888",
+            PlanId: Guid.NewGuid(),
+            InitialPlates: ["ABC1234"],
+            CardNumber: "4242424242424242"));
+        Assert.False(createSubResult.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, createSubResult.Error!.Type);
+        Assert.Equal("tenant.plan.customer_subscriptions_not_allowed", createSubResult.Error.Code);
+    }
+
+    private sealed class ConfigurableFakeQuotaLookup(HashSet<SaasFeature>? allowedFeatures = null) : ITenantPlanQuotaLookup
+    {
+        private readonly HashSet<SaasFeature> _allowed = allowedFeatures ?? [];
+
+        public Task<Result<TenantQuotaStatusDto>> CheckWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantQuotaStatusDto>.Success(new(true, SaasPlanTier.Basic, TenantSubscriptionStatus.Active, 0, 100, 0, 100)));
+
+        public Task<Result> ConsumeWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result<TenantQuotaStatusDto>> CheckWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantQuotaStatusDto>.Success(new(true, SaasPlanTier.Basic, TenantSubscriptionStatus.Active, 0, 100, 0, 100)));
+
+        public Task<Result> ConsumeWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result<TenantSubscriptionOverviewDto>> GetSubscriptionOverviewAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantSubscriptionOverviewDto>.Failure(new("not_found", "Not found", ErrorType.NotFound)));
+
+        public Task<Result<bool>> HasFeatureAsync(Guid tenantId, SaasFeature feature, CancellationToken ct = default) =>
+            Task.FromResult(Result<bool>.Success(_allowed.Contains(feature)));
+
+        public Task<Result> ValidateTeamMemberLimitAsync(Guid tenantId, int currentTeamMemberCount, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result> ValidateBoxesLimitAsync(Guid tenantId, int requestedBoxes, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+    }
 }
+

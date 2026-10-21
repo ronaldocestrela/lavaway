@@ -236,7 +236,7 @@ public static class SubscriptionEndpoints
         ErrorType.NotFound => Results.NotFound(new { error.Code, error.Description }),
         ErrorType.Validation => Results.BadRequest(new { error.Code, error.Description }),
         ErrorType.Conflict => Results.Conflict(new { error.Code, error.Description }),
-        ErrorType.Unauthorized => Results.Problem(error.Description, statusCode: StatusCodes.Status403Forbidden),
+        ErrorType.Unauthorized => Results.Json(new { error.Code, error.Description }, statusCode: StatusCodes.Status403Forbidden),
         _ => Results.Problem(error.Description, statusCode: StatusCodes.Status400BadRequest)
     };
 }

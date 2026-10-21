@@ -8,7 +8,8 @@ public sealed class CommissionApplicationService(
     ITeamMemberRepository teamMemberRepository,
     ICommissionRuleRepository commissionRuleRepository,
     ICustomerRepository customerRepository,
-    IVehicleRepository vehicleRepository) : ICommissionCalculationLookup
+    IVehicleRepository vehicleRepository,
+    ITenantPlanQuotaLookup? quotaLookup = null) : ICommissionCalculationLookup
 {
     public async Task<Result<CommissionReportDto>> GetCommissionReportAsync(
         Guid tenantId,
@@ -20,6 +21,23 @@ public sealed class CommissionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<CommissionReportDto>.Failure(new Error("commission.tenant.required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        if (quotaLookup is not null)
+        {
+            var featureCheck = await quotaLookup.HasFeatureAsync(tenantId, SaasFeature.Commissions, ct);
+            if (!featureCheck.IsSuccess)
+            {
+                return Result<CommissionReportDto>.Failure(featureCheck.Error!);
+            }
+
+            if (!featureCheck.Value)
+            {
+                return Result<CommissionReportDto>.Failure(new Error(
+                    "tenant.plan.commissions_not_allowed",
+                    "Gestão e relatórios de comissão não estão disponíveis no plano contratado. Faça upgrade para o plano Pro ou Enterprise.",
+                    ErrorType.Unauthorized));
+            }
         }
 
         if (endDate < startDate)

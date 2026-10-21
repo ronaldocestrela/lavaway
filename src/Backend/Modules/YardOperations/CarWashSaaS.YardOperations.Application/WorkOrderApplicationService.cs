@@ -271,7 +271,17 @@ public sealed class WorkOrderApplicationService(
 
         if (targetStatus == WorkOrderStatus.ReadyForPickup && loyaltyApplicationService is not null)
         {
-            await loyaltyApplicationService.ProcessWorkOrderLoyaltyAccrualAsync(tenantId, workOrder.Id, ct);
+            var hasLoyalty = quotaLookup is null;
+            if (!hasLoyalty && quotaLookup is not null)
+            {
+                var check = await quotaLookup.HasFeatureAsync(tenantId, SaasFeature.Loyalty, ct);
+                hasLoyalty = check.IsSuccess && check.Value;
+            }
+
+            if (hasLoyalty)
+            {
+                await loyaltyApplicationService.ProcessWorkOrderLoyaltyAccrualAsync(tenantId, workOrder.Id, ct);
+            }
         }
 
         var customer = await customerRepository.GetByIdAsync(tenantId, workOrder.CustomerId, ct);
@@ -856,7 +866,17 @@ public sealed class WorkOrderApplicationService(
 
         if (loyaltyApplicationService is not null)
         {
-            await loyaltyApplicationService.ProcessWorkOrderLoyaltyAccrualAsync(tenantId, workOrderId, ct);
+            var hasLoyalty = quotaLookup is null;
+            if (!hasLoyalty && quotaLookup is not null)
+            {
+                var check = await quotaLookup.HasFeatureAsync(tenantId, SaasFeature.Loyalty, ct);
+                hasLoyalty = check.IsSuccess && check.Value;
+            }
+
+            if (hasLoyalty)
+            {
+                await loyaltyApplicationService.ProcessWorkOrderLoyaltyAccrualAsync(tenantId, workOrderId, ct);
+            }
         }
 
         return Result<WorkOrderPaymentSettlementDto>.Success(new WorkOrderPaymentSettlementDto(

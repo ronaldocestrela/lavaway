@@ -229,4 +229,53 @@ public sealed class CommissionApplicationServiceTests
         Assert.False(result.IsSuccess);
         Assert.Equal("commission.date_range.invalid", result.Error!.Code);
     }
+
+    [Fact]
+    public async Task GetCommissionReport_When_Feature_Commissions_Not_Allowed_Should_Return_Unauthorized()
+    {
+        var quotaLookup = new ConfigurableFakeQuotaLookup(allowedFeatures: []);
+        var service = new CommissionApplicationService(
+            new FakeWorkOrderRepository(),
+            new FakeTeamMemberRepository(),
+            new FakeCommissionRuleRepository(),
+            new FakeCustomerRepository(),
+            new FakeVehicleRepository(),
+            quotaLookup);
+
+        var result = await service.GetCommissionReportAsync(_tenantId, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 10));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, result.Error!.Type);
+        Assert.Equal("tenant.plan.commissions_not_allowed", result.Error.Code);
+    }
+
+    private sealed class ConfigurableFakeQuotaLookup(HashSet<SaasFeature>? allowedFeatures = null) : ITenantPlanQuotaLookup
+    {
+        private readonly HashSet<SaasFeature> _allowed = allowedFeatures ?? [];
+
+        public Task<Result<TenantQuotaStatusDto>> CheckWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantQuotaStatusDto>.Success(new(true, SaasPlanTier.Basic, TenantSubscriptionStatus.Active, 0, 100, 0, 100)));
+
+        public Task<Result> ConsumeWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result<TenantQuotaStatusDto>> CheckWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantQuotaStatusDto>.Success(new(true, SaasPlanTier.Basic, TenantSubscriptionStatus.Active, 0, 100, 0, 100)));
+
+        public Task<Result> ConsumeWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result<TenantSubscriptionOverviewDto>> GetSubscriptionOverviewAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantSubscriptionOverviewDto>.Failure(new("not_found", "Not found", ErrorType.NotFound)));
+
+        public Task<Result<bool>> HasFeatureAsync(Guid tenantId, SaasFeature feature, CancellationToken ct = default) =>
+            Task.FromResult(Result<bool>.Success(_allowed.Contains(feature)));
+
+        public Task<Result> ValidateTeamMemberLimitAsync(Guid tenantId, int currentTeamMemberCount, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result> ValidateBoxesLimitAsync(Guid tenantId, int requestedBoxes, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+    }
 }
+
