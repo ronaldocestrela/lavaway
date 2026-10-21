@@ -1,6 +1,7 @@
 using CarWashSaaS.Shared.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Serilog.Context;
 
 namespace CarWashSaaS.Api.Middleware;
 
@@ -23,7 +24,10 @@ public sealed class TenantResolverMiddleware(RequestDelegate next)
                     currentTenantAccessor.SetTenant(impersonateTenantId);
                 }
 
-                await next(context);
+                using (PushLogProperties(currentTenantAccessor, context))
+                {
+                    await next(context);
+                }
                 return;
             }
 
@@ -39,6 +43,49 @@ public sealed class TenantResolverMiddleware(RequestDelegate next)
             currentTenantAccessor.SetTenant(tenantId);
         }
 
-        await next(context);
+        using (PushLogProperties(currentTenantAccessor, context))
+        {
+            await next(context);
+        }
+    }
+
+    private static IDisposable? PushLogProperties(CurrentTenantAccessor currentTenantAccessor, HttpContext context)
+    {
+        var disposables = new List<IDisposable>(3);
+
+        if (currentTenantAccessor.TenantId.HasValue)
+        {
+            disposables.Add(LogContext.PushProperty("TenantId", currentTenantAccessor.TenantId.Value));
+        }
+
+        var userId = context.User.FindFirst("sub")?.Value;
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            disposables.Add(LogContext.PushProperty("UserId", userId));
+        }
+
+        var userRealm = context.User.FindFirst("user_realm")?.Value;
+        if (!string.IsNullOrWhiteSpace(userRealm))
+        {
+            disposables.Add(LogContext.PushProperty("UserRealm", userRealm));
+        }
+
+        return disposables.Count switch
+        {
+            0 => null,
+            1 => disposables[0],
+            _ => new CompositeDisposable(disposables)
+        };
+    }
+
+    private sealed class CompositeDisposable(List<IDisposable> disposables) : IDisposable
+    {
+        public void Dispose()
+        {
+            for (var i = disposables.Count - 1; i >= 0; i--)
+            {
+                disposables[i].Dispose();
+            }
+        }
     }
 }

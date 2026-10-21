@@ -21,6 +21,8 @@ public sealed class TenantPaymentGatewayApplicationService(
                 new Error("billing.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
         }
 
+        logger?.LogDebug("Obtendo configuração do gateway de pagamento para o tenant {TenantId}.", tenantId);
+
         var config = await configRepository.GetByTenantIdAsync(tenantId, ct);
         var activeProvider = config?.Provider ?? PaymentGatewayProviderConstants.PagarMe;
         var pagarmeWebhookUrl = BuildWebhookUrl(baseUrl, tenantId, PaymentGatewayProviderConstants.PagarMe);
@@ -100,6 +102,12 @@ public sealed class TenantPaymentGatewayApplicationService(
             return Result<TenantPaymentGatewayConfigDto>.Failure(
                 new Error("billing.invalid_provider", $"Provedor de pagamento '{request.Provider}' é inválido.", ErrorType.Validation));
         }
+
+        logger?.LogInformation(
+            "Salvando configuração de gateway de pagamento para o tenant {TenantId}. Provedor: {Provider}, Ativo: {IsActive}.",
+            tenantId,
+            request.Provider,
+            request.IsActive);
 
         var config = await configRepository.GetByTenantIdAsync(tenantId, ct);
 
@@ -183,6 +191,11 @@ public sealed class TenantPaymentGatewayApplicationService(
                 new Error("billing.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
         }
 
+        logger?.LogInformation(
+            "Iniciando teste de conectividade com gateway de pagamento para o tenant {TenantId}. Provedor: {Provider}.",
+            tenantId,
+            request.Provider);
+
         var config = await configRepository.GetByTenantIdAsync(tenantId, ct);
 
         if (string.Equals(request.Provider, PaymentGatewayProviderConstants.PagarMe, StringComparison.OrdinalIgnoreCase))
@@ -225,6 +238,12 @@ public sealed class TenantPaymentGatewayApplicationService(
                     message = $"A API da Pagar.me retornou status {(int)httpResponse.StatusCode} ({httpResponse.StatusCode}).";
                 }
 
+                logger?.LogInformation(
+                    "Teste de conectividade Pagar.me concluído para o tenant {TenantId}. Sucesso: {Success}. Resposta: {Message}",
+                    tenantId,
+                    success,
+                    message);
+
                 if (config is not null)
                 {
                     config.RecordTestResult(success, message);
@@ -240,6 +259,12 @@ public sealed class TenantPaymentGatewayApplicationService(
             catch (Exception ex)
             {
                 var errorMsg = $"Erro ao conectar à API da Pagar.me: {ex.Message}";
+                logger?.LogWarning(
+                    ex,
+                    "Exceção ao conectar à API da Pagar.me para o tenant {TenantId}: {ErrorMessage}",
+                    tenantId,
+                    errorMsg);
+
                 if (config is not null)
                 {
                     config.RecordTestResult(false, errorMsg);
@@ -293,6 +318,12 @@ public sealed class TenantPaymentGatewayApplicationService(
                     message = $"A API do Mercado Pago retornou status {(int)httpResponse.StatusCode} ({httpResponse.StatusCode}).";
                 }
 
+                logger?.LogInformation(
+                    "Teste de conectividade Mercado Pago concluído para o tenant {TenantId}. Sucesso: {Success}. Resposta: {Message}",
+                    tenantId,
+                    success,
+                    message);
+
                 if (config is not null)
                 {
                     config.RecordTestResult(success, message);
@@ -308,6 +339,12 @@ public sealed class TenantPaymentGatewayApplicationService(
             catch (Exception ex)
             {
                 var errorMsg = $"Erro ao conectar à API do Mercado Pago: {ex.Message}";
+                logger?.LogWarning(
+                    ex,
+                    "Exceção ao conectar à API do Mercado Pago para o tenant {TenantId}: {ErrorMessage}",
+                    tenantId,
+                    errorMsg);
+
                 if (config is not null)
                 {
                     config.RecordTestResult(false, errorMsg);
@@ -328,6 +365,10 @@ public sealed class TenantPaymentGatewayApplicationService(
                 Success: true,
                 Message: "Ambiente Simulado ativo e pronto para gerar cobranças de teste.",
                 TestedAtUtc: DateTimeOffset.UtcNow);
+
+            logger?.LogInformation(
+                "Teste de conectividade do ambiente simulado concluído para o tenant {TenantId}.",
+                tenantId);
 
             if (config is not null)
             {

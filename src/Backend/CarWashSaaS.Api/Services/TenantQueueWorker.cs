@@ -27,27 +27,31 @@ public sealed class TenantQueueWorker(
                 var handler = scope.ServiceProvider.GetServices<ITenantQueueMessageHandler>()
                     .SingleOrDefault(candidate => string.Equals(candidate.EventType, delivery.Message.EventType, StringComparison.Ordinal));
 
-                if (handler is null)
+                using (Serilog.Context.LogContext.PushProperty("TenantId", delivery.Message.TenantId))
+                using (Serilog.Context.LogContext.PushProperty("EventType", delivery.Message.EventType))
                 {
-                    logger.LogWarning("No background handler is registered for event {EventType}.", delivery.Message.EventType);
-                    await delivery.RejectAsync(stoppingToken);
-                    continue;
-                }
+                    if (handler is null)
+                    {
+                        logger.LogWarning("No background handler is registered for event {EventType}.", delivery.Message.EventType);
+                        await delivery.RejectAsync(stoppingToken);
+                        continue;
+                    }
 
-                try
-                {
-                    await handler.HandleAsync(delivery.Message, stoppingToken);
-                    await delivery.CompleteAsync(stoppingToken);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (Exception exception)
-                {
-                    logger.LogError(exception, "Background event {EventType} failed for tenant {TenantId}.",
-                        delivery.Message.EventType, delivery.Message.TenantId);
-                    await delivery.RetryAsync(stoppingToken);
+                    try
+                    {
+                        await handler.HandleAsync(delivery.Message, stoppingToken);
+                        await delivery.CompleteAsync(stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception exception)
+                    {
+                        logger.LogError(exception, "Background event {EventType} failed for tenant {TenantId}.",
+                            delivery.Message.EventType, delivery.Message.TenantId);
+                        await delivery.RetryAsync(stoppingToken);
+                    }
                 }
             }
         }

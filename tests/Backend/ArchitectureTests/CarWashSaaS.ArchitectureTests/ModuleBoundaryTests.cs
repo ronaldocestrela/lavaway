@@ -118,6 +118,38 @@ public sealed class ModuleBoundaryTests
     }
 
     [Fact]
+    public void DomainAssemblies_ShouldNotReferenceSerilog()
+    {
+        foreach (var assembly in DomainAssemblies)
+        {
+            var result = Types.InAssembly(assembly)
+                .ShouldNot()
+                .HaveDependencyOnAny("Serilog")
+                .GetResult();
+
+            Assert.True(
+                result.IsSuccessful,
+                $"Domain assembly {assembly.GetName().Name} should not depend on Serilog: {string.Join(", ", result.FailingTypeNames ?? [])}");
+        }
+    }
+
+    [Fact]
+    public void ApplicationAssemblies_ShouldNotReferenceSerilog()
+    {
+        foreach (var assembly in ApplicationAssemblies)
+        {
+            var result = Types.InAssembly(assembly)
+                .ShouldNot()
+                .HaveDependencyOnAny("Serilog")
+                .GetResult();
+
+            Assert.True(
+                result.IsSuccessful,
+                $"Application assembly {assembly.GetName().Name} should not depend on Serilog: {string.Join(", ", result.FailingTypeNames ?? [])}");
+        }
+    }
+
+    [Fact]
     public void ApplicationAssemblies_ShouldNotReferenceInfrastructureOrPresentation()
     {
         var forbiddenDependencies = new[]

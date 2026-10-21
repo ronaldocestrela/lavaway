@@ -29,10 +29,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Minio;
 using RabbitMQ.Client;
+using Serilog;
 
 DotEnvConfiguration.LoadFromRepository();
 
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 var connectionString = builder.Configuration.GetConnectionString("CarWashSaaS")
@@ -343,6 +353,38 @@ app.UseAuthentication();
 app.UseMiddleware<TenantResolverMiddleware>();
 app.UseAuthorization();
 
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        var tenantAccessor = httpContext.RequestServices.GetService<CurrentTenantAccessor>();
+        if (tenantAccessor?.TenantId is { } tenantId)
+        {
+            diagnosticContext.Set("TenantId", tenantId);
+        }
+
+        if (httpContext.User.Identity?.IsAuthenticated == true)
+        {
+            var userId = httpContext.User.FindFirst("sub")?.Value;
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                diagnosticContext.Set("UserId", userId);
+            }
+
+            var userRealm = httpContext.User.FindFirst("user_realm")?.Value;
+            if (!string.IsNullOrWhiteSpace(userRealm))
+            {
+                diagnosticContext.Set("UserRealm", userRealm);
+            }
+        }
+
+        diagnosticContext.Set("TraceId", httpContext.TraceIdentifier);
+        diagnosticContext.Set("ClientIp", httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+    };
+});
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 app.MapIdentityEndpoints();
@@ -361,5 +403,18 @@ app.MapLoyaltyEndpoints();
 app.MapSubscriptionEndpoints();
 app.MapHub<YardHub>("/hubs/yard").RequireCors("Client");
 
-app.Run();
+try
+{
+    Log.Information("Starting Lavaway API Host...");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Lavaway API Host terminated unexpectedly.");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
