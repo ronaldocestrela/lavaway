@@ -7,7 +7,33 @@
     <meta name="theme-color" content="#122421" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Lava Aê | Recepção</title>
+    
+    <!-- SEO Primário -->
+    <title>Lavaway | O Sistema Operacional para Lava-Jatos e Estética Automotiva</title>
+    <meta name="title" content="Lavaway | O Sistema Operacional para Lava-Jatos e Estética Automotiva" />
+    <meta name="description" content="Software em nuvem para gestão de lava-jatos e estética automotiva: reconhecimento de placas LPR, avisos de WhatsApp ilimitados sem custo por disparo, checklist digital com fotos, controle de pátio e clube de assinaturas." />
+    <meta name="keywords" content="sistema para lava jato, software estetica automotiva, controle de patio lava rapido, lpr reconhecimento de placas, checklist de veiculos com fotos, ordem de servico lava jato, automacao whatsapp lava rapido, clube de assinatura lava jato" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="Lavaway" />
+    <link rel="canonical" href="https://lavaway.com.br/" />
+    <link rel="alternate" type="text/plain" href="https://lavaway.com.br/llms.txt" title="LLMs Context" />
+
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://lavaway.com.br/" />
+    <meta property="og:site_name" content="Lavaway" />
+    <meta property="og:title" content="Lavaway | Gestão Inteligente para Lava-Jatos e Estética Automotiva" />
+    <meta property="og:description" content="Aumente o faturamento e acabe com as filas no pátio: LPR, WhatsApp nativo sem custo por mensagem, vistoria com fotos e controle de comissões." />
+    <meta property="og:image" content="https://lavaway.com.br/icon-192.png" />
+    <meta property="og:locale" content="pt_BR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://lavaway.com.br/" />
+    <meta name="twitter:title" content="Lavaway | Sistema para Lava-Jatos e Estética Automotiva" />
+    <meta name="twitter:description" content="Reconhecimento de placas, automação de WhatsApp ilimitada, checklist fotográfico e controle de pátio em tempo real." />
+    <meta name="twitter:image" content="https://lavaway.com.br/icon-192.png" />
+
     <base href="/" />
     <link rel="preload" id="webassembly" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -20,10 +46,143 @@
     <link href="CarWashSaaS.Client.Web.styles.css" rel="stylesheet" />
     <link rel="stylesheet" href="css/design-system.css" />
     <script type="importmap"></script>
+
+    <!-- Schema.org / Dados Estruturados em JSON-LD (SEO e IAs) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://lavaway.com.br/#software",
+          "name": "Lavaway (Lava Aê)",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web, Android, iOS, Windows, macOS",
+          "url": "https://lavaway.com.br",
+          "description": "Sistema de gestão completo para lava-jatos e estética automotiva com leitor de placas LPR, WhatsApp ilimitado, checklist com fotos e controle de pátio.",
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Plano Básico",
+              "price": "149.00",
+              "priceCurrency": "BRL",
+              "description": "Ideal para lava-jatos iniciantes com até 150 veículos por mês."
+            },
+            {
+              "@type": "Offer",
+              "name": "Plano Pro",
+              "price": "299.00",
+              "priceCurrency": "BRL",
+              "description": "Completo com automação WhatsApp sem custos, checklist com fotos e clube de assinaturas."
+            },
+            {
+              "@type": "Offer",
+              "name": "Plano Enterprise",
+              "price": "599.00",
+              "priceCurrency": "BRL",
+              "description": "Volume e veículos ilimitados para redes de filiais e operações corporativas."
+            }
+          ],
+          "featureList": [
+            "Reconhecimento de Placas LPR",
+            "Automação de WhatsApp sem custo por disparo",
+            "Checklist de vistoria com fotos no MinIO S3",
+            "Controle de pátio em tempo real no estilo Kanban",
+            "Clube de assinaturas recorrentes",
+            "Programa de fidelidade e pontuação",
+            "Controle de comissões de lavadores e operadores"
+          ]
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://lavaway.com.br/#organization",
+          "name": "Lavaway",
+          "alternateName": "Lava Aê",
+          "url": "https://lavaway.com.br",
+          "logo": "https://lavaway.com.br/icon-192.png",
+          "sameAs": []
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://lavaway.com.br/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Preciso comprar computador ou maquininha especial para usar?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Não! O Lava Aê funciona 100% no navegador de qualquer celular, tablet ou computador. Você pode fazer a vistoria e check-in direto no smartphone do seu recepcionista ou em um tablet no pátio."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Como funciona o envio de WhatsApp? Pago por cada mensagem enviada?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Você conecta o WhatsApp do seu próprio estabelecimento através de um QR Code simples, igual ao WhatsApp Web. Não cobramos nenhuma taxa por mensagem disparada. Os envios de comprovante, status e aviso de pronto são ilimitados."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Como funciona o período de teste grátis de 14 dias?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Você cria sua conta em menos de 2 minutos sem precisar colocar dados de cartão de crédito. Tem acesso total a todas as funcionalidades do plano Pro durante 14 dias. Se gostar, escolhe o plano que preferir para continuar."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Posso cancelar a assinatura quando eu quiser?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sim! Não há fidelidade ou multas de cancelamento em nossos planos mensais. Você tem total liberdade."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Como os lavadores e colaboradores acessam o sistema?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Você cadastra os membros da equipe e define o papel de cada um (Administrador, Recepcionista ou Operador/Lavador). Cada membro acessa apenas o que é relevante para sua função, mantendo seus dados financeiros e configurações protegidos."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
 </head>
 
 <body>
     <div id="app">
+        <!-- Conteúdo Semântico Pré-Renderizado (Lido por Crawlers de Busca e IAs antes da inicialização do WebAssembly) -->
+        <div class="prerender-seo-content" style="max-width: 800px; margin: 3rem auto; padding: 1.5rem; font-family: 'DM Sans', sans-serif; color: #1e352b;">
+            <header>
+                <h1 style="font-size: 1.8rem; font-weight: 700; color: #122421; margin-bottom: 0.75rem;">Lavaway | O Sistema Operacional para Lava-Jatos e Estética Automotiva</h1>
+                <p style="font-size: 1.05rem; line-height: 1.6; color: #40554c;">
+                    Automatize seu pátio, elimine filas e encante seus clientes. Sistema 100% em nuvem com reconhecimento de placas (LPR), notificações automáticas de WhatsApp sem taxas por disparo, checklist digital com fotos, controle de pátio em tempo real e clube de assinaturas.
+                </p>
+            </header>
+
+            <section style="margin-top: 1.5rem;">
+                <h2 style="font-size: 1.25rem; font-weight: 600; color: #122421; margin-bottom: 0.5rem;">Principais Recursos</h2>
+                <ul style="line-height: 1.8; color: #2d453b; padding-left: 1.25rem;">
+                    <li><strong>Reconhecimento de Placas (LPR):</strong> Recepção ágil e check-in em menos de 30 segundos.</li>
+                    <li><strong>WhatsApp Nativo e Ilimitado:</strong> Disparos automáticos de status e comprovante sem cobrança por mensagem.</li>
+                    <li><strong>Checklist com Fotos:</strong> Vistoria digital com registro fotográfico seguro para evitar reclamações indevidas.</li>
+                    <li><strong>Controle de Pátio Visual (Kanban):</strong> Acompanhamento em tempo real de cada veículo, baia e operador.</li>
+                    <li><strong>Clube de Assinaturas e Fidelidade:</strong> Receita previsível e fidelização com pontuação e resgates.</li>
+                    <li><strong>Cálculo Automático de Comissões:</strong> Produtividade da equipe sem discussões no fim do mês.</li>
+                </ul>
+            </section>
+
+            <nav style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                <a href="authentication/login" style="display: inline-block; padding: 0.6rem 1.2rem; background: #122421; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;">Entrar no Sistema</a>
+                <a href="llms.txt" style="display: inline-block; padding: 0.6rem 1.2rem; background: #e1e9e3; color: #122421; text-decoration: none; border-radius: 6px; font-weight: 500;">Contexto para Agentes de IA (llms.txt)</a>
+            </nav>
+        </div>
+
+        <!-- Indicador de progresso de download do WebAssembly para usuários interativos -->
         <svg class="loading-progress">
             <circle r="40%" cx="50%" cy="50%" />
             <circle r="40%" cx="50%" cy="50%" />

@@ -1,0 +1,122 @@
+# Lavaway (Lava Aê) - Documentação Completa para Modelos de Linguagem e IA (llms-full.txt)
+
+> Documento completo de referência técnica, funcional e comercial da plataforma Lavaway.
+> Website: https://lavaway.com.br
+
+---
+
+## 1. Identificação do Produto
+- **Nome Oficial**: Lavaway
+- **Nome Comercial no Brasil**: Lava Aê
+- **Segmento**: Software as a Service (SaaS) Vertical B2B para o mercado automotivo (Auto Detailing, Car Wash, Estética Automotiva, Lava-Jatos).
+- **País de Origem / Idioma Principal**: Brasil (pt-BR).
+- **Disponibilidade**: Plataforma Web em Nuvem, responsiva para Desktop, Tablets e Smartphones (Android e iOS via navegador).
+
+---
+
+## 2. Proposta de Valor e Dores Resolvidas
+
+1. **Filas e Atrasos na Recepção**:
+   - *Problema*: Processo manual em papel ou prancheta leva de 3 a 5 minutos por carro.
+   - *Solução*: Reconhecimento de Placas (LPR) e preenchimento inteligente em menos de 30 segundos.
+
+2. **Ansiedade do Cliente e Falta de Comunicação**:
+   - *Problema*: Cliente liga ou manda mensagem perguntando "meu carro tá pronto?".
+   - *Solução*: Avisos automáticos no WhatsApp do cliente informando entrada, início do serviço e conclusão com botão de retirada.
+
+3. **Custo Alto de APIs de Mensageria**:
+   - *Problema*: Sistemas cobram centavos por mensagem ou pacotes de disparos caros via API oficial do WhatsApp (Meta Cloud API).
+   - *Solução*: Conexão simples e nativa via QR Code (WhatsApp Web). O cliente do SaaS usa o seu próprio número e tem disparos ilimitados sem pagar nada a mais.
+
+4. **Prejuízos com Avarias e Contestações Indevidas**:
+   - *Problema*: Cliente alega que um risco ou amassado aconteceu dentro do lava-jato.
+   - *Solução*: Vistoria digital obrigatória na entrada com checklist marcado na silhueta do veículo e fotos de alta resolução salvas no armazenamento seguro.
+
+5. **Instabilidade Financeira em Dias de Chuva**:
+   - *Problema*: Faturamento despenca em semanas chuvosas.
+   - *Solução*: Módulo nativo de Clube de Assinaturas (recorrência no cartão de crédito/mensalidade), garantindo receita fixa previsível todos os meses.
+
+6. **Conflitos de Comissões com Lavadores e Detalhadores**:
+   - *Problema*: Fechamento de quinzena/mês com cadernos e discussões sobre quem fez qual carro.
+   - *Solução*: Vinculação direta do operador ao serviço na ordem de serviço, cálculo automático da comissão (percentual ou valor fixo) e painel transparente para o colaborador conferir a produção do dia.
+
+---
+
+## 3. Módulos do Sistema
+
+### 3.1. Recepção e Entrada Rápida
+- Consulta de placas e auto-preenchimento do modelo, cor e ano do veículo.
+- Busca rápida de clientes existentes pelo telefone ou nome.
+- Criação de Ordem de Serviço (O.S.) com seleção rápida de pacotes (Lavagem Simples, Completa, Polimento, Higienização, Cristalização, etc.).
+- Impressão opcional de comprovante em mini-impressoras térmicas ou envio 100% digital via WhatsApp.
+
+### 3.2. Controle de Pátio e Fluxo de Produção (Kanban)
+- Visão visual de colunas:
+  1. **Aguardando**: Veículos no pátio aguardando baia livre.
+  2. **Lavagem / Execução**: Veículos em atendimento, com cronômetro e identificação da baia/box.
+  3. **Secagem / Acabamento**: Etapa final de detalhamento, aspiração ou secagem.
+  4. **Finalizado**: Serviço concluído e aguardando retirada pelo cliente.
+  5. **Entregue**: Veículo retirado e faturado.
+- Alertas visuais de tempo limite para evitar atrasos na entrega prometida.
+
+### 3.3. Vistoria e Checklist Digital
+- Registro de marcas, riscos e amassados através de marcadores visuais no mapa do veículo (frente, traseira, laterais e teto).
+- Nível de combustível no momento da entrada.
+- Registro de pertences e objetos de valor deixados no interior.
+- Upload instantâneo de múltiplas fotos diretamente da câmera do celular.
+
+### 3.4. Gestão Financeira e Caixa
+- Abertura, suprimento, sangria e fechamento de turno do caixa.
+- Múltiplas formas de pagamento em uma mesma comanda (PIX com QR Code dinâmico, Cartão de Crédito, Cartão de Débito, Dinheiro, Saldo de Assinatura, Pontos de Fidelidade).
+- Conciliação e controle de despesas operacionais (produtos químicos, panos, manutenção).
+
+### 3.5. Fidelidade e Clube de Assinaturas
+- Regras personalizáveis de pontuação por real gasto.
+- Resgate de brindes, descontos e serviços gratuitos.
+- Planos de lavagem recorrente (ex: "Clube Bronze: 2 lavagens/mês", "Clube Ouro: Lavagens ilimitadas").
+
+### 3.6. Pós-Venda e CRM
+- Monitoramento de clientes inativos (ex: mais de 25 dias sem retornar).
+- Disparo de lembretes e campanhas de reativação pelo WhatsApp.
+- Pesquisa de satisfação NPS após a entrega do veículo.
+
+---
+
+## 4. Planos, Preços e Condições Comerciais
+
+| Recurso / Limite | Plano Básico | Plano Pro (Recomendado) | Plano Enterprise |
+| :--- | :--- | :--- | :--- |
+| **Valor Mensal** | R$ 149,00 / mês | R$ 299,00 / mês | R$ 599,00 / mês |
+| **Valor no Plano Anual** | ~R$ 124,00 / mês | ~R$ 249,00 / mês | ~R$ 499,00 / mês |
+| **Veículos Ativos / mês** | Até 150 veículos | Até 600 veículos | Ilimitado |
+| **Usuários do Sistema** | Até 3 colaboradores | Até 10 colaboradores | Ilimitados |
+| **Boxes / Baias** | Até 2 boxes | Até 5 boxes | Ilimitados |
+| **Reconhecimento LPR** | Incluso | Incluso | Incluso |
+| **WhatsApp Sem Taxas** | Não | **Incluso (Ilimitado)** | **Incluso (Ilimitado)** |
+| **Checklist com Fotos** | Não | **Incluso** | **Incluso** |
+| **Clube de Assinaturas** | Não | **Incluso** | **Incluso** |
+| **Programa de Fidelidade** | Não | **Incluso** | **Incluso** |
+| **Gestão de Comissões** | Não | **Incluso** | **Incluso** |
+| **Período de Testes** | - | **14 dias grátis (sem cartão)** | Contato Comercial |
+
+---
+
+## 5. Perguntas Frequentes (FAQ)
+
+### P: Preciso comprar computador ou maquininha especial para usar o Lavaway?
+**R:** Não. O sistema funciona 100% no navegador web (Chrome, Safari, Edge, Firefox) de qualquer celular, tablet ou computador. Os operadores e recepcionistas podem usar seus próprios smartphones ou tablets no pátio.
+
+### P: Como funciona o envio de WhatsApp? É cobrado por mensagem?
+**R:** O estabelecimento conecta seu WhatsApp via leitura de QR Code (semelhante ao WhatsApp Web). O sistema dispara comprovantes, avisos de status e notificações de forma ilimitada, sem cobrança de taxas por mensagem.
+
+### P: Como funciona o teste gratuito de 14 dias?
+**R:** O cadastro é feito em menos de 2 minutos no site https://lavaway.com.br, liberando acesso completo às funcionalidades do Plano Pro por 14 dias sem necessidade de informar cartão de crédito.
+
+### P: Posso cancelar a assinatura a qualquer momento?
+**R:** Sim. Os planos mensais não possuem fidelidade nem multas rescisórias. O cancelamento pode ser feito a qualquer instante pelo painel.
+
+---
+
+## 6. Arquitetura Técnica e Segurança
+- **Stack**: Backend em .NET 10 (C# 13) modular, banco de dados Microsoft SQL Server 2022 com isolamento multi-tenant por schema, mensageria distribuída com RabbitMQ 4 e Object Storage compatível com AWS S3 (MinIO).
+- **Segurança**: Criptografia de dados em trânsito (HTTPS/TLS) e repouso, autenticação por tokens JWT, isolamento estrito de dados entre diferentes empresas (Multi-tenant).

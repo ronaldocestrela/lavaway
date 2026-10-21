@@ -1,0 +1,61 @@
+# Robots.txt para Lavaway (Lava Aê)
+# https://lavaway.com.br
+
+User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /sitemap.xml
+Disallow: /api/
+Disallow: /reception
+Disallow: /yard
+Disallow: /cashier
+Disallow: /customers
+Disallow: /scheduling
+Disallow: /inspection
+Disallow: /loyalty
+Disallow: /subscriptions
+Disallow: /after-sales
+Disallow: /payment-settings
+Disallow: /whatsapp-settings
+Disallow: /store-profile
+Disallow: /team-members
+Disallow: /platform
+Disallow: /admin
+
+# Rastreadores e Agentes de Inteligência Artificial (GEO / AIO)
+User-agent: GPTBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: ChatGPT-User
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: PerplexityBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: ClaudeBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: anthropic-ai
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://lavaway.com.br/sitemap.xml
