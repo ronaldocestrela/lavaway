@@ -381,6 +381,7 @@ dotnet ef migrations add <NomeDaMigration> \
 
 ## Documentação Adicional
 
+- [Manual do Usuário — Instruções Operacionais](MANUAL_DO_USUARIO.md)
 - [Roadmap de Implementação](roadmap.md)
 - [Diretrizes de Arquitetura e Regras de Desenvolvimento](agents.md)
 - [ADR-0001: Isolamento de Tenant com EF Core](docs/architecture/ADR-0001-isolamento-tenant-ef-core.md)
