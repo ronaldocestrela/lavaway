@@ -4,6 +4,7 @@
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
 @inject CashierApiClient CashierClient
+@inject TenantPlanStateService PlanState
 @inject IToastService ToastService
 
 <div class="cashier-page">
@@ -136,12 +137,24 @@
                         <span class="kpi-icon">👥</span>
                         <span class="kpi-label">Comissões do Dia</span>
                     </div>
-                    <div class="kpi-value">
-                        @((_dayCommissionsReport?.TotalCommission ?? 0m).ToString("C2", PtBr))
-                    </div>
-                    <div class="kpi-sub">
-                        <span>@(_dayCommissionsReport?.TotalServicesCount ?? 0) serviços comissionados</span>
-                    </div>
+                    @if (PlanState.IsLoaded && !PlanState.HasCommissions)
+                    {
+                        <div class="kpi-value locked-text" title="Disponível a partir do Plano Pro">
+                            🔒 Plano Pro
+                        </div>
+                        <div class="kpi-sub">
+                            <span>Disponível no Plano Pro</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="kpi-value">
+                            @((_dayCommissionsReport?.TotalCommission ?? 0m).ToString("C2", PtBr))
+                        </div>
+                        <div class="kpi-sub">
+                            <span>@(_dayCommissionsReport?.TotalServicesCount ?? 0) serviços comissionados</span>
+                        </div>
+                    }
                 </div>
 
                 <div class="kpi-card ticket-card">
@@ -256,6 +269,10 @@
     }
     else if (_activeTab == "commissions")
     {
+        <PlanGate IsAllowed="@(!PlanState.IsLoaded || PlanState.HasCommissions)"
+                  FeatureTitle="Apuração e Gestão de Comissões"
+                  FeatureDescription="Configure regras de comissão por serviço ou cargo, apure comissões por colaborador automaticamente e elimine o cálculo manual de repasses."
+                  RequiredPlanName="Plano Pro">
         <div class="tab-content">
             <div class="commissions-filter-bar">
                 <div class="filter-controls">
@@ -380,6 +397,7 @@
                 }
             }
         </div>
+        </PlanGate>
     }
     else if (_activeTab == "history")
     {
@@ -504,8 +522,16 @@
         _isLoading = true;
         try
         {
+            await PlanState.InitializeAsync();
             _summary = await CashierClient.GetDailySummaryAsync(_selectedDate);
-            _dayCommissionsReport = await CashierClient.GetCommissionReportAsync(_selectedDate, _selectedDate);
+            if (PlanState.HasCommissions)
+            {
+                _dayCommissionsReport = await CashierClient.GetCommissionReportAsync(_selectedDate, _selectedDate);
+            }
+            else
+            {
+                _dayCommissionsReport = null;
+            }
         }
         catch (Exception ex)
         {
@@ -520,7 +546,8 @@
     private async Task SwitchToCommissionsTab()
     {
         _activeTab = "commissions";
-        if (_commissionsReport is null)
+        await PlanState.InitializeAsync();
+        if (PlanState.HasCommissions && _commissionsReport is null)
         {
             await LoadCommissionsAsync();
         }
@@ -581,6 +608,12 @@
 
     private async Task LoadCommissionsAsync()
     {
+        await PlanState.InitializeAsync();
+        if (!PlanState.HasCommissions)
+        {
+            return;
+        }
+
         _isLoading = true;
         try
         {

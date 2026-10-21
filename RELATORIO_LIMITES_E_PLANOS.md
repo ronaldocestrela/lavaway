@@ -137,15 +137,28 @@ Para solucionar o problema de forma robusta e alinhada à arquitetura do projeto
    - 100% dos testes unitários, testes de componentes, testes de arquitetura e testes de integração com Testcontainers SQL Server passando (827 testes verdes).
 
 
-### Etapa 3: Aplicar Travas e Experiência de Upgrade no Frontend (Blazor Web)
-1. **Criar um serviço de contexto de plano no Blazor (`TenantPlanStateService`)**:
-   - Carregar as flags do plano ativo junto com a inicialização da sessão do usuário.
-2. **Atualizar o Menu (`NavMenu.razor`)**:
-   - Renderizar badges de bloqueio ou ocultar os módulos não contratados de acordo com as flags do plano.
-3. **Criar Componente de Proteção de Telas (`PlanGate.razor`)**:
-   - Quando um usuário acessar uma URL diretamente (ex: `/subscriptions` ou `/loyalty`) sem ter o plano correspondente, exibir uma tela amigável informando que a funcionalidade faz parte do plano **Pro** ou **Enterprise**, com botão direto para "Fazer Upgrade Agora".
-4. **Alertas em Telas de Cadastro**:
-   - Na tela de Capacidade e Equipe (`/settings/team`), informar visualmente o limite do plano (ex.: "2 de 3 colaboradores cadastrados no Plano Básico").
+### Etapa 3: Aplicar Travas e Experiência de Upgrade no Frontend (Blazor Web) — 🟢 **Concluída**
+1. **Serviço de Contexto e Estado do Plano (`TenantPlanStateService`)**:
+   - Criado em `CarWashSaaS.Client.Core` e registrado no container DI do Blazor Web.
+   - Cacheia o estado do plano ativo via `SaasBillingApiClient.GetTenantOverviewAsync()`, notificando reativamente componentes através do evento `OnChange`.
+   - Inicializado automaticamente no `MainLayout.razor` após a autenticação da sessão.
+2. **Badges no Menu Principal (`NavMenu.razor`)**:
+   - Renderiza badges discretos e elegantes `🔒 PRO` nos links de **Fidelidade & Selos** e **Assinaturas & Clubes** quando o estabelecimento estiver no Plano Básico.
+   - Os links permanecem clicáveis para engajar o lojista com a tela de conversão e upgrade.
+3. **Componente de Proteção e Conversão (`PlanGate.razor`)**:
+   - Bloqueia visualmente áreas exclusivas de planos superiores com design dark moderno, lista de benefícios e botão direto `⚡ Fazer Upgrade Agora`.
+   - Conectado diretamente ao `UpgradePlanModal.razor` para troca de plano ou checkout no Stripe sem sair da página.
+   - Aplicado integralmente em `SubscriptionsPage.razor` (`HasCustomerSubscriptions`) e `LoyaltyPage.razor` (`HasLoyalty`), evitando também disparos desnecessários à API quando o módulo não estiver contratado.
+4. **Proteção em Telas de Gestão e Operação**:
+   - **Caixa & Comissões (`CashierPage.razor`)**: Card "Comissões do Dia" exibe selo `🔒 Plano Pro` e a aba "Apuração de Comissões" é protegida pelo `PlanGate`, mantendo o fluxo do caixa diário intacto para estabelecimentos no Plano Básico.
+   - **Capacidade & Equipe (`CapacityAndTeamPage.razor`)**:
+     - `YardCapacityCard`: Valida e exibe o limite físico de boxes do plano (ex.: até 2 boxes no Plano Básico).
+     - Equipe: Exibe indicador de colaboradores ativos versus limite do plano (`MaxTeamMembers`) e substitui o botão por `⚡ Limite Atingido (Fazer Upgrade)` ao atingir o teto.
+     - Regras de Comissão: Aba protegida com `PlanGate` para `HasCommissions`.
+   - **Canal do WhatsApp (`WhatsAppSettingsPage.razor`)**: Exibe card de status de "Atendimento Inteligente com IA", indicando se o bot conversacional está ativo ou se requer upgrade para o Plano Pro.
+5. **Engenharia de Qualidade e TDD**:
+   - Suíte de testes com bUnit cobrindo `PlanGatingTests` (bloqueio, liberação, badges no menu, limites de capacidade e reatividade de estado).
+   - 100% dos testes da solução passando (834 testes verdes).
 
 ---
 

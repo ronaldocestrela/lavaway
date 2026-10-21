@@ -6,6 +6,9 @@
 @attribute [Authorize(Roles = "Administrator")]
 @implements IDisposable
 @inject WhatsAppApiClient WhatsAppApi
+@inject TenantPlanStateService PlanState
+@inject SaasBillingApiClient BillingClient
+@inject NavigationManager NavigationManager
 @inject IToastService ToastService
 
 <PageTitle>Pareamento &amp; Mensageria WhatsApp | Lava Aê</PageTitle>
@@ -38,6 +41,38 @@
                                  OnRefreshPairing="RefreshPairingAsync"
                                  OnDisconnect="DisconnectAsync" />
 
+            <!-- Card de Chatbot com IA -->
+            <div class="ai-chatbot-card @(PlanState.HasAiChatbot ? "ai-active" : "ai-locked")">
+                <div class="ai-card-header">
+                    <div class="ai-header-info">
+                        <span class="ai-icon">🤖</span>
+                        <div>
+                            <h3 class="ai-card-title">Atendimento Inteligente com IA</h3>
+                            <p class="ai-card-subtitle">Respostas automáticas para consultas de serviços, cartão fidelidade e agendamento inteligente 24 horas por dia.</p>
+                        </div>
+                    </div>
+                    <div class="ai-card-status">
+                        @if (PlanState.HasAiChatbot)
+                        {
+                            <span class="ai-status-pill active">✓ Ativo no Plano @PlanState.PlanName</span>
+                        }
+                        else
+                        {
+                            <span class="ai-status-pill locked">🔒 Disponível no Plano Pro</span>
+                        }
+                    </div>
+                </div>
+                @if (!PlanState.HasAiChatbot)
+                {
+                    <div class="ai-card-footer">
+                        <p class="ai-upgrade-hint">No plano Básico, seus clientes recebem uma resposta automática padrão. Faça upgrade para o Plano Pro para liberar o robô com inteligência artificial.</p>
+                        <button type="button" class="btn-ai-upgrade" @onclick="OpenUpgradeModalAsync">
+                            <span>⚡ Liberar Robô com IA (Fazer Upgrade)</span>
+                        </button>
+                    </div>
+                }
+            </div>
+
             @if (_connection?.IsConnected == true)
             {
                 <WhatsAppQuotaMeter Quota="@_quota" />
@@ -55,6 +90,14 @@
         </div>
     }
 </section>
+
+<!-- MODAL UPGRADE -->
+<UpgradePlanModal IsOpen="_showUpgradeModal"
+                  CurrentTier="@PlanState.CurrentTier"
+                  Plans="_availablePlans"
+                  OnClose="() => _showUpgradeModal = false"
+                  OnConfirm="HandlePlanChangeAsync"
+                  OnConfirmCheckout="HandleStripeCheckoutAsync" />
 
 @code {
     private WhatsAppConnectionDto? _connection;
@@ -75,6 +118,7 @@
     protected override async Task OnInitializedAsync()
     {
         _cts = new CancellationTokenSource();
+        await PlanState.InitializeAsync();
         await LoadStatusAsync();
 
         if (_connection?.IsConnected == true)
@@ -301,6 +345,54 @@
             {
                 // Ignora erros transitórios no loop de polling em background
             }
+        }
+    }
+
+    // Upgrade Modal
+    private bool _showUpgradeModal;
+    private IReadOnlyList<SaasPlanDto> _availablePlans = [];
+
+    private async Task OpenUpgradeModalAsync()
+    {
+        if (_availablePlans.Count == 0)
+        {
+            var result = await BillingClient.ListPlansAsync();
+            if (result.IsSuccess && result.Value is not null)
+            {
+                _availablePlans = result.Value;
+            }
+        }
+        _showUpgradeModal = true;
+    }
+
+    private async Task HandlePlanChangeAsync(SaasPlanTier targetTier)
+    {
+        var result = await BillingClient.ChangePlanAsync(targetTier);
+        if (result.IsSuccess)
+        {
+            ToastService.ShowSuccess($"Plano alterado para {targetTier} com sucesso!");
+            _showUpgradeModal = false;
+            await PlanState.RefreshAsync();
+        }
+        else
+        {
+            ToastService.ShowError(result.Error?.Description ?? "Falha ao alterar plano.");
+        }
+    }
+
+    private async Task HandleStripeCheckoutAsync(SaasPlanTier targetTier)
+    {
+        var successUrl = NavigationManager.ToAbsoluteUri("settings/subscription?session_id={CHECKOUT_SESSION_ID}").ToString();
+        var cancelUrl = NavigationManager.Uri;
+
+        var result = await BillingClient.CreateCheckoutSessionAsync(targetTier, successUrl, cancelUrl);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            NavigationManager.NavigateTo(result.Value.CheckoutUrl);
+        }
+        else
+        {
+            ToastService.ShowError(result.Error?.Description ?? "Falha ao iniciar checkout do Stripe.");
         }
     }
 

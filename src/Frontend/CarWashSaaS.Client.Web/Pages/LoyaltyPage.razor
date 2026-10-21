@@ -1,11 +1,18 @@
 @page "/loyalty"
 @attribute [Authorize(Roles = "Administrator,Receptionist")]
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
 @inject LoyaltyApiClient LoyaltyApi
+@inject TenantPlanStateService PlanState
 @inject IToastService ToastService
 
 <PageTitle>Fidelidade &amp; Selos - Lava Aê</PageTitle>
 
+<PlanGate IsAllowed="@(!PlanState.IsLoaded || PlanState.HasLoyalty)"
+          FeatureTitle="Programa de Fidelidade &amp; Cartão de Selos"
+          FeatureDescription="Crie cartões de fidelidade digitais com metas de selos, premiações automáticas e retenção máxima para os clientes do seu lava-jato."
+          RequiredPlanName="Plano Pro">
 <div class="loyalty-page-container">
     <PageHeading Eyebrow="RELACIONAMENTO &amp; FIDELIDADE"
                  Title="Programa de Fidelidade"
@@ -307,6 +314,7 @@
         </div>
     </div>
 }
+</PlanGate>
 
 @code {
     private bool _isLoading = true;
@@ -344,6 +352,13 @@
         try
         {
             _isLoading = true;
+            await PlanState.InitializeAsync();
+            if (PlanState.IsLoaded && !PlanState.HasLoyalty)
+            {
+                _isLoading = false;
+                return;
+            }
+
             var accountsTask = LoyaltyApi.ListAccountsAsync();
             var programTask = LoyaltyApi.GetProgramAsync();
 

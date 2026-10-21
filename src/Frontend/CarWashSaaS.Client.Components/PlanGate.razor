@@ -1,0 +1,135 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject NavigationManager NavigationManager
+@inject SaasBillingApiClient? BillingClient
+@inject TenantPlanStateService? PlanStateService
+@inject IToastService? ToastService
+
+@if (IsAllowed)
+{
+    @ChildContent
+}
+else
+{
+    <div class="plan-gate-container" role="region" aria-label="Aviso de recurso restrito ao plano">
+        <div class="plan-gate-card">
+            <div class="gate-icon-wrapper">
+                <span class="gate-lock-badge">🔒</span>
+                <span class="gate-plan-tier">@RequiredPlanName</span>
+            </div>
+
+            <h2 class="gate-title">Recurso Exclusivo: @FeatureTitle</h2>
+            
+            <p class="gate-description">
+                @if (!string.IsNullOrWhiteSpace(FeatureDescription))
+                {
+                    @FeatureDescription
+                }
+                else
+                {
+                    <span>Este recurso não está incluso no seu plano atual (@(PlanStateService?.PlanName ?? "Básico")). Faça um upgrade para ter acesso imediato a esta funcionalidade e turbinar a gestão do seu lava-jato.</span>
+                }
+            </p>
+
+            <div class="gate-benefits">
+                <div class="gate-benefit-item">
+                    <span class="benefit-check">✓</span>
+                    <span>Acesso imediato sem burocracia ou taxas de ativação</span>
+                </div>
+                <div class="gate-benefit-item">
+                    <span class="benefit-check">✓</span>
+                    <span>Liberação instantânea após a contratação</span>
+                </div>
+                <div class="gate-benefit-item">
+                    <span class="benefit-check">✓</span>
+                    <span>Cancele ou mude de plano a qualquer momento</span>
+                </div>
+            </div>
+
+            <div class="gate-actions">
+                <button type="button" class="btn-upgrade-gate" @onclick="OpenUpgradeModalAsync">
+                    <span>⚡ Fazer Upgrade Agora</span>
+                </button>
+                <a href="settings/subscription" class="gate-link-secondary">
+                    Ver detalhes do meu plano &amp; cotas →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <UpgradePlanModal IsOpen="_isUpgradeModalOpen"
+                      CurrentTier="@(PlanStateService?.CurrentTier ?? SaasPlanTier.Basic)"
+                      Plans="_availablePlans"
+                      OnClose="() => _isUpgradeModalOpen = false"
+                      OnConfirm="HandlePlanChangeAsync"
+                      OnConfirmCheckout="HandleStripeCheckoutAsync" />
+}
+
+@code {
+    [Parameter] public bool IsAllowed { get; set; } = true;
+    [Parameter] public string FeatureTitle { get; set; } = "Módulo Restrito";
+    [Parameter] public string? FeatureDescription { get; set; }
+    [Parameter] public string RequiredPlanName { get; set; } = "Plano Pro";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _isUpgradeModalOpen;
+    private IReadOnlyList<SaasPlanDto> _availablePlans = [];
+
+    private async Task OpenUpgradeModalAsync()
+    {
+        if (BillingClient is not null && _availablePlans.Count == 0)
+        {
+            var result = await BillingClient.ListPlansAsync();
+            if (result.IsSuccess && result.Value is not null)
+            {
+                _availablePlans = result.Value;
+            }
+        }
+
+        _isUpgradeModalOpen = true;
+    }
+
+    private async Task HandlePlanChangeAsync(SaasPlanTier targetTier)
+    {
+        if (BillingClient is null)
+        {
+            return;
+        }
+
+        var result = await BillingClient.ChangePlanAsync(targetTier);
+        if (result.IsSuccess)
+        {
+            ToastService?.ShowSuccess($"Plano alterado para {targetTier} com sucesso!");
+            _isUpgradeModalOpen = false;
+            if (PlanStateService is not null)
+            {
+                await PlanStateService.RefreshAsync();
+            }
+        }
+        else
+        {
+            ToastService?.ShowError(result.Error?.Description ?? "Falha ao alterar plano.");
+        }
+    }
+
+    private async Task HandleStripeCheckoutAsync(SaasPlanTier targetTier)
+    {
+        if (BillingClient is null)
+        {
+            return;
+        }
+
+        var successUrl = NavigationManager.ToAbsoluteUri("settings/subscription?session_id={CHECKOUT_SESSION_ID}").ToString();
+        var cancelUrl = NavigationManager.Uri;
+
+        var result = await BillingClient.CreateCheckoutSessionAsync(targetTier, successUrl, cancelUrl);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            NavigationManager.NavigateTo(result.Value.CheckoutUrl);
+        }
+        else
+        {
+            ToastService?.ShowError(result.Error?.Description ?? "Falha ao iniciar checkout do Stripe.");
+        }
+    }
+}

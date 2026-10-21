@@ -101,6 +101,28 @@
     font-size: 18px;
 }
 
+::deep .nav-label-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+}
+
+::deep .nav-plan-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 5px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.2;
+    border-radius: 4px;
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
 .sidebar-bottom {
     margin-top: auto;
     display: flex;
