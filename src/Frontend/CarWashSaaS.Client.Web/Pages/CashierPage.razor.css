@@ -791,3 +791,13 @@
         white-space: nowrap;
     }
 }
+
+.locked-text {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #fbbf24;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+

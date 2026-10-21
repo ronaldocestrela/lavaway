@@ -313,6 +313,7 @@ public static class YardOperationsEndpoints
             {
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
@@ -395,6 +396,7 @@ public static class YardOperationsEndpoints
             {
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
@@ -409,6 +411,7 @@ public static class YardOperationsEndpoints
             var result = await service.ListCommissionRulesAsync(tenantId);
             return result.IsSuccess ? Results.Ok(result.Value!.Select(ToDto).ToList()) : result.Error!.Type switch
             {
+                ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status403Forbidden),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
@@ -425,6 +428,7 @@ public static class YardOperationsEndpoints
             var result = await service.CreateCommissionRuleAsync(tenantId, command);
             return result.IsSuccess ? Results.Created($"/commission-rules/{result.Value!.Id}", ToDto(result.Value!)) : result.Error!.Type switch
             {
+                ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status403Forbidden),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
@@ -442,6 +446,7 @@ public static class YardOperationsEndpoints
             var result = await service.UpdateCommissionRuleAsync(tenantId, id, command);
             return result.IsSuccess ? Results.Ok(ToDto(result.Value!)) : result.Error!.Type switch
             {
+                ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status403Forbidden),
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
@@ -458,6 +463,7 @@ public static class YardOperationsEndpoints
             var result = await service.DeleteCommissionRuleAsync(tenantId, id);
             return result.IsSuccess ? Results.NoContent() : result.Error!.Type switch
             {
+                ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status403Forbidden),
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
@@ -1105,6 +1111,7 @@ public static class YardOperationsEndpoints
             var result = await service.GetCommissionReportAsync(tenantId, start, end, teamMemberId, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
             {
+                ErrorType.Unauthorized => Results.Json(new { result.Error.Code, result.Error.Description }, statusCode: StatusCodes.Status403Forbidden),
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)

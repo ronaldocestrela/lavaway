@@ -347,4 +347,63 @@ public sealed class LoyaltyApplicationServiceTests
                 null,
                 null)));
     }
+
+    [Fact]
+    public async Task When_Feature_Loyalty_Not_Allowed_Should_Return_Unauthorized()
+    {
+        var quotaLookup = new ConfigurableFakeQuotaLookup(allowedFeatures: []);
+        var serviceWithQuota = new LoyaltyApplicationService(
+            _programRepo,
+            _loyaltyRepo,
+            _workOrderRepo,
+            _customerRepo,
+            _whatsAppDispatcher,
+            _storeProfileLookup,
+            quotaLookup);
+
+        var getProgramResult = await serviceWithQuota.GetLoyaltyProgramAsync(_tenantId);
+        Assert.False(getProgramResult.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, getProgramResult.Error!.Type);
+        Assert.Equal("tenant.plan.loyalty_not_allowed", getProgramResult.Error.Code);
+
+        var updateResult = await serviceWithQuota.UpdateLoyaltyProgramAsync(_tenantId, new UpdateLoyaltyProgramRequest(true, 10, "Lavação Grátis", 1, true, null));
+        Assert.False(updateResult.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, updateResult.Error!.Type);
+        Assert.Equal("tenant.plan.loyalty_not_allowed", updateResult.Error.Code);
+
+        var redeemResult = await serviceWithQuota.RedeemRewardAsync(_tenantId, new RedeemLoyaltyRewardRequest(_customerId, "Recompensa"));
+        Assert.False(redeemResult.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, redeemResult.Error!.Type);
+        Assert.Equal("tenant.plan.loyalty_not_allowed", redeemResult.Error.Code);
+    }
+
+    private sealed class ConfigurableFakeQuotaLookup(HashSet<SaasFeature>? allowedFeatures = null) : ITenantPlanQuotaLookup
+    {
+        private readonly HashSet<SaasFeature> _allowed = allowedFeatures ?? [];
+
+        public Task<Result<TenantQuotaStatusDto>> CheckWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantQuotaStatusDto>.Success(new(true, SaasPlanTier.Basic, TenantSubscriptionStatus.Active, 0, 100, 0, 100)));
+
+        public Task<Result> ConsumeWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result<TenantQuotaStatusDto>> CheckWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantQuotaStatusDto>.Success(new(true, SaasPlanTier.Basic, TenantSubscriptionStatus.Active, 0, 100, 0, 100)));
+
+        public Task<Result> ConsumeWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result<TenantSubscriptionOverviewDto>> GetSubscriptionOverviewAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<TenantSubscriptionOverviewDto>.Failure(new("not_found", "Not found", ErrorType.NotFound)));
+
+        public Task<Result<bool>> HasFeatureAsync(Guid tenantId, SaasFeature feature, CancellationToken ct = default) =>
+            Task.FromResult(Result<bool>.Success(_allowed.Contains(feature)));
+
+        public Task<Result> ValidateTeamMemberLimitAsync(Guid tenantId, int currentTeamMemberCount, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result> ValidateBoxesLimitAsync(Guid tenantId, int requestedBoxes, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+    }
 }
+

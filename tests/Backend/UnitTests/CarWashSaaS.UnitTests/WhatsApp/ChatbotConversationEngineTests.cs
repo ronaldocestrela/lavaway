@@ -620,6 +620,19 @@ public sealed class ChatbotConversationEngineTests
     }
 
     [Fact]
+    public async Task ProcessIncomingMessage_When_Loyalty_Feature_Not_Allowed_Should_Send_Polite_Disclaimer()
+    {
+        _loyaltyLookup.ErrorToReturn = new Error("tenant.plan.loyalty_not_allowed", "Feature loyalty is not included in current plan", ErrorType.Unauthorized);
+
+        var result = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "fidelidade");
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        var reply = _dispatcher.SentMessages[0].Text;
+        Assert.Contains("não possui um programa de fidelidade ou selos ativo", reply);
+    }
+
+    [Fact]
     public async Task ProcessIncomingMessage_WhenCustomerNotRegistered_WithPushName_ShouldAskForNameConfirmation()
     {
         var customerLookup = new FakeCustomerLookup();
@@ -823,12 +836,17 @@ public sealed class ChatbotConversationEngineTests
     private sealed class FakeLoyaltyLookup : ILoyaltyLookup
     {
         public CustomerLoyaltySummaryDto? Summary { get; set; }
+        public Error? ErrorToReturn { get; set; }
 
         public Task<Result<CustomerLoyaltySummaryDto?>> GetLoyaltySummaryByPhoneAsync(Guid tenantId, string phone, CancellationToken ct = default) =>
-            Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Success(Summary));
+            ErrorToReturn != null
+                ? Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Failure(ErrorToReturn))
+                : Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Success(Summary));
 
         public Task<Result<CustomerLoyaltySummaryDto?>> GetLoyaltySummaryByCustomerIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
-            Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Success(Summary));
+            ErrorToReturn != null
+                ? Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Failure(ErrorToReturn))
+                : Task.FromResult(Result<CustomerLoyaltySummaryDto?>.Success(Summary));
     }
 
     private sealed class FakeCustomerLookup : ICustomerLookup

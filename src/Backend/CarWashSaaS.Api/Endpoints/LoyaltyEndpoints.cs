@@ -156,7 +156,7 @@ public static class LoyaltyEndpoints
             ErrorType.Validation => Results.BadRequest(new { error.Code, error.Description }),
             ErrorType.NotFound => Results.NotFound(new { error.Code, error.Description }),
             ErrorType.Conflict => Results.Conflict(new { error.Code, error.Description }),
-            ErrorType.Unauthorized => Results.Forbid(),
+            ErrorType.Unauthorized => Results.Json(new { error.Code, error.Description }, statusCode: StatusCodes.Status403Forbidden),
             _ => Results.Problem(error.Description, statusCode: StatusCodes.Status500InternalServerError)
         };
 }

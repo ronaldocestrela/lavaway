@@ -166,9 +166,122 @@ public sealed class TenantPlanQuotaApplicationService(
             MaxWhatsAppMessages: plan.MaxWhatsAppMessagesPerCycle,
             GatewaySubscriptionId: subscription.GatewaySubscriptionId,
             PendingInvoice: pendingDto,
-            Invoices: invoiceDtos);
+            Invoices: invoiceDtos,
+            HasCustomerSubscriptions: plan.HasCustomerSubscriptions,
+            HasLoyalty: plan.HasLoyalty,
+            HasCommissions: plan.HasCommissions,
+            HasAiChatbot: plan.HasAiChatbot,
+            MaxTeamMembers: plan.MaxTeamMembers,
+            MaxBoxes: plan.MaxBoxes);
 
         return Result<TenantSubscriptionOverviewDto>.Success(overview);
+    }
+
+    public async Task<Result<bool>> HasFeatureAsync(Guid tenantId, SaasFeature feature, CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<bool>.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
+        }
+
+        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+
+        if (!subscription.IsOperationalAllowed())
+        {
+            return Result<bool>.Failure(new Error(
+                "tenant.subscription.delinquent",
+                subscription.StatusReason ?? "Recurso bloqueado por pendência financeira. Regularize sua assinatura.",
+                ErrorType.Conflict));
+        }
+
+        var hasFeature = feature switch
+        {
+            SaasFeature.CustomerSubscriptions => plan.HasCustomerSubscriptions,
+            SaasFeature.Loyalty => plan.HasLoyalty,
+            SaasFeature.Commissions => plan.HasCommissions,
+            SaasFeature.AiChatbot => plan.HasAiChatbot,
+            _ => false
+        };
+
+        return Result<bool>.Success(hasFeature);
+    }
+
+    public async Task<Result> ValidateTeamMemberLimitAsync(Guid tenantId, int currentTeamMemberCount, CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
+        }
+
+        if (currentTeamMemberCount < 0)
+        {
+            return Result.Failure(new Error("team_member.count.invalid", "Quantidade de membros não pode ser negativa.", ErrorType.Validation));
+        }
+
+        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+
+        if (!subscription.IsOperationalAllowed())
+        {
+            return Result.Failure(new Error(
+                "tenant.subscription.delinquent",
+                subscription.StatusReason ?? "Operação bloqueada por pendência financeira. Regularize sua assinatura.",
+                ErrorType.Conflict));
+        }
+
+        // Se MaxTeamMembers <= 0, significa capacidade ilimitada
+        if (plan.MaxTeamMembers <= 0)
+        {
+            return Result.Success();
+        }
+
+        if (currentTeamMemberCount >= plan.MaxTeamMembers)
+        {
+            return Result.Failure(new Error(
+                "tenant.plan.team_limit_reached",
+                $"Limite de {plan.MaxTeamMembers} colaboradores atingido para o plano {plan.Name}. Faça upgrade para adicionar mais membros.",
+                ErrorType.Conflict));
+        }
+
+        return Result.Success();
+    }
+
+    public async Task<Result> ValidateBoxesLimitAsync(Guid tenantId, int requestedBoxes, CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
+        }
+
+        if (requestedBoxes <= 0)
+        {
+            return Result.Failure(new Error("yard_capacity.boxes.invalid", "Quantidade de boxes deve ser maior que zero.", ErrorType.Validation));
+        }
+
+        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+
+        if (!subscription.IsOperationalAllowed())
+        {
+            return Result.Failure(new Error(
+                "tenant.subscription.delinquent",
+                subscription.StatusReason ?? "Operação bloqueada por pendência financeira. Regularize sua assinatura.",
+                ErrorType.Conflict));
+        }
+
+        // Se MaxBoxes <= 0, significa capacidade ilimitada
+        if (plan.MaxBoxes <= 0)
+        {
+            return Result.Success();
+        }
+
+        if (requestedBoxes > plan.MaxBoxes)
+        {
+            return Result.Failure(new Error(
+                "tenant.plan.boxes_limit_reached",
+                $"Quantidade de {requestedBoxes} boxes excede o limite de {plan.MaxBoxes} permitido para o plano {plan.Name}. Faça upgrade para expandir a estrutura do pátio.",
+                ErrorType.Conflict));
+        }
+
+        return Result.Success();
     }
 
     private async Task<(TenantSaasSubscription Subscription, SaasPlan Plan, TenantQuotaUsage QuotaUsage)> EnsureSubscriptionAndQuotaAsync(

@@ -31,6 +31,7 @@ builder.Services.AddScoped<SaasBillingApiClient>();
 builder.Services.AddScoped<PlatformWhatsAppApiClient>();
 builder.Services.AddScoped<PlatformObservabilityApiClient>();
 builder.Services.AddScoped<ImpersonationSessionState>();
+builder.Services.AddScoped<TenantPlanStateService>();
 builder.Services.AddScoped<IToastService, ToastService>();
 
 

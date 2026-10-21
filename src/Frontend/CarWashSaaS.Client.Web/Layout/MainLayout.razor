@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager Navigation
+@inject CarWashSaaS.Client.Core.TenantPlanStateService PlanState
+@inject AuthenticationStateProvider AuthStateProvider
 @using Microsoft.AspNetCore.Components.Routing
 <div class="app-shell">
     <!-- Sidebar Desktop -->
@@ -139,6 +141,15 @@
     protected override void OnInitialized()
     {
         Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            await PlanState.InitializeAsync();
+        }
     }
 
     private string CurrentSection => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/') switch

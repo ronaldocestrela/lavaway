@@ -6,6 +6,9 @@
 @attribute [Authorize(Roles = "Administrator")]
 @inject YardSetupApiClient YardApi
 @inject ServiceCatalogApiClient ServiceApi
+@inject TenantPlanStateService PlanState
+@inject SaasBillingApiClient BillingClient
+@inject NavigationManager NavigationManager
 @inject IToastService ToastService
 
 <PageTitle>Capacidade &amp; Equipe | Lava Aê</PageTitle>
@@ -29,7 +32,9 @@
             <YardCapacityCard Capacity="@_capacity"
                               OnSave="SaveCapacityAsync"
                               IsBusy="@_isSavingCapacity"
-                              ErrorMessage="@_capacityErrorMessage" />
+                              ErrorMessage="@_capacityErrorMessage"
+                              MaxAllowedBoxes="@PlanState.MaxBoxes"
+                              PlanName="@PlanState.PlanName" />
         </div>
 
         <!-- TABS DE NAVEGAÇÃO INTERNA: EQUIPE E COMISSÕES -->
@@ -53,12 +58,31 @@
                 <div class="content-header">
                     <div>
                         <h2>Colaboradores Cadastrados</h2>
-                        <p>Gerencie operadores de pista, secadores, polidores e encarregados.</p>
+                        <p>
+                            Gerencie operadores de pista, secadores, polidores e encarregados.
+                            @if (PlanState.MaxTeamMembers > 0)
+                            {
+                                var activeCount = _teamMembers.Count(m => m.IsActive);
+                                <strong class="team-limit-counter @(activeCount >= PlanState.MaxTeamMembers ? "limit-reached" : "")">
+                                    — @activeCount de @PlanState.MaxTeamMembers colaboradores ativos (Plano @PlanState.PlanName)
+                                </strong>
+                            }
+                        </p>
                     </div>
-                    <button type="button" class="btn btn-primary" @onclick="OpenCreateTeamMemberModal" id="btn-new-member">
-                        <span class="btn-icon">+</span>
-                        <span>Novo Colaborador</span>
-                    </button>
+                    @if (PlanState.MaxTeamMembers > 0 && _teamMembers.Count(m => m.IsActive) >= PlanState.MaxTeamMembers)
+                    {
+                        <button type="button" class="btn btn-warning" @onclick="OpenUpgradeModalAsync" id="btn-team-upgrade" title="Limite do plano atingido">
+                            <span class="btn-icon">⚡</span>
+                            <span>Limite Atingido (Fazer Upgrade)</span>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-primary" @onclick="OpenCreateTeamMemberModal" id="btn-new-member">
+                            <span class="btn-icon">+</span>
+                            <span>Novo Colaborador</span>
+                        </button>
+                    }
                 </div>
 
                 @if (_teamMembers.Count == 0)
@@ -133,6 +157,10 @@
         else
         {
             <!-- SEÇÃO 3: REGRAS DE COMISSÃO -->
+            <PlanGate IsAllowed="@(!PlanState.IsLoaded || PlanState.HasCommissions)"
+                      FeatureTitle="Regras e Matriz de Comissionamento"
+                      FeatureDescription="Configure percentuais automáticos de comissão por serviço e cargo, incentivando a produtividade da sua equipe sem planilhas manuais."
+                      RequiredPlanName="Plano Pro">
             <div class="tab-content">
                 <div class="content-header">
                     <div>
@@ -204,6 +232,7 @@
                     </div>
                 }
             </div>
+            </PlanGate>
         }
     }
 </section>
@@ -224,6 +253,14 @@
                      ErrorMessage="@_commissionErrorMessage"
                      OnSave="SaveCommissionRuleAsync"
                      OnCancel="CloseCommissionModal" />
+
+<!-- MODAL UPGRADE -->
+<UpgradePlanModal IsOpen="_showUpgradeModal"
+                  CurrentTier="@PlanState.CurrentTier"
+                  Plans="_availablePlans"
+                  OnClose="() => _showUpgradeModal = false"
+                  OnConfirm="HandlePlanChangeAsync"
+                  OnConfirmCheckout="HandleStripeCheckoutAsync" />
 
 @code {
     private bool _isLoading = true;
@@ -263,20 +300,29 @@
 
         try
         {
+            await PlanState.InitializeAsync();
             _capacity = await YardApi.GetCapacityAsync();
             var members = await YardApi.GetTeamMembersAsync();
             _teamMembers = members.ToList();
 
-            var rules = await YardApi.GetCommissionRulesAsync();
-            _commissionRules = rules.ToList();
+            if (PlanState.HasCommissions)
+            {
+                var rules = await YardApi.GetCommissionRulesAsync();
+                _commissionRules = rules.ToList();
 
-            try
-            {
-                var services = await ServiceApi.GetServicesAsync();
-                _availableServices = services.ToList();
+                try
+                {
+                    var services = await ServiceApi.GetServicesAsync();
+                    _availableServices = services.ToList();
+                }
+                catch
+                {
+                    _availableServices = [];
+                }
             }
-            catch
+            else
             {
+                _commissionRules = [];
                 _availableServices = [];
             }
         }
@@ -459,6 +505,55 @@
         _successMessage = message;
         _errorMessage = null;
         ToastService.ShowSuccess(message);
+    }
+
+    // Upgrade Modal
+    private bool _showUpgradeModal;
+    private IReadOnlyList<SaasPlanDto> _availablePlans = [];
+
+    private async Task OpenUpgradeModalAsync()
+    {
+        if (_availablePlans.Count == 0)
+        {
+            var result = await BillingClient.ListPlansAsync();
+            if (result.IsSuccess && result.Value is not null)
+            {
+                _availablePlans = result.Value;
+            }
+        }
+        _showUpgradeModal = true;
+    }
+
+    private async Task HandlePlanChangeAsync(SaasPlanTier targetTier)
+    {
+        var result = await BillingClient.ChangePlanAsync(targetTier);
+        if (result.IsSuccess)
+        {
+            ToastService.ShowSuccess($"Plano alterado para {targetTier} com sucesso!");
+            _showUpgradeModal = false;
+            await PlanState.RefreshAsync();
+            await LoadDataAsync();
+        }
+        else
+        {
+            ToastService.ShowError(result.Error?.Description ?? "Falha ao alterar plano.");
+        }
+    }
+
+    private async Task HandleStripeCheckoutAsync(SaasPlanTier targetTier)
+    {
+        var successUrl = NavigationManager.ToAbsoluteUri("settings/subscription?session_id={CHECKOUT_SESSION_ID}").ToString();
+        var cancelUrl = NavigationManager.Uri;
+
+        var result = await BillingClient.CreateCheckoutSessionAsync(targetTier, successUrl, cancelUrl);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            NavigationManager.NavigateTo(result.Value.CheckoutUrl);
+        }
+        else
+        {
+            ToastService.ShowError(result.Error?.Description ?? "Falha ao iniciar checkout do Stripe.");
+        }
     }
 
     private static string GetInitials(string fullName)

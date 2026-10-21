@@ -4,8 +4,13 @@
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
 @inject SubscriptionApiClient SubscriptionApi
+@inject TenantPlanStateService PlanState
 @inject IToastService Toast
 
+<PlanGate IsAllowed="@(!PlanState.IsLoaded || PlanState.HasCustomerSubscriptions)"
+          FeatureTitle="Clube de Assinaturas & Recorrência"
+          FeatureDescription="Crie planos mensais para seus clientes, controle limites de serviços por placa e garanta faturamento recorrente previsível todos os meses no seu estabelecimento."
+          RequiredPlanName="Plano Pro">
 <div class="subscriptions-page-container">
     <PageHeading Eyebrow="PLANOS & RECORRÊNCIA"
                  Title="Assinaturas & Créditos Recorrentes"
@@ -248,6 +253,7 @@
     OnAddPlate="HandleAddPlateToSub"
     OnRemovePlate="HandleRemovePlateFromSub"
     OnClose="() => _isPlatesModalOpen = false" />
+</PlanGate>
 
 @code {
     private bool _isLoading = true;
@@ -285,6 +291,13 @@
         _isLoading = true;
         try
         {
+            await PlanState.InitializeAsync();
+            if (PlanState.IsLoaded && !PlanState.HasCustomerSubscriptions)
+            {
+                _isLoading = false;
+                return;
+            }
+
             var plansTask = SubscriptionApi.ListPlansAsync();
             var subsTask = SubscriptionApi.ListSubscriptionsAsync();
             var dashTask = SubscriptionApi.GetDashboardSummaryAsync();

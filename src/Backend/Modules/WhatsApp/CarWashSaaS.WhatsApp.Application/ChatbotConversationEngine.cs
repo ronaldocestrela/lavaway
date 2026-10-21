@@ -164,6 +164,16 @@ public sealed class ChatbotConversationEngine(
         if (IsLoyaltyKeyword(lower) && loyaltyLookup is not null)
         {
             var loyaltyResult = await loyaltyLookup.GetLoyaltySummaryByPhoneAsync(tenantId, senderPhone, ct);
+            if (!loyaltyResult.IsSuccess && loyaltyResult.Error?.Code == "tenant.plan.loyalty_not_allowed")
+            {
+                var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
+                var storeName = storeProfile.Value?.TradeName ?? "Lava Aê";
+                var loyaltyReply = $"🏷️ *{storeName}*\n\nNo momento este estabelecimento não possui um programa de fidelidade ou selos ativo. Se precisar de outros serviços ou agendamento, digite *MENU*! 🚗✨";
+                session.Reset();
+                await sessionRepository.UpdateAsync(session, ct);
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, loyaltyReply, ct);
+            }
+
             if (loyaltyResult.IsSuccess && loyaltyResult.Value is not null)
             {
                 var loyalty = loyaltyResult.Value;

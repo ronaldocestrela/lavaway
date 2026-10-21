@@ -72,6 +72,15 @@ public sealed class PlatformSaasBillingApplicationServiceTests
 
         public Task<Result<TenantSubscriptionOverviewDto>> GetSubscriptionOverviewAsync(Guid tenantId, CancellationToken ct = default) =>
             Task.FromResult(Result<TenantSubscriptionOverviewDto>.Failure(new("not_found", "Not found", ErrorType.NotFound)));
+
+        public Task<Result<bool>> HasFeatureAsync(Guid tenantId, SaasFeature feature, CancellationToken ct = default) =>
+            Task.FromResult(Result<bool>.Success(true));
+
+        public Task<Result> ValidateTeamMemberLimitAsync(Guid tenantId, int currentTeamMemberCount, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result> ValidateBoxesLimitAsync(Guid tenantId, int requestedBoxes, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
     }
 
     private sealed class FakeGlobalTenantLookup : IGlobalTenantLookup

@@ -1,3 +1,7 @@
+@using CarWashSaaS.Client.Core
+@inject TenantPlanStateService PlanState
+@implements IDisposable
+
 <nav class="primary-nav" aria-label="Navegação principal">
     <NavLink class="primary-nav-link" href="reception">
         <span class="nav-index">01</span>
@@ -31,12 +35,24 @@
     </NavLink>
     <NavLink class="primary-nav-link" href="loyalty">
         <span class="nav-index">07</span>
-        <span>Fidelidade &amp; Selos</span>
+        <span class="nav-label-wrapper">
+            <span>Fidelidade &amp; Selos</span>
+            @if (PlanState.IsLoaded && !PlanState.HasLoyalty)
+            {
+                <span class="nav-plan-badge" title="Disponível no Plano Pro">🔒 PRO</span>
+            }
+        </span>
         <span class="nav-arrow" aria-hidden="true">›</span>
     </NavLink>
     <NavLink class="primary-nav-link" href="subscriptions">
         <span class="nav-index">08</span>
-        <span>Assinaturas &amp; Clubes</span>
+        <span class="nav-label-wrapper">
+            <span>Assinaturas &amp; Clubes</span>
+            @if (PlanState.IsLoaded && !PlanState.HasCustomerSubscriptions)
+            {
+                <span class="nav-plan-badge" title="Disponível no Plano Pro">🔒 PRO</span>
+            }
+        </span>
         <span class="nav-arrow" aria-hidden="true">›</span>
     </NavLink>
     <AuthorizeView Roles="Administrator">
@@ -104,4 +120,21 @@
     </AuthorizeView>
 
 </nav>
+
+@code {
+    protected override void OnInitialized()
+    {
+        PlanState.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PlanState.OnChange -= HandleStateChanged;
+    }
+}
 

@@ -225,7 +225,7 @@ public sealed class SaasPlan
                 hasLoyalty: true,
                 hasCommissions: true,
                 hasAiChatbot: true,
-                maxTeamMembers: 999,
+                maxTeamMembers: 0, // 0 = ilimitado
                 maxBoxes: 0, // 0 = ilimitado
                 isActive: true)
         ];

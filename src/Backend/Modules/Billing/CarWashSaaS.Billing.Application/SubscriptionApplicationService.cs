@@ -6,8 +6,33 @@ namespace CarWashSaaS.Billing.Application;
 public sealed class SubscriptionApplicationService(
     ISubscriptionPlanRepository planRepository,
     ICustomerSubscriptionRepository subscriptionRepository,
-    IRecurringBillingGatewayProvider gatewayProvider) : ISubscriptionLookup, ISubscriptionUsageService
+    IRecurringBillingGatewayProvider gatewayProvider,
+    ITenantPlanQuotaLookup? quotaLookup = null) : ISubscriptionLookup, ISubscriptionUsageService
 {
+    private async Task<Result> EnsureFeatureAccessAsync(Guid tenantId, CancellationToken ct)
+    {
+        if (quotaLookup is null)
+        {
+            return Result.Success();
+        }
+
+        var check = await quotaLookup.HasFeatureAsync(tenantId, SaasFeature.CustomerSubscriptions, ct);
+        if (!check.IsSuccess)
+        {
+            return Result.Failure(check.Error!);
+        }
+
+        if (!check.Value)
+        {
+            return Result.Failure(new Error(
+                "tenant.plan.customer_subscriptions_not_allowed",
+                "Clube de assinaturas de clientes não está disponível no plano atual. Faça upgrade para o plano Pro ou Enterprise.",
+                ErrorType.Unauthorized));
+        }
+
+        return Result.Success();
+    }
+
     public async Task<Result<SubscriptionPlanDto>> CreatePlanAsync(
         Guid tenantId,
         CreateSubscriptionPlanRequest request,
@@ -16,6 +41,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<SubscriptionPlanDto>.Failure(new Error("plan.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<SubscriptionPlanDto>.Failure(featureAccess.Error!);
         }
 
         var planResult = SubscriptionPlan.Create(
@@ -48,6 +79,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<SubscriptionPlanDto>.Failure(new Error("plan.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<SubscriptionPlanDto>.Failure(featureAccess.Error!);
         }
 
         var plan = await planRepository.GetByIdAsync(tenantId, planId, ct);
@@ -83,6 +120,12 @@ public sealed class SubscriptionApplicationService(
             return Result<IReadOnlyList<SubscriptionPlanDto>>.Failure(new Error("plan.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
         }
 
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<IReadOnlyList<SubscriptionPlanDto>>.Failure(featureAccess.Error!);
+        }
+
         var plans = activeOnly
             ? await planRepository.ListActiveAsync(tenantId, ct)
             : await planRepository.ListAllAsync(tenantId, ct);
@@ -99,6 +142,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<SubscriptionPlanDto>.Failure(new Error("plan.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<SubscriptionPlanDto>.Failure(featureAccess.Error!);
         }
 
         var plan = await planRepository.GetByIdAsync(tenantId, planId, ct);
@@ -118,6 +167,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<CustomerSubscriptionDto>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerSubscriptionDto>.Failure(featureAccess.Error!);
         }
 
         var plan = await planRepository.GetByIdAsync(tenantId, request.PlanId, ct);
@@ -191,6 +246,12 @@ public sealed class SubscriptionApplicationService(
             return Result<CustomerSubscriptionDto>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
         }
 
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerSubscriptionDto>.Failure(featureAccess.Error!);
+        }
+
         var subscription = await subscriptionRepository.GetByIdAsync(tenantId, subscriptionId, ct);
         if (subscription is null)
         {
@@ -221,6 +282,12 @@ public sealed class SubscriptionApplicationService(
             return Result<CustomerSubscriptionDto>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
         }
 
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerSubscriptionDto>.Failure(featureAccess.Error!);
+        }
+
         var subscription = await subscriptionRepository.GetByIdAsync(tenantId, subscriptionId, ct);
         if (subscription is null)
         {
@@ -246,6 +313,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<CustomerSubscriptionDto>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerSubscriptionDto>.Failure(featureAccess.Error!);
         }
 
         var subscription = await subscriptionRepository.GetByIdAsync(tenantId, subscriptionId, ct);
@@ -274,6 +347,12 @@ public sealed class SubscriptionApplicationService(
             return Result<IReadOnlyList<CustomerSubscriptionDto>>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
         }
 
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<IReadOnlyList<CustomerSubscriptionDto>>.Failure(featureAccess.Error!);
+        }
+
         var list = await subscriptionRepository.ListAllAsync(tenantId, ct);
         var dtos = list.Select(ToDto).ToList();
         return Result<IReadOnlyList<CustomerSubscriptionDto>>.Success(dtos);
@@ -287,6 +366,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<CustomerSubscriptionDto>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerSubscriptionDto>.Failure(featureAccess.Error!);
         }
 
         var sub = await subscriptionRepository.GetByIdAsync(tenantId, subscriptionId, ct);
@@ -306,6 +391,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<IReadOnlyList<SubscriptionUsageDto>>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<IReadOnlyList<SubscriptionUsageDto>>.Failure(featureAccess.Error!);
         }
 
         var usages = await subscriptionRepository.ListUsagesBySubscriptionIdAsync(tenantId, subscriptionId, ct);
@@ -328,6 +419,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<SubscriptionDashboardSummaryDto>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<SubscriptionDashboardSummaryDto>.Failure(featureAccess.Error!);
         }
 
         var activeSubs = await subscriptionRepository.ListAllAsync(tenantId, ct);
@@ -358,6 +455,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<SubscriptionPlateSummaryDto?>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<SubscriptionPlateSummaryDto?>.Failure(featureAccess.Error!);
         }
 
         var normalized = SubscriptionVehiclePlate.NormalizePlate(plate);
@@ -399,6 +502,12 @@ public sealed class SubscriptionApplicationService(
             return Result<IReadOnlyList<CustomerSubscriptionDto>>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
         }
 
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<IReadOnlyList<CustomerSubscriptionDto>>.Failure(featureAccess.Error!);
+        }
+
         var subs = await subscriptionRepository.ListByCustomerIdAsync(tenantId, customerId, ct);
         var dtos = subs.Select(ToDto).ToList();
         return Result<IReadOnlyList<CustomerSubscriptionDto>>.Success(dtos);
@@ -412,6 +521,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<SubscriptionUsageReceiptDto>.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<SubscriptionUsageReceiptDto>.Failure(featureAccess.Error!);
         }
 
         var normalized = SubscriptionVehiclePlate.NormalizePlate(request.Plate);
@@ -453,6 +568,12 @@ public sealed class SubscriptionApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result.Failure(new Error("subscription.tenant_required", "Tenant é obrigatório.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result.Failure(featureAccess.Error!);
         }
 
         if (workOrderId == Guid.Empty)

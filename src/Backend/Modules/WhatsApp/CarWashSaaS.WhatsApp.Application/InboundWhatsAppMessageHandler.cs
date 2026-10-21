@@ -6,7 +6,10 @@ namespace CarWashSaaS.WhatsApp.Application;
 
 public sealed class InboundWhatsAppMessageHandler(
     ChatbotConversationEngine chatbotEngine,
-    ILogger<InboundWhatsAppMessageHandler> logger) : ITenantQueueMessageHandler
+    ILogger<InboundWhatsAppMessageHandler> logger,
+    ITenantPlanQuotaLookup? quotaLookup = null,
+    IOutboundWhatsAppDispatcher? dispatcher = null,
+    ITenantStoreProfileLookup? storeProfileLookup = null) : ITenantQueueMessageHandler
 {
     public const string InboundWhatsAppDispatchEventType = "whatsapp.inbound.dispatch";
 
@@ -29,6 +32,33 @@ public sealed class InboundWhatsAppMessageHandler(
         {
             logger.LogWarning("Inbound WhatsApp message payload was null for tenant {TenantId}.", message.TenantId);
             return;
+        }
+
+        if (quotaLookup is not null)
+        {
+            var aiCheck = await quotaLookup.HasFeatureAsync(message.TenantId, SaasFeature.AiChatbot, cancellationToken);
+            if (aiCheck.IsSuccess && !aiCheck.Value)
+            {
+                logger.LogInformation("Tenant {TenantId} does not have AiChatbot enabled. Sending fallback message.", message.TenantId);
+
+                if (dispatcher is not null)
+                {
+                    string storeName = "nosso estabelecimento";
+                    if (storeProfileLookup is not null)
+                    {
+                        var profileResult = await storeProfileLookup.GetProfileAsync(message.TenantId, cancellationToken);
+                        if (profileResult.IsSuccess && !string.IsNullOrWhiteSpace(profileResult.Value?.TradeName))
+                        {
+                            storeName = profileResult.Value.TradeName;
+                        }
+                    }
+
+                    var fallbackText = $"Olá! Agradecemos o seu contato com {storeName}. No momento nosso atendimento digital automatizado não está ativo. Um de nossos atendentes humanos responderá sua mensagem em breve! 🚗✨";
+                    await dispatcher.DispatchTextMessageAsync(message.TenantId, payload.SenderPhone, fallbackText, null, cancellationToken);
+                }
+
+                return;
+            }
         }
 
         logger.LogInformation("Processing inbound WhatsApp message from {Phone} for tenant {TenantId}.", payload.SenderPhone, message.TenantId);

@@ -9,10 +9,41 @@ public sealed class LoyaltyApplicationService(
     IWorkOrderRepository workOrderRepository,
     ICustomerRepository customerRepository,
     IOutboundWhatsAppDispatcher whatsAppDispatcher,
-    ITenantStoreProfileLookup storeProfileLookup) : ILoyaltyLookup
+    ITenantStoreProfileLookup storeProfileLookup,
+    ITenantPlanQuotaLookup? quotaLookup = null) : ILoyaltyLookup
 {
+    private async Task<Result> EnsureFeatureAccessAsync(Guid tenantId, CancellationToken ct)
+    {
+        if (quotaLookup is null)
+        {
+            return Result.Success();
+        }
+
+        var check = await quotaLookup.HasFeatureAsync(tenantId, SaasFeature.Loyalty, ct);
+        if (!check.IsSuccess)
+        {
+            return Result.Failure(check.Error!);
+        }
+
+        if (!check.Value)
+        {
+            return Result.Failure(new Error(
+                "tenant.plan.loyalty_not_allowed",
+                "Programa de fidelidade e selos não está disponível no plano atual. Faça upgrade para o plano Pro ou Enterprise.",
+                ErrorType.Unauthorized));
+        }
+
+        return Result.Success();
+    }
+
     public async Task<Result<LoyaltyProgramDto>> GetLoyaltyProgramAsync(Guid tenantId, CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<LoyaltyProgramDto>.Failure(featureAccess.Error!);
+        }
+
         var program = await GetOrCreateProgramAsync(tenantId, ct);
         return Result<LoyaltyProgramDto>.Success(MapToProgramDto(program));
     }
@@ -22,6 +53,12 @@ public sealed class LoyaltyApplicationService(
         UpdateLoyaltyProgramRequest request,
         CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<LoyaltyProgramDto>.Failure(featureAccess.Error!);
+        }
+
         var program = await GetOrCreateProgramAsync(tenantId, ct);
         var updateResult = program.Update(
             request.IsEnabled,
@@ -45,6 +82,12 @@ public sealed class LoyaltyApplicationService(
         Guid customerId,
         CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerLoyaltySummaryDto?>.Failure(featureAccess.Error!);
+        }
+
         var customer = await customerRepository.GetByIdAsync(tenantId, customerId, ct);
         if (customer is null)
         {
@@ -63,6 +106,12 @@ public sealed class LoyaltyApplicationService(
         string phone,
         CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerLoyaltySummaryDto?>.Failure(featureAccess.Error!);
+        }
+
         var normalizedPhone = Customer.NormalizePhone(phone);
         var customer = await customerRepository.GetByNormalizedPhoneAsync(tenantId, normalizedPhone, ct);
         if (customer is null)
@@ -81,6 +130,12 @@ public sealed class LoyaltyApplicationService(
         Guid tenantId,
         CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<IReadOnlyList<CustomerLoyaltySummaryDto>>.Failure(featureAccess.Error!);
+        }
+
         var program = await GetOrCreateProgramAsync(tenantId, ct);
         var accounts = await loyaltyRepository.ListAccountsAsync(tenantId, ct);
 
@@ -102,6 +157,12 @@ public sealed class LoyaltyApplicationService(
         Guid customerId,
         CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<IReadOnlyList<CustomerLoyaltyTransactionDto>>.Failure(featureAccess.Error!);
+        }
+
         var account = await loyaltyRepository.GetByCustomerIdAsync(tenantId, customerId, ct);
         if (account is null)
         {
@@ -127,6 +188,12 @@ public sealed class LoyaltyApplicationService(
         Guid workOrderId,
         CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerLoyaltySummaryDto>.Failure(featureAccess.Error!);
+        }
+
         var program = await GetOrCreateProgramAsync(tenantId, ct);
         if (!program.IsEnabled)
         {
@@ -192,6 +259,12 @@ public sealed class LoyaltyApplicationService(
         RedeemLoyaltyRewardRequest request,
         CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerLoyaltyTransactionDto>.Failure(featureAccess.Error!);
+        }
+
         var program = await GetOrCreateProgramAsync(tenantId, ct);
         if (!program.IsEnabled)
         {
@@ -230,6 +303,12 @@ public sealed class LoyaltyApplicationService(
         string operatorName,
         CancellationToken ct = default)
     {
+        var featureAccess = await EnsureFeatureAccessAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CustomerLoyaltyTransactionDto>.Failure(featureAccess.Error!);
+        }
+
         var account = await loyaltyRepository.GetByCustomerIdAsync(tenantId, request.CustomerId, ct);
         if (account is null)
         {

@@ -6,8 +6,33 @@ namespace CarWashSaaS.YardOperations.Application;
 public sealed class YardSetupApplicationService(
     IYardCapacityRepository yardCapacityRepository,
     ITeamMemberRepository teamMemberRepository,
-    ICommissionRuleRepository commissionRuleRepository)
+    ICommissionRuleRepository commissionRuleRepository,
+    ITenantPlanQuotaLookup? quotaLookup = null)
 {
+    private async Task<Result> EnsureCommissionsFeatureAsync(Guid tenantId, CancellationToken ct)
+    {
+        if (quotaLookup is null)
+        {
+            return Result.Success();
+        }
+
+        var check = await quotaLookup.HasFeatureAsync(tenantId, SaasFeature.Commissions, ct);
+        if (!check.IsSuccess)
+        {
+            return Result.Failure(check.Error!);
+        }
+
+        if (!check.Value)
+        {
+            return Result.Failure(new Error(
+                "tenant.plan.commissions_not_allowed",
+                "Gestão e regras de comissão não estão disponíveis no plano contratado. Faça upgrade para o plano Pro ou Enterprise.",
+                ErrorType.Unauthorized));
+        }
+
+        return Result.Success();
+    }
+
     public async Task<Result<YardCapacity>> GetCapacityAsync(Guid tenantId, CancellationToken ct = default)
     {
         if (tenantId == Guid.Empty)
@@ -31,6 +56,15 @@ public sealed class YardSetupApplicationService(
             return Result<YardCapacity>.Failure(new Error("yard_capacity.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
+        if (quotaLookup is not null)
+        {
+            var boxValidation = await quotaLookup.ValidateBoxesLimitAsync(tenantId, command.TotalBoxes, ct);
+            if (!boxValidation.IsSuccess)
+            {
+                return Result<YardCapacity>.Failure(boxValidation.Error!);
+            }
+        }
+
         var existing = await yardCapacityRepository.GetByTenantAsync(tenantId, ct);
         if (existing is not null)
         {
@@ -52,6 +86,15 @@ public sealed class YardSetupApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<YardCapacity>.Failure(new Error("yard_capacity.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        if (quotaLookup is not null)
+        {
+            var boxValidation = await quotaLookup.ValidateBoxesLimitAsync(tenantId, command.TotalBoxes, ct);
+            if (!boxValidation.IsSuccess)
+            {
+                return Result<YardCapacity>.Failure(boxValidation.Error!);
+            }
         }
 
         var capacity = await yardCapacityRepository.GetByTenantAsync(tenantId, ct);
@@ -102,6 +145,17 @@ public sealed class YardSetupApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<TeamMember>.Failure(new Error("team_member.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        if (quotaLookup is not null)
+        {
+            var members = await teamMemberRepository.ListByTenantAsync(tenantId, ct);
+            var activeCount = members.Count(m => m.IsActive);
+            var limitValidation = await quotaLookup.ValidateTeamMemberLimitAsync(tenantId, activeCount, ct);
+            if (!limitValidation.IsSuccess)
+            {
+                return Result<TeamMember>.Failure(limitValidation.Error!);
+            }
         }
 
         var normalizedEmail = string.IsNullOrWhiteSpace(command.Email) ? null : command.Email.Trim();
@@ -176,6 +230,17 @@ public sealed class YardSetupApplicationService(
         }
         else
         {
+            if (quotaLookup is not null)
+            {
+                var members = await teamMemberRepository.ListByTenantAsync(tenantId, ct);
+                var activeCount = members.Count(m => m.IsActive);
+                var limitValidation = await quotaLookup.ValidateTeamMemberLimitAsync(tenantId, activeCount, ct);
+                if (!limitValidation.IsSuccess)
+                {
+                    return Result<TeamMember>.Failure(limitValidation.Error!);
+                }
+            }
+
             member.Activate();
         }
 
@@ -190,6 +255,12 @@ public sealed class YardSetupApplicationService(
             return Result<IReadOnlyCollection<CommissionRule>>.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
+        var featureAccess = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<IReadOnlyCollection<CommissionRule>>.Failure(featureAccess.Error!);
+        }
+
         var rules = await commissionRuleRepository.ListByTenantAsync(tenantId, ct);
         return Result<IReadOnlyCollection<CommissionRule>>.Success(rules);
     }
@@ -199,6 +270,12 @@ public sealed class YardSetupApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result<CommissionRule>.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CommissionRule>.Failure(featureAccess.Error!);
         }
 
         var existing = await commissionRuleRepository.GetByServiceAndRoleAsync(tenantId, command.ServiceName.Trim(), command.RoleName.Trim(), ct);
@@ -224,6 +301,12 @@ public sealed class YardSetupApplicationService(
             return Result<CommissionRule>.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
+        var featureAccess = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result<CommissionRule>.Failure(featureAccess.Error!);
+        }
+
         var rule = await commissionRuleRepository.GetByIdAsync(tenantId, id, ct);
         if (rule is null)
         {
@@ -245,6 +328,12 @@ public sealed class YardSetupApplicationService(
         if (tenantId == Guid.Empty)
         {
             return Result.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        var featureAccess = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!featureAccess.IsSuccess)
+        {
+            return Result.Failure(featureAccess.Error!);
         }
 
         var rule = await commissionRuleRepository.GetByIdAsync(tenantId, id, ct);
