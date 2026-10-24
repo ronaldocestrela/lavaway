@@ -107,7 +107,15 @@ Usar fallbacks sans-serif do sistema se as fontes não estiverem disponíveis. N
 - Tags e badges devem ser compactos, com contraste explícito e texto curto.
 - Usar ícones simples e consistentes. Não depender apenas de emoji para funções essenciais ou estados.
 
-### Feedback
+### Feedback e Tela de Carregamento Inicial
+
+- **Tela de Carregamento WebAssembly (Splash Screen):**
+  - Fundo base escuro `#0B1514` com halo suave em verde-petróleo `#256B57` e verde-lima `#C6F277`, eliminando qualquer flash de tela branca ou transição abrupta antes do carregamento do Blazor.
+  - Cartão centralizado com vidro translúcido (`rgba(18, 36, 33, 0.9)`), borda sutil e cantos arredondados de 20px.
+  - Logomarca com micro-animação de flutuação e anel de brilho suave.
+  - Barra de progresso dinâmica sincronizada com as variáveis nativas do Blazor WebAssembly (`--blazor-load-percentage` e `--blazor-load-percentage-text`).
+  - Textos de estado amigáveis e acolhedores voltados ao usuário ("Iniciando aplicação...", "Preparando pátio, recepção e inteligência...").
+  - **Regra de Isolamento SEO/IA:** Conteúdos semânticos e discovery files para LLMs (como `llms.txt`) pertencem estritamente aos metadados do cabeçalho (`<head>`, `robots.txt`, Schema.org JSON-LD) ou blocos `<noscript>`. Nunca devem ser renderizados visualmente na interface interativa de carregamento para humanos.
 
 - Estados de sucesso, atenção, erro e informação devem combinar cor com texto e, quando útil, ícone.
 - Foco por teclado deve ser sempre visível e contrastante; não remover `outline` sem substituto acessível.
