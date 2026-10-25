@@ -100,6 +100,8 @@ builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IUnitOfWork, YardOperationsUnitOfWork>();
 builder.Services.AddScoped<CustomerVehicleApplicationService>();
+builder.Services.AddScoped<ICustomerDossierPdfGenerator, CustomerDossierPdfGenerator>();
+builder.Services.AddScoped<CustomerDataExportService>();
 builder.Services.AddScoped<CustomerLookupService>();
 builder.Services.AddScoped<ICustomerLookup>(sp => sp.GetRequiredService<CustomerLookupService>());
 builder.Services.AddScoped<IWorkOrderReceiptPdfGenerator, WorkOrderReceiptPdfGenerator>();
@@ -219,6 +221,7 @@ builder.Services.AddScoped<IOutboundWhatsAppMessageRepository, OutboundWhatsAppM
 builder.Services.AddScoped<ITenantWhatsAppQuotaRepository, TenantWhatsAppQuotaRepository>();
 builder.Services.AddScoped<ICustomerCommunicationPreferenceRepository, CustomerCommunicationPreferenceRepository>();
 builder.Services.AddScoped<ICustomerCommunicationPreferenceLookup, CustomerCommunicationPreferenceLookupService>();
+builder.Services.AddScoped<ICustomerWhatsAppHistoryLookup, CustomerWhatsAppHistoryLookupService>();
 builder.Services.AddScoped<IChatbotSessionRepository, ChatbotSessionRepository>();
 builder.Services.AddScoped<WhatsAppConnectionApplicationService>();
 builder.Services.AddScoped<PlatformWhatsAppHealthApplicationService>();

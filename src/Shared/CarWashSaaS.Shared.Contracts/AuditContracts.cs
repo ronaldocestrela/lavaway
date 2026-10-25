@@ -85,6 +85,7 @@ public static class PlatformActionConstants
     public const string SystemSettingUpdated = "System.SettingUpdated";
     public const string SensitiveDataExported = "Security.SensitiveDataExported";
     public const string CustomerAnonymized = "Customer.AnonymizedLGPD";
+    public const string CustomerDataExported = "Customer.DataExportedLGPD";
 }
 
 public static class PlatformTargetTypeConstants

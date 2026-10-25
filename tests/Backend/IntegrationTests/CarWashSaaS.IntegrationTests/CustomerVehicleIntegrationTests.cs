@@ -1,4 +1,5 @@
 using CarWashSaaS.Shared.Configuration;
+using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Tenants.Domain;
 using CarWashSaaS.Tenants.Infrastructure;
 using CarWashSaaS.YardOperations.Application;
@@ -196,6 +197,97 @@ public sealed class CustomerVehicleIntegrationTests(SqlServerFixture fixture)
         }
     }
 
+    [Fact]
+    public async Task ExportCustomerDossier_ShouldCompileFullAggregatedData_AcrossEntities()
+    {
+        var tenantId = await CreateTenantAsync("Export Dossier Tenant");
+        Guid customerId;
+        Guid vehicleId;
+        Guid workOrderId;
+
+        await using (var context = CreateYardContext(tenantId))
+        {
+            var customer = Customer.Create(tenantId, "Rodrigo LGPD", "11988889999").Value!;
+            await context.Customers.AddAsync(customer);
+            customerId = customer.Id;
+
+            var vehicle = Vehicle.Create(tenantId, customerId, "DOS1E23", VehicleSize.HatchSedan).Value!;
+            await context.Vehicles.AddAsync(vehicle);
+            vehicleId = vehicle.Id;
+
+            var item = WorkOrderItem.Create(tenantId, Guid.CreateVersion7(), "Polimento Tecnico", 150.00m, 60, 1, ServiceCategoryConstants.Polimento).Value!;
+            var workOrder = WorkOrder.Create(tenantId, customerId, vehicleId, [item]).Value!;
+            workOrder.ChangeStatus(WorkOrderStatus.InWashing);
+            workOrder.ChangeStatus(WorkOrderStatus.Finishing);
+            workOrder.ChangeStatus(WorkOrderStatus.QualityControl);
+            workOrder.ChangeStatus(WorkOrderStatus.ReadyForPickup);
+            workOrder.RegisterPickup(DateTimeOffset.UtcNow, "Entregue ao cliente");
+            workOrder.RecordSatisfactionSurveySent(DateTimeOffset.UtcNow.AddMinutes(-10));
+            workOrder.RecordSatisfactionRating(5, "Servico espetacular", DateTimeOffset.UtcNow);
+            workOrder.MarkPaymentConfirmed(150.00m, "Cartao", DateTimeOffset.UtcNow, "CARD-999");
+            await context.WorkOrders.AddAsync(workOrder);
+            workOrderId = workOrder.Id;
+
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = CreateYardContext(tenantId))
+        {
+            var exportService = CreateExportService(context);
+
+            var dossierResult = await exportService.ExportDossierAsync(tenantId, customerId);
+            Assert.True(dossierResult.IsSuccess);
+
+            var dossier = dossierResult.Value!;
+            Assert.Equal(customerId, dossier.Profile.CustomerId);
+            Assert.Equal("Rodrigo LGPD", dossier.Profile.Name);
+            Assert.Equal("11988889999", dossier.Profile.Phone);
+            Assert.False(dossier.Profile.IsAnonymized);
+
+            Assert.Single(dossier.Vehicles);
+            Assert.Equal("DOS1E23", dossier.Vehicles[0].Plate);
+
+            Assert.Single(dossier.WorkOrders);
+            Assert.Equal(workOrderId, dossier.WorkOrders[0].WorkOrderId);
+            Assert.Equal(150.00m, dossier.WorkOrders[0].TotalAmount);
+            Assert.True(dossier.WorkOrders[0].IsPaid);
+            Assert.NotNull(dossier.WorkOrders[0].Survey);
+            Assert.Equal(5, dossier.WorkOrders[0].Survey!.Rating);
+            Assert.Equal("Servico espetacular", dossier.WorkOrders[0].Survey!.Feedback);
+
+            var pdfResult = await exportService.ExportDossierPdfAsync(tenantId, customerId);
+            Assert.True(pdfResult.IsSuccess);
+            Assert.NotEmpty(pdfResult.Value!);
+            Assert.Equal(0x25, pdfResult.Value[0]); // %PDF
+        }
+    }
+
+    [Fact]
+    public async Task TenantB_CannotExport_CustomerBelongingToTenantA()
+    {
+        var tenantA = await CreateTenantAsync("Export Tenant A");
+        var tenantB = await CreateTenantAsync("Export Tenant B");
+        Guid tenantACustomerId;
+
+        await using (var contextA = CreateYardContext(tenantA))
+        {
+            var customer = Customer.Create(tenantA, "Titular Seguro Tenant A", "11912345678").Value!;
+            await contextA.Customers.AddAsync(customer);
+            await contextA.SaveChangesAsync();
+            tenantACustomerId = customer.Id;
+        }
+
+        await using (var contextB = CreateYardContext(tenantB))
+        {
+            var exportServiceB = CreateExportService(contextB);
+            var exportAttempt = await exportServiceB.ExportDossierAsync(tenantB, tenantACustomerId);
+
+            Assert.False(exportAttempt.IsSuccess);
+            Assert.Equal(CarWashSaaS.Shared.Contracts.ErrorType.NotFound, exportAttempt.Error!.Type);
+            Assert.Equal("customer.not_found", exportAttempt.Error.Code);
+        }
+    }
+
     private static CustomerLookupService CreateLookupService(YardOperationsDbContext context) => new(
         new CustomerVehicleSearchRepository(context),
         new CustomerRepository(context),
@@ -207,4 +299,10 @@ public sealed class CustomerVehicleIntegrationTests(SqlServerFixture fixture)
         new CustomerRepository(context),
         new VehicleRepository(context),
         new YardOperationsUnitOfWork(context));
+
+    private static CustomerDataExportService CreateExportService(YardOperationsDbContext context) => new(
+        new CustomerRepository(context),
+        new VehicleRepository(context),
+        new WorkOrderRepository(context),
+        pdfGenerator: new CustomerDossierPdfGenerator());
 }

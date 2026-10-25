@@ -10,6 +10,8 @@ public interface IOutboundWhatsAppMessageRepository
     Task<IReadOnlyList<OutboundWhatsAppMessage>> GetRecentAsync(Guid tenantId, int count = 20, CancellationToken ct = default);
     Task<IReadOnlyList<OutboundWhatsAppMessage>> ListForPlatformMetricsAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, Guid? tenantId = null, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<OutboundWhatsAppMessage>>([]);
+    Task<IReadOnlyList<OutboundWhatsAppMessage>> GetByRecipientPhoneAsync(Guid tenantId, string recipientPhone, int limit = 50, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<OutboundWhatsAppMessage>>([]);
     Task AddAsync(OutboundWhatsAppMessage message, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

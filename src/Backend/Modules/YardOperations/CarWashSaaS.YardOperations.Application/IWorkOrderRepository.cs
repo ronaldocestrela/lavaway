@@ -15,6 +15,8 @@ public interface IWorkOrderRepository
         Task.FromResult<IReadOnlyCollection<WorkOrder>>([]);
     Task<IReadOnlyList<WorkOrder>> ListForPlatformMetricsAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, Guid? tenantId = null, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<WorkOrder>>([]);
+    Task<IReadOnlyList<WorkOrder>> GetByCustomerIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<WorkOrder>>([]);
     Task AddAsync(WorkOrder workOrder, CancellationToken ct = default);
     void Update(WorkOrder workOrder);
 }

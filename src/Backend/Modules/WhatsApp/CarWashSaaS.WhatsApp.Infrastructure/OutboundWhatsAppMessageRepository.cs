@@ -52,6 +52,17 @@ public sealed class OutboundWhatsAppMessageRepository(WhatsAppDbContext dbContex
         return await query.OrderByDescending(m => m.CreatedAt).ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<OutboundWhatsAppMessage>> GetByRecipientPhoneAsync(Guid tenantId, string recipientPhone, int limit = 50, CancellationToken ct = default)
+    {
+        var normalized = OutboundWhatsAppMessage.CleanPhoneNumber(recipientPhone);
+        return await dbContext.OutboundWhatsAppMessages
+            .AsNoTracking()
+            .Where(m => m.TenantId == tenantId && (m.RecipientPhone == normalized || m.RecipientPhone == recipientPhone))
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(OutboundWhatsAppMessage message, CancellationToken ct = default)
     {
         await dbContext.OutboundWhatsAppMessages.AddAsync(message, ct);

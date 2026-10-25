@@ -82,13 +82,15 @@ flowchart LR
 - [x] Expor endpoint seguro: `POST /yard/customers/{id:guid}/anonymize` com política `Administrator`.
 
 ### L2.2 Dossiê do Titular e Portabilidade de Dados (Art. 18, II e V)
-- [ ] Implementar serviço de geração do Dossiê do Titular (`CustomerDataExportService`):
-  - Compilar dados cadastrais do cliente.
-  - Histórico de veículos associados.
-  - Histórico de Ordens de Serviço (datas, serviços executados, valores e status).
-  - Histórico de avaliações de pós-venda (CSAT/NPS).
-  - Histórico de preferências e logs de comunicação no WhatsApp.
-- [ ] Expor endpoint `GET /yard/customers/{id:guid}/export` retornando payload estruturado JSON e opção para download de relatório formatado.
+- [x] Implementar serviço de geração do Dossiê do Titular (`CustomerDataExportService`):
+  - Compilar dados cadastrais do cliente (`Customer`).
+  - Histórico de veículos associados (`Vehicle`).
+  - Histórico de Ordens de Serviço (datas, serviços executados, valores, forma de pagamento e status).
+  - Histórico de avaliações de pós-venda (CSAT/NPS: `SurveyRating`, `SurveyFeedback`).
+  - Histórico de preferências e logs de comunicação no WhatsApp via contrato desacoplado `ICustomerWhatsAppHistoryLookup`.
+  - Registro de auditoria administrativa de exportação em `AdministrativeAuditEvent` (`Customer.DataExportedLGPD`).
+- [x] Implementar gerador nativo de PDF `CustomerDossierPdfGenerator` com layout institucional, grade de serviços e declaração de privacidade legal.
+- [x] Expor endpoints seguros `GET /yard/customers/{id:guid}/export` e `GET /customers/{id:guid}/export` suportando `format=json` (portabilidade interoperável) e `format=pdf` (download de relatório para o titular) protegidos por política `Administrator`.
 
 ### L2.3 Interface de Atendimento a Direitos LGPD no Painel Administrativo
 - [ ] Adicionar botão "Exportar Dossiê (LGPD)" na visualização de detalhes do cliente.

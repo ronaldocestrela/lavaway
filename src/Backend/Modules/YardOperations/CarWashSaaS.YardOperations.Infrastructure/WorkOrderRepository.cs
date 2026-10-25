@@ -136,6 +136,15 @@ public sealed class WorkOrderRepository(YardOperationsDbContext dbContext) : IWo
         return await query.OrderByDescending(order => order.CreatedAtUtc).ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<WorkOrder>> GetByCustomerIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
+        await dbContext.WorkOrders
+            .AsNoTracking()
+            .Include(order => order.Items)
+            .Include(order => order.StatusHistory)
+            .Where(order => order.TenantId == tenantId && order.CustomerId == customerId)
+            .OrderByDescending(order => order.CreatedAtUtc)
+            .ToListAsync(ct);
+
     public async Task AddAsync(WorkOrder workOrder, CancellationToken ct = default) =>
         await dbContext.WorkOrders.AddAsync(workOrder, ct);
 
