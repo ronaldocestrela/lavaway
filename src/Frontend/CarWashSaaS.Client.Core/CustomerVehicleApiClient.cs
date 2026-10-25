@@ -74,6 +74,39 @@ public sealed class CustomerVehicleApiClient(HttpClient httpClient)
         return await ReadResponseAsync<CustomerVehicleMatchDto>(response, ct);
     }
 
+    public async Task<CustomerAnonymizedDto> AnonymizeAsync(
+        Guid customerId,
+        AnonymizeCustomerRequest request,
+        CancellationToken ct = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync($"customers/{customerId}/anonymize", request, ct);
+        return await ReadResponseAsync<CustomerAnonymizedDto>(response, ct);
+    }
+
+    public async Task<byte[]> ExportDossierPdfAsync(Guid customerId, CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync($"customers/{customerId}/export?format=pdf", ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = await ReadErrorMessageAsync(response, ct);
+            throw new CustomerVehicleApiException(response.StatusCode, message);
+        }
+
+        return await response.Content.ReadAsByteArrayAsync(ct);
+    }
+
+    public async Task<string> ExportDossierJsonAsync(Guid customerId, CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync($"customers/{customerId}/export?format=json", ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = await ReadErrorMessageAsync(response, ct);
+            throw new CustomerVehicleApiException(response.StatusCode, message);
+        }
+
+        return await response.Content.ReadAsStringAsync(ct);
+    }
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (!response.IsSuccessStatusCode)

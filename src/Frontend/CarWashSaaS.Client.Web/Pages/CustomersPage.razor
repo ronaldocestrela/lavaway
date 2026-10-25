@@ -1,5 +1,6 @@
 @page "/customers"
 @attribute [Authorize(Roles = "Administrator,Receptionist")]
+@using System.Text
 @using CarWashSaaS.Client.Components
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
@@ -7,6 +8,7 @@
 @inject IToastService ToastService
 @inject NavigationManager Navigation
 @inject ReceptionSessionState ReceptionState
+@inject IJSRuntime JSRuntime
 
 <div class="customers-page">
     <PageHeading Eyebrow="GESTÃO DE CLIENTES &amp; VEÍCULOS"
@@ -84,14 +86,20 @@
                             </div>
                             <div class="card-info">
                                 <div class="card-header-row">
-                                    <h3 class="card-name">@customer.CustomerName</h3>
+                                    <div class="card-title-group">
+                                        <h3 class="card-name">@customer.CustomerName</h3>
+                                        @if (customer.IsAnonymized)
+                                        {
+                                            <span class="badge-anonymized" title="Dados cadastrais ofuscados por solicitação LGPD">Anonimizado - LGPD</span>
+                                        }
+                                    </div>
                                     <span class="vehicle-count-badge">
                                         @customer.Vehicles.Count @(customer.Vehicles.Count == 1 ? "veículo" : "veículos")
                                     </span>
                                 </div>
                                 <div class="card-phone">
                                     <span class="phone-icon">📞</span>
-                                    <span>@customer.Phone</span>
+                                    <span>@(customer.IsAnonymized ? "Telefone excluído (LGPD)" : customer.Phone)</span>
                                 </div>
                                 @if (customer.Vehicles.Count > 0)
                                 {
@@ -121,32 +129,103 @@
                 <div class="detail-card">
                     <!-- Hero do Cliente -->
                     <div class="detail-header">
-                        <div class="detail-avatar">
+                        <div class="detail-avatar @(_selectedCustomer.IsAnonymized ? "is-anonymized" : "")">
                             @GetInitials(_selectedCustomer.CustomerName)
                         </div>
                         <div class="detail-title-area">
-                            <div class="detail-eyebrow">CADASTRO DE CLIENTE</div>
-                            <h2>@_selectedCustomer.CustomerName</h2>
-                            <div class="detail-contact-row">
-                                <span class="detail-phone-val">📞 @_selectedCustomer.Phone</span>
-                                <a href="https://wa.me/@GetWhatsAppLink(_selectedCustomer.Phone)"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="whatsapp-link"
-                                   title="Abrir WhatsApp">
-                                    <span class="wa-icon">💬</span>
-                                    <span>Conversar no WhatsApp</span>
-                                </a>
+                            <div class="detail-eyebrow-row">
+                                <span class="detail-eyebrow">CADASTRO DE CLIENTE</span>
+                                @if (_selectedCustomer.IsAnonymized)
+                                {
+                                    <span class="badge-anonymized-detail" id="badge-anonymized-detail">
+                                        🛡️ Anonimizado - LGPD
+                                    </span>
+                                }
                             </div>
+                            <h2>@_selectedCustomer.CustomerName</h2>
+                            @if (_selectedCustomer.IsAnonymized)
+                            {
+                                <div class="anonymized-banner-notice" id="anonymized-banner-notice">
+                                    <span class="notice-icon">⚠️</span>
+                                    <div>
+                                        <strong>Titular com dados pessoais eliminados (Art. 18, VI da LGPD).</strong>
+                                        <p>
+                                            O nome e dados de contato foram irreversivelmente anonimizados.
+                                            @if (_selectedCustomer.AnonymizedAtUtc.HasValue)
+                                            {
+                                                <span>Operação registrada em @_selectedCustomer.AnonymizedAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm").</span>
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="detail-contact-row">
+                                    <span class="detail-phone-val">📞 @_selectedCustomer.Phone</span>
+                                    @if (!string.IsNullOrWhiteSpace(_selectedCustomer.Phone))
+                                    {
+                                        <a href="https://wa.me/@GetWhatsAppLink(_selectedCustomer.Phone)"
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           class="whatsapp-link"
+                                           title="Abrir WhatsApp">
+                                            <span class="wa-icon">💬</span>
+                                            <span>Conversar no WhatsApp</span>
+                                        </a>
+                                    }
+                                </div>
+                            }
                         </div>
 
                         <div class="detail-actions">
-                            <button type="button"
-                                    class="button button-secondary"
-                                    @onclick="OpenEditCustomerModal"
-                                    id="btn-edit-customer">
-                                <span>✏️ Editar Dados</span>
-                            </button>
+                            <div class="dossier-export-group">
+                                <button type="button"
+                                        class="button button-secondary btn-export-dossier"
+                                        @onclick="ToggleDossierMenu"
+                                        id="btn-export-dossier"
+                                        title="Exportar Dossiê do Titular (Art. 18, II e V da LGPD)">
+                                    <span>📥 Exportar Dossiê (LGPD)</span>
+                                    <span class="dropdown-caret">▾</span>
+                                </button>
+                                @if (_showDossierMenu)
+                                {
+                                    <div class="dossier-menu" @onclick:stopPropagation="true">
+                                        <button type="button" class="dossier-menu-item" @onclick="ExportDossierPdfAsync" disabled="@_isExportingDossier" id="btn-export-pdf">
+                                            <span class="menu-icon">📄</span>
+                                            <div>
+                                                <strong>Relatório PDF</strong>
+                                                <small>Layout institucional com histórico e declaração legal</small>
+                                            </div>
+                                        </button>
+                                        <button type="button" class="dossier-menu-item" @onclick="ExportDossierJsonAsync" disabled="@_isExportingDossier" id="btn-export-json">
+                                            <span class="menu-icon">💾</span>
+                                            <div>
+                                                <strong>Portabilidade JSON</strong>
+                                                <small>Dados estruturados interoperáveis (Art. 18, V)</small>
+                                            </div>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (!_selectedCustomer.IsAnonymized)
+                            {
+                                <button type="button"
+                                        class="button button-secondary"
+                                        @onclick="OpenEditCustomerModal"
+                                        id="btn-edit-customer">
+                                    <span>✏️ Editar Dados</span>
+                                </button>
+
+                                <button type="button"
+                                        class="button button-danger-outline"
+                                        @onclick="OpenAnonymizeModal"
+                                        id="btn-open-anonymize-customer"
+                                        title="Anonimizar dados pessoais deste titular (Art. 18, VI da LGPD)">
+                                    <span>⚠️ Anonimizar Titular</span>
+                                </button>
+                            }
                         </div>
                     </div>
 
@@ -293,6 +372,15 @@
                      ErrorMessage="@_createCustError"
                      OnSave="SaveNewCustomerAsync"
                      OnCancel="CloseCreateCustomerModal" />
+
+<!-- Modal de Anonimização de Titular (LGPD Art. 18, VI) -->
+<AnonymizeCustomerModal IsVisible="@_showAnonymizeModal"
+                        CustomerName="@(_selectedCustomer?.CustomerName ?? string.Empty)"
+                        Phone="@(_selectedCustomer?.Phone ?? string.Empty)"
+                        IsBusy="@_isAnonymizing"
+                        ErrorMessage="@_anonymizeError"
+                        OnConfirm="ConfirmAnonymizeCustomerAsync"
+                        OnCancel="CloseAnonymizeModal" />
 
 @code {
     private List<CustomerVehicleMatchDto> _customers = [];
@@ -626,5 +714,123 @@
         var digits = new string(phone.Where(char.IsDigit).ToArray());
         if (digits.StartsWith("55")) return digits;
         return $"55{digits}";
+    }
+
+    // Anonymize modal state and methods
+    private bool _showAnonymizeModal = false;
+    private bool _isAnonymizing = false;
+    private string? _anonymizeError;
+
+    // Dossier export state and methods
+    private bool _showDossierMenu = false;
+    private bool _isExportingDossier = false;
+
+    private void ToggleDossierMenu()
+    {
+        _showDossierMenu = !_showDossierMenu;
+    }
+
+    private void OpenAnonymizeModal()
+    {
+        if (_selectedCustomer is null || _selectedCustomer.IsAnonymized) return;
+        _anonymizeError = null;
+        _showAnonymizeModal = true;
+    }
+
+    private void CloseAnonymizeModal()
+    {
+        _showAnonymizeModal = false;
+        _anonymizeError = null;
+    }
+
+    private async Task ConfirmAnonymizeCustomerAsync(string reason)
+    {
+        if (_selectedCustomer is null) return;
+
+        try
+        {
+            _isAnonymizing = true;
+            _anonymizeError = null;
+
+            var result = await CustomerApi.AnonymizeAsync(_selectedCustomer.CustomerId, new AnonymizeCustomerRequest(reason));
+
+            var anonymized = new CustomerVehicleMatchDto(
+                _selectedCustomer.CustomerId,
+                result.AnonymizedName,
+                string.Empty,
+                [],
+                true,
+                result.AnonymizedAtUtc);
+
+            UpdateCustomerInList(anonymized);
+            _selectedCustomer = anonymized;
+            _showAnonymizeModal = false;
+
+            ToastService.ShowSuccess($"Titular anonimizado com sucesso conforme Art. 18, VI da LGPD. {result.VehiclesDisassociatedCount} veículo(s) desvinculado(s).");
+        }
+        catch (CustomerVehicleApiException apiEx)
+        {
+            _anonymizeError = apiEx.Message;
+        }
+        catch (Exception ex)
+        {
+            _anonymizeError = ex.Message;
+        }
+        finally
+        {
+            _isAnonymizing = false;
+        }
+    }
+
+    private async Task ExportDossierPdfAsync()
+    {
+        if (_selectedCustomer is null) return;
+
+        try
+        {
+            _isExportingDossier = true;
+            _showDossierMenu = false;
+
+            var pdfBytes = await CustomerApi.ExportDossierPdfAsync(_selectedCustomer.CustomerId);
+            var base64 = Convert.ToBase64String(pdfBytes);
+            var filename = $"dossie-titular-{_selectedCustomer.CustomerId}.pdf";
+
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", filename, "application/pdf", base64);
+            ToastService.ShowSuccess("Dossiê do Titular (PDF) gerado e baixado com sucesso!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao exportar dossiê em PDF: {ex.Message}");
+        }
+        finally
+        {
+            _isExportingDossier = false;
+        }
+    }
+
+    private async Task ExportDossierJsonAsync()
+    {
+        if (_selectedCustomer is null) return;
+
+        try
+        {
+            _isExportingDossier = true;
+            _showDossierMenu = false;
+
+            var json = await CustomerApi.ExportDossierJsonAsync(_selectedCustomer.CustomerId);
+            var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+            var filename = $"dossie-titular-{_selectedCustomer.CustomerId}.json";
+
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", filename, "application/json", base64);
+            ToastService.ShowSuccess("Dossiê de Portabilidade (JSON) exportado com sucesso!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao exportar portabilidade JSON: {ex.Message}");
+        }
+        finally
+        {
+            _isExportingDossier = false;
+        }
     }
 }

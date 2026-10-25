@@ -368,7 +368,9 @@ public sealed class CustomerVehicleApplicationService(
         customer.Id,
         customer.Name,
         customer.Phone,
-        [new VehicleSummaryDto(vehicle.Id, vehicle.Plate, vehicle.Size.ToString())]);
+        [new VehicleSummaryDto(vehicle.Id, vehicle.Plate, vehicle.Size.ToString())],
+        customer.IsAnonymized,
+        customer.AnonymizedAtUtc);
 
     private static Result<T> Failure<T>(string code, string description, ErrorType type = ErrorType.Validation) =>
         Result<T>.Failure(new Error(code, description, type));

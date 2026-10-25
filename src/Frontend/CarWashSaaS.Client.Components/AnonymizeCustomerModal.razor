@@ -1,0 +1,158 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="modal-title" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">LGPD — ARTIGO 18, INCISO VI</span>
+                    <h2 id="modal-title">Anonimizar Titular</h2>
+                </div>
+                <button type="button" class="close-btn" @onclick="HandleCancel" aria-label="Fechar">×</button>
+            </header>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="feedback feedback-error" role="alert" id="anonymize-error-alert">
+                        <span class="feedback-symbol">!</span>
+                        <div class="feedback-text">@ErrorMessage</div>
+                    </div>
+                }
+
+                <!-- Alerta e Termo de Advertência Legal -->
+                <div class="warning-banner" role="alert">
+                    <div class="warning-header">
+                        <span class="warning-icon" aria-hidden="true">⚠️</span>
+                        <strong>Ação Irreversível e Definitiva</strong>
+                    </div>
+                    <p class="warning-text">
+                        O atendimento ao <strong>Direito de Eliminação / Anonimização</strong> é permanente e não poderá ser desfeito:
+                    </p>
+                    <ul class="warning-list">
+                        <li>O nome será substituído por <code>Cliente Anonimizado (LGPD)</code>.</li>
+                        <li>O telefone será eliminado e substituído por hash irreversível.</li>
+                        <li>Os veículos associados serão desvinculados para permitir novos cadastros futuros sem herança de histórico.</li>
+                        <li>Ordens de serviço e recibos históricos serão preservados de forma anônima para cumprimento de obrigações legais (Art. 16, I da LGPD e CDC).</li>
+                        <li>As preferências de WhatsApp e comunicações serão canceladas.</li>
+                    </ul>
+                </div>
+
+                <!-- Resumo do Titular Atual -->
+                <div class="target-customer-card">
+                    <span class="target-label">Titular Selecionado:</span>
+                    <div class="target-name" id="target-customer-name">@CustomerName</div>
+                    @if (!string.IsNullOrWhiteSpace(Phone))
+                    {
+                        <div class="target-phone" id="target-customer-phone">📞 @Phone</div>
+                    }
+                </div>
+
+                <!-- Campo de Motivo Formal da Solicitação (Confirmação 1) -->
+                <div class="form-group">
+                    <label for="anonymize-reason" class="form-label">Motivo Formal da Solicitação *</label>
+                    <textarea id="anonymize-reason"
+                              class="form-control"
+                              rows="3"
+                              placeholder="Ex.: Solicitação expressa do titular via canal do DPO / Art. 18, VI da LGPD..."
+                              value="@_reason"
+                              @oninput="OnReasonInput"
+                              disabled="@IsBusy"></textarea>
+                    <span class="form-hint">Este motivo será registrado compulsoriamente na trilha de auditoria do sistema.</span>
+                </div>
+
+                <!-- Checkbox de Ciência Explícita (Confirmação 2) -->
+                <div class="consent-group">
+                    <label class="consent-checkbox-label">
+                        <input type="checkbox"
+                               class="consent-checkbox"
+                               id="chk-confirm-anonymize"
+                               checked="@_isConfirmed"
+                               @onchange="OnConfirmChanged"
+                               disabled="@IsBusy" />
+                        <span class="consent-text">
+                            Confirmo a validação da identidade do titular e estou ciente de que a anonimização é <strong>definitiva e irrevogável</strong>.
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-outline" @onclick="HandleCancel" disabled="@IsBusy" id="btn-cancel-anonymize">
+                    Cancelar
+                </button>
+                <button type="button"
+                        class="btn btn-danger"
+                        @onclick="HandleConfirm"
+                        disabled="@(IsBusy || !CanConfirm)"
+                        id="btn-confirm-anonymize">
+                    <span>@(IsBusy ? "Anonimizando..." : "Confirmar Anonimização Irreversível")</span>
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public string CustomerName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Phone { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    private string _reason = string.Empty;
+    private bool _isConfirmed = false;
+
+    private bool CanConfirm =>
+        !string.IsNullOrWhiteSpace(_reason) &&
+        _reason.Trim().Length >= 5 &&
+        _isConfirmed;
+
+    protected override void OnParametersSet()
+    {
+        if (!IsVisible)
+        {
+            _reason = string.Empty;
+            _isConfirmed = false;
+        }
+    }
+
+    private void OnReasonInput(ChangeEventArgs e)
+    {
+        _reason = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnConfirmChanged(ChangeEventArgs e)
+    {
+        _isConfirmed = e.Value is bool b && b;
+    }
+
+    private async Task HandleCancel()
+    {
+        _reason = string.Empty;
+        _isConfirmed = false;
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleConfirm()
+    {
+        if (!CanConfirm || IsBusy) return;
+        await OnConfirm.InvokeAsync(_reason.Trim());
+    }
+}

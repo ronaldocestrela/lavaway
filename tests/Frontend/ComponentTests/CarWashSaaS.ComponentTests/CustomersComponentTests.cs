@@ -1,7 +1,11 @@
 using Bunit;
+using Bunit.TestDoubles;
 using CarWashSaaS.Client.Components;
+using CarWashSaaS.Client.Core;
+using CarWashSaaS.Client.Web.Pages;
 using CarWashSaaS.Shared.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CarWashSaaS.ComponentTests;
@@ -105,5 +109,101 @@ public sealed class CustomersComponentTests : BunitContext
 
         saveBtn.Click();
         Assert.True(saved);
+    }
+
+    [Fact]
+    public void CustomersPage_ShouldRenderAnonymizedBadgeAndHideEdit_WhenCustomerIsAnonymized()
+    {
+        var customerId = Guid.NewGuid();
+        var anonymizedCustomer = new CustomerVehicleMatchDto(
+            customerId,
+            "Cliente Anonimizado (LGPD)",
+            "",
+            [],
+            true,
+            DateTimeOffset.UtcNow);
+
+        SetupCustomersPageServices([anonymizedCustomer]);
+
+        var cut = Render<CustomersPage>();
+
+        // Badge na lista e nos detalhes
+        Assert.Contains("Anonimizado - LGPD", cut.Markup);
+        var detailBadge = cut.Find("#badge-anonymized-detail");
+        Assert.NotNull(detailBadge);
+        Assert.Contains("Anonimizado - LGPD", detailBadge.TextContent);
+
+        // Banner informativo da LGPD
+        var notice = cut.Find("#anonymized-banner-notice");
+        Assert.NotNull(notice);
+        Assert.Contains("Art. 18, VI da LGPD", notice.TextContent);
+
+        // Botão Exportar Dossiê deve existir
+        var exportBtn = cut.Find("#btn-export-dossier");
+        Assert.NotNull(exportBtn);
+
+        // Botões de Editar e Anonimizar NÃO devem existir para cliente já anonimizado
+        Assert.Empty(cut.FindAll("#btn-edit-customer"));
+        Assert.Empty(cut.FindAll("#btn-open-anonymize-customer"));
+    }
+
+    [Fact]
+    public void CustomersPage_ShouldRenderExportAndAnonymizeButtons_WhenCustomerIsActive()
+    {
+        var customerId = Guid.NewGuid();
+        var activeCustomer = new CustomerVehicleMatchDto(
+            customerId,
+            "Carlos Eduardo",
+            "11988887777",
+            [new VehicleSummaryDto(Guid.NewGuid(), "ABC1D23", "HatchSedan")],
+            false,
+            null);
+
+        SetupCustomersPageServices([activeCustomer]);
+
+        var cut = Render<CustomersPage>();
+
+        // Não deve ter badge de anonimizado
+        Assert.Empty(cut.FindAll("#badge-anonymized-detail"));
+        Assert.Empty(cut.FindAll("#anonymized-banner-notice"));
+
+        // Botão Exportar Dossiê presente
+        var exportBtn = cut.Find("#btn-export-dossier");
+        Assert.NotNull(exportBtn);
+
+        // Botões Editar Dados e Anonimizar Titular presentes
+        var editBtn = cut.Find("#btn-edit-customer");
+        Assert.NotNull(editBtn);
+
+        var anonymizeBtn = cut.Find("#btn-open-anonymize-customer");
+        Assert.NotNull(anonymizeBtn);
+
+        // Ao clicar no botão de anonimizar, o modal abre
+        anonymizeBtn.Click();
+        Assert.Contains("LGPD — ARTIGO 18, INCISO VI", cut.Markup);
+        Assert.Contains("Confirmar Anonimização Irreversível", cut.Markup);
+    }
+
+    private void SetupCustomersPageServices(CustomerVehicleMatchDto[] customers)
+    {
+        this.AddAuthorization().SetAuthorized("admin@lavaway.com.br").SetRoles("Administrator");
+        Services.AddSingleton<CarWashSaaS.Client.Core.IToastService>(new CarWashSaaS.Client.Core.ToastService());
+        Services.AddSingleton<ReceptionSessionState>();
+
+        var handler = new FakeCustomerHttpMessageHandler(customers);
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.lavaway.test/") };
+        Services.AddSingleton(new CustomerVehicleApiClient(httpClient));
+    }
+
+    private sealed class FakeCustomerHttpMessageHandler(CustomerVehicleMatchDto[] customers) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(customers);
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            });
+        }
     }
 }

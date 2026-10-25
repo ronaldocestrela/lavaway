@@ -5,4 +5,6 @@ public sealed record CustomerVehicleMatchDto(
     Guid CustomerId,
     string CustomerName,
     string Phone,
-    IReadOnlyCollection<VehicleSummaryDto> Vehicles);
+    IReadOnlyCollection<VehicleSummaryDto> Vehicles,
+    bool IsAnonymized = false,
+    DateTimeOffset? AnonymizedAtUtc = null);

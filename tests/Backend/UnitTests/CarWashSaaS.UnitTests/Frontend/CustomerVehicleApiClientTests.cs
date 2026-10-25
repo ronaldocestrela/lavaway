@@ -59,6 +59,83 @@ public sealed class CustomerVehicleApiClientTests
         Assert.Equal("A placa já está cadastrada.", exception.Message);
     }
 
+    [Fact]
+    public async Task AnonymizeAsync_ShouldPostReason_AndReturnAnonymizedDto()
+    {
+        var customerId = Guid.CreateVersion7();
+        var handler = new StubHttpMessageHandler(async (request, _) =>
+        {
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal($"/customers/{customerId}/anonymize", request.RequestUri!.AbsolutePath);
+            var body = await request.Content!.ReadAsStringAsync();
+            Assert.Contains("Titular solicitou esquecimento", body);
+
+            var dto = new CustomerAnonymizedDto(
+                customerId,
+                "Cliente Anonimizado (LGPD)",
+                DateTimeOffset.UtcNow,
+                2);
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json")
+            };
+        });
+        var api = CreateClient(handler);
+
+        var result = await api.AnonymizeAsync(customerId, new AnonymizeCustomerRequest("Titular solicitou esquecimento"));
+
+        Assert.Equal(customerId, result.CustomerId);
+        Assert.Equal("Cliente Anonimizado (LGPD)", result.AnonymizedName);
+        Assert.Equal(2, result.VehiclesDisassociatedCount);
+    }
+
+    [Fact]
+    public async Task ExportDossierPdfAsync_ShouldRequestPdfFormat_AndReturnBytes()
+    {
+        var customerId = Guid.CreateVersion7();
+        var fakePdfBytes = "%PDF-1.4 sample content"u8.ToArray();
+        var handler = new StubHttpMessageHandler((request, _) =>
+        {
+            Assert.Equal(HttpMethod.Get, request.Method);
+            Assert.Equal($"/customers/{customerId}/export", request.RequestUri!.AbsolutePath);
+            Assert.Equal("?format=pdf", request.RequestUri.Query);
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(fakePdfBytes)
+            });
+        });
+        var api = CreateClient(handler);
+
+        var result = await api.ExportDossierPdfAsync(customerId);
+
+        Assert.Equal(fakePdfBytes, result);
+    }
+
+    [Fact]
+    public async Task ExportDossierJsonAsync_ShouldRequestJsonFormat_AndReturnString()
+    {
+        var customerId = Guid.CreateVersion7();
+        var fakeJson = "{\"Profile\":{\"Name\":\"Carlos\"}}";
+        var handler = new StubHttpMessageHandler((request, _) =>
+        {
+            Assert.Equal(HttpMethod.Get, request.Method);
+            Assert.Equal($"/customers/{customerId}/export", request.RequestUri!.AbsolutePath);
+            Assert.Equal("?format=json", request.RequestUri.Query);
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(fakeJson, Encoding.UTF8, "application/json")
+            });
+        });
+        var api = CreateClient(handler);
+
+        var result = await api.ExportDossierJsonAsync(customerId);
+
+        Assert.Equal(fakeJson, result);
+    }
+
     private static CustomerVehicleApiClient CreateClient(HttpMessageHandler handler) =>
         new(new HttpClient(handler) { BaseAddress = new Uri("https://api.example.test/") });
 

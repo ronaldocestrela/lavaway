@@ -93,9 +93,9 @@ flowchart LR
 - [x] Expor endpoints seguros `GET /yard/customers/{id:guid}/export` e `GET /customers/{id:guid}/export` suportando `format=json` (portabilidade interoperável) e `format=pdf` (download de relatório para o titular) protegidos por política `Administrator`.
 
 ### L2.3 Interface de Atendimento a Direitos LGPD no Painel Administrativo
-- [ ] Adicionar botão "Exportar Dossiê (LGPD)" na visualização de detalhes do cliente.
-- [ ] Adicionar modal com confirmação dupla e termo de advertência "Anonimizar Titular (Direito ao Esquecimento - LGPD)" na gestão de clientes.
-- [ ] Exibir badge visual `Anonimizado - LGPD` para clientes cujos dados pessoais foram ofuscados.
+- [x] Adicionar botão "Exportar Dossiê (LGPD)" na visualização de detalhes do cliente.
+- [x] Adicionar modal com confirmação dupla e termo de advertência "Anonimizar Titular (Direito ao Esquecimento - LGPD)" na gestão de clientes.
+- [x] Exibir badge visual `Anonimizado - LGPD` para clientes cujos dados pessoais foram ofuscados.
 
 ---
 

@@ -12,7 +12,7 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
         var customer = await dbContext.Customers
             .AsNoTracking()
             .Where(value => value.TenantId == tenantId && value.Id == customerId)
-            .Select(value => new CustomerSearchRow(value.Id, value.Name, value.Phone))
+            .Select(value => new CustomerSearchRow(value.Id, value.Name, value.Phone, value.IsAnonymized, value.AnonymizedAtUtc))
             .SingleOrDefaultAsync(ct);
 
         if (customer is null)
@@ -81,7 +81,7 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
             .OrderBy(customer => customer.Name)
             .ThenBy(customer => customer.Id)
             .Take(limit)
-            .Select(customer => new CustomerSearchRow(customer.Id, customer.Name, customer.Phone))
+            .Select(customer => new CustomerSearchRow(customer.Id, customer.Name, customer.Phone, customer.IsAnonymized, customer.AnonymizedAtUtc))
             .ToListAsync(ct);
 
         if (customers.Count == 0)
@@ -119,13 +119,13 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
     }
 
     private static CustomerVehicleMatchDto ToMatch(CustomerSearchRow customer, IReadOnlyCollection<VehicleSummaryDto> vehicles) =>
-        new(customer.Id, customer.Name, customer.Phone, vehicles);
+        new(customer.Id, customer.Name, customer.Phone, vehicles, customer.IsAnonymized, customer.AnonymizedAtUtc);
 
     private static CustomerVehicleMatchDto ToMatch(CustomerSearchRow customer, IReadOnlyCollection<VehicleSearchRow> vehicles) =>
         new(customer.Id, customer.Name, customer.Phone, vehicles
             .Select(vehicle => new VehicleSummaryDto(vehicle.Id, vehicle.Plate, vehicle.Size.ToString()))
-            .ToArray());
+            .ToArray(), customer.IsAnonymized, customer.AnonymizedAtUtc);
 
-    private sealed record CustomerSearchRow(Guid Id, string Name, string Phone);
+    private sealed record CustomerSearchRow(Guid Id, string Name, string Phone, bool IsAnonymized, DateTimeOffset? AnonymizedAtUtc);
     private sealed record VehicleSearchRow(Guid Id, Guid? CustomerId, string Plate, VehicleSize Size);
 }

@@ -722,3 +722,181 @@ h1 {
         gap: 14px;
     }
 }
+
+/* ==========================================================================
+   LGPD — Atendimento a Direitos do Titular (L2.3)
+   ========================================================================== */
+
+.card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.badge-anonymized {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+}
+
+.detail-avatar.is-anonymized {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    box-shadow: 0 4px 10px rgba(71, 85, 105, 0.25);
+}
+
+.detail-eyebrow-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.badge-anonymized-detail {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.anonymized-banner-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #991b1b;
+    line-height: 1.45;
+}
+
+.anonymized-banner-notice .notice-icon {
+    font-size: 14px;
+    margin-top: 2px;
+}
+
+.anonymized-banner-notice p {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #b91c1c;
+}
+
+.button-danger-outline {
+    border-color: #fca5a5;
+    color: #b91c1c;
+    background: #fff7f7;
+}
+
+.button-danger-outline:hover:not(:disabled) {
+    border-color: #ef4444;
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Dropdown de Exportação do Dossiê */
+.dossier-export-group {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-export-dossier {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dropdown-caret {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+.dossier-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
+    min-width: 260px;
+    z-index: 100;
+    overflow: hidden;
+    animation: menu-slide 0.15s ease-out;
+}
+
+@keyframes menu-slide {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dossier-menu-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.dossier-menu-item:last-child {
+    border-bottom: none;
+}
+
+.dossier-menu-item:hover:not(:disabled) {
+    background: #f8fafc;
+}
+
+.dossier-menu-item:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.dossier-menu-item .menu-icon {
+    font-size: 16px;
+    margin-top: 2px;
+}
+
+.dossier-menu-item strong {
+    display: block;
+    font-size: 12px;
+    color: #1e293b;
+}
+
+.dossier-menu-item small {
+    display: block;
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 1px;
+}
+
