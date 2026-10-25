@@ -62,7 +62,8 @@ flowchart LR
 ### L1.2 Canal do Encarregado pelo Tratamento de Dados (DPO — Art. 41)
 - [x] Definir o endereço institucional de contato do DPO (`privacidade@lavaway.com.br`).
 - [x] Incluir o canal de contato e identidade do encarregado nas páginas `/privacidade` e nos rodapés.
-- [ ] Criar modelo de resposta padrão para requisições de titulares recebidas via canal oficial.
+- [x] Criar modelo de resposta padrão para requisições de titulares recebidas via canal oficial ([playbook-dpo-respostas-titulares.md](file:///home/rony/LPR/lavaway/docs/lgpd/playbook-dpo-respostas-titulares.md)).
+- [x] Disponibilizar página pública e responsiva do Canal do DPO (`/dpo` e `/canal-dpo`) com acionamento estruturado dos direitos do Art. 18.
 
 ---
 
