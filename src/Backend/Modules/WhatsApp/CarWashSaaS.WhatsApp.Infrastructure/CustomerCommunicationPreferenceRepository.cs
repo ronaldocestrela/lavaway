@@ -25,6 +25,11 @@ public sealed class CustomerCommunicationPreferenceRepository(WhatsAppDbContext 
         await dbContext.CustomerCommunicationPreferences.AddAsync(preference, ct);
     }
 
+    public void Remove(CustomerCommunicationPreference preference)
+    {
+        dbContext.CustomerCommunicationPreferences.Remove(preference);
+    }
+
     public Task SaveChangesAsync(CancellationToken ct = default)
     {
         return dbContext.SaveChangesAsync(ct);

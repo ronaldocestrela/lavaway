@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.YardOperations.Domain;
 
@@ -7,7 +10,9 @@ public sealed class CustomerVehicleApplicationService(
     ICustomerVehicleSearchRepository searchRepository,
     ICustomerRepository customerRepository,
     IVehicleRepository vehicleRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ICustomerCommunicationPreferenceLookup? preferenceLookup = null,
+    IAuditTrailService? auditTrailService = null)
 {
     private const int MaximumSearchLimit = 50;
 
@@ -82,26 +87,41 @@ public sealed class CustomerVehicleApplicationService(
             return Result<CustomerVehicleMatchDto>.Failure(customerResult.Error!);
         }
 
-        var vehicleResult = Vehicle.Create(tenantId, customerResult.Value!.Id, command.Plate, command.Size);
-        if (!vehicleResult.IsSuccess)
-        {
-            return Result<CustomerVehicleMatchDto>.Failure(vehicleResult.Error!);
-        }
+        var normalizedPlate = Vehicle.NormalizePlate(command.Plate);
+        var existingVehicle = await vehicleRepository.GetByPlateAsync(tenantId, normalizedPlate, ct);
+        Vehicle vehicleToPersist;
 
-        if (await vehicleRepository.IsPlateRegisteredAsync(tenantId, vehicleResult.Value!.Plate, ct))
+        if (existingVehicle is not null)
         {
-            return Failure<CustomerVehicleMatchDto>("vehicle.plate.duplicate", "A vehicle with this plate already exists for this tenant.", ErrorType.Conflict);
+            if (existingVehicle.CustomerId.HasValue)
+            {
+                return Failure<CustomerVehicleMatchDto>("vehicle.plate.duplicate", "A vehicle with this plate already exists for this tenant.", ErrorType.Conflict);
+            }
+
+            existingVehicle.ReassignCustomer(customerResult.Value!.Id);
+            existingVehicle.Update(command.Plate, command.Size);
+            vehicleToPersist = existingVehicle;
+        }
+        else
+        {
+            var vehicleResult = Vehicle.Create(tenantId, customerResult.Value!.Id, command.Plate, command.Size);
+            if (!vehicleResult.IsSuccess)
+            {
+                return Result<CustomerVehicleMatchDto>.Failure(vehicleResult.Error!);
+            }
+
+            vehicleToPersist = vehicleResult.Value!;
+            await vehicleRepository.AddAsync(vehicleToPersist, ct);
         }
 
         await customerRepository.AddAsync(customerResult.Value, ct);
-        await vehicleRepository.AddAsync(vehicleResult.Value, ct);
         var saveResult = await unitOfWork.SaveChangesAsync(ct);
         if (!saveResult.IsSuccess)
         {
             return Result<CustomerVehicleMatchDto>.Failure(saveResult.Error!);
         }
 
-        return Result<CustomerVehicleMatchDto>.Success(ToMatch(customerResult.Value, vehicleResult.Value));
+        return Result<CustomerVehicleMatchDto>.Success(ToMatch(customerResult.Value, vehicleToPersist));
     }
 
     public async Task<Result<CustomerVehicleMatchDto>> AddVehicleAsync(
@@ -121,18 +141,33 @@ public sealed class CustomerVehicleApplicationService(
             return Failure<CustomerVehicleMatchDto>("customer.not_found", "Customer was not found.", ErrorType.NotFound);
         }
 
-        var vehicleResult = Vehicle.Create(tenantId, customer.Id, command.Plate, command.Size);
-        if (!vehicleResult.IsSuccess)
+        var normalizedPlate = Vehicle.NormalizePlate(command.Plate);
+        var existingVehicle = await vehicleRepository.GetByPlateAsync(tenantId, normalizedPlate, ct);
+        Vehicle vehicleToPersist;
+
+        if (existingVehicle is not null)
         {
-            return Result<CustomerVehicleMatchDto>.Failure(vehicleResult.Error!);
+            if (existingVehicle.CustomerId.HasValue)
+            {
+                return Failure<CustomerVehicleMatchDto>("vehicle.plate.duplicate", "A vehicle with this plate already exists for this tenant.", ErrorType.Conflict);
+            }
+
+            existingVehicle.ReassignCustomer(customer.Id);
+            existingVehicle.Update(command.Plate, command.Size);
+            vehicleToPersist = existingVehicle;
+        }
+        else
+        {
+            var vehicleResult = Vehicle.Create(tenantId, customer.Id, command.Plate, command.Size);
+            if (!vehicleResult.IsSuccess)
+            {
+                return Result<CustomerVehicleMatchDto>.Failure(vehicleResult.Error!);
+            }
+
+            vehicleToPersist = vehicleResult.Value!;
+            await vehicleRepository.AddAsync(vehicleToPersist, ct);
         }
 
-        if (await vehicleRepository.IsPlateRegisteredAsync(tenantId, vehicleResult.Value!.Plate, ct))
-        {
-            return Failure<CustomerVehicleMatchDto>("vehicle.plate.duplicate", "A vehicle with this plate already exists for this tenant.", ErrorType.Conflict);
-        }
-
-        await vehicleRepository.AddAsync(vehicleResult.Value, ct);
         var saveResult = await unitOfWork.SaveChangesAsync(ct);
         if (!saveResult.IsSuccess)
         {
@@ -141,7 +176,7 @@ public sealed class CustomerVehicleApplicationService(
 
         var updatedCustomer = await searchRepository.GetByCustomerIdAsync(tenantId, customer.Id, ct);
         return updatedCustomer is null
-            ? Result<CustomerVehicleMatchDto>.Success(ToMatch(customer, vehicleResult.Value))
+            ? Result<CustomerVehicleMatchDto>.Success(ToMatch(customer, vehicleToPersist))
             : Result<CustomerVehicleMatchDto>.Success(updatedCustomer);
     }
 
@@ -226,6 +261,107 @@ public sealed class CustomerVehicleApplicationService(
         return updatedCustomer is null
             ? Failure<CustomerVehicleMatchDto>("customer.not_found", "Customer was not found.", ErrorType.NotFound)
             : Result<CustomerVehicleMatchDto>.Success(updatedCustomer);
+    }
+
+    public async Task<Result<CustomerAnonymizedDto>> AnonymizeCustomerAsync(
+        Guid tenantId,
+        AnonymizeCustomerCommand command,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Failure<CustomerAnonymizedDto>("customer.tenant.required", "Tenant is required.");
+        }
+
+        if (command.CustomerId == Guid.Empty)
+        {
+            return Failure<CustomerAnonymizedDto>("customer.id.required", "Customer ID is required.");
+        }
+
+        if (command.OperatorId == Guid.Empty)
+        {
+            return Failure<CustomerAnonymizedDto>("customer.anonymize.operator_required", "Operator ID is required for audit.");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.Reason))
+        {
+            return Failure<CustomerAnonymizedDto>("customer.anonymize.reason_required", "A formal reason is required for data anonymization.");
+        }
+
+        var customer = await customerRepository.GetByIdAsync(tenantId, command.CustomerId, ct);
+        if (customer is null)
+        {
+            return Failure<CustomerAnonymizedDto>("customer.not_found", "Customer was not found.", ErrorType.NotFound);
+        }
+
+        if (customer.IsAnonymized)
+        {
+            return Failure<CustomerAnonymizedDto>("customer.already_anonymized", "Customer has already been anonymized.", ErrorType.Conflict);
+        }
+
+        var originalPhone = customer.Phone;
+        var originalNormalizedPhone = customer.NormalizedPhone;
+
+        var salt = Guid.NewGuid().ToString("N");
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{originalNormalizedPhone}:{salt}"));
+        var phoneHash = Convert.ToHexString(hashBytes)[..32];
+
+        var anonymizeResult = customer.Anonymize(phoneHash);
+        if (!anonymizeResult.IsSuccess)
+        {
+            return Result<CustomerAnonymizedDto>.Failure(anonymizeResult.Error!);
+        }
+
+        var vehicles = await vehicleRepository.GetVehiclesByCustomerIdAsync(tenantId, customer.Id, ct);
+        foreach (var vehicle in vehicles)
+        {
+            vehicle.DisassociateCustomer();
+        }
+
+        if (preferenceLookup is not null && !string.IsNullOrWhiteSpace(originalPhone))
+        {
+            await preferenceLookup.ClearPreferencesForPhoneAsync(
+                tenantId,
+                originalPhone,
+                $"Anonimização LGPD solicitada por operador {command.OperatorEmail}. Motivo: {command.Reason.Trim()}",
+                ct);
+        }
+
+        if (auditTrailService is not null)
+        {
+            var auditDetails = JsonSerializer.Serialize(new
+            {
+                Reason = command.Reason.Trim(),
+                VehiclesDisassociated = vehicles.Count,
+                AnonymizedAtUtc = customer.AnonymizedAtUtc
+            });
+
+            await auditTrailService.RecordEventAsync(new RecordAuditEventRequest(
+                command.OperatorId,
+                string.IsNullOrWhiteSpace(command.OperatorEmail) ? "system@lavaway.com.br" : command.OperatorEmail,
+                "Administrator",
+                "Shop",
+                PlatformActionConstants.CustomerAnonymized,
+                PlatformTargetTypeConstants.Customer,
+                customer.Id.ToString(),
+                tenantId,
+                command.IpAddress,
+                command.UserAgent,
+                auditDetails),
+                ct);
+        }
+
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<CustomerAnonymizedDto>.Failure(saveResult.Error!);
+        }
+
+        return Result<CustomerAnonymizedDto>.Success(new CustomerAnonymizedDto(
+            customer.Id,
+            customer.Name,
+            customer.AnonymizedAtUtc ?? DateTimeOffset.UtcNow,
+            vehicles.Count));
     }
 
     private static CustomerVehicleMatchDto ToMatch(Customer customer, Vehicle vehicle) => new(

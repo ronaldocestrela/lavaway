@@ -32,6 +32,11 @@ public sealed record RecordAuditEventRequest(
     string Outcome = "Success",
     string? ErrorMessage = null);
 
+public interface IAuditTrailService
+{
+    Task<Result<Guid>> RecordEventAsync(RecordAuditEventRequest request, CancellationToken ct = default);
+}
+
 public sealed record AuditQueryFilter(
     DateTimeOffset? FromUtc = null,
     DateTimeOffset? ToUtc = null,
@@ -79,6 +84,7 @@ public static class PlatformActionConstants
     public const string BillingPlanModified = "BillingPlan.Modified";
     public const string SystemSettingUpdated = "System.SettingUpdated";
     public const string SensitiveDataExported = "Security.SensitiveDataExported";
+    public const string CustomerAnonymized = "Customer.AnonymizedLGPD";
 }
 
 public static class PlatformTargetTypeConstants
@@ -88,6 +94,7 @@ public static class PlatformTargetTypeConstants
     public const string ShopUser = "ShopUser";
     public const string BillingPlan = "BillingPlan";
     public const string System = "System";
+    public const string Customer = "Customer";
 }
 
 public sealed record PlatformLoginRequest(string Email, string Password);

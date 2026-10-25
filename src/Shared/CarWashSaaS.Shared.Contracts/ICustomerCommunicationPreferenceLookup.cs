@@ -17,4 +17,11 @@ public interface ICustomerCommunicationPreferenceLookup
     Task<Result<IReadOnlyList<CustomerCommunicationPreferenceDto>>> ListPreferencesAsync(
         Guid tenantId,
         CancellationToken ct = default);
+
+    Task<Result> ClearPreferencesForPhoneAsync(
+        Guid tenantId,
+        string phone,
+        string? reason = null,
+        CancellationToken ct = default) =>
+        Task.FromResult(Result.Success());
 }

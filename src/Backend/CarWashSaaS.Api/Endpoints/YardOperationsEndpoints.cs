@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.YardOperations.Application;
@@ -263,6 +264,48 @@ public static class YardOperationsEndpoints
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.CreateWorkOrders);
+
+        var handleAnonymize = async (
+            Guid customerId,
+            AnonymizeCustomerRequest request,
+            HttpContext httpContext,
+            ICurrentTenantAccessor currentTenantAccessor,
+            CustomerVehicleApplicationService service) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var actorIdClaim = httpContext.User.FindFirst("sub")?.Value ?? httpContext.User.FindFirst("id")?.Value;
+            var operatorId = Guid.TryParse(actorIdClaim, out var parsedId) ? parsedId : Guid.NewGuid();
+            var operatorEmail = httpContext.User.FindFirst(ClaimTypes.Email)?.Value ?? "admin@lavaway.com.br";
+            var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
+            var userAgent = httpContext.Request.Headers.UserAgent.ToString();
+
+            var command = new AnonymizeCustomerCommand(
+                customerId,
+                operatorId,
+                operatorEmail,
+                request.Reason,
+                ipAddress,
+                userAgent);
+
+            var result = await service.AnonymizeCustomerAsync(tenantId, command);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
+            {
+                ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+            };
+        };
+
+        app.MapPost("/yard/customers/{customerId:guid}/anonymize", handleAnonymize)
+            .RequireAuthorization(AuthorizationPolicyNames.Administrator);
+
+        app.MapPost("/customers/{customerId:guid}/anonymize", handleAnonymize)
+            .RequireAuthorization(AuthorizationPolicyNames.Administrator);
     }
 
     private static void MapYardSetupEndpoints(IEndpointRouteBuilder app)

@@ -119,6 +119,83 @@ public sealed class CustomerVehicleIntegrationTests(SqlServerFixture fixture)
         Assert.Null(queryB.Value);
     }
 
+    [Fact]
+    public async Task AnonymizeCustomerAsync_ShouldPersistAnonymizationAndDisassociateVehiclesInDatabase()
+    {
+        var tenantId = await CreateTenantAsync("Anonymize Tenant");
+        Guid customerId;
+
+        await using (var context = CreateYardContext(tenantId))
+        {
+            var service = CreateService(context);
+            var created = await service.CreateAsync(tenantId, new CreateCustomerWithVehicleCommand(
+                "Carlos Titular", "11988881234", "LGPD123", VehicleSize.HatchSedan));
+            Assert.True(created.IsSuccess);
+            customerId = created.Value!.CustomerId;
+
+            var anonymizeCommand = new AnonymizeCustomerCommand(
+                customerId,
+                Guid.CreateVersion7(),
+                "dpo@lavaway.com.br",
+                "Solicitação formal do titular Art. 18 LGPD.");
+
+            var anonymized = await service.AnonymizeCustomerAsync(tenantId, anonymizeCommand);
+            Assert.True(anonymized.IsSuccess);
+            Assert.Equal(Customer.AnonymizedDefaultName, anonymized.Value!.AnonymizedName);
+            Assert.Equal(1, anonymized.Value.VehiclesDisassociatedCount);
+        }
+
+        // Verify with fresh DbContext
+        await using (var verifyContext = CreateYardContext(tenantId))
+        {
+            var persistedCustomer = await verifyContext.Customers.SingleAsync(c => c.TenantId == tenantId && c.Id == customerId);
+            Assert.True(persistedCustomer.IsAnonymized);
+            Assert.Equal(Customer.AnonymizedDefaultName, persistedCustomer.Name);
+            Assert.Equal(string.Empty, persistedCustomer.Phone);
+            Assert.NotNull(persistedCustomer.AnonymizedAtUtc);
+
+            var persistedVehicle = await verifyContext.Vehicles.SingleAsync(v => v.TenantId == tenantId && v.Plate == "LGPD123");
+            Assert.Null(persistedVehicle.CustomerId);
+
+            // Verify a new customer can claim this vehicle without duplicate plate conflict
+            var verifyService = CreateService(verifyContext);
+            var newOwnerResult = await verifyService.CreateAsync(tenantId, new CreateCustomerWithVehicleCommand(
+                "Novo Comprador", "11977779999", "LGPD123", VehicleSize.HatchSedan));
+            Assert.True(newOwnerResult.IsSuccess);
+            Assert.Equal(persistedVehicle.Id, newOwnerResult.Value!.Vehicles.Single().Id);
+        }
+    }
+
+    [Fact]
+    public async Task TenantB_CannotAnonymize_CustomerBelongingToTenantA()
+    {
+        var tenantA = await CreateTenantAsync("Anonymize Tenant A");
+        var tenantB = await CreateTenantAsync("Anonymize Tenant B");
+        Guid tenantACustomerId;
+
+        await using (var tenantAContext = CreateYardContext(tenantA))
+        {
+            var serviceA = CreateService(tenantAContext);
+            var created = await serviceA.CreateAsync(tenantA, new CreateCustomerWithVehicleCommand(
+                "Cliente Tenant A", "11911112222", "AAA1A11", VehicleSize.HatchSedan));
+            Assert.True(created.IsSuccess);
+            tenantACustomerId = created.Value!.CustomerId;
+        }
+
+        await using (var tenantBContext = CreateYardContext(tenantB))
+        {
+            var serviceB = CreateService(tenantBContext);
+            var anonymizeAttempt = await serviceB.AnonymizeCustomerAsync(tenantB, new AnonymizeCustomerCommand(
+                tenantACustomerId,
+                Guid.CreateVersion7(),
+                "hacker@tenantb.com",
+                "Tentativa cross-tenant"));
+
+            Assert.False(anonymizeAttempt.IsSuccess);
+            Assert.Equal(CarWashSaaS.Shared.Contracts.ErrorType.NotFound, anonymizeAttempt.Error!.Type);
+        }
+    }
+
     private static CustomerLookupService CreateLookupService(YardOperationsDbContext context) => new(
         new CustomerVehicleSearchRepository(context),
         new CustomerRepository(context),

@@ -83,6 +83,7 @@ builder.Services.AddScoped<TenantOnboardingService>();
 builder.Services.AddScoped<IAdministrativeAuditEventRepository, AdministrativeAuditEventRepository>();
 builder.Services.AddScoped<IPlatformUserRepository, PlatformUserRepository>();
 builder.Services.AddScoped<AuditTrailApplicationService>();
+builder.Services.AddScoped<IAuditTrailService>(sp => sp.GetRequiredService<AuditTrailApplicationService>());
 builder.Services.AddScoped<PlatformAuthApplicationService>();
 builder.Services.AddScoped<IStoreProfileRepository, StoreProfileRepository>();
 builder.Services.AddScoped<StoreProfileApplicationService>();

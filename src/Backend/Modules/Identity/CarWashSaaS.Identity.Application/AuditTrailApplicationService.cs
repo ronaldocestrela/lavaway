@@ -4,7 +4,7 @@ using CarWashSaaS.Shared.Contracts;
 namespace CarWashSaaS.Identity.Application;
 
 public sealed class AuditTrailApplicationService(
-    IAdministrativeAuditEventRepository auditEventRepository)
+    IAdministrativeAuditEventRepository auditEventRepository) : IAuditTrailService
 {
     public async Task<Result<Guid>> RecordEventAsync(
         RecordAuditEventRequest request,

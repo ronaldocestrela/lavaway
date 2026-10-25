@@ -9,13 +9,21 @@ public sealed class VehicleRepository(YardOperationsDbContext dbContext) : IVehi
     public Task<Vehicle?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct = default) =>
         dbContext.Vehicles.FirstOrDefaultAsync(vehicle => vehicle.TenantId == tenantId && vehicle.Id == id, ct);
 
+    public Task<Vehicle?> GetByPlateAsync(Guid tenantId, string normalizedPlate, CancellationToken ct = default) =>
+        dbContext.Vehicles.FirstOrDefaultAsync(vehicle => vehicle.TenantId == tenantId && vehicle.Plate == normalizedPlate, ct);
+
+    public async Task<IReadOnlyCollection<Vehicle>> GetVehiclesByCustomerIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
+        await dbContext.Vehicles
+            .Where(vehicle => vehicle.TenantId == tenantId && vehicle.CustomerId == customerId)
+            .ToListAsync(ct);
+
     public Task<bool> IsPlateRegisteredAsync(Guid tenantId, string normalizedPlate, CancellationToken ct = default) =>
         IsPlateRegisteredAsync(tenantId, normalizedPlate, null, ct);
 
     public Task<bool> IsPlateRegisteredAsync(Guid tenantId, string normalizedPlate, Guid? excludeVehicleId, CancellationToken ct = default)
     {
         var query = dbContext.Vehicles
-            .Where(vehicle => vehicle.TenantId == tenantId && vehicle.Plate == normalizedPlate);
+            .Where(vehicle => vehicle.TenantId == tenantId && vehicle.Plate == normalizedPlate && vehicle.CustomerId != null);
 
         if (excludeVehicleId.HasValue)
         {

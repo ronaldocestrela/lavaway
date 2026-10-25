@@ -82,6 +82,28 @@ public sealed class CustomerCommunicationPreferenceLookupService(
         return Result<IReadOnlyList<CustomerCommunicationPreferenceDto>>.Success(dtos);
     }
 
+    public async Task<Result> ClearPreferencesForPhoneAsync(
+        Guid tenantId,
+        string phone,
+        string? reason = null,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || string.IsNullOrWhiteSpace(phone))
+        {
+            return Result.Failure(new Error("preference.invalid_input", "Tenant e telefone são obrigatórios.", ErrorType.Validation));
+        }
+
+        var normalized = OutboundWhatsAppMessage.CleanPhoneNumber(phone);
+        var pref = await preferenceRepository.GetByPhoneAsync(tenantId, normalized, ct);
+        if (pref is not null)
+        {
+            preferenceRepository.Remove(pref);
+            await preferenceRepository.SaveChangesAsync(ct);
+        }
+
+        return Result.Success();
+    }
+
     private static CustomerCommunicationPreferenceDto ToDto(CustomerCommunicationPreference p) =>
         new(p.Id, p.TenantId, p.NormalizedPhone, p.IsOptedIn, p.OptedOutAtUtc, p.Reason, p.UpdatedAt);
 }

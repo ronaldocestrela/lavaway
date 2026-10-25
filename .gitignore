@@ -38,3 +38,4 @@ appsettings.*.local.json
 *.db
 *.sqlite
 *.sqlite3
+src/Backend/CarWashSaaS.Api/logs/

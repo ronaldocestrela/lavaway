@@ -25,9 +25,13 @@ public sealed class Customer : IMustHaveTenant
         set => TenantId = value;
     }
 
+    public const string AnonymizedDefaultName = "Cliente Anonimizado (LGPD)";
+
     public string Name { get; private set; } = string.Empty;
     public string Phone { get; private set; } = string.Empty;
     public string NormalizedPhone { get; private set; } = string.Empty;
+    public bool IsAnonymized { get; private set; }
+    public DateTimeOffset? AnonymizedAtUtc { get; private set; }
 
     public static string NormalizePhone(string? phone)
     {
@@ -63,6 +67,11 @@ public sealed class Customer : IMustHaveTenant
 
     public Result Update(string name, string phone)
     {
+        if (IsAnonymized)
+        {
+            return Result.Failure(new Error("customer.anonymized", "Anonymized customer cannot be modified.", ErrorType.Conflict));
+        }
+
         if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
         {
             return Result.Failure(new Error("customer.name.invalid", "A customer name of up to 200 characters is required.", ErrorType.Validation));
@@ -77,6 +86,26 @@ public sealed class Customer : IMustHaveTenant
         Name = name.Trim();
         Phone = phone.Trim();
         NormalizedPhone = normalizedPhone;
+        return Result.Success();
+    }
+
+    public Result Anonymize(string phoneHash)
+    {
+        if (IsAnonymized)
+        {
+            return Result.Failure(new Error("customer.already_anonymized", "Customer has already been anonymized.", ErrorType.Conflict));
+        }
+
+        if (string.IsNullOrWhiteSpace(phoneHash) || phoneHash.Trim().Length > 32)
+        {
+            return Result.Failure(new Error("customer.anonymize.hash_invalid", "Phone hash must be provided and not exceed 32 characters.", ErrorType.Validation));
+        }
+
+        Name = AnonymizedDefaultName;
+        Phone = string.Empty;
+        NormalizedPhone = phoneHash.Trim();
+        IsAnonymized = true;
+        AnonymizedAtUtc = DateTimeOffset.UtcNow;
         return Result.Success();
     }
 }

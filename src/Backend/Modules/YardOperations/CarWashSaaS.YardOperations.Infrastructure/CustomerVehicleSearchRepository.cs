@@ -92,7 +92,7 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
         var customerIds = customers.Select(customer => customer.Id).ToArray();
         var vehiclesQuery = dbContext.Vehicles
             .AsNoTracking()
-            .Where(vehicle => vehicle.TenantId == tenantId && customerIds.Contains(vehicle.CustomerId));
+            .Where(vehicle => vehicle.TenantId == tenantId && vehicle.CustomerId.HasValue && customerIds.Contains(vehicle.CustomerId.Value));
 
         if (normalizedPlate is not null)
         {
@@ -105,7 +105,8 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
             .ToListAsync(ct);
 
         var vehiclesByCustomer = vehicles
-            .GroupBy(vehicle => vehicle.CustomerId)
+            .Where(vehicle => vehicle.CustomerId.HasValue)
+            .GroupBy(vehicle => vehicle.CustomerId!.Value)
             .ToDictionary(
                 group => group.Key,
                 group => (IReadOnlyCollection<VehicleSummaryDto>)group
@@ -126,5 +127,5 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
             .ToArray());
 
     private sealed record CustomerSearchRow(Guid Id, string Name, string Phone);
-    private sealed record VehicleSearchRow(Guid Id, Guid CustomerId, string Plate, VehicleSize Size);
+    private sealed record VehicleSearchRow(Guid Id, Guid? CustomerId, string Plate, VehicleSize Size);
 }

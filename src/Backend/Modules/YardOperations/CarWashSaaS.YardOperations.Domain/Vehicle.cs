@@ -8,7 +8,7 @@ public sealed class Vehicle : IMustHaveTenant
     {
     }
 
-    private Vehicle(Guid id, Guid tenantId, Guid customerId, string plate, VehicleSize size)
+    private Vehicle(Guid id, Guid tenantId, Guid? customerId, string plate, VehicleSize size)
     {
         Id = id;
         TenantId = tenantId;
@@ -25,7 +25,7 @@ public sealed class Vehicle : IMustHaveTenant
         set => TenantId = value;
     }
 
-    public Guid CustomerId { get; private set; }
+    public Guid? CustomerId { get; private set; }
     public string Plate { get; private set; } = string.Empty;
     public VehicleSize Size { get; private set; }
 
@@ -71,6 +71,23 @@ public sealed class Vehicle : IMustHaveTenant
 
         Plate = normalizedPlate;
         Size = size;
+        return Result.Success();
+    }
+
+    public Result DisassociateCustomer()
+    {
+        CustomerId = null;
+        return Result.Success();
+    }
+
+    public Result ReassignCustomer(Guid customerId)
+    {
+        if (customerId == Guid.Empty)
+        {
+            return Result.Failure(new Error("vehicle.customer.required", "Customer is required.", ErrorType.Validation));
+        }
+
+        CustomerId = customerId;
         return Result.Success();
     }
 }

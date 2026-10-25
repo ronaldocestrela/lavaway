@@ -72,14 +72,14 @@ flowchart LR
 **Objetivo:** Permitir aos titulares de dados (e aos lojistas que os representam) exercer os direitos fundamentais garantidos pelo Art. 18 da LGPD de forma auditável e tecnicamente segura.
 
 ### L2.1 Serviço de Anonimização de Dados do Cliente ("Direito ao Esquecimento" — Art. 18, VI)
-- [ ] **Regra de Negócio Crítica:** Ordens de Serviço finalizadas e transações financeiras possuem base legal de **Cumprimento de Obrigação Legal e Regulatória** (Art. 16, I da LGPD, CDC e normas fiscais por 5 anos). Portanto, a exclusão não deve ser um `DELETE` físico em cascata nas tabelas operacionais e financeiras.
-- [ ] Implementar comando `AnonymizeCustomerCommand` no backend [CustomerVehicleApplicationService.cs](file:///home/rony/LPR/lavaway/src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Application/CustomerVehicleApplicationService.cs):
+- [x] **Regra de Negócio Crítica:** Ordens de Serviço finalizadas e transações financeiras possuem base legal de **Cumprimento de Obrigação Legal e Regulatória** (Art. 16, I da LGPD, CDC e normas fiscais por 5 anos). Portanto, a exclusão não deve ser um `DELETE` físico em cascata nas tabelas operacionais e financeiras.
+- [x] Implementar comando `AnonymizeCustomerCommand` no backend [CustomerVehicleApplicationService.cs](file:///home/rony/LPR/lavaway/src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Application/CustomerVehicleApplicationService.cs):
   - Anonimizar nome para `"Cliente Anonimizado (LGPD)"`.
   - Limpar telefone e substituir `NormalizedPhone` por hash irreversível com salt para impedir reidentificação.
   - Desvincular placas e veículos associados àquele titular (permitindo que o veículo seja cadastrado futuramente por outro proprietário sem herdar vínculos pessoais do proprietário anterior).
   - Limpar preferências de comunicação no schema `whatsapp` (`CustomerCommunicationPreference`).
   - Registrar evento de auditoria no schema `identity` (`AdministrativeAuditEvent`) com identificador do operador que autorizou a anonimização e motivo formal.
-- [ ] Expor endpoint seguro: `POST /yard/customers/{id:guid}/anonymize` com política `Administrator`.
+- [x] Expor endpoint seguro: `POST /yard/customers/{id:guid}/anonymize` com política `Administrator`.
 
 ### L2.2 Dossiê do Titular e Portabilidade de Dados (Art. 18, II e V)
 - [ ] Implementar serviço de geração do Dossiê do Titular (`CustomerDataExportService`):

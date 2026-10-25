@@ -170,6 +170,14 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("AnonymizedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsAnonymized")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -473,7 +481,7 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("CustomerId")
+                    b.Property<Guid?>("CustomerId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Plate")
@@ -706,8 +714,7 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId", "CustomerId")
                         .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("CarWashSaaS.YardOperations.Domain.VehicleInspection", b =>
