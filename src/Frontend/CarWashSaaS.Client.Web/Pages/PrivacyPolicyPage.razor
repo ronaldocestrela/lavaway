@@ -1,0 +1,321 @@
+@page "/privacidade"
+@page "/privacy"
+@layout LandingLayout
+
+<PageTitle>Política de Privacidade e LGPD | Lava Aê</PageTitle>
+
+<div class="legal-page-container">
+    <!-- TOP NAVIGATION BAR -->
+    <header class="legal-header">
+        <div class="legal-header-inner">
+            <a href="/" class="brand-link" aria-label="Voltar para a página inicial do Lava Aê">
+                <img src="/icon-192.png" alt="Lava Aê" class="brand-logo" width="32" height="32" />
+                <span class="brand-title">Lava aê</span>
+            </a>
+            <div class="legal-header-actions">
+                <span class="legal-badge">CONFORMIDADE LGPD • LEI Nº 13.709/2018</span>
+                <a href="/" class="btn-back">&larr; Voltar ao Início</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section class="legal-hero">
+        <div class="legal-hero-content">
+            <div class="hero-pill">TRANSPARÊNCIA E PROTEÇÃO DE DADOS</div>
+            <h1 class="legal-title">Política de Privacidade</h1>
+            <p class="legal-subtitle">
+                Saiba como a plataforma <strong>Lava Aê</strong> coleta, processa, protege e descarta dados pessoais,
+                em total conformidade com a <strong>Lei Geral de Proteção de Dados Pessoais (LGPD — Lei Federal nº 13.709/2018)</strong>.
+            </p>
+            <div class="legal-meta">
+                <span><strong>Última atualização:</strong> Outubro de 2026</span>
+                <span>•</span>
+                <span><strong>Versão:</strong> 1.0 (Oficial)</span>
+                <span>•</span>
+                <span><strong>Canal DPO:</strong> privacidade@lavaway.com.br</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="legal-body">
+        <div class="legal-layout">
+            <!-- STICKY TABLE OF CONTENTS -->
+            <aside class="legal-toc">
+                <div class="toc-card">
+                    <h3 class="toc-title">Índice da Política</h3>
+                    <nav class="toc-nav">
+                        <a href="#introducao" class="toc-link">1. Introdução e Escopo</a>
+                        <a href="#papeis" class="toc-link">2. Papéis Regulatórios (Controladora vs. Operadora)</a>
+                        <a href="#dados-bases" class="toc-link">3. Dados Tratados e Bases Legais</a>
+                        <a href="#cookies-storage" class="toc-link">4. Cookies e Armazenamento Local</a>
+                        <a href="#retencao-descarte" class="toc-link">5. Prazos de Retenção e Descarte</a>
+                        <a href="#direitos-titular" class="toc-link">6. Direitos dos Titulares (Art. 18)</a>
+                        <a href="#seguranca" class="toc-link">7. Segurança da Informação e Criptografia</a>
+                        <a href="#dpo" class="toc-link">8. Encarregado pelo Tratamento (DPO)</a>
+                        <a href="#alteracoes-foro" class="toc-link">9. Disposições Finais e Foro</a>
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- LEGAL ARTICLE CONTENT -->
+            <article class="legal-article">
+                <!-- 1. INTRODUÇÃO -->
+                <section id="introducao" class="legal-section">
+                    <h2 class="section-title">1. Introdução e Escopo</h2>
+                    <p>
+                        A <strong>Lava Aê</strong> (referida nesta política como "nós", "nosso" ou "Plataforma") é um software como serviço (SaaS)
+                        desenvolvido para gestão operacional, recepção digital, vistoria fotográfica e automação de comunicação para lava-jatos,
+                        centros de estética automotiva e oficinas de detalhamento de veículos.
+                    </p>
+                    <p>
+                        Reconhecemos a relevância fundamental da privacidade e da inviolabilidade dos dados pessoais de nossos clientes e parceiros.
+                        Esta Política descreve de forma objetiva, transparente e acessível como tratamos os dados pessoais inseridos na plataforma,
+                        assegurando os direitos fundamentais de liberdade, privacidade e o livre desenvolvimento da personalidade.
+                    </p>
+                </section>
+
+                <!-- 2. PAPÉIS REGULATÓRIOS -->
+                <section id="papeis" class="legal-section">
+                    <h2 class="section-title">2. Papéis Regulatórios no Modelo SaaS: Controladora vs. Operadora</h2>
+                    <p>
+                        Em observância aos artigos 5º e 39 da LGPD, a atuação do Lava Aê se divide estritamente em duas esferas jurídicas de responsabilidade:
+                    </p>
+
+                    <div class="role-grid">
+                        <div class="role-card b2b">
+                            <div class="role-header">
+                                <span class="role-icon">🏢</span>
+                                <div>
+                                    <h3 class="role-name">Lava Aê como Controladora (B2B)</h3>
+                                    <span class="role-target">Relação direta com Lojistas e Usuários da Plataforma</span>
+                                </div>
+                            </div>
+                            <p class="role-desc">
+                                Atuamos como <strong>Controladora</strong> quanto aos dados cadastrais de nossos parceiros lojistas (donos de estabelecimentos,
+                                gestores e operadores do sistema), incluindo nome, e-mail institucional, telefone, CNPJ/CPF, credenciais de login e dados de faturamento do plano contratado.
+                            </p>
+                        </div>
+
+                        <div class="role-card b2b2c">
+                            <div class="role-header">
+                                <span class="role-icon">🚗</span>
+                                <div>
+                                    <h3 class="role-name">Lava Aê como Operadora (B2B2C)</h3>
+                                    <span class="role-target">Processamento dos dados de Motoristas e Clientes Finais</span>
+                                </div>
+                            </div>
+                            <p class="role-desc">
+                                Atuamos como <strong>Operadora</strong> quanto aos dados de clientes finais (motoristas e proprietários de veículos) atendidos no estabelecimento.
+                                Cada <strong>Lojista (Estabelecimento)</strong> atua como o <strong>Controlador</strong> originário que coleta os dados na recepção do pátio
+                                e determina as instruções de tratamento. O Lava Aê apenas armazena e processa essas informações com segurança e estrita segregação multi-tenant.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. DADOS TRATADOS E BASES LEGAIS -->
+                <section id="dados-bases" class="legal-section">
+                    <h2 class="section-title">3. Dados Pessoais Tratados e Bases Legais (Art. 7º e 11)</h2>
+                    <p>
+                        Todo tratamento de dados no Lava Aê possui finalidade legítima, específica e amparo em bases legais expressas da LGPD:
+                    </p>
+
+                    <div class="table-responsive">
+                        <table class="legal-table">
+                            <thead>
+                                <tr>
+                                    <th>Titular / Categoria</th>
+                                    <th>Dados Coletados</th>
+                                    <th>Finalidade do Tratamento</th>
+                                    <th>Base Legal (LGPD)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Lojista / Parceiro</strong></td>
+                                    <td>Nome, e-mail, senha criptografada, telefone, CNPJ/CPF e histórico de assinaturas.</td>
+                                    <td>Autenticação, gestão de assinatura, suporte técnico e controle de planos SaaS.</td>
+                                    <td><span class="badge-legal">Execução de Contrato (Art. 7º, V)</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Motorista / Cliente Final</strong></td>
+                                    <td>Nome, telefone celular (WhatsApp), placa, marca e modelo do veículo.</td>
+                                    <td>Abertura de Ordem de Serviço, aviso de conclusão do serviço e entrega do veículo.</td>
+                                    <td><span class="badge-legal">Execução de Contrato (Art. 7º, V)</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fotos de Vistoria do Veículo</strong></td>
+                                    <td>Fotografias de avarias pré-existentes e estado do veículo na recepção e entrega.</td>
+                                    <td>Segurança patrimonial, garantia mútua e comprovação de integridade do serviço.</td>
+                                    <td><span class="badge-legal">Legítimo Interesse (Art. 7º, IX)</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Registros Financeiros e Pagamentos Pix</strong></td>
+                                    <td>Identificador da transação, valor, data, dados fiscais de cobrança.</td>
+                                    <td>Conciliação contábil, emissão de comprovantes e conformidade fiscal.</td>
+                                    <td><span class="badge-legal">Cumprimento de Obrigação Legal (Art. 7º, II)</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Logs Técnicos de Acesso</strong></td>
+                                    <td>Endereço IP, data/hora, identificador de sessão e rotas acessadas.</td>
+                                    <td>Auditoria forense e conformidade com o Art. 15 do Marco Civil da Internet.</td>
+                                    <td><span class="badge-legal">Cumprimento de Obrigação Legal (Art. 7º, II)</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 4. COOKIES E LOCAL STORAGE -->
+                <section id="cookies-storage" class="legal-section">
+                    <h2 class="section-title">4. Política de Cookies e Armazenamento Técnico</h2>
+                    <div class="callout callout-info">
+                        <strong>Transparência Máxima:</strong> A plataforma Lava Aê <strong>NÃO</strong> comercializa dados pessoais
+                        e <strong>NÃO</strong> utiliza cookies de terceiros para rastreamento publicitário ou criação de perfis comportamentais.
+                    </div>
+                    <p>
+                        Para o correto funcionamento do sistema em navegadores modernos, utilizamos mecanismos de armazenamento estritamente necessários:
+                    </p>
+                    <ul class="legal-list">
+                        <li>
+                            <strong>LocalStorageTokenStorage:</strong> O navegador armazena de forma segura no armazenamento local (Local Storage)
+                            o token de acesso (JWT) e o token de renovação emitidos após a autenticação bem-sucedida do usuário lojista.
+                            Essa informação é estritamente técnica e indispensável para manter a sessão conectada entre recarregamentos de página.
+                        </li>
+                        <li>
+                            <strong>Cookies de Sessão Técnica:</strong> Pequenos identificadores temporários utilizados para balanceamento de carga
+                            e segurança de cabeçalhos anti-falsificação (CSRF), excluídos automaticamente ao encerrar a navegação.
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- 5. RETENÇÃO E DESCARTE -->
+                <section id="retencao-descarte" class="legal-section">
+                    <h2 class="section-title">5. Prazos de Retenção e Descarte Seguro de Dados (Art. 16)</h2>
+                    <p>
+                        Os dados pessoais são retidos pelo tempo estritamente necessário para cumprir as finalidades para as quais foram coletados,
+                        respeitando os prazos prescricionais legais brasileiros:
+                    </p>
+                    <ul class="legal-list">
+                        <li>
+                            <strong>Fotos de Vistoria de Pátio:</strong> Mantidas por até 180 dias após a retirada do veículo pelo cliente final,
+                            sendo então expurgadas fisicamente do armazenamento em nuvem por rotinas automáticas de higienização.
+                        </li>
+                        <li>
+                            <strong>Ordens de Serviço e Registros Financeiros:</strong> Conservados pelo prazo de 5 (cinco) anos após a prestação do serviço,
+                            conforme prescrito pelo Código de Defesa do Consumidor (Art. 27) e legislação tributária.
+                        </li>
+                        <li>
+                            <strong>Logs de Aplicação e Auditoria:</strong> Mantidos por 6 (seis) meses sob guarda estrita em cumprimento ao Marco Civil da Internet (Lei 12.965/2014, Art. 15).
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- 6. DIREITOS DOS TITULARES -->
+                <section id="direitos-titular" class="legal-section">
+                    <h2 class="section-title">6. Direitos dos Titulares de Dados (Art. 18 da LGPD)</h2>
+                    <p>
+                        Garantimos a todos os titulares de dados pessoais o exercício rápido, transparente e gratuito dos direitos previstos no Art. 18:
+                    </p>
+                    <div class="rights-grid">
+                        <div class="right-item">
+                            <span class="right-num">I</span>
+                            <h4>Confirmação e Acesso</h4>
+                            <p>Saber se realizamos o tratamento e obter cópia dos dados existentes.</p>
+                        </div>
+                        <div class="right-item">
+                            <span class="right-num">II</span>
+                            <h4>Correção e Atualização</h4>
+                            <p>Solicitar a correção imediata de dados incompletos, inexatos ou desatualizados.</p>
+                        </div>
+                        <div class="right-item">
+                            <span class="right-num">III</span>
+                            <h4>Anonimização e Eliminação</h4>
+                            <p>Direito ao esquecimento de dados desnecessários, excessivos ou tratados em desconformidade.</p>
+                        </div>
+                        <div class="right-item">
+                            <span class="right-num">IV</span>
+                            <h4>Portabilidade</h4>
+                            <p>Exportação de seus dados em formato estruturado e interoperável (dossiê do titular).</p>
+                        </div>
+                        <div class="right-item">
+                            <span class="right-num">V</span>
+                            <h4>Revogação do Consentimento</h4>
+                            <p>Interromper comunicações promocionais e informativas via WhatsApp a qualquer momento.</p>
+                        </div>
+                        <div class="right-item">
+                            <span class="right-num">VI</span>
+                            <h4>Informação sobre Compartilhamentos</h4>
+                            <p>Clareza sobre entidades públicas e privadas com as quais compartilhamos dados para execução do serviço.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7. SEGURANÇA DA INFORMAÇÃO -->
+                <section id="seguranca" class="legal-section">
+                    <h2 class="section-title">7. Segurança da Informação e Criptografia (Art. 46)</h2>
+                    <p>
+                        Adotamos medidas técnicas, administrativas e organizacionais robustas para proteger os dados pessoais contra acessos não autorizados,
+                        destruição, perda ou alteração acidental ou ilícita:
+                    </p>
+                    <ul class="legal-list">
+                        <li><strong>Criptografia em Trânsito:</strong> Todo o tráfego é protegido por protocolos TLS/HTTPS de última geração.</li>
+                        <li><strong>Isolamento Multi-Tenant:</strong> Arquitetura de banco de dados com filtros automáticos por tenant, impedindo qualquer vazamento cruzado de dados entre estabelecimentos.</li>
+                        <li><strong>Controle de Acesso Baseado em Perfis (RBAC):</strong> Operadores, recepcionistas e administradores possuem permissões restritas e rastreadas por trilha de auditoria.</li>
+                        <li><strong>Criptografia de Credenciais:</strong> Senhas e tokens de comunicação externa (WhatsApp / Gateway Pix) são cifrados e nunca expostos em texto puro.</li>
+                    </ul>
+                </section>
+
+                <!-- 8. ENCARREGADO (DPO) -->
+                <section id="dpo" class="legal-section">
+                    <h2 class="section-title">8. Encarregado pelo Tratamento de Dados Pessoais (DPO — Art. 41)</h2>
+                    <p>
+                        Para exercer seus direitos de titular, esclarecer dúvidas sobre esta Política ou enviar comunicações formais,
+                        entre em contato diretamente com o nosso Encarregado de Proteção de Dados:
+                    </p>
+                    <div class="dpo-card">
+                        <div class="dpo-icon">🛡️</div>
+                        <div class="dpo-details">
+                            <h3>Canal Oficial do Encarregado (DPO)</h3>
+                            <p><strong>E-mail Institucional:</strong> <a href="mailto:privacidade@lavaway.com.br">privacidade@lavaway.com.br</a></p>
+                            <p><strong>Prazo de Retorno:</strong> Em até 15 (quinze) dias úteis, conforme regulamentação da ANPD.</p>
+                            <p><strong>Atendimento:</strong> De segunda a sexta-feira, das 09:00 às 18:00 (horário de Brasília).</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 9. DISPOSIÇÕES FINAIS E FORO -->
+                <section id="alteracoes-foro" class="legal-section">
+                    <h2 class="section-title">9. Alterações desta Política e Legislação Aplicável</h2>
+                    <p>
+                        Esta Política de Privacidade poderá ser atualizada periodicamente para refletir evoluções regulatórias, novas funcionalidades da plataforma
+                        ou diretrizes emitidas pela <strong>Autoridade Nacional de Proteção de Dados (ANPD)</strong>.
+                        Alterações materiais serão comunicadas com destaque no painel de controle dos lojistas parceiros.
+                    </p>
+                    <p>
+                        Este documento é regido, interpretado e executado de acordo com as Leis da República Federativa do Brasil,
+                        especialmente a Lei nº 13.709/2018 (LGPD) e a Lei nº 12.965/2014 (Marco Civil da Internet).
+                    </p>
+                </section>
+            </article>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="legal-footer">
+        <div class="legal-footer-inner">
+            <p>&copy; @DateTime.Now.Year Lava Aê. Todos os direitos reservados. Plataforma de Software para Lava-Jatos.</p>
+            <div class="legal-footer-links">
+                <a href="/">Início</a>
+                <span>•</span>
+                <a href="termos">Termos de Uso</a>
+                <span>•</span>
+                <a href="privacidade">Política de Privacidade</a>
+                <span>•</span>
+                <a href="mailto:privacidade@lavaway.com.br">Contato DPO</a>
+            </div>
+        </div>
+    </footer>
+</div>

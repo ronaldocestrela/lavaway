@@ -1699,6 +1699,14 @@
     display: flex;
     gap: 10px;
 }
+.footer-legal a {
+    color: #6a8277;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.footer-legal a:hover {
+    color: #c6f277;
+}
 
 /* ==========================================================================
    CONTRACT / TRIAL MODAL
