@@ -15,7 +15,8 @@ public sealed class TenantOnboardingService(
     ITenantSaasSubscriptionRepository subscriptionRepository,
     ITokenService tokenService,
     IRefreshTokenRepository refreshTokenRepository,
-    ICurrentTenantAccessor? currentTenantAccessor = null)
+    ICurrentTenantAccessor? currentTenantAccessor = null,
+    IAuditTrailService? auditTrailService = null)
 {
     public async Task<Result<AuthTokenResponse>> RegisterAsync(
         RegisterTenantRequest request,
@@ -39,6 +40,11 @@ public sealed class TenantOnboardingService(
         if (string.IsNullOrWhiteSpace(request.Phone))
         {
             return Result<AuthTokenResponse>.Failure(new Error("onboarding.phone.required", "O número de WhatsApp com DDD é obrigatório.", ErrorType.Validation));
+        }
+
+        if (!request.AcceptedTermsAndDpa)
+        {
+            return Result<AuthTokenResponse>.Failure(new Error("onboarding.terms_and_dpa.required", "É obrigatório aceitar os Termos de Uso e o Acordo de Processamento de Dados (DPA) para criar sua conta.", ErrorType.Validation));
         }
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
@@ -107,6 +113,20 @@ public sealed class TenantOnboardingService(
         if (refreshTokenResult.IsSuccess && refreshTokenResult.Value is not null)
         {
             await refreshTokenRepository.AddAsync(refreshTokenResult.Value, ct);
+        }
+
+        if (auditTrailService is not null)
+        {
+            await auditTrailService.RecordEventAsync(new RecordAuditEventRequest(
+                ActorId: adminUser.Id,
+                ActorEmail: adminUser.Email,
+                ActorRole: ShopRole.Administrator.ToString(),
+                ActorRealm: "Tenant",
+                Action: "Tenant.TermsAndDpaAccepted",
+                TargetType: "Tenant",
+                TargetId: tenant.Id.ToString(),
+                TenantId: tenant.Id,
+                DetailsJson: "{\"termsVersion\":\"v1.0-2026\",\"dpaVersion\":\"v1.0-2026\",\"basis\":\"LGPD_Art39\"}"), ct);
         }
 
         return Result<AuthTokenResponse>.Success(new AuthTokenResponse(

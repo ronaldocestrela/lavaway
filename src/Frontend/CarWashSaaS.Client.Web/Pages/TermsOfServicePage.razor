@@ -146,15 +146,45 @@
 
                 <!-- 7. PROTEÇÃO DE DADOS (LGPD & DPA) -->
                 <section id="protecao-dados" class="legal-section">
-                    <h2 class="section-title">7. Proteção de Dados Pessoais e Acordo de Processamento (DPA)</h2>
+                    <span id="dpa-b2b"></span>
+                    <h2 class="section-title">7. Proteção de Dados Pessoais e Acordo de Processamento (DPA — LGPD)</h2>
                     <p>
-                        As partes reconhecem e acordam que o tratamento de dados pessoais no âmbito da plataforma observa a <strong>Lei Geral de Proteção de Dados (LGPD)</strong>:
+                        O presente capítulo e seu anexo constituem o <strong>Acordo de Processamento de Dados (DPA — Data Processing Agreement)</strong>
+                        indissociável deste Contrato, regulando as obrigações mútuas sob a <strong>Lei Geral de Proteção de Dados (Lei Federal nº 13.709/2018 — LGPD)</strong>:
+                    </p>
+                    
+                    <h3 class="section-subtitle">7.1 Qualificação de Papéis (Controlador vs. Operador)</h3>
+                    <p>
+                        Para todos os dados pessoais de clientes finais (motoristas), veículos, fotos de vistoria e histórico de ordens de serviço geridos no pátio:
                     </p>
                     <ul class="legal-list">
-                        <li>O Estabelecimento opera como <strong>Controlador</strong> dos dados de seus motoristas clientes e colaboradores.</li>
-                        <li>O Lava Aê opera como <strong>Operador</strong> no processamento, armazenamento seguro e transmissão técnica das ordens de serviço e mensagens.</li>
-                        <li>As diretrizes completas de segurança, finalidade e canais de contato estão descritas em nossa <a href="privacidade" class="inline-link">Política de Privacidade</a>, que integra indissociavelmente estes Termos.</li>
+                        <li><strong>O Estabelecimento é o CONTROLADOR (Art. 5º, VI):</strong> Detém com exclusividade a relação comercial com os motoristas e a prerrogativa de decisão sobre a finalidade da coleta no balcão e no pátio.</li>
+                        <li><strong>O Lava Aê é o OPERADOR (Art. 5º, VII):</strong> Atua unicamente no tratamento, armazenamento em nuvem e disparo de notificações sob as instruções contratuais do Controlador, sendo expressamente vedada a comercialização, cessão ou uso próprio desses dados.</li>
                     </ul>
+
+                    <h3 class="section-subtitle">7.2 Garantias e Obrigações de Segurança do Operador</h3>
+                    <ul class="legal-list">
+                        <li><strong>Isolamento Lógico (Multi-Tenancy):</strong> Garantia técnica inegociável de isolamento entre bases de diferentes estabelecimentos via identificador de tenant e filtros globais em banco único.</li>
+                        <li><strong>Criptografia:</strong> Emprego de criptografia em trânsito (HTTPS / TLS 1.3) e em repouso no banco de dados, além de URLs assinadas e temporárias para as fotos de vistoria no MinIO/S3.</li>
+                        <li><strong>Confidencialidade da Equipe:</strong> Dever de sigilo compulsório imposto a todos os colaboradores técnicos e prestadores de serviços da plataforma.</li>
+                    </ul>
+
+                    <h3 class="section-subtitle">7.3 Subprocessadores Autorizados</h3>
+                    <p>
+                        O Estabelecimento autoriza genericamente a contratação de provedores de infraestrutura de nuvem, banco de dados, storage de objetos (MinIO/S3),
+                        gateways de pagamento regulados (Pagar.me/Stripe) e infraestrutura de mensageria WhatsApp (Evolution API / Meta), os quais mantêm contratos espelhados de sigilo e conformidade legal.
+                    </p>
+
+                    <h3 class="section-subtitle">7.4 Cooperação em Direitos dos Titulares e Incidentes</h3>
+                    <ul class="legal-list">
+                        <li><strong>Atendimento a Direitos:</strong> O Lava Aê disponibiliza ferramentas nativas no painel para que o Controlador execute a exportação de dossiê do titular (JSON/PDF) e a anonimização de dados (Art. 18).</li>
+                        <li><strong>Incidentes de Segurança:</strong> Em observância ao Art. 48 da LGPD e à Resolução CD/ANPD nº 15/2024, qualquer incidente de segurança relevante envolvendo dados sob custódia do Operador será comunicado de forma ágil ao Controlador.</li>
+                    </ul>
+
+                    <p>
+                        As práticas adicionais de governança e canais de contato com nosso Encarregado pelo Tratamento de Dados (DPO) estão descritas em nossa
+                        <a href="privacidade" class="inline-link">Política de Privacidade</a> e no <a href="dpo" class="inline-link">Canal DPO</a>.
+                    </p>
                 </section>
 
                 <!-- 8. RESCISÃO E EXPORTAÇÃO -->

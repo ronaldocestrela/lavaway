@@ -39,7 +39,8 @@ public sealed class TenantOnboardingServiceTests
             Password: "Password123!",
             Phone: "(11) 99999-8888",
             City: "Curitiba",
-            PlanTier: SaasPlanTier.Pro);
+            PlanTier: SaasPlanTier.Pro,
+            AcceptedTermsAndDpa: true);
 
         var result = await _service.RegisterAsync(request);
 
@@ -80,13 +81,65 @@ public sealed class TenantOnboardingServiceTests
             AdminName: "João",
             Email: "joao@teste.com",
             Password: "Password123!",
-            Phone: "(11) 99999-0000");
+            Phone: "(11) 99999-0000",
+            AcceptedTermsAndDpa: true);
 
         var result = await service.RegisterAsync(request);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(accessor.TenantId);
         Assert.Equal(result.Value!.TenantId, accessor.TenantId);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WhenTermsAndDpaNotAccepted_ShouldReturnValidationFailure()
+    {
+        var request = new RegisterTenantRequest(
+            StoreName: "Lava Jato Sem Aceite",
+            AdminName: "Carlos",
+            Email: "sem.aceite@teste.com",
+            Password: "Password123!",
+            Phone: "(11) 99999-8888",
+            AcceptedTermsAndDpa: false);
+
+        var result = await _service.RegisterAsync(request);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Validation, result.Error!.Type);
+        Assert.Equal("onboarding.terms_and_dpa.required", result.Error.Code);
+        Assert.Empty(_tenantRepository.Tenants);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithAuditService_ShouldRecordTermsAndDpaAcceptedAuditEvent()
+    {
+        var fakeAudit = new FakeAuditTrailService();
+        var service = new TenantOnboardingService(
+            _tenantRepository,
+            _userRepository,
+            _subscriptionRepository,
+            _tokenService,
+            _refreshTokenRepository,
+            auditTrailService: fakeAudit);
+
+        var request = new RegisterTenantRequest(
+            StoreName: "Studio Estética Auditado",
+            AdminName: "Mariana",
+            Email: "mariana@estetica.com",
+            Password: "Password123!",
+            Phone: "(11) 97777-6666",
+            AcceptedTermsAndDpa: true);
+
+        var result = await service.RegisterAsync(request);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(fakeAudit.RecordedEvents);
+        var auditEvent = fakeAudit.RecordedEvents[0];
+        Assert.Equal("Tenant.TermsAndDpaAccepted", auditEvent.Action);
+        Assert.Equal("Tenant", auditEvent.TargetType);
+        Assert.Equal("Tenant", auditEvent.ActorRealm);
+        Assert.Equal("mariana@estetica.com", auditEvent.ActorEmail);
+        Assert.Contains("v1.0-2026", auditEvent.DetailsJson);
     }
 
     [Fact]
@@ -100,7 +153,8 @@ public sealed class TenantOnboardingServiceTests
             AdminName: "Marcos",
             Email: "existing@test.com",
             Password: "Password123!",
-            Phone: "(11) 98888-7777");
+            Phone: "(11) 98888-7777",
+            AcceptedTermsAndDpa: true);
 
         var result = await _service.RegisterAsync(request);
 
@@ -126,7 +180,8 @@ public sealed class TenantOnboardingServiceTests
             AdminName: "Carlos",
             Email: email,
             Password: password,
-            Phone: phone);
+            Phone: phone,
+            AcceptedTermsAndDpa: true);
 
         var result = await _service.RegisterAsync(request);
 
@@ -235,5 +290,16 @@ public sealed class TenantOnboardingServiceTests
         public string GenerateRefreshToken() => "generated_refresh_token";
 
         public string HashToken(string token) => $"hash_{token}";
+    }
+
+    private sealed class FakeAuditTrailService : IAuditTrailService
+    {
+        public List<RecordAuditEventRequest> RecordedEvents { get; } = [];
+
+        public Task<Result<Guid>> RecordEventAsync(RecordAuditEventRequest request, CancellationToken ct = default)
+        {
+            RecordedEvents.Add(request);
+            return Task.FromResult(Result<Guid>.Success(Guid.NewGuid()));
+        }
     }
 }

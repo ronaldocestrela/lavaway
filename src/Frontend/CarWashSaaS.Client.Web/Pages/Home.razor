@@ -983,9 +983,19 @@
                             </label>
                         </div>
 
+                        <div class="modal-consent-box">
+                            <label class="modal-checkbox-label">
+                                <input type="checkbox" @bind="_hireAcceptedTermsAndDpa" disabled="@_isSubmitting" id="chk-modal-dpa" />
+                                <span class="modal-consent-text">
+                                    Declaro que li e concordo com os <a href="termos" target="_blank" rel="noopener noreferrer">Termos de Uso</a>
+                                    e com o <a href="termos#dpa-b2b" target="_blank" rel="noopener noreferrer">Acordo de Processamento de Dados (DPA — LGPD)</a>. *
+                                </span>
+                            </label>
+                        </div>
+
                         <div class="modal-actions">
                             <button class="btn-quiet" type="button" @onclick="CloseContractModal" disabled="@_isSubmitting">Voltar</button>
-                            <button class="btn-primary glow" type="submit" id="btn-submit-hire" disabled="@_isSubmitting">
+                            <button class="btn-primary glow" type="submit" id="btn-submit-hire" disabled="@(!_hireAcceptedTermsAndDpa || _isSubmitting)">
                                 @if (_isSubmitting)
                                 {
                                     <span>Criando conta e liberando acesso...</span>
@@ -1049,6 +1059,7 @@
     private string _hireCity = string.Empty;
     private bool _hireSubmitted;
     private bool _isSubmitting;
+    private bool _hireAcceptedTermsAndDpa;
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
@@ -1128,6 +1139,7 @@
         _selectedTier = tier;
         _hireSubmitted = false;
         _isSubmitting = false;
+        _hireAcceptedTermsAndDpa = false;
         _errorMessage = null;
         _isContractModalOpen = true;
     }
@@ -1168,6 +1180,12 @@
             return;
         }
 
+        if (!_hireAcceptedTermsAndDpa)
+        {
+            _errorMessage = "É necessário aceitar os Termos de Uso e o Acordo de Processamento de Dados (DPA) para criar sua conta.";
+            return;
+        }
+
         _isSubmitting = true;
         try
         {
@@ -1179,7 +1197,8 @@
                 Phone: _hirePhone.Trim(),
                 City: string.IsNullOrWhiteSpace(_hireCity) ? null : _hireCity.Trim(),
                 State: null,
-                PlanTier: _selectedTier);
+                PlanTier: _selectedTier,
+                AcceptedTermsAndDpa: _hireAcceptedTermsAndDpa);
 
             var result = await AuthApi.RegisterTenantAsync(request);
             if (result.IsSuccess && result.Value is not null)

@@ -8,4 +8,5 @@ public sealed record RegisterTenantRequest(
     string Phone,
     string? City = null,
     string? State = null,
-    SaasPlanTier PlanTier = SaasPlanTier.Pro);
+    SaasPlanTier PlanTier = SaasPlanTier.Pro,
+    bool AcceptedTermsAndDpa = false);

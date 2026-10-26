@@ -147,11 +147,12 @@ flowchart LR
 **Objetivo:** Resguardar juridicamente a relação B2B entre a plataforma SaaS e os lojistas, além de estender a transparência na ponta final de atendimento.
 
 ### L5.1 Acordo de Processamento de Dados (DPA — Data Processing Agreement)
-- [ ] Elaborar anexo contratual DPA nos termos de contratação e adesão dos planos do SaaS:
+- [x] Elaborar anexo contratual DPA nos termos de contratação e adesão dos planos do SaaS em [acordo-processamento-dados-dpa.md](file:///home/rony/LPR/lavaway/docs/lgpd/acordo-processamento-dados-dpa.md):
   - Estabelecendo formalmente o estabelecimento como Controlador e o Lava Aê como Operador.
   - Cláusulas de obrigação de confidencialidade da equipe e de subprocessadores (provedores de cloud e infraestrutura).
   - Cooperação mútua em caso de auditorias da ANPD ou exercício de direitos por motoristas.
-- [ ] Adicionar checkbox obrigatório de concordância com os Termos e DPA no modal de contratação/trial de planos em [Home.razor](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Web/Pages/Home.razor#L920).
+  - Seção integrada [7. Proteção de Dados Pessoais e Acordo de Processamento (DPA — LGPD)](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Web/Pages/TermsOfServicePage.razor#L148) nos Termos de Uso.
+- [x] Adicionar checkbox obrigatório de concordância com os Termos e DPA no modal de contratação/trial de planos em [Home.razor](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Web/Pages/Home.razor#L985) integrado a `RegisterTenantRequest` e trilha de auditoria administrativa `Tenant.TermsAndDpaAccepted`.
 
 ### L5.2 Notificação Transparente na Recepção e no WhatsApp
 - [ ] Incluir no recibo digital / link de acompanhamento da Ordem de Serviço enviado via WhatsApp um rodapé transparente:
