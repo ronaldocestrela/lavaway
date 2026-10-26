@@ -239,7 +239,9 @@ public sealed class VehicleInspectionApplicationService
             photo.ContentType,
             photo.SizeBytes,
             photo.DamageId,
-            photo.UploadedAtUtc));
+            photo.UploadedAtUtc,
+            photo.IsPurged,
+            photo.PurgedAtUtc));
     }
 
     public async Task<Result<StoredObject>> GetPhotoStreamAsync(
@@ -258,6 +260,11 @@ public sealed class VehicleInspectionApplicationService
         if (photo is null)
         {
             return Result<StoredObject>.Failure(new Error("photo.not_found", "Foto não encontrada.", ErrorType.NotFound));
+        }
+
+        if (photo.IsPurged)
+        {
+            return Result<StoredObject>.Failure(new Error("photo.purged", "A foto foi expurgada em conformidade com a política de retenção de dados da LGPD (Art. 16).", ErrorType.Validation));
         }
 
         var stored = await _storage.GetAsync(tenantId, "inspections", photo.FileName, ct);
@@ -333,6 +340,8 @@ public sealed class VehicleInspectionApplicationService
                 p.ContentType,
                 p.SizeBytes,
                 p.DamageId,
-                p.UploadedAtUtc)).ToArray());
+                p.UploadedAtUtc,
+                p.IsPurged,
+                p.PurgedAtUtc)).ToArray());
     }
 }

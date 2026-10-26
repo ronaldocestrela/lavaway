@@ -1,4 +1,4 @@
-﻿IF OBJECT_ID(N'[tenants].[__EFMigrationsHistory]') IS NULL
+IF OBJECT_ID(N'[tenants].[__EFMigrationsHistory]') IS NULL
 BEGIN
     IF SCHEMA_ID(N'tenants') IS NULL EXEC(N'CREATE SCHEMA [tenants];');
     CREATE TABLE [tenants].[__EFMigrationsHistory] (
@@ -76,6 +76,17 @@ BEGIN
     VALUES (N'20261001220225_AddStoreProfile', N'10.0.9');
 END;
 
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns 
+    WHERE object_id = OBJECT_ID(N'[tenants].[StoreProfiles]') AND name = 'InspectionPhotoRetentionDays'
+)
+BEGIN
+    ALTER TABLE [tenants].[StoreProfiles] ADD [InspectionPhotoRetentionDays] int NOT NULL CONSTRAINT [DF_StoreProfiles_InspectionPhotoRetentionDays] DEFAULT 90;
+END;
 COMMIT;
 GO
 

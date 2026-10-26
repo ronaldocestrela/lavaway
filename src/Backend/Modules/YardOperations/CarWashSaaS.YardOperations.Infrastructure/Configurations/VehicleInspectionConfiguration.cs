@@ -68,7 +68,11 @@ public sealed class VehicleInspectionConfiguration : IEntityTypeConfiguration<Ve
             photo.Property(p => p.SizeBytes).IsRequired();
             photo.Property(p => p.DamageId);
             photo.Property(p => p.UploadedAtUtc).HasColumnType("datetimeoffset").IsRequired();
+            photo.Property(p => p.IsPurged).IsRequired().HasDefaultValue(false);
+            photo.Property(p => p.PurgedAtUtc).HasColumnType("datetimeoffset");
+            photo.Property(p => p.PurgeReason).HasMaxLength(300);
             photo.HasIndex(p => new { p.TenantId, p.VehicleInspectionId });
+            photo.HasIndex(p => new { p.TenantId, p.IsPurged });
         });
 
         builder.Navigation(i => i.Damages).UsePropertyAccessMode(PropertyAccessMode.Field);

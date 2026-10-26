@@ -21,7 +21,8 @@ public sealed class StoreProfile : IMustHaveTenant
         string postalCode,
         string? logoUrl,
         string? brandPrimaryColor,
-        string? brandSecondaryColor)
+        string? brandSecondaryColor,
+        int inspectionPhotoRetentionDays = 90)
     {
         Id = id;
         TenantId = tenantId;
@@ -36,6 +37,7 @@ public sealed class StoreProfile : IMustHaveTenant
         LogoUrl = logoUrl;
         BrandPrimaryColor = brandPrimaryColor;
         BrandSecondaryColor = brandSecondaryColor;
+        InspectionPhotoRetentionDays = inspectionPhotoRetentionDays;
     }
 
     public Guid Id { get; private set; }
@@ -57,6 +59,7 @@ public sealed class StoreProfile : IMustHaveTenant
     public string? LogoUrl { get; private set; }
     public string? BrandPrimaryColor { get; private set; }
     public string? BrandSecondaryColor { get; private set; }
+    public int InspectionPhotoRetentionDays { get; private set; } = 90;
 
     public static Result<StoreProfile> Create(
         Guid tenantId,
@@ -70,11 +73,17 @@ public sealed class StoreProfile : IMustHaveTenant
         string postalCode,
         string? logoUrl = null,
         string? brandPrimaryColor = null,
-        string? brandSecondaryColor = null)
+        string? brandSecondaryColor = null,
+        int inspectionPhotoRetentionDays = 90)
     {
         if (tenantId == Guid.Empty)
         {
             return Result<StoreProfile>.Failure(new Error("store_profile.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        if (inspectionPhotoRetentionDays < 1 || inspectionPhotoRetentionDays > 365)
+        {
+            return Result<StoreProfile>.Failure(new Error("store_profile.retention_days.invalid", "O prazo de retenção de fotos de vistoria deve ser entre 1 e 365 dias.", ErrorType.Validation));
         }
 
         var normalizedValues = ValidateAndNormalize(legalName, tradeName, cnpj, phone, street, city, state, postalCode, logoUrl, brandPrimaryColor, brandSecondaryColor);
@@ -96,7 +105,8 @@ public sealed class StoreProfile : IMustHaveTenant
             normalizedValues.Value.PostalCode,
             normalizedValues.Value.LogoUrl,
             normalizedValues.Value.BrandPrimaryColor,
-            normalizedValues.Value.BrandSecondaryColor));
+            normalizedValues.Value.BrandSecondaryColor,
+            inspectionPhotoRetentionDays));
     }
 
     public Result<StoreProfile> Update(
@@ -110,8 +120,14 @@ public sealed class StoreProfile : IMustHaveTenant
         string postalCode,
         string? logoUrl = null,
         string? brandPrimaryColor = null,
-        string? brandSecondaryColor = null)
+        string? brandSecondaryColor = null,
+        int inspectionPhotoRetentionDays = 90)
     {
+        if (inspectionPhotoRetentionDays < 1 || inspectionPhotoRetentionDays > 365)
+        {
+            return Result<StoreProfile>.Failure(new Error("store_profile.retention_days.invalid", "O prazo de retenção de fotos de vistoria deve ser entre 1 e 365 dias.", ErrorType.Validation));
+        }
+
         var normalizedValues = ValidateAndNormalize(legalName, tradeName, cnpj, phone, street, city, state, postalCode, logoUrl, brandPrimaryColor, brandSecondaryColor);
         if (!normalizedValues.IsSuccess)
         {
@@ -129,6 +145,7 @@ public sealed class StoreProfile : IMustHaveTenant
         LogoUrl = normalizedValues.Value.LogoUrl;
         BrandPrimaryColor = normalizedValues.Value.BrandPrimaryColor;
         BrandSecondaryColor = normalizedValues.Value.BrandSecondaryColor;
+        InspectionPhotoRetentionDays = inspectionPhotoRetentionDays;
 
         return Result<StoreProfile>.Success(this);
     }

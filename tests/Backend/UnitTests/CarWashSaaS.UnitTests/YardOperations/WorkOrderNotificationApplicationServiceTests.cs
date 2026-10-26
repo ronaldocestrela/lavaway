@@ -224,6 +224,13 @@ public sealed class WorkOrderNotificationApplicationServiceTests
             }
             return Task.FromResult<StoredObject?>(null);
         }
+
+        public Task DeleteAsync(Guid tenantId, string category, string fileName, CancellationToken ct = default)
+        {
+            var key = $"{category}/{fileName}";
+            StoredFiles.Remove(key);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeWorkOrderRepository(IEnumerable<WorkOrder> orders) : IWorkOrderRepository
@@ -268,5 +275,7 @@ public sealed class WorkOrderNotificationApplicationServiceTests
         public Task<VehicleInspection?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct = default) => Task.FromResult(_inspections.FirstOrDefault(i => i.TenantId == tenantId && i.Id == id));
         public Task<VehicleInspection?> GetByWorkOrderIdAsync(Guid tenantId, Guid workOrderId, CancellationToken ct = default) => Task.FromResult(_inspections.FirstOrDefault(i => i.TenantId == tenantId && i.WorkOrderId == workOrderId));
         public void Update(VehicleInspection inspection) { }
+        public Task<IReadOnlyList<VehicleInspection>> GetInspectionsWithPhotosEligibleForPurgeAsync(Guid tenantId, DateTimeOffset cutoffUtc, int limit = 100, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<VehicleInspection>>(_inspections.Where(i => i.TenantId == tenantId && i.Photos.Any(p => !p.IsPurged)).Take(limit).ToList());
     }
 }

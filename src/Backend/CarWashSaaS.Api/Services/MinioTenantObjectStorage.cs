@@ -52,6 +52,23 @@ public sealed class MinioTenantObjectStorage(IMinioClient client, string bucketN
         return new StoredObject(content, ContentTypeFor(objectKey));
     }
 
+    public async Task DeleteAsync(Guid tenantId, string category, string fileName, CancellationToken ct = default)
+    {
+        await EnsureBucketAsync(ct);
+        var objectKey = TenantStoragePathBuilder.BuildPath(tenantId, category, fileName);
+
+        try
+        {
+            await client.RemoveObjectAsync(new RemoveObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectKey), ct);
+        }
+        catch (ObjectNotFoundException)
+        {
+            // Idempotent: se o objeto já não existir no storage, operação concluída com sucesso.
+        }
+    }
+
     private async Task EnsureBucketAsync(CancellationToken ct)
     {
         if (_bucketReady)

@@ -12,4 +12,5 @@ public sealed record UpdateStoreProfileRequest(
     string PostalCode,
     string? LogoUrl = null,
     string? BrandPrimaryColor = null,
-    string? BrandSecondaryColor = null);
+    string? BrandSecondaryColor = null,
+    int InspectionPhotoRetentionDays = 90);

@@ -168,6 +168,17 @@ public sealed class VehicleInspection : IMustHaveTenant
         return Result.Success();
     }
 
+    public Result PurgePhoto(Guid photoId, DateTimeOffset purgedAtUtc, string? reason = null)
+    {
+        var photo = _photos.FirstOrDefault(p => p.Id == photoId);
+        if (photo is null)
+        {
+            return Result.Failure(new Error("inspection.photo.not_found", "Foto não encontrada.", ErrorType.NotFound));
+        }
+
+        return photo.MarkAsPurged(purgedAtUtc, reason);
+    }
+
     public Result UpdateChecklist(
         string? fuelLevel,
         int? odometerKm,

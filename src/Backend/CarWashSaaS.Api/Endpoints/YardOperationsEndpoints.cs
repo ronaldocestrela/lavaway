@@ -942,12 +942,30 @@ public static class YardOperationsEndpoints
             var result = await service.GetPhotoStreamAsync(tenantId, workOrderId, photoId, ct);
             return result.IsSuccess
                 ? Results.File(result.Value!.Content, result.Value.ContentType)
-                : result.Error!.Type switch
-                {
-                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
-                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
-                };
+                : result.Error!.Code == "photo.purged"
+                    ? Results.Problem(result.Error.Description, statusCode: StatusCodes.Status410Gone)
+                    : result.Error.Type switch
+                    {
+                        ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                    };
         }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapPost("/yard/inspections/retention/run", async (
+            ICurrentTenantAccessor currentTenantAccessor,
+            InspectionPhotoRetentionApplicationService retentionService,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await retentionService.PurgeExpiredInspectionPhotosAsync(tenantId, ct);
+            return result.IsSuccess
+                ? Results.Ok(new { purgedPhotosCount = result.Value })
+                : Results.BadRequest(new { result.Error!.Code, result.Error.Description });
+        }).RequireAuthorization(AuthorizationPolicyNames.Administrator);
 
         app.MapPost("/work-orders/{workOrderId:guid}/inspection/complete", async (
             Guid workOrderId,

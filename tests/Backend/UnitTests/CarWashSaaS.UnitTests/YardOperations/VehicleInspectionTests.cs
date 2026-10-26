@@ -145,4 +145,34 @@ public sealed class VehicleInspectionTests
         Assert.False(addPhotoResult.IsSuccess);
         Assert.Equal("inspection.already_completed", addPhotoResult.Error?.Code);
     }
+
+    [Fact]
+    public void PurgePhoto_Should_Mark_Photo_As_Purged_Even_On_Completed_Inspection()
+    {
+        var inspection = VehicleInspection.Create(_tenantId, _workOrderId, _vehicleId).Value!;
+        var photo = inspection.AddPhoto(InspectionPhotoCategory.Front, "path/front.jpg", "front.jpg", "image/jpeg", 1024).Value!;
+        inspection.AddPhoto(InspectionPhotoCategory.Rear, "path/rear.jpg", "rear.jpg", "image/jpeg", 1024);
+        inspection.AddPhoto(InspectionPhotoCategory.LeftSide, "path/left.jpg", "left.jpg", "image/jpeg", 1024);
+        inspection.AddPhoto(InspectionPhotoCategory.RightSide, "path/right.jpg", "right.jpg", "image/jpeg", 1024);
+        inspection.Complete();
+
+        var purgeTimestamp = DateTimeOffset.UtcNow;
+        var purgeResult = inspection.PurgePhoto(photo.Id, purgeTimestamp, "LGPD Art. 16 - Expurgo de vistoria");
+
+        Assert.True(purgeResult.IsSuccess);
+        var updatedPhoto = inspection.Photos.First(p => p.Id == photo.Id);
+        Assert.True(updatedPhoto.IsPurged);
+        Assert.Equal(purgeTimestamp, updatedPhoto.PurgedAtUtc);
+        Assert.Equal("LGPD Art. 16 - Expurgo de vistoria", updatedPhoto.PurgeReason);
+    }
+
+    [Fact]
+    public void PurgePhoto_Should_Fail_When_Photo_Does_Not_Exist()
+    {
+        var inspection = VehicleInspection.Create(_tenantId, _workOrderId, _vehicleId).Value!;
+        var result = inspection.PurgePhoto(Guid.NewGuid(), DateTimeOffset.UtcNow);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("inspection.photo.not_found", result.Error?.Code);
+    }
 }

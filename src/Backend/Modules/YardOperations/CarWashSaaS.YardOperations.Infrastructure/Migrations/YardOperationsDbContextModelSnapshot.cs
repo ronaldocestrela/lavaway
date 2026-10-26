@@ -834,6 +834,18 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                                 .HasMaxLength(255)
                                 .HasColumnType("nvarchar(255)");
 
+                            b1.Property<bool>("IsPurged")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("bit")
+                                .HasDefaultValue(false);
+
+                            b1.Property<string>("PurgeReason")
+                                .HasMaxLength(300)
+                                .HasColumnType("nvarchar(300)");
+
+                            b1.Property<DateTimeOffset?>("PurgedAtUtc")
+                                .HasColumnType("datetimeoffset");
+
                             b1.Property<long>("SizeBytes")
                                 .HasColumnType("bigint");
 
@@ -854,6 +866,8 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                             b1.HasKey("Id");
 
                             b1.HasIndex("VehicleInspectionId");
+
+                            b1.HasIndex("TenantId", "IsPurged");
 
                             b1.HasIndex("TenantId", "VehicleInspectionId");
 

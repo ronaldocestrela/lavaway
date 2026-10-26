@@ -242,5 +242,12 @@ public sealed class PostServiceComparisonTenantIntegrationTests(SqlServerFixture
             if (!_files.TryGetValue(key, out var bytes)) return Task.FromResult<StoredObject?>(null);
             return Task.FromResult<StoredObject?>(new StoredObject(new MemoryStream(bytes), "image/jpeg"));
         }
+
+        public Task DeleteAsync(Guid tenantId, string category, string fileName, CancellationToken ct = default)
+        {
+            var key = $"{tenantId}/{category}/{fileName}";
+            _files.Remove(key);
+            return Task.CompletedTask;
+        }
     }
 }

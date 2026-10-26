@@ -45,6 +45,11 @@ namespace CarWashSaaS.Tenants.Infrastructure.Migrations
                         .HasMaxLength(14)
                         .HasColumnType("nvarchar(14)");
 
+                    b.Property<int>("InspectionPhotoRetentionDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(90);
+
                     b.Property<string>("LegalName")
                         .IsRequired()
                         .HasMaxLength(200)

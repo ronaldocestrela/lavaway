@@ -14,4 +14,5 @@ public sealed record StoreProfileDto(
     string PostalCode,
     string? LogoUrl,
     string? BrandPrimaryColor,
-    string? BrandSecondaryColor);
+    string? BrandSecondaryColor,
+    int InspectionPhotoRetentionDays = 90);

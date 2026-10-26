@@ -47,6 +47,25 @@ public sealed class InspectionPhoto : IMustHaveTenant
     public long SizeBytes { get; private set; }
     public Guid? DamageId { get; private set; }
     public DateTimeOffset UploadedAtUtc { get; private set; }
+    public bool IsPurged { get; private set; }
+    public DateTimeOffset? PurgedAtUtc { get; private set; }
+    public string? PurgeReason { get; private set; }
+
+    public Result MarkAsPurged(DateTimeOffset purgedAtUtc, string? reason = null)
+    {
+        if (IsPurged)
+        {
+            return Result.Success();
+        }
+
+        IsPurged = true;
+        PurgedAtUtc = purgedAtUtc;
+        PurgeReason = string.IsNullOrWhiteSpace(reason)
+            ? "LGPD Art. 16 - Expurgo por tempo limite de retenção"
+            : reason.Trim();
+
+        return Result.Success();
+    }
 
     public static Result<InspectionPhoto> Create(
         Guid tenantId,

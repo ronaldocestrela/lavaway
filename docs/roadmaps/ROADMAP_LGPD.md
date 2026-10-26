@@ -104,12 +104,12 @@ flowchart LR
 **Objetivo:** Garantir o descarte de dados e mídias pessoais após o encerramento da finalidade de tratamento, minimizando a superfície de exposição e o custo de armazenamento.
 
 ### L3.1 Expurgo Automatizado de Fotos de Vistoria (`InspectionPhotos`)
-- [ ] Definir a política padrão de retenção de mídias de vistoria (ex.: retenção por 90 ou 180 dias após a entrega do veículo `PickedUpAtUtc`).
-- [ ] Criar o worker em background `InspectionPhotoRetentionWorker` (ou *HostedService* diário):
+- [x] Definir a política padrão de retenção de mídias de vistoria (ex.: retenção por 90 ou 180 dias após a entrega do veículo `PickedUpAtUtc`).
+- [x] Criar o worker em background `InspectionPhotoRetentionWorker` (ou *HostedService* diário):
   - Identificar vistorias concluídas cujo prazo de retenção expirou.
   - Remover fisicamente os binários do storage MinIO via [ITenantObjectStorage](file:///home/rony/LPR/lavaway/src/Shared/CarWashSaaS.Shared.Contracts/ITenantObjectStorage.cs).
   - Marcar a entidade `InspectionPhoto` com status `Purged` ou substituir a URL pelo placeholder de foto expirada por política de retenção.
-- [ ] Permitir configuração de retenção por tenant nas configurações avançadas da loja (com teto máximo permitido de 365 dias).
+- [x] Permitir configuração de retenção por tenant nas configurações avançadas da loja (com teto máximo permitido de 365 dias).
 
 ### L3.2 Higienização de Payloads Brutos de Webhooks e Logs Transitórios
 - [ ] Criar rotina programada de expurgo de payloads brutos em tabelas de auditoria de webhooks de gateways de pagamento (`BillingWebhookEvents` do Pagar.me e Stripe) e WhatsApp após 60 dias.

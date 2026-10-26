@@ -466,3 +466,17 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns 
+    WHERE object_id = OBJECT_ID(N'[yard].[InspectionPhotos]') AND name = 'IsPurged'
+)
+BEGIN
+    ALTER TABLE [yard].[InspectionPhotos] ADD [IsPurged] bit NOT NULL CONSTRAINT [DF_InspectionPhotos_IsPurged] DEFAULT 0;
+    ALTER TABLE [yard].[InspectionPhotos] ADD [PurgedAtUtc] datetimeoffset NULL;
+    ALTER TABLE [yard].[InspectionPhotos] ADD [PurgeReason] nvarchar(300) NULL;
+    CREATE INDEX [IX_InspectionPhotos_TenantId_IsPurged] ON [yard].[InspectionPhotos] ([TenantId], [IsPurged]);
+END;
+COMMIT;
+GO
+

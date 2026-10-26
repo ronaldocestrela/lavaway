@@ -109,6 +109,7 @@ builder.Services.AddScoped<WorkOrderApplicationService>();
 builder.Services.AddScoped<WorkOrderNotificationApplicationService>();
 builder.Services.AddScoped<IVehicleInspectionRepository, VehicleInspectionRepository>();
 builder.Services.AddScoped<VehicleInspectionApplicationService>();
+builder.Services.AddScoped<InspectionPhotoRetentionApplicationService>();
 builder.Services.AddScoped<IYardCapacityRepository, YardCapacityRepository>();
 builder.Services.AddScoped<ITeamMemberRepository, TeamMemberRepository>();
 builder.Services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
@@ -233,6 +234,7 @@ builder.Services.AddScoped<ITenantQueueMessageHandler, InboundWhatsAppMessageHan
 builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReadyNotificationQueueHandler>();
 builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReceiptNotificationQueueHandler>();
 builder.Services.AddHostedService<WhatsAppHealthMonitoringHostedService>();
+builder.Services.AddHostedService<InspectionPhotoRetentionHostedService>();
 
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));

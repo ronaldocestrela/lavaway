@@ -16,6 +16,7 @@ public sealed class StoreProfileFormModel
     public string? LogoUrl { get; set; }
     public string? BrandPrimaryColor { get; set; }
     public string? BrandSecondaryColor { get; set; }
+    public int InspectionPhotoRetentionDays { get; set; } = 90;
 
     public static StoreProfileFormModel FromDto(StoreProfileDto dto) => new()
     {
@@ -29,7 +30,8 @@ public sealed class StoreProfileFormModel
         State = dto.State,
         LogoUrl = dto.LogoUrl,
         BrandPrimaryColor = dto.BrandPrimaryColor,
-        BrandSecondaryColor = dto.BrandSecondaryColor
+        BrandSecondaryColor = dto.BrandSecondaryColor,
+        InspectionPhotoRetentionDays = dto.InspectionPhotoRetentionDays
     };
 
     public CreateStoreProfileRequest ToCreateRequest() => new(
@@ -43,7 +45,8 @@ public sealed class StoreProfileFormModel
         DigitsOnly(PostalCode),
         LogoUrl,
         BrandPrimaryColor,
-        BrandSecondaryColor);
+        BrandSecondaryColor,
+        InspectionPhotoRetentionDays);
 
     public UpdateStoreProfileRequest ToUpdateRequest() => new(
         LegalName.Trim(),
@@ -56,7 +59,8 @@ public sealed class StoreProfileFormModel
         DigitsOnly(PostalCode),
         LogoUrl,
         BrandPrimaryColor,
-        BrandSecondaryColor);
+        BrandSecondaryColor,
+        InspectionPhotoRetentionDays);
 
     public static string DigitsOnly(string value) =>
         new(value.Where(char.IsDigit).ToArray());

@@ -123,6 +123,17 @@
                            @oninput="HandleCnpjInput" />
                     <span class="field-hint">Apenas números ou formato com pontuação.</span>
                 </div>
+
+                <div class="field field-half">
+                    <label for="photoRetention">Retenção de Fotos de Vistoria (Dias - LGPD)</label>
+                    <input id="photoRetention"
+                           type="number"
+                           min="1"
+                           max="365"
+                           placeholder="90"
+                           @bind="Model.InspectionPhotoRetentionDays" />
+                    <span class="field-hint">Prazo para expurgo automático após a entrega do veículo (1 a 365 dias, padrão 90).</span>
+                </div>
             </div>
 
             <div class="wizard-actions">
@@ -397,6 +408,10 @@
                         <div class="review-row">
                             <span class="review-label">CNPJ:</span>
                             <span class="review-value mono">@Model.Cnpj</span>
+                        </div>
+                        <div class="review-row">
+                            <span class="review-label">Retenção de Vistorias:</span>
+                            <span class="review-value">@Model.InspectionPhotoRetentionDays dias (LGPD Art. 16)</span>
                         </div>
                     </div>
                 </div>

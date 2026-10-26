@@ -7,4 +7,6 @@ public sealed record InspectionPhotoDto(
     string ContentType,
     long SizeBytes,
     Guid? DamageId,
-    DateTimeOffset UploadedAtUtc);
+    DateTimeOffset UploadedAtUtc,
+    bool IsPurged = false,
+    DateTimeOffset? PurgedAtUtc = null);

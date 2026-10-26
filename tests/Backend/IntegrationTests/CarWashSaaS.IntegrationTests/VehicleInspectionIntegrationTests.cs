@@ -194,6 +194,140 @@ public sealed class VehicleInspectionIntegrationTests(SqlServerFixture fixture)
         }
     }
 
+    [Fact]
+    public async Task PurgeExpiredPhotos_Should_DeleteStorageBinary_And_MarkAsPurged_WhenRetirePastRetentionPeriod()
+    {
+        var tenantId = await CreateTenantAsync("Tenant Retention Purge Test");
+        var storage = new InMemoryTenantStorage();
+
+        Guid expiredWorkOrderId;
+        Guid expiredPhotoId;
+        Guid recentWorkOrderId;
+        Guid recentPhotoId;
+
+        await using (var context = CreateYardContext(tenantId))
+        {
+            var uow = new YardOperationsUnitOfWork(context);
+            var woRepo = new WorkOrderRepository(context);
+            var custRepo = new CustomerRepository(context);
+            var vehRepo = new VehicleRepository(context);
+            var srvRepo = new ServiceRepository(context);
+            var inspRepo = new VehicleInspectionRepository(context);
+
+            var woService = new WorkOrderApplicationService(woRepo, custRepo, vehRepo, srvRepo, uow);
+            var inspService = new VehicleInspectionApplicationService(inspRepo, woRepo, storage, uow);
+
+            var customer = Customer.Create(tenantId, "Cliente Expurgo", "11988887777").Value!;
+            var vehicle = Vehicle.Create(tenantId, customer.Id, "PUR1234", VehicleSize.HatchSedan).Value!;
+            var price = ServicePrice.Create(tenantId, VehicleSize.HatchSedan, 70m, 40).Value!;
+            var service = Service.Create(tenantId, "Lavagem Completa", "Lavagem", [price]).Value!;
+            await custRepo.AddAsync(customer);
+            await vehRepo.AddAsync(vehicle);
+            await srvRepo.AddAsync(service);
+            await uow.SaveChangesAsync();
+
+            // 1. Ordem de serviço entregue há 100 dias (fora da retenção padrão de 90 dias)
+            var expiredWoDto = (await woService.CreateAsync(tenantId, new CreateWorkOrderCommand(
+                customer.Id, vehicle.Id, [new CreateWorkOrderItemInput(service.Id, 1)]))).Value!;
+            expiredWorkOrderId = expiredWoDto.Id;
+
+            var expiredWoEntity = (await woRepo.GetByIdAsync(tenantId, expiredWorkOrderId))!;
+            expiredWoEntity.ChangeStatus(WorkOrderStatus.InWashing);
+            expiredWoEntity.ChangeStatus(WorkOrderStatus.Finishing);
+            expiredWoEntity.ChangeStatus(WorkOrderStatus.QualityControl);
+            expiredWoEntity.ChangeStatus(WorkOrderStatus.ReadyForPickup);
+            expiredWoEntity.RegisterPickup(DateTimeOffset.UtcNow.AddDays(-100));
+            woRepo.Update(expiredWoEntity);
+
+            await inspService.CreateOrGetInspectionAsync(tenantId, expiredWorkOrderId, new CreateInspectionRequest());
+            var bytes1 = Encoding.UTF8.GetBytes("expired inspection image");
+            using var ms1 = new MemoryStream(bytes1);
+            var upload1 = await inspService.UploadPhotoAsync(
+                tenantId, expiredWorkOrderId, InspectionPhotoCategory.Front, ms1, "front_expired.jpg", "image/jpeg", bytes1.Length);
+            expiredPhotoId = upload1.Value!.Id;
+
+            // 2. Ordem de serviço recente entregue há 15 dias (dentro do prazo de 90 dias)
+            var recentWoDto = (await woService.CreateAsync(tenantId, new CreateWorkOrderCommand(
+                customer.Id, vehicle.Id, [new CreateWorkOrderItemInput(service.Id, 1)]))).Value!;
+            recentWorkOrderId = recentWoDto.Id;
+
+            var recentWoEntity = (await woRepo.GetByIdAsync(tenantId, recentWorkOrderId))!;
+            recentWoEntity.ChangeStatus(WorkOrderStatus.InWashing);
+            recentWoEntity.ChangeStatus(WorkOrderStatus.Finishing);
+            recentWoEntity.ChangeStatus(WorkOrderStatus.QualityControl);
+            recentWoEntity.ChangeStatus(WorkOrderStatus.ReadyForPickup);
+            recentWoEntity.RegisterPickup(DateTimeOffset.UtcNow.AddDays(-15));
+            woRepo.Update(recentWoEntity);
+
+            await inspService.CreateOrGetInspectionAsync(tenantId, recentWorkOrderId, new CreateInspectionRequest());
+            var bytes2 = Encoding.UTF8.GetBytes("recent inspection image");
+            using var ms2 = new MemoryStream(bytes2);
+            var upload2 = await inspService.UploadPhotoAsync(
+                tenantId, recentWorkOrderId, InspectionPhotoCategory.Front, ms2, "front_recent.jpg", "image/jpeg", bytes2.Length);
+            recentPhotoId = upload2.Value!.Id;
+
+            await uow.SaveChangesAsync();
+        }
+
+        // Executar rotina de expurgo de fotos de vistoria
+        await using (var context = CreateYardContext(tenantId))
+        {
+            var uow = new YardOperationsUnitOfWork(context);
+            var inspRepo = new VehicleInspectionRepository(context);
+            var mockLookup = new FakeTenantLookup(90);
+
+            var retentionService = new InspectionPhotoRetentionApplicationService(
+                inspRepo,
+                storage,
+                uow,
+                mockLookup,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<InspectionPhotoRetentionApplicationService>.Instance);
+
+            var purgeResult = await retentionService.PurgeExpiredInspectionPhotosAsync(tenantId);
+            Assert.True(purgeResult.IsSuccess);
+            Assert.Equal(1, purgeResult.Value);
+        }
+
+        // Verificar estados após expurgo
+        await using (var context = CreateYardContext(tenantId))
+        {
+            var uow = new YardOperationsUnitOfWork(context);
+            var woRepo = new WorkOrderRepository(context);
+            var inspRepo = new VehicleInspectionRepository(context);
+            var inspService = new VehicleInspectionApplicationService(inspRepo, woRepo, storage, uow);
+
+            // Foto expirada deve falhar com código photo.purged
+            var expiredPhotoResult = await inspService.GetPhotoStreamAsync(tenantId, expiredWorkOrderId, expiredPhotoId);
+            Assert.False(expiredPhotoResult.IsSuccess);
+            Assert.Equal("photo.purged", expiredPhotoResult.Error!.Code);
+
+            // Foto recente deve permanecer íntegra e legível
+            var recentPhotoResult = await inspService.GetPhotoStreamAsync(tenantId, recentWorkOrderId, recentPhotoId);
+            Assert.True(recentPhotoResult.IsSuccess);
+            Assert.NotNull(recentPhotoResult.Value);
+        }
+    }
+
+    private sealed class FakeTenantLookup(int retentionDays) : ITenantStoreProfileLookup
+    {
+        public Task<Result<StoreProfileDto>> GetProfileAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(Result<StoreProfileDto>.Success(new StoreProfileDto(
+                Guid.NewGuid(),
+                tenantId,
+                "Loja Teste",
+                "Loja Teste",
+                "11222333000181",
+                "11999999999",
+                "Rua Teste",
+                "Sao Paulo",
+                "SP",
+                "01001000",
+                null,
+                null,
+                null,
+                retentionDays)));
+    }
+
     private async Task<Guid> CreateTenantAsync(string name)
     {
         await using var context = new TenantsDbContext(fixture.CreateTenantsOptions(), new CurrentTenantAccessor());
@@ -243,6 +377,13 @@ public sealed class VehicleInspectionIntegrationTests(SqlServerFixture fixture)
             var key = $"{tenantId}/{category}/{fileName}";
             if (!_files.TryGetValue(key, out var bytes)) return Task.FromResult<StoredObject?>(null);
             return Task.FromResult<StoredObject?>(new StoredObject(new MemoryStream(bytes), "image/jpeg"));
+        }
+
+        public Task DeleteAsync(Guid tenantId, string category, string fileName, CancellationToken ct = default)
+        {
+            var key = $"{tenantId}/{category}/{fileName}";
+            _files.Remove(key);
+            return Task.CompletedTask;
         }
     }
 }

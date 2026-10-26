@@ -27,7 +27,8 @@ public sealed class StoreProfileApplicationService(IStoreProfileRepository repos
             p.PostalCode,
             p.LogoUrl,
             p.BrandPrimaryColor,
-            p.BrandSecondaryColor);
+            p.BrandSecondaryColor,
+            p.InspectionPhotoRetentionDays);
 
         return Result<StoreProfileDto>.Success(dto);
     }
@@ -75,7 +76,8 @@ public sealed class StoreProfileApplicationService(IStoreProfileRepository repos
             command.PostalCode,
             command.LogoUrl,
             command.BrandPrimaryColor,
-            command.BrandSecondaryColor);
+            command.BrandSecondaryColor,
+            command.InspectionPhotoRetentionDays);
 
         if (!result.IsSuccess)
         {
@@ -110,7 +112,8 @@ public sealed class StoreProfileApplicationService(IStoreProfileRepository repos
             command.PostalCode,
             command.LogoUrl,
             command.BrandPrimaryColor,
-            command.BrandSecondaryColor);
+            command.BrandSecondaryColor,
+            command.InspectionPhotoRetentionDays);
 
         if (!result.IsSuccess)
         {

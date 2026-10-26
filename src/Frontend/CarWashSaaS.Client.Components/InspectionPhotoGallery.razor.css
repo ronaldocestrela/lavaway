@@ -134,6 +134,37 @@
     color: #fdba74;
 }
 
+.badge-purged {
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #475569;
+}
+
+.purged-slot-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.purged-icon {
+    font-size: 1.8rem;
+}
+
+.purged-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #cbd5e1;
+}
+
+.purged-hint {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    line-height: 1.2;
+}
+
 .slot-preview-area {
     position: relative;
     height: 160px;
@@ -290,4 +321,19 @@
     text-align: center;
     font-size: 0.85rem;
     color: #64748b;
+}
+
+.purged-thumb {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    background: #0f172a;
+    color: #94a3b8;
+    font-size: 0.7rem;
+    padding: 0.5rem;
+    text-align: center;
 }

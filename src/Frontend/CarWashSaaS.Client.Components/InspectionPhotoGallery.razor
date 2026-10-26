@@ -45,7 +45,17 @@
                 @foreach (var photo in AdditionalPhotos)
                 {
                     <div class="additional-photo-thumb">
-                        <img src="@GetPhotoStreamUrl(photo.Id)" alt="Foto adicional" class="thumb-img" />
+                        @if (photo.IsPurged)
+                        {
+                            <div class="purged-thumb">
+                                <span class="purged-badge-icon">🛡️</span>
+                                <span class="purged-badge-text">Expurgada (LGPD)</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <img src="@GetPhotoStreamUrl(photo.Id)" alt="Foto adicional" class="thumb-img" />
+                        }
                         <span class="photo-tag">@photo.Category</span>
                     </div>
                 }
@@ -115,18 +125,29 @@
         <div class="photo-slot-card @(isUploaded ? "uploaded" : "pending")">
             <div class="slot-header">
                 <span class="slot-title">@title</span>
-                <span class="slot-badge @(isUploaded ? "badge-ok" : "badge-warn")">
-                    @(isUploaded ? "Enviada" : "Obrigatória")
+                <span class="slot-badge @(isUploaded ? (photo!.IsPurged ? "badge-purged" : "badge-ok") : "badge-warn")">
+                    @(isUploaded ? (photo!.IsPurged ? "Expurgada (LGPD)" : "Enviada") : "Obrigatória")
                 </span>
             </div>
 
             <div class="slot-preview-area">
                 @if (isUploaded)
                 {
-                    <img src="@GetPhotoStreamUrl(photo!.Id)" alt="@title" class="preview-img" />
-                    <div class="photo-meta">
-                        <span>@photo.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
-                    </div>
+                    @if (photo!.IsPurged)
+                    {
+                        <div class="purged-slot-content">
+                            <span class="purged-icon">🛡️</span>
+                            <span class="purged-title">Foto Expurgada</span>
+                            <span class="purged-hint">Descartada por retenção LGPD</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <img src="@GetPhotoStreamUrl(photo!.Id)" alt="@title" class="preview-img" />
+                        <div class="photo-meta">
+                            <span>@photo.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                        </div>
+                    }
                 }
                 else
                 {
@@ -137,7 +158,7 @@
                 }
             </div>
 
-            @if (!IsReadOnly)
+            @if (!IsReadOnly && (!isUploaded || !photo!.IsPurged))
             {
                 <label class="btn-slot-upload @(isUploaded ? "btn-reupload" : "btn-capture")">
                     <span>@(isUploaded ? "Substituir Foto" : btnLabel)</span>

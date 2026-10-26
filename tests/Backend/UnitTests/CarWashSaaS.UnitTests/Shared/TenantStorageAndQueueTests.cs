@@ -130,5 +130,13 @@ public sealed class TenantStorageAndQueueTests
             ReadObjectKey = $"tenants/{tenantId}/{category}/{fileName}";
             return Task.FromResult<StoredObject?>(null);
         }
+
+        public string? DeletedObjectKey { get; private set; }
+
+        public Task DeleteAsync(Guid tenantId, string category, string fileName, CancellationToken ct = default)
+        {
+            DeletedObjectKey = $"tenants/{tenantId}/{category}/{fileName}";
+            return Task.CompletedTask;
+        }
     }
 }

@@ -48,7 +48,8 @@ public static class TenantEndpoints
                 request.PostalCode,
                 request.LogoUrl,
                 request.BrandPrimaryColor,
-                request.BrandSecondaryColor);
+                request.BrandSecondaryColor,
+                request.InspectionPhotoRetentionDays);
 
             var result = await service.CreateAsync(tenantId, command);
             return result.IsSuccess ? Results.Created("/tenants/profile", ToDto(result.Value!)) : result.Error!.Type switch
@@ -77,7 +78,8 @@ public static class TenantEndpoints
                 request.PostalCode,
                 request.LogoUrl,
                 request.BrandPrimaryColor,
-                request.BrandSecondaryColor);
+                request.BrandSecondaryColor,
+                request.InspectionPhotoRetentionDays);
 
             var result = await service.UpdateAsync(tenantId, command);
             return result.IsSuccess ? Results.Ok(ToDto(result.Value!)) : result.Error!.Type switch
@@ -147,7 +149,8 @@ public static class TenantEndpoints
                 existingProfile.PostalCode,
                 savedLogoResult.Value,
                 string.IsNullOrWhiteSpace(brandPrimaryColor) ? existingProfile.BrandPrimaryColor : brandPrimaryColor,
-                string.IsNullOrWhiteSpace(brandSecondaryColor) ? existingProfile.BrandSecondaryColor : brandSecondaryColor);
+                string.IsNullOrWhiteSpace(brandSecondaryColor) ? existingProfile.BrandSecondaryColor : brandSecondaryColor,
+                existingProfile.InspectionPhotoRetentionDays);
 
             var updateResult = await service.UpdateAsync(tenantId, updatedCommand, ct);
             if (!updateResult.IsSuccess)
@@ -243,6 +246,7 @@ public static class TenantEndpoints
         profile.PostalCode,
         profile.LogoUrl,
         profile.BrandPrimaryColor,
-        profile.BrandSecondaryColor);
+        profile.BrandSecondaryColor,
+        profile.InspectionPhotoRetentionDays);
 }
 

@@ -25,4 +25,23 @@ public sealed class VehicleInspectionRepository(YardOperationsDbContext dbContex
 
     public void Update(VehicleInspection inspection) =>
         dbContext.VehicleInspections.Update(inspection);
+
+    public async Task<IReadOnlyList<VehicleInspection>> GetInspectionsWithPhotosEligibleForPurgeAsync(
+        Guid tenantId,
+        DateTimeOffset cutoffUtc,
+        int limit = 100,
+        CancellationToken ct = default)
+    {
+        var eligibleWorkOrderIds = dbContext.WorkOrders
+            .Where(w => w.TenantId == tenantId && w.PickedUpAtUtc != null && w.PickedUpAtUtc <= cutoffUtc)
+            .Select(w => w.Id);
+
+        return await dbContext.VehicleInspections
+            .Include(i => i.Photos)
+            .Where(i => i.TenantId == tenantId
+                && eligibleWorkOrderIds.Contains(i.WorkOrderId)
+                && i.Photos.Any(p => !p.IsPurged))
+            .Take(limit)
+            .ToListAsync(ct);
+    }
 }

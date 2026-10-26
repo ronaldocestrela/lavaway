@@ -147,6 +147,19 @@ public sealed class VehicleInspectionApplicationServiceTests
         {
         }
 
+        public Task<IReadOnlyList<VehicleInspection>> GetInspectionsWithPhotosEligibleForPurgeAsync(
+            Guid tenantId,
+            DateTimeOffset cutoffUtc,
+            int limit = 100,
+            CancellationToken ct = default)
+        {
+            var result = Inspections
+                .Where(i => i.TenantId == tenantId && i.Photos.Any(p => !p.IsPurged))
+                .Take(limit)
+                .ToList();
+            return Task.FromResult<IReadOnlyList<VehicleInspection>>(result);
+        }
+
         // IWorkOrderRepository
         Task<WorkOrder?> IWorkOrderRepository.GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct)
         {
@@ -197,6 +210,12 @@ public sealed class VehicleInspectionApplicationServiceTests
         {
             if (!StoredFiles.TryGetValue(fileName, out var data)) return Task.FromResult<StoredObject?>(null);
             return Task.FromResult<StoredObject?>(new StoredObject(new MemoryStream(data), "image/jpeg"));
+        }
+
+        public Task DeleteAsync(Guid tenantId, string category, string fileName, CancellationToken ct = default)
+        {
+            StoredFiles.Remove(fileName);
+            return Task.CompletedTask;
         }
 
         // IUnitOfWork

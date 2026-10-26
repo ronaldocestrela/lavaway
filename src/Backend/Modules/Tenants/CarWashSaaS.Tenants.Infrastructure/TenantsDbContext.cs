@@ -44,6 +44,7 @@ public sealed class TenantsDbContext(
         storeProfile.Property(value => value.LogoUrl).HasMaxLength(500);
         storeProfile.Property(value => value.BrandPrimaryColor).HasMaxLength(7);
         storeProfile.Property(value => value.BrandSecondaryColor).HasMaxLength(7);
+        storeProfile.Property(value => value.InspectionPhotoRetentionDays).IsRequired().HasDefaultValue(90);
 
         modelBuilder.ApplyTenantQueryFilters(this);
     }
