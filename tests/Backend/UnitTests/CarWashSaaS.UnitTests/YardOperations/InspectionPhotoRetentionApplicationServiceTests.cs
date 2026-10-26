@@ -124,6 +124,7 @@ public sealed class InspectionPhotoRetentionApplicationServiceTests
         ITenantStoreProfileLookup,
         IUnitOfWork
     {
+        public Guid TenantId => tenantId;
         public List<VehicleInspection> Inspections { get; } = [];
         public HashSet<string> StoredFiles { get; } = [];
         public List<string> DeletedFiles { get; } = [];
