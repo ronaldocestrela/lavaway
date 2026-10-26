@@ -214,10 +214,20 @@ Interface de Vistoria:
 3. **Fotos Obrigatórias:** Tire as 4 fotos dos quatro cantos do carro (Frente, Traseira, Lateral Esquerda e Lateral Direita).
 4. Clique em **Finalizar Vistoria**.
 
+> [!IMPORTANT]
+> ### 🛡️ Cartilha de Boas Práticas e Privacidade na Vistoria (LGPD — Art. 6º)
+> Para garantir a segurança jurídica do lava-jato e a total conformidade com a LGPD (Lei 13.709/2018), os atendentes e operadores de pátio **DEVEM** seguir estritamente as seguintes regras durante a vistoria e captura de fotos:
+>
+> 1. **Foco Estrito na Carroceria e Componentes:** As fotos de perímetro (Frente, Traseira, Lateral Esquerda, Lateral Direita) e fotos detalhadas de avarias devem registrar exclusivamente partes mecânicas, rodas, pneus, vidros e lataria do veículo.
+> 2. **Proibição Absoluta de Fotografar Pessoas:** **NÃO fotografe rostos** do cliente, de acompanhantes, de crianças, de pedestres na rua ou de outros colaboradores. Se alguém estiver próximo ou visível no enquadramento/reflexo, solicite educadamente que se afaste ou altere o ângulo da câmera antes do disparo.
+> 3. **Proibição de Fotografar Documentos Pessoais e Financeiros:** Verifique o interior do carro antes de fotografar detalhes internos. **NUNCA fotografe** CNH, RG, cartões bancários, faturas, contracheques ou correspondências deixadas no painel, portas ou assentos.
+> 4. **Bens Pessoais e Objetos de Valor:** Caso o cliente tenha deixado óculos, relógios, notebooks ou carteiras, solicite cordialmente que os leve consigo. Se permanecerem sob custódia, registre **apenas textualmente** no campo *"Observações de Recepção"* (ex.: *"1 óculos de sol no porta-luvas"*), **sem realizar fotos de bens íntimos**.
+> 5. **Transparência Ativa na Recepção:** Ao iniciar a vistoria, explique cordialmente ao cliente: *"Estamos registrando as fotos do estado de entrada do seu veículo para o seu próprio resguardo e segurança. As imagens vão anexadas no seu comprovante digital pelo WhatsApp e são tratadas exclusivamente para este serviço."*
+
 ### 4.4 Emissão e Envio do Comprovante Digital (PDF) via WhatsApp
 Concluída a vistoria:
-1. O sistema gera automaticamente um **comprovante em PDF** elegante com a logomarca da sua loja, dados da OS, previsão de entrega e tabela com as avarias marcadas na vistoria.
-2. Clique em **Enviar via WhatsApp**. O cliente receberá instantaneamente no celular o documento em PDF e uma mensagem cordial de confirmação com o link de acompanhamento.
+1. O sistema gera automaticamente um **comprovante em PDF** elegante com a logomarca da sua loja, dados da OS, previsão de entrega, tabela com as avarias marcadas e o **Aviso de Privacidade LGPD** com link público da política de proteção de dados (`/privacidade`).
+2. Clique em **Enviar via WhatsApp**. O cliente receberá instantaneamente no celular o documento em PDF acompanhado de legenda transparente com a finalidade do tratamento e a instrução clara de opt-out: *"Envie 'PARAR' a qualquer momento para não receber mensagens promocionais"*.
 3. Se o cliente preferir comprovante impresso, clique no botão **Imprimir**.
 
 ---
@@ -338,8 +348,10 @@ Acesse **Pós-Venda & Retenção** (`/after-sales`):
    - Notas 1 a 3: O sistema pede desculpas e abre um alerta para o gerente entrar em contato e acolher o cliente.
 2. **Campanhas de Reativação Automática:**
    - Configure réguas para clientes ausentes há **15, 30 ou 45 dias**. O robô dispara convites personalizados com desconto ou cortesia.
-3. **Conformidade LGPD:**
-   - Se o cliente responder *"PARAR"*, *"SAIR"* ou *"STOP"*, o sistema bloqueia mensagens promocionais imediatamente respeitando o opt-out. O consentimento pode ser revertido caso o cliente envie *"QUERO"*.
+3. **Conformidade LGPD & Opt-Out Automático:**
+   - O rodapé de todas as notificações de comprovante no WhatsApp e o comprovante em PDF emitido na recepção informam a finalidade estrita da vistoria e instruem sobre o direito de cancelamento de promoções.
+   - O comprovante digital anexo e o link público de acompanhamento contêm link direto para a Política de Privacidade (`/privacidade`).
+   - Se o cliente responder *"PARAR"*, *"SAIR"* ou *"STOP"*, o sistema bloqueia mensagens promocionais imediatamente respeitando o opt-out na tabela auditável `CustomerCommunicationPreferences`. O consentimento pode ser revertido caso o cliente envie *"QUERO"*.
 
 ---
 

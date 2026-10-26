@@ -145,17 +145,19 @@ public sealed class WorkOrderReceiptPdfGenerator : IWorkOrderReceiptPdfGenerator
         }
 
         // 5. Notas & Disclaimer Legal
-        currentY = Math.Min(currentY, 110);
+        currentY = Math.Min(currentY, 115);
         sb.AppendLine("0.96 0.96 0.96 rg");
-        sb.AppendLine($"36 {currentY - 45} 523 45 re f");
+        sb.AppendLine($"36 {currentY - 62} 523 62 re f");
         sb.AppendLine("0.4 0.4 0.4 rg");
-        sb.AppendLine($"BT /F1 7 Tf 42 {currentY - 12} Td (Termo de Ciencia: O veiculo sera entregue mediante apresentacao deste comprovante ou documento com foto.) Tj ET");
-        sb.AppendLine($"BT /F1 7 Tf 42 {currentY - 24} Td (Nao nos responsabilizamos por objetos de valor deixados no interior do veiculo que nao constem no checklist acima.) Tj ET");
-        sb.AppendLine($"BT /F1 7 Tf 42 {currentY - 36} Td (Apos o aviso de conclusao, gentileza retirar o veiculo no prazo acordado.) Tj ET");
+        sb.AppendLine($"BT /F1 7 Tf 42 {currentY - 11} Td (Termo de Ciencia: O veiculo sera entregue mediante apresentacao deste comprovante ou documento com foto.) Tj ET");
+        sb.AppendLine($"BT /F1 7 Tf 42 {currentY - 22} Td (Nao nos responsabilizamos por objetos de valor deixados no interior do veiculo que nao constem no checklist acima.) Tj ET");
+        sb.AppendLine($"BT /F1 7 Tf 42 {currentY - 33} Td (Apos o aviso de conclusao, gentileza retirar o veiculo no prazo acordado.) Tj ET");
+        sb.AppendLine($"BT /F1 6.5 Tf 42 {currentY - 45} Td (Privacidade e LGPD: Dados e fotos de vistoria sao tratados com seguranca para a execucao deste servico e salvaguarda do veiculo.) Tj ET");
+        sb.AppendLine($"BT /F1 6.5 Tf 42 {currentY - 55} Td (Politica de Privacidade: lavaway.com.br/privacidade  |  Para cancelar mensagens promocionais no WhatsApp, envie 'PARAR'.) Tj ET");
 
         // 6. Rodapé
         sb.AppendLine("0.5 0.5 0.5 rg");
-        sb.AppendLine("BT /F1 7 Tf 36 20 Td (Lava Ae SaaS - Gestao Inteligente para Estetica Automotiva e Lava-Jato) Tj ET");
+        sb.AppendLine("BT /F1 7 Tf 36 20 Td (Lava Ae SaaS - Gestao Inteligente para Estetica Automotiva e Lava-Jato  |  Conformidade LGPD) Tj ET");
         sb.AppendLine("BT /F1 7 Tf 420 20 Td (Documento gerado em " + EscapePdfText(DateTimeOffset.UtcNow.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss", PtBr)) + ") Tj ET");
 
         var contentStream = sb.ToString();

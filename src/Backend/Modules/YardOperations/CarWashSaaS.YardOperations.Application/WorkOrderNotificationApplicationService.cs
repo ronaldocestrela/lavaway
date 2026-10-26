@@ -74,7 +74,8 @@ public sealed class WorkOrderNotificationApplicationService(
               $"OS: *#{shortOs}*\n" +
               $"Previsão de conclusão: *{forecast}*\n" +
               $"Valor total: *{totalStr}*\n\n" +
-              $"Segue anexo o comprovante digital com o checklist da vistoria.";
+              $"Segue anexo o comprovante digital com o checklist da vistoria.\n\n" +
+              $"🔒 *Privacidade & LGPD:* Seus dados e fotos de vistoria são tratados com segurança e exclusivamente para a prestação do serviço contratado. Para consultar nossa Política de Privacidade, acesse lavaway.com.br/privacidade. Envie 'PARAR' a qualquer momento para não receber mensagens promocionais.";
 
         // 4. Despachar via WhatsApp com Idempotência
         var base64Data = $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";

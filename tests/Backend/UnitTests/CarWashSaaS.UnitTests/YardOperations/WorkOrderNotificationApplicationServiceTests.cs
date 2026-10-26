@@ -45,6 +45,9 @@ public sealed class WorkOrderNotificationApplicationServiceTests
         Assert.Equal("application/pdf", dispatch.MimeType);
         Assert.Equal($"receipt-{workOrder.Id:N}", dispatch.IdempotencyKey);
         Assert.True(storage.StoredFiles.ContainsKey($"work-orders/{workOrder.Id:N}/receipt.pdf"));
+        Assert.Contains("Privacidade & LGPD", dispatch.Caption);
+        Assert.Contains("lavaway.com.br/privacidade", dispatch.Caption);
+        Assert.Contains("PARAR", dispatch.Caption);
     }
 
     [Fact]

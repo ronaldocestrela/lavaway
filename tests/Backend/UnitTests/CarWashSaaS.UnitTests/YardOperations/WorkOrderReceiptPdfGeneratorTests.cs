@@ -61,6 +61,9 @@ public sealed class WorkOrderReceiptPdfGeneratorTests
         Assert.Contains("Lavagem Completa", rawString);
         Assert.Contains("CHECKLIST DA VISTORIA", rawString);
         Assert.Contains("45.200 km", rawString);
+        Assert.Contains("Privacidade e LGPD", rawString);
+        Assert.Contains("lavaway.com.br/privacidade", rawString);
+        Assert.Contains("PARAR", rawString);
     }
 
     [Fact]

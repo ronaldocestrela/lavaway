@@ -155,9 +155,9 @@ flowchart LR
 - [x] Adicionar checkbox obrigatório de concordância com os Termos e DPA no modal de contratação/trial de planos em [Home.razor](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Web/Pages/Home.razor#L985) integrado a `RegisterTenantRequest` e trilha de auditoria administrativa `Tenant.TermsAndDpaAccepted`.
 
 ### L5.2 Notificação Transparente na Recepção e no WhatsApp
-- [ ] Incluir no recibo digital / link de acompanhamento da Ordem de Serviço enviado via WhatsApp um rodapé transparente:
+- [x] Incluir no recibo digital / link de acompanhamento da Ordem de Serviço enviado via WhatsApp um rodapé transparente em [WorkOrderNotificationApplicationService.cs](file:///home/rony/LPR/lavaway/src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Application/WorkOrderNotificationApplicationService.cs), [WorkOrderReceiptPdfGenerator.cs](file:///home/rony/LPR/lavaway/src/Backend/Modules/YardOperations/CarWashSaaS.YardOperations.Infrastructure/WorkOrderReceiptPdfGenerator.cs) e [BrandReceiptPreview.razor](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Components/BrandReceiptPreview.razor):
   - *"Seus dados e fotos de vistoria são tratados com segurança e exclusivamente para a prestação do serviço contratado. Para consultar nossa Política de Privacidade, acesse [link]. Envie 'PARAR' a qualquer momento para não receber mensagens promocionais."*
-- [ ] Fornecer cartilha/orientação de boas práticas no `MANUAL_DO_USUARIO.md` orientando atendentes a não tirar fotos de pessoas nem de documentos/bens pessoais esquecidos no veículo durante a vistoria de entrada.
+- [x] Fornecer cartilha/orientação de boas práticas no [MANUAL_DO_USUARIO.md](file:///home/rony/LPR/lavaway/MANUAL_DO_USUARIO.md#L217) orientando atendentes a não tirar fotos de pessoas nem de documentos/bens pessoais esquecidos no veículo durante a vistoria de entrada.
 
 ---
 
