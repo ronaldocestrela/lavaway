@@ -127,7 +127,7 @@ flowchart LR
 - [x] Manter e ampliar o mascaramento de dados pessoais (PII) em todas as camadas de observabilidade (Serilog, dashboards executivos e traces OpenTelemetry).
 
 ### L4.2 Matriz ROPA (Registro das Operações de Tratamento de Dados Pessoais — Art. 37)
-- [ ] Elaborar e versionar no repositório o documento `docs/lgpd/registro-operacoes-tratamento-ropa.md` detalhando:
+- [x] Elaborar e versionar no repositório o documento [registro-operacoes-tratamento-ropa.md](file:///home/rony/LPR/lavaway/docs/lgpd/registro-operacoes-tratamento-ropa.md) detalhando:
   - Inventário completo de dados tratados.
   - Base legal associada a cada finalidade.
   - Categoria de titulares (Lojistas, Funcionários, Motoristas).
