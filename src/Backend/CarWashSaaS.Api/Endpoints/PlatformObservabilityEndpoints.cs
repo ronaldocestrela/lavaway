@@ -132,6 +132,19 @@ public static class PlatformObservabilityEndpoints
             return Results.Ok(dto);
         }).RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformBillingAdmin);
 
+        group.MapGet("/observability/database/encryption-status", async (
+            ITdeStatusChecker tdeChecker,
+            CancellationToken ct) =>
+        {
+            var result = await tdeChecker.CheckTdeStatusAsync(ct);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.Problem(
+                    title: "Falha na verificação de TDE",
+                    detail: result.Error!.Description,
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+        });
+
         return app;
     }
 }

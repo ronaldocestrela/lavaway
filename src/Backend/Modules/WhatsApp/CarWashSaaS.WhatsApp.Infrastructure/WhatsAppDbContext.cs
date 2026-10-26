@@ -18,6 +18,7 @@ public sealed class WhatsAppDbContext(
     public DbSet<TenantWhatsAppQuota> TenantWhatsAppQuotas => Set<TenantWhatsAppQuota>();
     public DbSet<CustomerCommunicationPreference> CustomerCommunicationPreferences => Set<CustomerCommunicationPreference>();
     public DbSet<ChatbotConversationSession> ChatbotSessions => Set<ChatbotConversationSession>();
+    public DbSet<TenantWhatsAppConfig> TenantWhatsAppConfigs => Set<TenantWhatsAppConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -151,6 +152,22 @@ public sealed class WhatsAppDbContext(
         session.Property(value => value.LastInteractionAtUtc).HasColumnType("datetimeoffset").IsRequired();
         session.Property(value => value.IsActive).IsRequired();
         session.HasIndex(value => new { value.TenantId, value.CustomerPhone, value.IsActive });
+
+        var whatsAppConfig = modelBuilder.Entity<TenantWhatsAppConfig>();
+        whatsAppConfig.ToTable("TenantWhatsAppConfigs", "whatsapp");
+        whatsAppConfig.HasKey(value => value.Id);
+        whatsAppConfig.Property(value => value.Id).ValueGeneratedNever();
+        whatsAppConfig.Property(value => value.TenantId).IsRequired();
+        whatsAppConfig.Property(value => value.EvolutionApiKeyEncrypted).HasMaxLength(512);
+        whatsAppConfig.Property(value => value.WebhookSecretEncrypted).HasMaxLength(512);
+        whatsAppConfig.Property(value => value.InstanceCustomName).HasMaxLength(200);
+        whatsAppConfig.Property(value => value.IsActive).IsRequired();
+        whatsAppConfig.Property(value => value.CreatedAtUtc).HasColumnType("datetimeoffset").IsRequired();
+        whatsAppConfig.Property(value => value.UpdatedAtUtc).HasColumnType("datetimeoffset");
+        whatsAppConfig.Property(value => value.LastTestedAtUtc).HasColumnType("datetimeoffset");
+        whatsAppConfig.Property(value => value.LastTestSuccess);
+        whatsAppConfig.Property(value => value.LastTestMessage).HasMaxLength(500);
+        whatsAppConfig.HasIndex(value => value.TenantId).IsUnique();
 
         modelBuilder.ApplyTenantQueryFilters(this);
     }

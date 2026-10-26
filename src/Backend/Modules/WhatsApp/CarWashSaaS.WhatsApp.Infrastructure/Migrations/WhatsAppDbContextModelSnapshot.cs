@@ -205,6 +205,53 @@ namespace CarWashSaaS.WhatsApp.Infrastructure.Migrations
                     b.ToTable("WhatsAppMessages", "whatsapp");
                 });
 
+            modelBuilder.Entity("CarWashSaaS.WhatsApp.Domain.TenantWhatsAppConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("EvolutionApiKeyEncrypted")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("InstanceCustomName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastTestMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool?>("LastTestSuccess")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LastTestedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("WebhookSecretEncrypted")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("TenantWhatsAppConfigs", "whatsapp");
+                });
+
             modelBuilder.Entity("CarWashSaaS.WhatsApp.Domain.TenantWhatsAppQuota", b =>
                 {
                     b.Property<Guid>("Id")

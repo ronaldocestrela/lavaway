@@ -1,6 +1,7 @@
 using System.Text;
 using CarWashSaaS.Api.Endpoints;
 using CarWashSaaS.Api.Hubs;
+using CarWashSaaS.Api.Logging;
 using CarWashSaaS.Api.Middleware;
 using CarWashSaaS.Api.Services;
 using CarWashSaaS.Billing.Application;
@@ -19,6 +20,8 @@ using CarWashSaaS.Tenants.Application;
 using CarWashSaaS.Tenants.Infrastructure;
 using CarWashSaaS.WhatsApp.Application;
 using CarWashSaaS.WhatsApp.Infrastructure;
+using CarWashSaaS.WhatsApp.Infrastructure.Repositories;
+using CarWashSaaS.WhatsApp.Infrastructure.Security;
 using CarWashSaaS.YardOperations.Application;
 using CarWashSaaS.YardOperations.Domain;
 using CarWashSaaS.YardOperations.Infrastructure;
@@ -42,7 +45,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, services, configuration) => configuration
     .ReadFrom.Configuration(context.Configuration)
     .ReadFrom.Services(services)
-    .Enrich.FromLogContext());
+    .Enrich.FromLogContext()
+    .Enrich.WithPiiMasking());
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 var connectionString = builder.Configuration.GetConnectionString("CarWashSaaS")
@@ -177,6 +181,7 @@ builder.Services.AddScoped<IPlatformBillingMetricsLookup, PlatformBillingMetrics
 builder.Services.AddScoped<IPlatformYardMetricsLookup, PlatformYardMetricsService>();
 builder.Services.AddScoped<IPlatformWhatsAppObservabilityLookup, PlatformWhatsAppObservabilityService>();
 builder.Services.AddScoped<PlatformObservabilityApplicationService>();
+builder.Services.AddScoped<ITdeStatusChecker, SqlDatabaseTdeChecker>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IYardRealtimeNotifier, SignalRYardRealtimeNotifier>();
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
@@ -215,6 +220,8 @@ builder.Services.AddHttpClient<IWhatsAppMessageSender, EvolutionApiWhatsAppMessa
 });
 builder.Services.AddScoped<IWhatsAppConnectionRepository, WhatsAppConnectionRepository>();
 builder.Services.AddScoped<IWhatsAppConnectionIncidentRepository, WhatsAppConnectionIncidentRepository>();
+builder.Services.AddScoped<IWhatsAppCredentialsEncryptor, WhatsAppCredentialsEncryptor>();
+builder.Services.AddScoped<ITenantWhatsAppConfigRepository, TenantWhatsAppConfigRepository>();
 builder.Services.AddScoped<IWhatsAppHealthAlertSender, SimulatedWhatsAppHealthAlertSender>();
 builder.Services.AddScoped<IWhatsAppHealthCheckProvider>(sp => (EvolutionApiWhatsAppPairingProvider)sp.GetRequiredService<IWhatsAppPairingProvider>());
 builder.Services.AddScoped<ITenantNotificationContactLookup>(sp => sp.GetRequiredService<GlobalTenantApplicationService>());
@@ -387,6 +394,10 @@ app.UseSerilogRequestLogging(options =>
                 diagnosticContext.Set("UserRealm", userRealm);
             }
         }
+
+        var rawPath = httpContext.Request.Path.Value ?? string.Empty;
+        var sanitizedPath = PiiRegexMasker.MaskAllPiiInText(rawPath);
+        diagnosticContext.Set("RequestPath", sanitizedPath);
 
         diagnosticContext.Set("TraceId", httpContext.TraceIdentifier);
         diagnosticContext.Set("ClientIp", httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");

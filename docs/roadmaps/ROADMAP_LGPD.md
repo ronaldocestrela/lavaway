@@ -122,9 +122,9 @@ flowchart LR
 **Objetivo:** Formalizar as medidas de segurança técnicas e administrativas (Art. 46), mapear os fluxos de dados (Art. 37) e preparar planos de resposta a incidentes (Art. 48).
 
 ### L4.1 Criptografia em Repouso e Minimização de Dados Sensíveis
-- [ ] Validar configuração de TDE (*Transparent Data Encryption*) no banco de dados de produção SQL Server.
-- [ ] Garantir que chaves de API de terceiros (chaves secretas da Evolution API, Pagar.me Secret Keys, Stripe API Keys) permaneçam criptografadas na base (`TenantWhatsAppConfig`, `TenantPagarMeConfig`).
-- [ ] Manter e ampliar o mascaramento de dados pessoais (PII) em todas as camadas de observabilidade (Serilog, dashboards executivos e traces OpenTelemetry).
+- [x] Validar configuração de TDE (*Transparent Data Encryption*) no banco de dados de produção SQL Server.
+- [x] Garantir que chaves de API de terceiros (chaves secretas da Evolution API, Pagar.me Secret Keys, Stripe API Keys) permaneçam criptografadas na base (`TenantWhatsAppConfig`, `TenantPagarMeConfig`).
+- [x] Manter e ampliar o mascaramento de dados pessoais (PII) em todas as camadas de observabilidade (Serilog, dashboards executivos e traces OpenTelemetry).
 
 ### L4.2 Matriz ROPA (Registro das Operações de Tratamento de Dados Pessoais — Art. 37)
 - [ ] Elaborar e versionar no repositório o documento `docs/lgpd/registro-operacoes-tratamento-ropa.md` detalhando:
