@@ -51,7 +51,8 @@ flowchart TD
 ### 1.3 Encarregado pelo Tratamento de Dados Pessoais (DPO)
 * **Canal Centralizado:** `privacidade@lavaway.com.br`  
 * **Playbook Operacional:** [playbook-dpo-respostas-titulares.md](file:///home/rony/LPR/lavaway/docs/lgpd/playbook-dpo-respostas-titulares.md)  
-* **Atribuições:** Art. 41 da LGPD, mediação com titulares, comunicação com a ANPD e monitoramento de conformidade do monólito modular.
+* **Plano de Resposta a Incidentes:** [plano-resposta-incidentes-seguranca.md](file:///home/rony/LPR/lavaway/docs/lgpd/plano-resposta-incidentes-seguranca.md)  
+* **Atribuições:** Art. 41 e 48 da LGPD, mediação com titulares, comunicação com a ANPD e monitoramento de conformidade do monólito modular.
 
 ---
 

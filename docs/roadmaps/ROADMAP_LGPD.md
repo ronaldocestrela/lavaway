@@ -135,7 +135,7 @@ flowchart LR
   - Prazos de retenção definidos.
 
 ### L4.3 Plano de Resposta a Incidentes de Segurança com Dados Pessoais (Art. 48)
-- [ ] Criar o manual de contingência `docs/lgpd/plano-resposta-incidentes-seguranca.md`:
+- [x] Criar o manual de contingência [plano-resposta-incidentes-seguranca.md](file:///home/rony/LPR/lavaway/docs/lgpd/plano-resposta-incidentes-seguranca.md):
   - Procedimentos de contenção imediata de vazamentos.
   - Critérios de avaliação de risco e gravidade aos titulares.
   - Fluxo de notificação compulsória à ANPD (Autoridade Nacional de Proteção de Dados) e aos estabelecimentos afetados dentro do prazo regulamentar.
