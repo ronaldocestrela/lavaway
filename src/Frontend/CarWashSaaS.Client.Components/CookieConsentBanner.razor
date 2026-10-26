@@ -1,0 +1,187 @@
+@using CarWashSaaS.Client.Core
+@inject ICookieConsentService ConsentService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@if (!_isLoading && !_hasDecided)
+{
+    <aside class="cookie-banner-host" role="dialog" aria-modal="false" aria-label="Aviso de Privacidade e Cookies" id="cookie-consent-banner">
+        <div class="cookie-banner-container">
+            <div class="cookie-banner-header">
+                <div class="cookie-banner-badge">
+                    <span class="cookie-badge-icon" aria-hidden="true">🍪</span>
+                    <span class="cookie-badge-text">Privacidade &amp; Cookies — LGPD</span>
+                </div>
+                <button type="button" 
+                        class="cookie-btn-dismiss" 
+                        @onclick="RejectNonEssentialAsync" 
+                        aria-label="Fechar e manter apenas necessários"
+                        title="Fechar e manter apenas necessários">
+                    ✕
+                </button>
+            </div>
+
+            <div class="cookie-banner-body">
+                <p class="cookie-banner-text">
+                    Utilizamos cookies estritamente necessários para manter sua sessão segura e, com a sua autorização expressa, 
+                    cookies analíticos (<strong>Google Analytics</strong>) para aferir métricas de desempenho e usabilidade da plataforma, 
+                    nos termos da <strong>LGPD (Lei nº 13.709/2018)</strong>. Dados sensíveis e dados de clientes finais (como placas e telefones) 
+                    <strong>nunca</strong> são enviados a ferramentas de analytics.
+                </p>
+                <div class="cookie-banner-links">
+                    <a href="privacidade#cookies-storage" class="cookie-link">Como tratamos seus dados (Política de Privacidade)</a>
+                    <span class="cookie-link-separator">•</span>
+                    <a href="termos" class="cookie-link">Termos de Uso</a>
+                </div>
+            </div>
+
+            @if (_showCustomize)
+            {
+                <div class="cookie-customize-panel" id="cookie-customize-panel">
+                    <h4 class="cookie-customize-title">Gerenciar Categorias de Cookies</h4>
+                    
+                    <div class="cookie-category-item">
+                        <div class="cookie-category-info">
+                            <span class="cookie-category-name">1. Cookies Estritamente Necessários</span>
+                            <span class="cookie-category-desc">Essenciais para autenticação, isolamento de sessão, segurança anti-CSRF e tokens JWT. Não podem ser desativados.</span>
+                        </div>
+                        <div class="cookie-category-action">
+                            <span class="cookie-always-active-badge">Sempre Ativo</span>
+                        </div>
+                    </div>
+
+                    <div class="cookie-category-item">
+                        <div class="cookie-category-info">
+                            <label for="chk-cookie-analytics" class="cookie-category-name">2. Cookies Analíticos (Google Analytics)</label>
+                            <span class="cookie-category-desc">Métricas agregadas e anônimas de visualizações de páginas e tráfego da plataforma com IP ofuscado (ID: <code>G-FCCZJVXZG9</code>).</span>
+                        </div>
+                        <div class="cookie-category-action">
+                            <label class="cookie-switch-label">
+                                <input type="checkbox" 
+                                       id="chk-cookie-analytics" 
+                                       class="cookie-checkbox"
+                                       @bind="_analyticsChecked" />
+                                <span class="cookie-switch-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="cookie-banner-actions">
+                <div class="cookie-actions-primary">
+                    <button type="button" 
+                            id="btn-cookie-accept-all" 
+                            class="btn-cookie-primary" 
+                            @onclick="AcceptAllAsync">
+                        Aceitar Todos
+                    </button>
+                    <button type="button" 
+                            id="btn-cookie-reject" 
+                            class="btn-cookie-secondary" 
+                            @onclick="RejectNonEssentialAsync">
+                        Apenas Necessários
+                    </button>
+                </div>
+
+                <div class="cookie-actions-secondary">
+                    <button type="button" 
+                            id="btn-cookie-customize" 
+                            class="btn-cookie-tertiary" 
+                            @onclick="ToggleCustomize">
+                        @(_showCustomize ? "Ocultar Preferências" : "Personalizar Escolhas")
+                    </button>
+
+                    @if (_showCustomize)
+                    {
+                        <button type="button" 
+                                id="btn-cookie-save-custom" 
+                                class="btn-cookie-save" 
+                                @onclick="SaveCustomAsync">
+                            Salvar Preferências
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </aside>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _hasDecided;
+    private bool _showCustomize;
+    private bool _analyticsChecked;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ConsentService.OnConsentChanged += HandleConsentChanged;
+
+        try
+        {
+            var consent = await ConsentService.GetConsentAsync();
+            if (consent != null)
+            {
+                _hasDecided = true;
+                _analyticsChecked = consent.Analytics;
+            }
+            else
+            {
+                _hasDecided = false;
+                _analyticsChecked = false;
+            }
+        }
+        catch
+        {
+            _hasDecided = false;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task AcceptAllAsync()
+    {
+        _analyticsChecked = true;
+        await ConsentService.SaveConsentAsync(true);
+        _hasDecided = true;
+    }
+
+    private async Task RejectNonEssentialAsync()
+    {
+        _analyticsChecked = false;
+        await ConsentService.SaveConsentAsync(false);
+        _hasDecided = true;
+    }
+
+    private void ToggleCustomize()
+    {
+        _showCustomize = !_showCustomize;
+    }
+
+    private async Task SaveCustomAsync()
+    {
+        await ConsentService.SaveConsentAsync(_analyticsChecked);
+        _hasDecided = true;
+    }
+
+    private void HandleConsentChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            var consent = await ConsentService.GetConsentAsync();
+            if (consent != null)
+            {
+                _hasDecided = true;
+                _analyticsChecked = consent.Analytics;
+            }
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        ConsentService.OnConsentChanged -= HandleConsentChanged;
+    }
+}

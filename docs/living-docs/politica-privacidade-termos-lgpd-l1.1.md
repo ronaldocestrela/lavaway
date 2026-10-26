@@ -74,18 +74,48 @@ sequenceDiagram
 
 | Componente | Rota | Layout | Papel Principal |
 | :--- | :--- | :--- | :--- |
-| **`PrivacyPolicyPage.razor`** | `/privacidade`, `/privacy` | `LandingLayout` | Apresenta a política completa de privacidade, distinção Controladora/Operadora, bases legais (Art. 7º), retenção/descarte, ausência de cookies invasivos, uso do `LocalStorageTokenStorage` e canal do DPO. |
+| **`PrivacyPolicyPage.razor`** | `/privacidade`, `/privacy` | `LandingLayout` | Apresenta a política completa de privacidade, distinção Controladora/Operadora, bases legais (Art. 7º), retenção/descarte, governança do Google Analytics (`G-FCCZJVXZG9`), painel interativo de revogação de consentimento (Art. 8º, § 5º), `LocalStorageTokenStorage` e canal do DPO. |
 | **`TermsOfServicePage.razor`** | `/termos`, `/terms` | `LandingLayout` | Detalha as condições gerais de licenciamento SaaS, deveres éticos no WhatsApp, responsabilidades do lojista, SLA, faturamento, rescisão e foro. |
+| **`CookieConsentBanner.razor`** | Global (`App.razor`) | Global | Banner flutuante responsivo de consentimento prévio nos termos da LGPD com opções "Aceitar Todos", "Apenas Necessários" e "Personalizar Escolhas", integrando Google Consent Mode v2. |
 | **`Home.razor` (Footer)** | `/` | `LandingLayout` | Atualizado com links navegáveis e estilizados para `/termos`, `/privacidade` e link direto para o e-mail do DPO. |
 
 ---
 
-## 4. Matriz de Testes Executáveis (bUnit & TDD)
+## 4. Governança de Cookies e Google Analytics (Consent Mode v2)
 
-Os testes automatizados em `tests/Frontend/ComponentTests/CarWashSaaS.ComponentTests/PrivacyAndTermsComponentTests.cs` garantem:
+Em estrita consonância com a LGPD (Lei nº 13.709/2018) e a [ADR-0029](../architecture/ADR-0029-google-analytics-e-consent-mode-lgpd.md):
+
+```mermaid
+flowchart TD
+    Visitor["Visitante / Usuário"] --> FirstLoad["Primeiro Acesso ao Sistema"]
+    FirstLoad --> InitDenied["Consent Mode v2: analytics_storage='denied' (Bloqueio Preventivo)"]
+    InitDenied --> Banner["Exibição do CookieConsentBanner"]
+    
+    Banner -->|Clica em 'Aceitar Todos'| Grant["Salva lavaway_cookie_consent_v1 (Analytics=true)"]
+    Grant --> UpdateGranted["gtag consent update: analytics_storage='granted' + PageView"]
+    
+    Banner -->|Clica em 'Apenas Necessários'| Deny["Salva lavaway_cookie_consent_v1 (Analytics=false)"]
+    Deny --> StayDenied["Mantém analytics_storage='denied'"]
+    
+    Visitor -.->|Acessa /privacidade| PrivacyPanel["Painel Interativo de Gestão de Cookies"]
+    PrivacyPanel -->|Clica em Revogar| Revoke["Revogação Imediata (Art. 8º, § 5º LGPD)"]
+    Revoke --> UpdateDenied["gtag consent update: analytics_storage='denied'"]
+```
+
+---
+
+## 5. Matriz de Testes Executáveis (bUnit & TDD)
+
+Os testes automatizados em `tests/Frontend/ComponentTests/CarWashSaaS.ComponentTests/` garantem:
 
 1. **`PrivacyPolicyPage_ShouldNotHaveAuthorizeAttribute_AndShouldBePubliclyAccessible`**: Valida que a página não possui `[Authorize]`, sendo acessível por visitantes anônimos.
 2. **`TermsOfServicePage_ShouldNotHaveAuthorizeAttribute_AndShouldBePubliclyAccessible`**: Valida que a página de termos é 100% pública.
-3. **`PrivacyPolicyPage_ShouldRenderCompleteLgpdContent_WithDpoAndRoles`**: Valida a presença de todos os requisitos regulatórios (Controladora, Operadora, Art. 7º, Art. 18, `LocalStorageTokenStorage` e e-mail `privacidade@lavaway.com.br`).
+3. **`PrivacyPolicyPage_ShouldRenderCompleteLgpdContent_WithDpoAndRoles`**: Valida a presença de todos os requisitos regulatórios (Controladora, Operadora, Art. 7º, Art. 18, `LocalStorageTokenStorage`, e-mail do DPO, disclosure do Google Analytics `G-FCCZJVXZG9` e Google Consent Mode v2).
 4. **`TermsOfServicePage_ShouldRenderCompleteClauses_WithB2bResponsibilities`**: Valida cláusulas contratuais B2B, regras de WhatsApp, planos, propriedade intelectual e legislação brasileira.
 5. **`HomePage_Footer_ShouldContainNavigableLinksToPrivacyAndTerms`**: Valida que o rodapé da landing page contém links ativos e corretos para Termos e Privacidade.
+6. **`CookieConsentBanner_WhenUserHasNotDecided_ShouldRenderBannerWithLgpdOptions`**: Valida a renderização inicial do banner com as opções da LGPD quando o titular não se manifestou.
+7. **`CookieConsentBanner_WhenUserClicksAcceptAll_ShouldGrantConsentAndHideBanner`**: Valida que o clique em "Aceitar Todos" persiste consentimento com `Analytics = true` e oculta o banner.
+8. **`CookieConsentBanner_WhenUserClicksNecessaryOnly_ShouldDenyAnalyticsAndHideBanner`**: Valida a preservação de privacidade ao optar apenas por necessários.
+9. **`CookieConsentBanner_WhenCustomizing_CanToggleAnalyticsAndSave`**: Valida a seleção granular por categoria e salvamento de preferências.
+10. **`PrivacyPolicyPage_WhenTogglingConsent_ShouldUpdateCookieConsentState`**: Valida a revogação e reativação dinâmica do consentimento diretamente na página de política de privacidade.
+

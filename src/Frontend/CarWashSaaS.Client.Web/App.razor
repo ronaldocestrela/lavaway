@@ -28,5 +28,44 @@
         </Found>
     </Router>
     <ToastContainer />
+    <CookieConsentBanner />
 </CascadingAuthenticationState>
+
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject ICookieConsentService CookieConsent
+@implements IDisposable
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = TrackPageViewAsync(e.Location);
+    }
+
+    private async Task TrackPageViewAsync(string url)
+    {
+        try
+        {
+            var consent = await CookieConsent.GetConsentAsync();
+            if (consent?.Analytics == true)
+            {
+                await JSRuntime.InvokeVoidAsync("lavawayAnalytics.trackPageView", url, "");
+            }
+        }
+        catch
+        {
+            // Silencioso em testes ou se o runtime JS estiver indisponível
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+}
 

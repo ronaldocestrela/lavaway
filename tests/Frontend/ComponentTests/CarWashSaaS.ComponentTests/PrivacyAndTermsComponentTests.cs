@@ -69,6 +69,12 @@ public sealed class PrivacyAndTermsComponentTests : BunitContext
         Assert.Null(authAttr);
     }
 
+    public PrivacyAndTermsComponentTests()
+    {
+        Services.AddSingleton<ICookieConsentService>(new InMemoryCookieConsentService());
+        Services.AddSingleton<IToastService>(new ToastService());
+    }
+
     [Fact]
     public void PrivacyPolicyPage_ShouldRenderCompleteLgpdContent_WithDpoAndRoles()
     {
@@ -92,6 +98,12 @@ public sealed class PrivacyAndTermsComponentTests : BunitContext
         // Cookies e LocalStorageTokenStorage
         Assert.Contains("LocalStorageTokenStorage", cut.Markup);
         Assert.Contains("Cookies", cut.Markup);
+
+        // Google Analytics com Consent Mode v2 (LGPD)
+        Assert.Contains("G-FCCZJVXZG9", cut.Markup);
+        Assert.Contains("Google Analytics", cut.Markup);
+        Assert.Contains("Consent Mode v2", cut.Markup);
+        Assert.Contains("Gerenciamento de Consentimento de Cookies", cut.Markup);
 
         // Canal do DPO / Encarregado (Art. 41)
         Assert.Contains("privacidade@lavaway.com.br", cut.Markup);

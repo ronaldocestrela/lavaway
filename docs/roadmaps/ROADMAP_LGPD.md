@@ -65,6 +65,15 @@ flowchart LR
 - [x] Criar modelo de resposta padrão para requisições de titulares recebidas via canal oficial ([playbook-dpo-respostas-titulares.md](file:///home/rony/LPR/lavaway/docs/lgpd/playbook-dpo-respostas-titulares.md)).
 - [x] Disponibilizar página pública e responsiva do Canal do DPO (`/dpo` e `/canal-dpo`) com acionamento estruturado dos direitos do Art. 18.
 
+### L1.3 Governança de Cookies e Google Analytics com Consent Mode v2 (Art. 7º, I e Art. 8º, § 5º)
+- [x] Implementação da tag oficial do Google Analytics (`G-FCCZJVXZG9`) em [index.html](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Web/wwwroot/index.html) integrado com o **Google Consent Mode v2** (bloqueio preventivo nativo com `analytics_storage: 'denied'` por padrão).
+- [x] Habilitação compulsória do parâmetro de anonimização de IP (`anonymize_ip: true`) e política estrita de não compartilhamento de dados operacionais (placas, nomes, telefones).
+- [x] Criação do banner flutuante responsivo [CookieConsentBanner.razor](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Components/CookieConsentBanner.razor) com opções transparentes de "Aceitar Todos", "Apenas Necessários" e "Personalizar Escolhas".
+- [x] Arquitetura desacoplada com [ICookieConsentService](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Core/ICookieConsentService.cs) em `Client.Core` e [LocalStorageCookieConsentService](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Web/LocalStorageCookieConsentService.cs) em `Client.Web`.
+- [x] Painel interativo de gestão e revogação dinâmica do consentimento na seção 4 de [PrivacyPolicyPage.razor](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Web/Pages/PrivacyPolicyPage.razor).
+- [x] Rastreamento preciso de navegação em SPA no Blazor WASM em [App.razor](file:///home/rony/LPR/lavaway/src/Frontend/CarWashSaaS.Client.Web/App.razor) condicionado à autorização expressa.
+- [x] Documentação arquitetural na [ADR-0029](file:///home/rony/LPR/lavaway/docs/architecture/ADR-0029-google-analytics-e-consent-mode-lgpd.md) e suíte de testes de componentes [CookieConsentComponentTests.cs](file:///home/rony/LPR/lavaway/tests/Frontend/ComponentTests/CarWashSaaS.ComponentTests/CookieConsentComponentTests.cs).
+
 ---
 
 ## Fase L2: Atendimento aos Direitos dos Titulares (DSR — Data Subject Requests)

@@ -47,6 +47,77 @@
     <link rel="stylesheet" href="css/design-system.css" />
     <script type="importmap"></script>
 
+    <!-- Google tag (gtag.js) com Consent Mode v2 (LGPD - Lei nº 13.709/2018) -->
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+
+        // LGPD: Por padrão, o rastreamento analítico e publicitário é estritamente negado ('denied')
+        // até manifestação livre, informada e inequívoca do titular via banner de consentimento.
+        (function() {
+            var consentState = 'denied';
+            try {
+                var stored = localStorage.getItem('lavaway_cookie_consent_v1');
+                if (stored) {
+                    var parsed = JSON.parse(stored);
+                    if (parsed && (parsed.Analytics === true || parsed.analytics === true)) {
+                        consentState = 'granted';
+                    }
+                }
+            } catch (e) {}
+
+            gtag('consent', 'default', {
+                'analytics_storage': consentState,
+                'ad_storage': 'denied',
+                'ad_user_data': 'denied',
+                'ad_personalization': 'denied',
+                'wait_for_update': 500
+            });
+        })();
+
+        gtag('js', new Date());
+        gtag('config', 'G-FCCZJVXZG9', {
+            'anonymize_ip': true
+        });
+
+        // Interop global para governança LGPD e rastreamento em SPA
+        window.lavawayAnalytics = {
+            updateConsent: function (analyticsGranted) {
+                try {
+                    gtag('consent', 'update', {
+                        'analytics_storage': analyticsGranted ? 'granted' : 'denied'
+                    });
+                    if (analyticsGranted) {
+                        gtag('event', 'page_view', {
+                            page_path: window.location.pathname + window.location.search,
+                            page_title: document.title
+                        });
+                    }
+                } catch (err) {
+                    console.warn('Erro ao atualizar consentimento do Google Analytics:', err);
+                }
+            },
+            trackPageView: function (url, title) {
+                try {
+                    gtag('event', 'page_view', {
+                        page_path: url || (window.location.pathname + window.location.search),
+                        page_title: title || document.title
+                    });
+                } catch (err) {
+                    console.warn('Erro ao rastrear pageview:', err);
+                }
+            },
+            trackEvent: function (eventName, eventParams) {
+                try {
+                    gtag('event', eventName, eventParams || {});
+                } catch (err) {
+                    console.warn('Erro ao registrar evento analytics:', err);
+                }
+            }
+        };
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FCCZJVXZG9"></script>
+
     <!-- Schema.org / Dados Estruturados em JSON-LD (SEO e IAs) -->
     <script type="application/ld+json">
     {

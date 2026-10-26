@@ -60,6 +60,7 @@ else
 var authority = builder.Configuration["Authentication:Authority"];
 
 builder.Services.AddScoped<ITokenStorage, LocalStorageTokenStorage>();
+builder.Services.AddScoped<ICookieConsentService, LocalStorageCookieConsentService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddScoped<JwtAuthorizationMessageHandler>();

@@ -1,6 +1,9 @@
 @page "/privacidade"
 @page "/privacy"
 @layout LandingLayout
+@inject ICookieConsentService ConsentService
+@inject IToastService ToastService
+@implements IDisposable
 
 <PageTitle>Política de Privacidade e LGPD | Lava Aê</PageTitle>
 
@@ -170,13 +173,13 @@
 
                 <!-- 4. COOKIES E LOCAL STORAGE -->
                 <section id="cookies-storage" class="legal-section">
-                    <h2 class="section-title">4. Política de Cookies e Armazenamento Técnico</h2>
+                    <h2 class="section-title">4. Política de Cookies, Armazenamento Técnico e Google Analytics</h2>
                     <div class="callout callout-info">
                         <strong>Transparência Máxima:</strong> A plataforma Lava Aê <strong>NÃO</strong> comercializa dados pessoais
-                        e <strong>NÃO</strong> utiliza cookies de terceiros para rastreamento publicitário ou criação de perfis comportamentais.
+                        e <strong>NÃO</strong> utiliza cookies de terceiros para rastreamento publicitário ou criação de perfis comportamentais invasivos.
                     </div>
                     <p>
-                        Para o correto funcionamento do sistema em navegadores modernos, utilizamos mecanismos de armazenamento estritamente necessários:
+                        Para o correto funcionamento do sistema em navegadores modernos e a aferição de métricas essenciais de usabilidade, utilizamos mecanismos categorizados com transparência:
                     </p>
                     <ul class="legal-list">
                         <li>
@@ -185,10 +188,80 @@
                             Essa informação é estritamente técnica e indispensável para manter a sessão conectada entre recarregamentos de página.
                         </li>
                         <li>
+                            <strong>Registro de Consentimento Local (<code>lavaway_cookie_consent_v1</code>):</strong> Armazena localmente a escolha
+                            expressa do usuário quanto ao uso de cookies analíticos, garantindo que suas preferências sejam respeitadas a cada visita.
+                        </li>
+                        <li>
                             <strong>Cookies de Sessão Técnica:</strong> Pequenos identificadores temporários utilizados para balanceamento de carga
                             e segurança de cabeçalhos anti-falsificação (CSRF), excluídos automaticamente ao encerrar a navegação.
                         </li>
+                        <li>
+                            <strong>Google Analytics (ID da Propriedade: <code>G-FCCZJVXZG9</code>):</strong> Utilizado estritamente para métricas
+                            agregadas de navegação, velocidade e volume de visitantes na landing page e áreas públicas.
+                            Operamos sob o <strong>Google Consent Mode v2</strong> com bloqueio preventivo compulsório: os cookies analíticos permanecem
+                            <strong>desativados por padrão</strong> até que você decida livremente aceitá-los. Além disso, a anonimização de endereço IP
+                            (<code>anonymize_ip: true</code>) está permanentemente habilitada e <strong>nenhum</strong> dado operacional de clientes finais
+                            (como placas de veículos, nomes ou telefones) é encaminhado ao Google Analytics.
+                        </li>
                     </ul>
+
+                    <!-- Painel Interativo de Gestão de Cookies (Art. 8º, § 5º da LGPD) -->
+                    <div class="cookie-management-card" id="cookie-preferences-panel">
+                        <div class="cookie-management-header">
+                            <div>
+                                <h3 class="cookie-management-title">
+                                    <span aria-hidden="true">🛡️</span>
+                                    <span>Gerenciamento de Consentimento de Cookies (LGPD)</span>
+                                </h3>
+                                <p class="cookie-management-sub">
+                                    Conforme o Art. 8º, § 5º da LGPD, você pode revogar ou alterar sua autorização a qualquer momento sem custos.
+                                </p>
+                            </div>
+                            <div>
+                                @if (_currentConsent?.Analytics == true)
+                                {
+                                    <span class="cookie-status-badge active">
+                                        <span class="status-dot"></span>
+                                        Cookies Analíticos: ATIVOS
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="cookie-status-badge inactive">
+                                        <span class="status-dot"></span>
+                                        Cookies Analíticos: DESATIVADOS
+                                    </span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="cookie-management-body">
+                            <p class="cookie-management-desc">
+                                @if (_currentConsent?.Analytics == true)
+                                {
+                                    <span>Os cookies do Google Analytics estão autorizados em seu navegador. Você pode revogar essa concessão imediatamente clicando no botão abaixo:</span>
+                                }
+                                else
+                                {
+                                    <span>Os cookies do Google Analytics estão desativados. Nenhuma métrica analítica de sua navegação está sendo coletada. Você pode optar por ativá-los se desejar contribuir com melhorias contínuas de desempenho na plataforma:</span>
+                                }
+                            </p>
+
+                            <button type="button" 
+                                    id="btn-toggle-analytics-consent"
+                                    class="btn-toggle-cookie @(_currentConsent?.Analytics == true ? "revoke" : "activate")"
+                                    @onclick="ToggleAnalyticsConsentAsync">
+                                @if (_currentConsent?.Analytics == true)
+                                {
+                                    <span>🚫 Revogar Consentimento (Desativar Analytics)</span>
+                                }
+                                else
+                                {
+                                    <span>✓ Habilitar Cookies Analíticos (Google Analytics)</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- 5. RETENÇÃO E DESCARTE -->
@@ -324,3 +397,57 @@
         </div>
     </footer>
 </div>
+
+@code {
+    private CookieConsentPreference? _currentConsent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ConsentService.OnConsentChanged += RefreshConsentState;
+        await LoadConsentStateAsync();
+    }
+
+    private async Task LoadConsentStateAsync()
+    {
+        try
+        {
+            _currentConsent = await ConsentService.GetConsentAsync();
+        }
+        catch
+        {
+            _currentConsent = null;
+        }
+    }
+
+    private async Task ToggleAnalyticsConsentAsync()
+    {
+        var targetState = !(_currentConsent?.Analytics == true);
+        await ConsentService.SaveConsentAsync(targetState);
+        _currentConsent = await ConsentService.GetConsentAsync();
+
+        if (targetState)
+        {
+            ToastService.ShowSuccess("Cookies analíticos (Google Analytics) foram ativados.", "Preferência Salva");
+        }
+        else
+        {
+            ToastService.ShowInfo("Consentimento revogado. Cookies analíticos do Google Analytics foram desativados.", "Consentimento Revogado");
+        }
+
+        StateHasChanged();
+    }
+
+    private void RefreshConsentState()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadConsentStateAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        ConsentService.OnConsentChanged -= RefreshConsentState;
+    }
+}
