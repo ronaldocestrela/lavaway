@@ -112,8 +112,8 @@ flowchart LR
 - [x] Permitir configuração de retenção por tenant nas configurações avançadas da loja (com teto máximo permitido de 365 dias).
 
 ### L3.2 Higienização de Payloads Brutos de Webhooks e Logs Transitórios
-- [ ] Criar rotina programada de expurgo de payloads brutos em tabelas de auditoria de webhooks de gateways de pagamento (`BillingWebhookEvents` do Pagar.me e Stripe) e WhatsApp após 60 dias.
-- [ ] Manter apenas metadados agregados, ID da transação, valor e status, descartando payloads brutos com dados de endereço, IP ou titular de cartão.
+- [x] Criar rotina programada de expurgo de payloads brutos em tabelas de auditoria de webhooks de gateways de pagamento (`BillingWebhookEvents` do Pagar.me e Stripe) e WhatsApp após 60 dias.
+- [x] Manter apenas metadados agregados, ID da transação, valor e status, descartando payloads brutos com dados de endereço, IP ou titular de cartão.
 
 ---
 

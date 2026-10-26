@@ -235,6 +235,9 @@ builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReadyNotificatio
 builder.Services.AddScoped<ITenantQueueMessageHandler, WorkOrderReceiptNotificationQueueHandler>();
 builder.Services.AddHostedService<WhatsAppHealthMonitoringHostedService>();
 builder.Services.AddHostedService<InspectionPhotoRetentionHostedService>();
+builder.Services.AddScoped<BillingWebhookPurgeApplicationService>();
+builder.Services.AddScoped<WhatsAppTransientDataPurgeApplicationService>();
+builder.Services.AddHostedService<TransientDataRetentionHostedService>();
 
 builder.Services.AddDbContext<TenantsDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "tenants")));

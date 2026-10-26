@@ -310,7 +310,8 @@ public sealed class PixBillingApplicationService(
                     payload.EventId,
                     matchedTxId ?? paymentReference ?? string.Empty,
                     "Ignored",
-                    notes: $"Status não aprovado ({payload.Status}).");
+                    notes: $"Status não aprovado ({payload.Status}).",
+                    rawPayload: payload.RawPayload);
 
                 if (ignoredRecord.IsSuccess)
                 {
@@ -410,7 +411,8 @@ public sealed class PixBillingApplicationService(
                 charge.TxId,
                 "Processed",
                 payload.RawPayload != null ? (payload.RawPayload.Length > 120 ? payload.RawPayload[..120] : payload.RawPayload) : null,
-                $"Pagamento Pix conciliado com sucesso para OS {charge.WorkOrderId}.");
+                $"Pagamento Pix conciliado com sucesso para OS {charge.WorkOrderId}.",
+                rawPayload: payload.RawPayload);
 
             if (processedRecord.IsSuccess)
             {

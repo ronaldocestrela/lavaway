@@ -21,6 +21,16 @@ public sealed class ProcessedSaasWebhookEventRepository(BillingDbContext dbConte
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ProcessedSaasWebhookEvent>> GetEligibleForPayloadPurgeAsync(DateTimeOffset cutoffUtc, int batchSize = 100, CancellationToken ct = default)
+    {
+        return await dbContext.ProcessedSaasWebhookEvents
+            .IgnoreQueryFilters()
+            .Where(e => !e.IsPurged && e.ReceivedAtUtc <= cutoffUtc && e.RawPayload != null)
+            .OrderBy(e => e.ReceivedAtUtc)
+            .Take(batchSize)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(ProcessedSaasWebhookEvent webhookEvent, CancellationToken ct = default)
     {
         await dbContext.ProcessedSaasWebhookEvents.AddAsync(webhookEvent, ct);

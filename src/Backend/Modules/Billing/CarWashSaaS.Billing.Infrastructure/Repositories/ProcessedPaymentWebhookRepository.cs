@@ -23,6 +23,14 @@ public sealed class ProcessedPaymentWebhookRepository(BillingDbContext dbContext
             .OrderByDescending(w => w.ReceivedAtUtc)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<ProcessedPaymentWebhook>> GetEligibleForPayloadPurgeAsync(DateTimeOffset cutoffUtc, int batchSize = 100, CancellationToken ct = default) =>
+        await dbContext.ProcessedPaymentWebhooks
+            .IgnoreQueryFilters()
+            .Where(w => !w.IsPurged && w.ReceivedAtUtc <= cutoffUtc && w.RawPayload != null)
+            .OrderBy(w => w.ReceivedAtUtc)
+            .Take(batchSize)
+            .ToListAsync(ct);
+
     public async Task AddAsync(ProcessedPaymentWebhook webhook, CancellationToken ct = default) =>
         await dbContext.ProcessedPaymentWebhooks.AddAsync(webhook, ct);
 

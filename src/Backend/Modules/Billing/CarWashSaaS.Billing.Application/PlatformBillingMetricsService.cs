@@ -117,7 +117,9 @@ public sealed class PlatformBillingMetricsService(
                 PayloadHash: null,
                 Notes: null,
                 ReceivedAtUtc: sw.ReceivedAtUtc,
-                ProcessedAtUtc: sw.ReceivedAtUtc));
+                ProcessedAtUtc: sw.ReceivedAtUtc,
+                IsPurged: sw.IsPurged,
+                PurgedAtUtc: sw.PurgedAtUtc));
         }
 
         foreach (var pw in paymentWebhooks)
@@ -133,7 +135,9 @@ public sealed class PlatformBillingMetricsService(
                 PayloadHash: pw.PayloadHash,
                 Notes: pw.Notes,
                 ReceivedAtUtc: pw.ReceivedAtUtc,
-                ProcessedAtUtc: pw.ProcessedAtUtc));
+                ProcessedAtUtc: pw.ProcessedAtUtc,
+                IsPurged: pw.IsPurged,
+                PurgedAtUtc: pw.PurgedAtUtc));
         }
 
         var filtered = logs.AsEnumerable();

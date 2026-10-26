@@ -252,6 +252,18 @@ public sealed class OutboundWhatsAppMessage : IMustHaveTenant
         return Result<OutboundWhatsAppMessage>.Success(this);
     }
 
+    public Result PurgeTransientMedia(DateTimeOffset purgedAtUtc)
+    {
+        if (string.IsNullOrWhiteSpace(MediaUrlOrBase64))
+        {
+            return Result.Success();
+        }
+
+        MediaUrlOrBase64 = null;
+        UpdatedAt = purgedAtUtc;
+        return Result.Success();
+    }
+
     public static string CleanPhoneNumber(string phone)
     {
         var digits = new string(phone.Where(char.IsDigit).ToArray());

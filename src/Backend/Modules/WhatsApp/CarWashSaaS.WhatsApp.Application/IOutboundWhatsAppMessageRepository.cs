@@ -12,6 +12,8 @@ public interface IOutboundWhatsAppMessageRepository
         Task.FromResult<IReadOnlyList<OutboundWhatsAppMessage>>([]);
     Task<IReadOnlyList<OutboundWhatsAppMessage>> GetByRecipientPhoneAsync(Guid tenantId, string recipientPhone, int limit = 50, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<OutboundWhatsAppMessage>>([]);
+    Task<IReadOnlyList<OutboundWhatsAppMessage>> GetEligibleForMediaPurgeAsync(DateTimeOffset cutoffUtc, int batchSize = 100, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<OutboundWhatsAppMessage>>([]);
     Task AddAsync(OutboundWhatsAppMessage message, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -74,6 +74,64 @@ public static class PlatformObservabilityEndpoints
                 : Results.BadRequest(new { result.Error!.Code, result.Error.Description });
         });
 
+        group.MapPost("/observability/webhooks/retention/run", async (
+            int? retentionDays,
+            CarWashSaaS.Billing.Application.BillingWebhookPurgeApplicationService billingPurgeService,
+            CarWashSaaS.WhatsApp.Application.WhatsAppTransientDataPurgeApplicationService whatsAppPurgeService,
+            CarWashSaaS.Shared.Contracts.IAuditTrailService auditTrailService,
+            HttpContext httpContext,
+            CancellationToken ct) =>
+        {
+            var effectiveDays = retentionDays ?? 60;
+            var billingResult = await billingPurgeService.PurgeOldWebhookPayloadsAsync(effectiveDays, ct);
+            if (!billingResult.IsSuccess)
+            {
+                return Results.BadRequest(new { billingResult.Error!.Code, billingResult.Error.Description });
+            }
+
+            var whatsAppResult = await whatsAppPurgeService.PurgeTransientDataAsync(effectiveDays, ct);
+            if (!whatsAppResult.IsSuccess)
+            {
+                return Results.BadRequest(new { whatsAppResult.Error!.Code, whatsAppResult.Error.Description });
+            }
+
+            var (paymentPurged, saasPurged) = billingResult.Value;
+            var (mediaPurged, sessionsPurged) = whatsAppResult.Value;
+
+            var dto = new WebhookRetentionPurgeResultDto(
+                paymentPurged,
+                saasPurged,
+                mediaPurged,
+                sessionsPurged,
+                DateTimeOffset.UtcNow);
+
+            var userIdClaim = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            Guid.TryParse(userIdClaim, out var actorId);
+            var actorEmail = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "admin@platform.lavaway";
+
+            await auditTrailService.RecordEventAsync(new RecordAuditEventRequest(
+                ActorId: actorId,
+                ActorEmail: actorEmail,
+                ActorRole: "PlatformBillingAdmin",
+                ActorRealm: "Platform",
+                Action: "Webhooks.PayloadPurgedLGPD",
+                TargetType: "WebhookAuditing",
+                TargetId: Guid.NewGuid().ToString("N"),
+                TenantId: null,
+                IpAddress: httpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent: httpContext.Request.Headers.UserAgent.ToString(),
+                DetailsJson: System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    paymentPurged,
+                    saasPurged,
+                    mediaPurged,
+                    sessionsPurged,
+                    effectiveDays
+                })), ct);
+
+            return Results.Ok(dto);
+        }).RequireAuthorization(PlatformAuthorizationPolicyNames.PlatformBillingAdmin);
+
         return app;
     }
 }

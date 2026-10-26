@@ -34,4 +34,18 @@ public sealed class ChatbotSessionRepository(WhatsAppDbContext dbContext) : ICha
         }
         await dbContext.SaveChangesAsync(ct);
     }
+
+    public async Task<int> PurgeInactiveSessionsOlderThanAsync(DateTimeOffset cutoffUtc, CancellationToken ct = default)
+    {
+        var expiredSessions = await dbContext.ChatbotSessions
+            .IgnoreQueryFilters()
+            .Where(s => (!s.IsActive || s.CurrentStep == ChatbotStep.Completed) && s.LastInteractionAtUtc <= cutoffUtc)
+            .ToListAsync(ct);
+
+        if (expiredSessions.Count == 0) return 0;
+
+        dbContext.ChatbotSessions.RemoveRange(expiredSessions);
+        await dbContext.SaveChangesAsync(ct);
+        return expiredSessions.Count;
+    }
 }

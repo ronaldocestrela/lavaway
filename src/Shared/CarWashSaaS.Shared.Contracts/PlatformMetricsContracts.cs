@@ -65,7 +65,16 @@ public sealed record PlatformWebhookLogDto(
     string? PayloadHash,
     string? Notes,
     DateTimeOffset ReceivedAtUtc,
-    DateTimeOffset? ProcessedAtUtc);
+    DateTimeOffset? ProcessedAtUtc,
+    bool IsPurged = false,
+    DateTimeOffset? PurgedAtUtc = null);
+
+public sealed record WebhookRetentionPurgeResultDto(
+    int ProcessedPaymentWebhooksPurged,
+    int ProcessedSaasWebhooksPurged,
+    int WhatsAppMessagesMediaPurged,
+    int ChatbotSessionsPurged,
+    DateTimeOffset PurgedAtUtc);
 
 public sealed record PlatformWhatsAppFailureDto(
     Guid MessageId,

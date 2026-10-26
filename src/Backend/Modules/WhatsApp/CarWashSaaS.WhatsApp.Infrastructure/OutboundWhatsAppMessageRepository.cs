@@ -63,6 +63,16 @@ public sealed class OutboundWhatsAppMessageRepository(WhatsAppDbContext dbContex
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<OutboundWhatsAppMessage>> GetEligibleForMediaPurgeAsync(DateTimeOffset cutoffUtc, int batchSize = 100, CancellationToken ct = default)
+    {
+        return await dbContext.OutboundWhatsAppMessages
+            .IgnoreQueryFilters()
+            .Where(m => m.CreatedAt <= cutoffUtc && m.MediaUrlOrBase64 != null)
+            .OrderBy(m => m.CreatedAt)
+            .Take(batchSize)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(OutboundWhatsAppMessage message, CancellationToken ct = default)
     {
         await dbContext.OutboundWhatsAppMessages.AddAsync(message, ct);

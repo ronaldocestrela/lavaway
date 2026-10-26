@@ -8,6 +8,8 @@ public interface IProcessedPaymentWebhookRepository
     Task<bool> HasBeenProcessedAsync(Guid tenantId, string provider, string eventId, CancellationToken ct = default);
     Task<IReadOnlyList<ProcessedPaymentWebhook>> ListInPeriodAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<ProcessedPaymentWebhook>>([]);
+    Task<IReadOnlyList<ProcessedPaymentWebhook>> GetEligibleForPayloadPurgeAsync(DateTimeOffset cutoffUtc, int batchSize = 100, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<ProcessedPaymentWebhook>>([]);
     Task AddAsync(ProcessedPaymentWebhook webhook, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -77,7 +77,8 @@ public sealed class SaasBillingWebhookApplicationService(
                 payload.EventId,
                 payload.EventType,
                 payload.TenantId != Guid.Empty ? payload.TenantId : Guid.Empty,
-                DateTimeOffset.UtcNow), ct);
+                DateTimeOffset.UtcNow,
+                rawPayload: rawPayload), ct);
             await processedEventsRepository.SaveChangesAsync(ct);
 
             return Result.Success();
@@ -121,7 +122,8 @@ public sealed class SaasBillingWebhookApplicationService(
                 payload.EventId,
                 payload.EventType,
                 Guid.Empty,
-                DateTimeOffset.UtcNow), ct);
+                DateTimeOffset.UtcNow,
+                rawPayload: rawPayload), ct);
             await processedEventsRepository.SaveChangesAsync(ct);
 
             return Result.Success();
@@ -152,7 +154,8 @@ public sealed class SaasBillingWebhookApplicationService(
                     payload.EventId,
                     payload.EventType,
                     tenantId,
-                    DateTimeOffset.UtcNow), ct);
+                    DateTimeOffset.UtcNow,
+                    rawPayload: rawPayload), ct);
                 await processedEventsRepository.SaveChangesAsync(ct);
 
                 return Result.Success();
@@ -322,7 +325,8 @@ public sealed class SaasBillingWebhookApplicationService(
             payload.EventId,
             payload.EventType,
             tenantId,
-            DateTimeOffset.UtcNow), ct);
+            DateTimeOffset.UtcNow,
+            rawPayload: rawPayload), ct);
 
         await subscriptionRepository.SaveChangesAsync(ct);
         await quotaUsageRepository.SaveChangesAsync(ct);

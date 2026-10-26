@@ -21,8 +21,12 @@ public sealed class ProcessedPaymentWebhookConfiguration : IEntityTypeConfigurat
         builder.Property(w => w.ProcessedAtUtc).HasColumnType("datetimeoffset").IsRequired();
         builder.Property(w => w.PayloadHash).HasMaxLength(128);
         builder.Property(w => w.Notes).HasMaxLength(500);
+        builder.Property(w => w.RawPayload);
+        builder.Property(w => w.IsPurged).IsRequired().HasDefaultValue(false);
+        builder.Property(w => w.PurgedAtUtc).HasColumnType("datetimeoffset");
 
         builder.HasIndex(w => new { w.TenantId, w.Provider, w.EventId }).IsUnique();
         builder.HasIndex(w => new { w.TenantId, w.TxId });
+        builder.HasIndex(w => new { w.IsPurged, w.ReceivedAtUtc });
     }
 }

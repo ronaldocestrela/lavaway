@@ -215,5 +215,35 @@ public sealed class OutboundWhatsAppMessageTests
         Assert.False(result2.IsSuccess);
         Assert.Equal("whatsapp.media_filename.required", result2.Error!.Code);
     }
+
+    [Fact]
+    public void PurgeTransientMedia_Should_Discard_MediaUrlOrBase64_Preserving_Message_Metadata()
+    {
+        var tenantId = Guid.NewGuid();
+        var msgResult = OutboundWhatsAppMessage.CreateWithMedia(
+            tenantId,
+            "11987654321",
+            "Segue o relatório",
+            "document",
+            "base64_data_payload_muito_longo",
+            "application/pdf",
+            "relatorio.pdf");
+        Assert.True(msgResult.IsSuccess);
+        var message = msgResult.Value!;
+        message.MarkSent("wamid_123");
+        message.MarkDelivered();
+
+        var purgeTime = DateTimeOffset.UtcNow;
+        var purgeResult = message.PurgeTransientMedia(purgeTime);
+
+        Assert.True(purgeResult.IsSuccess);
+        Assert.Null(message.MediaUrlOrBase64);
+        Assert.Equal("relatorio.pdf", message.MediaFileName);
+        Assert.Equal("application/pdf", message.MediaMimeType);
+        Assert.Equal("Segue o relatório", message.Body);
+        Assert.Equal(WhatsAppMessageStatus.Delivered, message.Status);
+        Assert.Equal("wamid_123", message.ProviderMessageId);
+    }
 }
+
 

@@ -20,6 +20,9 @@ public sealed class ProcessedPaymentWebhook : IMustHaveTenant
     public DateTimeOffset ProcessedAtUtc { get; private set; }
     public string? PayloadHash { get; private set; }
     public string? Notes { get; private set; }
+    public string? RawPayload { get; private set; }
+    public bool IsPurged { get; private set; }
+    public DateTimeOffset? PurgedAtUtc { get; private set; }
 
     private ProcessedPaymentWebhook()
     {
@@ -32,7 +35,8 @@ public sealed class ProcessedPaymentWebhook : IMustHaveTenant
         string txId,
         string status,
         string? payloadHash = null,
-        string? notes = null)
+        string? notes = null,
+        string? rawPayload = null)
     {
         if (tenantId == Guid.Empty)
         {
@@ -60,9 +64,31 @@ public sealed class ProcessedPaymentWebhook : IMustHaveTenant
             ReceivedAtUtc = DateTimeOffset.UtcNow,
             ProcessedAtUtc = DateTimeOffset.UtcNow,
             PayloadHash = string.IsNullOrWhiteSpace(payloadHash) ? null : payloadHash.Trim(),
-            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            RawPayload = string.IsNullOrWhiteSpace(rawPayload) ? null : rawPayload.Trim(),
+            IsPurged = false,
+            PurgedAtUtc = null
         };
 
         return Result<ProcessedPaymentWebhook>.Success(entry);
+    }
+
+    public Result PurgePayload(DateTimeOffset purgedAtUtc)
+    {
+        if (IsPurged)
+        {
+            return Result.Success();
+        }
+
+        RawPayload = null;
+        IsPurged = true;
+        PurgedAtUtc = purgedAtUtc;
+
+        var notice = "[Higienizado - LGPD Art. 16]";
+        Notes = string.IsNullOrWhiteSpace(Notes)
+            ? notice
+            : $"{Notes} {notice}";
+
+        return Result.Success();
     }
 }

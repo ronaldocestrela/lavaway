@@ -28,5 +28,16 @@ public sealed class ProcessedSaasWebhookEventConfiguration : IEntityTypeConfigur
 
         builder.Property(e => e.ReceivedAtUtc)
             .IsRequired();
+
+        builder.Property(e => e.RawPayload);
+
+        builder.Property(e => e.IsPurged)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(e => e.PurgedAtUtc)
+            .HasColumnType("datetimeoffset");
+
+        builder.HasIndex(e => new { e.IsPurged, e.ReceivedAtUtc });
     }
 }
