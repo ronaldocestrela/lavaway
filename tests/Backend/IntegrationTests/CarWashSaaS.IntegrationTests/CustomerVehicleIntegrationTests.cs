@@ -257,8 +257,9 @@ public sealed class CustomerVehicleIntegrationTests(SqlServerFixture fixture)
 
             var pdfResult = await exportService.ExportDossierPdfAsync(tenantId, customerId);
             Assert.True(pdfResult.IsSuccess);
+            Assert.NotNull(pdfResult.Value);
             Assert.NotEmpty(pdfResult.Value!);
-            Assert.Equal(0x25, pdfResult.Value[0]); // %PDF
+            Assert.Equal(0x25, pdfResult.Value![0]); // %PDF
         }
     }
 
