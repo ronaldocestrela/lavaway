@@ -1,3 +1,4 @@
+using CarWashSaaS.Billing.Infrastructure;
 using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Identity.Infrastructure;
@@ -6,6 +7,8 @@ using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.Tenants.Application;
 using CarWashSaaS.Tenants.Domain;
 using CarWashSaaS.Tenants.Infrastructure;
+using CarWashSaaS.WhatsApp.Infrastructure;
+using CarWashSaaS.YardOperations.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -19,6 +22,13 @@ public static class DevDatabaseSeeder
     {
         using var scope = serviceProvider.CreateScope();
         var sp = scope.ServiceProvider;
+
+        // Garantir que todas as migrations pendentes de desenvolvimento sejam aplicadas
+        await sp.GetRequiredService<TenantsDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<IdentityModuleDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<YardOperationsDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<WhatsAppDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<BillingDbContext>().Database.MigrateAsync();
 
         var configuration = sp.GetRequiredService<IConfiguration>();
         var tenantsContext = sp.GetRequiredService<TenantsDbContext>();
