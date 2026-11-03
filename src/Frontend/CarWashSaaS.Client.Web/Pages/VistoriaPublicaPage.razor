@@ -1,10 +1,10 @@
 @page "/vistoria/{TrackingToken}"
+@layout PublicLayout
 @attribute [AllowAnonymous]
 @using CarWashSaaS.Client.Core
 @using CarWashSaaS.Shared.Contracts
 @inject InspectionApiClient InspectionApi
 @inject HttpClient Http
-@inject NavigationManager Navigation
 
 <PageTitle>Laudo da Vistoria do Veículo — Lava Aê</PageTitle>
 
@@ -46,7 +46,7 @@
                     <h1 class="store-name">@_data.StoreTradeName</h1>
                     @if (!string.IsNullOrWhiteSpace(_data.StorePhone))
                     {
-                        <a href="tel:@_data.StorePhone" class="store-phone">&#128222; @_data.StorePhone</a>
+                        <span class="store-phone">&#128222; @_data.StorePhone</span>
                     }
                     @if (!string.IsNullOrWhiteSpace(_data.StoreAddress))
                     {
@@ -233,7 +233,6 @@
                         Este laudo fotográfico comprova as condições físicas em que o veículo foi entregue para os serviços contratados.
                         As fotos são armazenadas de forma segura e expurgadas automaticamente após o encerramento do prazo de retenção legal.
                     </p>
-                    <a href="/privacidade" target="_blank" class="lgpd-link">Ver Política de Privacidade &rarr;</a>
                 </div>
             </div>
             <div class="branding-footer">
