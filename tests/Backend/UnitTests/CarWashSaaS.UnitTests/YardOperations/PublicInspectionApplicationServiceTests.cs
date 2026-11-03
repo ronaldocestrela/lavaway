@@ -22,6 +22,9 @@ public sealed class PublicInspectionApplicationServiceTests
         var isInspection = clean.EndsWith("/inspection", StringComparison.OrdinalIgnoreCase);
         Assert.Equal(expected, isInspection);
     }
+
+    [Fact]
+    public void WorkOrder_Create_Should_Generate_Unique_TrackingToken()
     {
         var tenantId = Guid.NewGuid();
         var customerId = Guid.NewGuid();
