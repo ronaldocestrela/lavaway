@@ -60,6 +60,7 @@
 .column-cards-container {
     flex: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 12px;
     display: flex;
     flex-direction: column;
@@ -128,7 +129,11 @@
 
 @media (max-width: 768px) {
     .kanban-column {
-        max-height: calc(100vh - 240px);
-        max-height: calc(100dvh - 240px);
+        max-height: calc(100vh - 180px);
+        max-height: calc(100dvh - 180px);
+    }
+
+    .column-cards-container {
+        padding-bottom: 24px;
     }
 }
