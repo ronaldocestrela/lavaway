@@ -16,6 +16,15 @@ a, .btn-link {
     text-decoration: none;
 }
 
+/* Oculta o menu móvel na vistoria para que a barra de ação fixa e o botão Concluir Vistoria nunca fiquem sobrepostos */
+body:has(.bottom-action-bar) .mobile-bottom-nav {
+    display: none !important;
+}
+
+body:has(.bottom-action-bar) .page-content {
+    padding-bottom: 20px !important;
+}
+
 .btn-primary {
     color: #fff;
     background-color: #1b6ec2;

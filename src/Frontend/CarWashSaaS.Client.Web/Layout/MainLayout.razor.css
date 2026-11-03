@@ -299,6 +299,10 @@
         padding: 20px 14px calc(76px + env(safe-area-inset-bottom, 0px));
     }
 
+    .layout-inspection .page-content {
+        padding-bottom: 20px;
+    }
+
     /* Mobile Drawer */
     .mobile-drawer-backdrop {
         display: block;

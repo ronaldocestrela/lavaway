@@ -6,6 +6,23 @@ namespace CarWashSaaS.UnitTests.YardOperations;
 
 public sealed class PublicInspectionApplicationServiceTests
 {
+    [Theory]
+    [InlineData("http://localhost:5199/work-orders/0192e443-433b-72ba-97eb-3fec72c1c1f1/inspection", true)]
+    [InlineData("http://localhost:5199/work-orders/0192e443-433b-72ba-97eb-3fec72c1c1f1/inspection/", true)]
+    [InlineData("http://localhost:5199/work-orders/0192e443-433b-72ba-97eb-3fec72c1c1f1/inspection?tab=photos", true)]
+    [InlineData("http://localhost:5199/work-orders/0192e443-433b-72ba-97eb-3fec72c1c1f1/inspection#photos", true)]
+    [InlineData("http://localhost:5199/reception", false)]
+    [InlineData("http://localhost:5199/yard", false)]
+    public void IsInspectionFlow_Matching(string url, bool expected)
+    {
+        var uri = new Uri(url);
+        var baseUri = new Uri("http://localhost:5199/");
+        var relative = baseUri.MakeRelativeUri(uri).ToString();
+        var clean = Uri.UnescapeDataString(relative).Split('?')[0].Split('#')[0].TrimEnd('/');
+        var isInspection = clean.EndsWith("/inspection", StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(expected, isInspection);
+    }
+
     [Fact]
     public void WorkOrder_Create_Should_Generate_Unique_TrackingToken()
     {
