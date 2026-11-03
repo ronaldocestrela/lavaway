@@ -266,10 +266,23 @@
     background: var(--lw-color-surface);
     color: var(--lw-color-text);
     box-shadow: var(--lw-shadow-panel);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow: hidden;
 }
 
 .workspace :is(.modal-header, .modal-footer) {
     border-color: var(--lw-color-border);
+    flex-shrink: 0;
+}
+
+.workspace :is(.modal-body, .dialog-body, .gallery-modal-body) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .workspace .modal-header :is(h2, h3),
@@ -325,22 +338,36 @@
     }
 
     .workspace :is(.modal-backdrop, .dialog-backdrop, .gallery-modal-backdrop) {
-        padding: 0;
-        align-items: flex-end;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .workspace :is(.modal-dialog, .modal-content, .gallery-modal-dialog) {
         width: 100%;
-        max-width: 100%;
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 0;
-        border-top-left-radius: 16px;
-        border-top-right-radius: 16px;
-        max-height: 88vh;
-        max-height: 88dvh;
-        margin: 0;
-        padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
-        animation: slideUpMobile 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        max-width: min(500px, calc(100vw - 24px));
+        border-radius: 16px;
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
+        margin: auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .workspace :is(.modal-header, .modal-footer) {
+        flex-shrink: 0;
+    }
+
+    .workspace :is(.modal-body, .dialog-body, .gallery-modal-body) {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .workspace .table-responsive {
