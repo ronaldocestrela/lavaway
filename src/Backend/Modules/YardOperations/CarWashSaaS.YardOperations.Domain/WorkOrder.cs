@@ -52,6 +52,8 @@ public sealed class WorkOrder : IMustHaveTenant
     public string? Notes { get; private set; }
     public Guid? AssignedOperatorId { get; private set; }
     public string? AssignedOperatorName { get; private set; }
+    public Guid? AssignedSecondaryOperatorId { get; private set; }
+    public string? AssignedSecondaryOperatorName { get; private set; }
     public DateTimeOffset? PickedUpAtUtc { get; private set; }
     public DateTimeOffset? SurveySentAtUtc { get; private set; }
     public int? SurveyRating { get; private set; }
@@ -102,15 +104,31 @@ public sealed class WorkOrder : IMustHaveTenant
         return Result<WorkOrder>.Success(new WorkOrder(Guid.CreateVersion7(), tenantId, customerId, vehicleId, normalizedItems, notes));
     }
 
-    public Result<WorkOrder> AssignOperator(Guid? operatorId, string? operatorName)
+    public Result<WorkOrder> AssignOperator(
+        Guid? operatorId,
+        string? operatorName,
+        Guid? secondaryOperatorId = null,
+        string? secondaryOperatorName = null)
     {
         if (operatorId.HasValue && operatorId.Value == Guid.Empty)
         {
             return Result<WorkOrder>.Failure(new Error("work_order.operator.invalid", "Identificador de operador inválido.", ErrorType.Validation));
         }
 
+        if (secondaryOperatorId.HasValue && secondaryOperatorId.Value == Guid.Empty)
+        {
+            return Result<WorkOrder>.Failure(new Error("work_order.secondary_operator.invalid", "Identificador de segundo operador inválido.", ErrorType.Validation));
+        }
+
+        if (operatorId.HasValue && secondaryOperatorId.HasValue && operatorId.Value == secondaryOperatorId.Value)
+        {
+            return Result<WorkOrder>.Failure(new Error("work_order.duplicate_assigned_operator", "Não é permitido atribuir o mesmo operador como principal e secundário.", ErrorType.Validation));
+        }
+
         AssignedOperatorId = operatorId;
         AssignedOperatorName = string.IsNullOrWhiteSpace(operatorName) ? null : operatorName.Trim();
+        AssignedSecondaryOperatorId = secondaryOperatorId;
+        AssignedSecondaryOperatorName = string.IsNullOrWhiteSpace(secondaryOperatorName) ? null : secondaryOperatorName.Trim();
         return Result<WorkOrder>.Success(this);
     }
 
@@ -118,7 +136,9 @@ public sealed class WorkOrder : IMustHaveTenant
         WorkOrderStatus targetStatus,
         Guid? operatorId = null,
         string? operatorName = null,
-        string? notes = null)
+        string? notes = null,
+        Guid? secondaryOperatorId = null,
+        string? secondaryOperatorName = null)
     {
         if (Status == WorkOrderStatus.ReadyForPickup)
         {
@@ -167,6 +187,11 @@ public sealed class WorkOrder : IMustHaveTenant
                 ErrorType.Validation));
         }
 
+        if (operatorId.HasValue && secondaryOperatorId.HasValue && operatorId.Value == secondaryOperatorId.Value)
+        {
+            return Result<WorkOrder>.Failure(new Error("work_order.duplicate_assigned_operator", "Não é permitido atribuir o mesmo operador como principal e secundário.", ErrorType.Validation));
+        }
+
         var oldStatus = Status;
         Status = targetStatus;
 
@@ -174,6 +199,12 @@ public sealed class WorkOrder : IMustHaveTenant
         {
             AssignedOperatorId = operatorId;
             AssignedOperatorName = string.IsNullOrWhiteSpace(operatorName) ? AssignedOperatorName : operatorName.Trim();
+        }
+
+        if (secondaryOperatorId.HasValue)
+        {
+            AssignedSecondaryOperatorId = secondaryOperatorId;
+            AssignedSecondaryOperatorName = string.IsNullOrWhiteSpace(secondaryOperatorName) ? AssignedSecondaryOperatorName : secondaryOperatorName.Trim();
         }
 
         _statusHistory.Add(new WorkOrderStatusHistory(

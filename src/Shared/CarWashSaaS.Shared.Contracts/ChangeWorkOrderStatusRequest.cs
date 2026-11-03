@@ -3,4 +3,6 @@ namespace CarWashSaaS.Shared.Contracts;
 public sealed record ChangeWorkOrderStatusRequest(
     string TargetStatus,
     Guid? OperatorId = null,
-    string? Notes = null);
+    string? Notes = null,
+    Guid? SecondaryOperatorId = null);
+

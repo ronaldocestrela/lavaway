@@ -200,6 +200,56 @@ public sealed class WorkOrderIntegrationTests(SqlServerFixture fixture)
     }
 
     [Fact]
+    public async Task WorkOrder_ShouldAssignTwoOperators_AndPersistBothInDatabaseAndBoard()
+    {
+        var tenantId = await CreateTenantAsync("Kanban Pair Tenant");
+
+        await using var context = CreateYardContext(tenantId);
+        var workOrderService = CreateWorkOrderService(context);
+
+        var primaryOp = TeamMember.Create(tenantId, "Lavador Alfa", "Lavador", "alfa@kanban.com").Value!;
+        var secondaryOp = TeamMember.Create(tenantId, "Secador Beta", "Secador", "beta@kanban.com").Value!;
+        var customer = Customer.Create(tenantId, "Cliente Dupla", "11988889999").Value!;
+        var vehicle = Vehicle.Create(tenantId, customer.Id, "DPL2026", VehicleSize.Suv).Value!;
+        var price = ServicePrice.Create(tenantId, VehicleSize.Suv, 150m, 60).Value!;
+        var service = Service.Create(tenantId, "Lavagem Completa Suv", "Lavagem", [price]).Value!;
+
+        context.TeamMembers.AddRange(primaryOp, secondaryOp);
+        context.Customers.Add(customer);
+        context.Vehicles.Add(vehicle);
+        context.Services.Add(service);
+        await context.SaveChangesAsync();
+
+        var created = await workOrderService.CreateAsync(tenantId, new CreateWorkOrderCommand(
+            customer.Id,
+            vehicle.Id,
+            [new CreateWorkOrderItemInput(service.Id, 1)]));
+        Assert.True(created.IsSuccess);
+        var orderId = created.Value!.Id;
+
+        // Assign both operators
+        var assignResult = await workOrderService.AssignOperatorAsync(tenantId, orderId, primaryOp.Id, secondaryOp.Id);
+        Assert.True(assignResult.IsSuccess);
+        Assert.Equal(primaryOp.Id, assignResult.Value!.AssignedOperatorId);
+        Assert.Equal("Lavador Alfa", assignResult.Value!.AssignedOperatorName);
+        Assert.Equal(secondaryOp.Id, assignResult.Value!.AssignedSecondaryOperatorId);
+        Assert.Equal("Secador Beta", assignResult.Value!.AssignedSecondaryOperatorName);
+
+        // Verify from fresh context
+        await using var verifyContext = CreateYardContext(tenantId);
+        var verifyService = CreateWorkOrderService(verifyContext);
+        var boardResult = await verifyService.GetKanbanBoardAsync(tenantId);
+
+        Assert.True(boardResult.IsSuccess);
+        var card = boardResult.Value!.Columns.SelectMany(c => c.Cards).FirstOrDefault(c => c.Id == orderId);
+        Assert.NotNull(card);
+        Assert.Equal(primaryOp.Id, card.AssignedOperatorId);
+        Assert.Equal("Lavador Alfa", card.AssignedOperatorName);
+        Assert.Equal(secondaryOp.Id, card.AssignedSecondaryOperatorId);
+        Assert.Equal("Secador Beta", card.AssignedSecondaryOperatorName);
+    }
+
+    [Fact]
     public async Task KanbanMultiTenant_ShouldPreventTenantB_FromSeeingOrMovingTenantA_WorkOrders()
     {
         var tenantA = await CreateTenantAsync("Kanban Tenant A");

@@ -68,11 +68,29 @@
     }
 
     <div class="card-operator-row">
-        @if (!string.IsNullOrWhiteSpace(Card.AssignedOperatorName))
+        @if (!string.IsNullOrWhiteSpace(Card.AssignedOperatorName) || !string.IsNullOrWhiteSpace(Card.AssignedSecondaryOperatorName))
         {
-            <div class="operator-badge" title="Operador atribuído">
-                <span class="operator-avatar">@GetInitials(Card.AssignedOperatorName)</span>
-                <span class="operator-name">@Card.AssignedOperatorName</span>
+            <div class="operator-badges-wrapper" @onclick="HandleRequestAssign" title="Equipe operacional atribuída. Clique para alterar.">
+                @if (!string.IsNullOrWhiteSpace(Card.AssignedOperatorName))
+                {
+                    <div class="operator-badge" title="Operador: @Card.AssignedOperatorName">
+                        <span class="operator-avatar">@GetInitials(Card.AssignedOperatorName)</span>
+                        <span class="operator-name">@Card.AssignedOperatorName</span>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Card.AssignedSecondaryOperatorName))
+                {
+                    <div class="operator-badge operator-badge-secondary" title="2º Operador: @Card.AssignedSecondaryOperatorName">
+                        <span class="operator-avatar secondary">@GetInitials(Card.AssignedSecondaryOperatorName)</span>
+                        <span class="operator-name">@Card.AssignedSecondaryOperatorName</span>
+                    </div>
+                }
+                else
+                {
+                    <button type="button" class="btn-add-secondary-operator" @onclick:stopPropagation="true" @onclick="HandleRequestAssign" title="Adicionar 2º operador na lavagem">
+                        <span>+2º</span>
+                    </button>
+                }
             </div>
         }
         else

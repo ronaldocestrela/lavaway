@@ -106,4 +106,12 @@ Funcionalidade: Cálculo de Comissões
     Dado que o colaborador executa um serviço sem regra de comissão para seu cargo
     Quando o relatório de comissões for gerado
     Então a comissão para esse serviço específico deve ser computada como R$ 0,00 (0%)
+
+  Cenário: Atendimento em dupla com comissão integral para cada operador
+    Dado que a OS foi executada por "Lavador Alfa" (cargo Lavador, regra de 10%) e "Secador Beta" (cargo Secador, regra de 8%)
+    E o serviço executado foi "Lavagem Completa" de R$ 100,00
+    Quando o relatório de comissões do período for emitido
+    Então "Lavador Alfa" deve receber 100% da sua comissão (R$ 10,00)
+    E "Secador Beta" deve receber 100% da sua comissão (R$ 8,00)
+    E o total de comissões distribuídas para a OS deve ser de R$ 18,00
 ```

@@ -47,9 +47,9 @@ public sealed class WorkOrderApiClient(HttpClient httpClient)
         return await ReadResponseAsync<WorkOrderDto>(response, ct);
     }
 
-    public async Task<WorkOrderDto> AssignOperatorAsync(Guid workOrderId, Guid? operatorId, CancellationToken ct = default)
+    public async Task<WorkOrderDto> AssignOperatorAsync(Guid workOrderId, Guid? operatorId, Guid? secondaryOperatorId = null, CancellationToken ct = default)
     {
-        using var response = await httpClient.PatchAsJsonAsync($"work-orders/{workOrderId}/operator", new AssignOperatorRequest(operatorId), ct);
+        using var response = await httpClient.PatchAsJsonAsync($"work-orders/{workOrderId}/operator", new AssignOperatorRequest(operatorId, secondaryOperatorId), ct);
         return await ReadResponseAsync<WorkOrderDto>(response, ct);
     }
 

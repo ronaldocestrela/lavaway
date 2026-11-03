@@ -66,10 +66,11 @@ public sealed class CommissionApplicationService(
 
         foreach (var order in workOrders)
         {
-            if (!order.AssignedOperatorId.HasValue) continue;
-            var operatorId = order.AssignedOperatorId.Value;
+            var assignedOperatorIds = new List<Guid>();
+            if (order.AssignedOperatorId.HasValue) assignedOperatorIds.Add(order.AssignedOperatorId.Value);
+            if (order.AssignedSecondaryOperatorId.HasValue) assignedOperatorIds.Add(order.AssignedSecondaryOperatorId.Value);
 
-            if (!teamMembersMap.TryGetValue(operatorId, out var member)) continue;
+            if (assignedOperatorIds.Count == 0) continue;
 
             if (!customerCache.TryGetValue(order.CustomerId, out var customer))
             {
@@ -87,25 +88,31 @@ public sealed class CommissionApplicationService(
             var licensePlate = vehicle?.Plate ?? "---";
             var orderCompletedAt = order.PaidAtUtc ?? order.CreatedAtUtc;
 
-            if (!itemsByOperator.TryGetValue(operatorId, out var list))
+            foreach (var operatorId in assignedOperatorIds)
             {
-                list = [];
-                itemsByOperator[operatorId] = list;
-            }
+                if (teamMemberId.HasValue && operatorId != teamMemberId.Value) continue;
+                if (!teamMembersMap.TryGetValue(operatorId, out var member)) continue;
 
-            foreach (var item in order.Items)
-            {
-                var (percentage, commissionAmount) = CommissionCalculator.CalculateItemCommission(item, member.Role, commissionRules);
+                if (!itemsByOperator.TryGetValue(operatorId, out var list))
+                {
+                    list = [];
+                    itemsByOperator[operatorId] = list;
+                }
 
-                list.Add(new CommissionItemDetailDto(
-                    order.Id,
-                    customerName,
-                    licensePlate,
-                    item.ServiceName,
-                    item.TotalAmount,
-                    percentage,
-                    commissionAmount,
-                    orderCompletedAt));
+                foreach (var item in order.Items)
+                {
+                    var (percentage, commissionAmount) = CommissionCalculator.CalculateItemCommission(item, member.Role, commissionRules);
+
+                    list.Add(new CommissionItemDetailDto(
+                        order.Id,
+                        customerName,
+                        licensePlate,
+                        item.ServiceName,
+                        item.TotalAmount,
+                        percentage,
+                        commissionAmount,
+                        orderCompletedAt));
+                }
             }
         }
 

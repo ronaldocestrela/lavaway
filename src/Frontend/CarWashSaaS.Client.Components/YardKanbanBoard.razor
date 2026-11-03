@@ -159,41 +159,87 @@
     @if (_isAssignModalOpen && _targetAssignCard is not null)
     {
         <div class="modal-backdrop" @onclick="CloseAssignModal">
-            <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-dialog modal-dialog-wide" @onclick:stopPropagation="true">
                 <div class="modal-header">
                     <span class="modal-eyebrow">EQUIPE OPERACIONAL</span>
-                    <h3 class="modal-title">Atribuir Operador</h3>
+                    <h3 class="modal-title">Atribuir Operadores da Lavagem</h3>
                     <div class="modal-plate-tag">@_targetAssignCard.Plate</div>
                 </div>
 
                 <div class="modal-body">
                     <p class="modal-desc">
-                        Selecione o colaborador responsável pela execução deste veículo:
+                        Selecione até dois colaboradores para a realização dos serviços deste veículo:
                     </p>
 
-                    <div class="operators-list">
-                        <button type="button"
-                                class="operator-choice-btn @(_selectedOperatorId == null ? "selected" : "")"
-                                @onclick="() => _selectedOperatorId = null">
-                            <span class="operator-choice-avatar">&#10005;</span>
-                            <span class="operator-choice-info">
-                                <strong>Sem Operador Atribuído</strong>
-                                <small>Liberar atribuição atual</small>
-                            </span>
-                        </button>
+                    @if (!string.IsNullOrWhiteSpace(_assignError))
+                    {
+                        <div class="assign-error-alert">
+                            <span>@_assignError</span>
+                        </div>
+                    }
 
-                        @foreach (var op in AvailableOperators.Where(o => o.IsActive))
-                        {
-                            <button type="button"
-                                    class="operator-choice-btn @(_selectedOperatorId == op.Id ? "selected" : "")"
-                                    @onclick="() => _selectedOperatorId = op.Id">
-                                <span class="operator-choice-avatar">@GetInitials(op.FullName)</span>
-                                <span class="operator-choice-info">
-                                    <strong>@op.FullName</strong>
-                                    <small>@op.Role</small>
-                                </span>
-                            </button>
-                        }
+                    <div class="assign-dual-grid">
+                        <div class="assign-slot-col">
+                            <h4 class="slot-title">1º Operador (Principal)</h4>
+                            <div class="operators-list">
+                                <button type="button"
+                                        class="operator-choice-btn @(_selectedOperatorId == null ? "selected" : "")"
+                                        @onclick="() => { _selectedOperatorId = null; _assignError = null; }">
+                                    <span class="operator-choice-avatar">&#10005;</span>
+                                    <span class="operator-choice-info">
+                                        <strong>Sem Operador Principal</strong>
+                                        <small>Desatribuir</small>
+                                    </span>
+                                </button>
+
+                                @foreach (var op in AvailableOperators.Where(o => o.IsActive))
+                                {
+                                    var isSelected = _selectedOperatorId == op.Id;
+                                    var isSecondary = _selectedSecondaryOperatorId == op.Id;
+                                    <button type="button"
+                                            class="operator-choice-btn @(isSelected ? "selected" : "") @(isSecondary ? "disabled-op" : "")"
+                                            disabled="@isSecondary"
+                                            @onclick="() => { _selectedOperatorId = op.Id; _assignError = null; }">
+                                        <span class="operator-choice-avatar">@GetInitials(op.FullName)</span>
+                                        <span class="operator-choice-info">
+                                            <strong>@op.FullName</strong>
+                                            <small>@(isSecondary ? "Selecionado como 2º Operador" : op.Role)</small>
+                                        </span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="assign-slot-col">
+                            <h4 class="slot-title">2º Operador (Auxiliar / Dupla)</h4>
+                            <div class="operators-list">
+                                <button type="button"
+                                        class="operator-choice-btn @(_selectedSecondaryOperatorId == null ? "selected" : "")"
+                                        @onclick="() => { _selectedSecondaryOperatorId = null; _assignError = null; }">
+                                    <span class="operator-choice-avatar">&#10005;</span>
+                                    <span class="operator-choice-info">
+                                        <strong>Sem 2º Operador</strong>
+                                        <small>Apenas 1 operador na lavagem</small>
+                                    </span>
+                                </button>
+
+                                @foreach (var op in AvailableOperators.Where(o => o.IsActive))
+                                {
+                                    var isSelected = _selectedSecondaryOperatorId == op.Id;
+                                    var isPrimary = _selectedOperatorId == op.Id;
+                                    <button type="button"
+                                            class="operator-choice-btn @(isSelected ? "selected secondary-selected" : "") @(isPrimary ? "disabled-op" : "")"
+                                            disabled="@isPrimary"
+                                            @onclick="() => { _selectedSecondaryOperatorId = op.Id; _assignError = null; }">
+                                        <span class="operator-choice-avatar secondary">@GetInitials(op.FullName)</span>
+                                        <span class="operator-choice-info">
+                                            <strong>@op.FullName</strong>
+                                            <small>@(isPrimary ? "Selecionado como 1º Operador" : op.Role)</small>
+                                        </span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -277,6 +323,8 @@
     private bool _isAssignModalOpen;
     private WorkOrderKanbanCardDto? _targetAssignCard;
     private Guid? _selectedOperatorId;
+    private Guid? _selectedSecondaryOperatorId;
+    private string? _assignError;
 
     // History drawer state
     private bool _isHistoryDrawerOpen;
@@ -372,7 +420,9 @@
                         if (!plate.Contains(query) && !name.Contains(query)) return false;
                     }
 
-                    if (_selectedOperatorFilter.HasValue && card.AssignedOperatorId != _selectedOperatorFilter.Value)
+                    if (_selectedOperatorFilter.HasValue &&
+                        card.AssignedOperatorId != _selectedOperatorFilter.Value &&
+                        card.AssignedSecondaryOperatorId != _selectedOperatorFilter.Value)
                     {
                         return false;
                     }
@@ -503,6 +553,8 @@
     {
         _targetAssignCard = card;
         _selectedOperatorId = card.AssignedOperatorId;
+        _selectedSecondaryOperatorId = card.AssignedSecondaryOperatorId;
+        _assignError = null;
         _isAssignModalOpen = true;
     }
 
@@ -510,18 +562,25 @@
     {
         _isAssignModalOpen = false;
         _targetAssignCard = null;
+        _assignError = null;
     }
 
     private async Task ConfirmAssignAsync()
     {
         if (_targetAssignCard is null) return;
+        if (_selectedOperatorId.HasValue && _selectedSecondaryOperatorId.HasValue && _selectedOperatorId.Value == _selectedSecondaryOperatorId.Value)
+        {
+            _assignError = "Não é permitido selecionar o mesmo colaborador para as duas posições.";
+            return;
+        }
 
         _isProcessingAction = true;
         try
         {
             await OnOperatorAssignRequested.InvokeAsync(new WorkOrderOperatorAssignArgs(
                 _targetAssignCard.Id,
-                _selectedOperatorId));
+                _selectedOperatorId,
+                _selectedSecondaryOperatorId));
 
             CloseAssignModal();
         }
@@ -588,5 +647,5 @@
 
     public sealed record ErrorMessageDismissArgs;
     public sealed record WorkOrderStatusChangeArgs(Guid WorkOrderId, string TargetStatus, Guid? OperatorId, string? Notes);
-    public sealed record WorkOrderOperatorAssignArgs(Guid WorkOrderId, Guid? OperatorId);
+    public sealed record WorkOrderOperatorAssignArgs(Guid WorkOrderId, Guid? OperatorId, Guid? SecondaryOperatorId = null);
 }

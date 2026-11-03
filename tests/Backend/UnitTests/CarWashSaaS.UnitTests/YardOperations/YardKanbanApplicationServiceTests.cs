@@ -74,6 +74,49 @@ public sealed class YardKanbanApplicationServiceTests
     }
 
     [Fact]
+    public async Task AssignOperatorAsync_ShouldAssignTwoDistinctOperatorsSuccessfully()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var env = new FakeYardOperationsEnvironment(tenantId);
+        var primaryOp = TeamMember.Create(tenantId, "Lucas Secador", "Secador", "lucas@lavajato.com").Value!;
+        var secondaryOp = TeamMember.Create(tenantId, "Pedro Lavador", "Lavador", "pedro@lavajato.com").Value!;
+        env.TeamMembers.AddRange([primaryOp, secondaryOp]);
+
+        var workOrder = env.CreateWorkOrder("ABC1D23");
+        var appService = env.CreateApplicationService();
+
+        var result = await appService.AssignOperatorAsync(tenantId, workOrder.Id, primaryOp.Id, secondaryOp.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(primaryOp.Id, result.Value!.AssignedOperatorId);
+        Assert.Equal("Lucas Secador", result.Value!.AssignedOperatorName);
+        Assert.Equal(secondaryOp.Id, result.Value!.AssignedSecondaryOperatorId);
+        Assert.Equal("Pedro Lavador", result.Value!.AssignedSecondaryOperatorName);
+
+        Assert.Single(env.AssignedOperatorNotifications);
+        var notif = env.AssignedOperatorNotifications[0];
+        Assert.Equal(primaryOp.Id, notif.OperatorId);
+        Assert.Equal(secondaryOp.Id, notif.SecondaryOperatorId);
+    }
+
+    [Fact]
+    public async Task AssignOperatorAsync_WhenOperatorsAreSame_ShouldReturnValidationError()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var env = new FakeYardOperationsEnvironment(tenantId);
+        var primaryOp = TeamMember.Create(tenantId, "Lucas Secador", "Secador", "lucas@lavajato.com").Value!;
+        env.TeamMembers.Add(primaryOp);
+
+        var workOrder = env.CreateWorkOrder("ABC1D23");
+        var appService = env.CreateApplicationService();
+
+        var result = await appService.AssignOperatorAsync(tenantId, workOrder.Id, primaryOp.Id, primaryOp.Id);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("work_order.duplicate_assigned_operator", result.Error!.Code);
+    }
+
+    [Fact]
     public async Task GetKanbanBoardAsync_ShouldGroupCardsIntoAllFiveColumns()
     {
         var tenantId = Guid.CreateVersion7();
@@ -175,7 +218,7 @@ public sealed class YardKanbanApplicationServiceTests
         public List<TeamMember> TeamMembers { get; } = [];
         public List<YardCapacity> YardCapacities { get; } = [];
         public List<WorkOrderMovedNotification> MovedNotifications { get; } = [];
-        public List<(Guid WorkOrderId, Guid? OperatorId, string? OperatorName)> AssignedOperatorNotifications { get; } = [];
+        public List<(Guid WorkOrderId, Guid? OperatorId, string? OperatorName, Guid? SecondaryOperatorId, string? SecondaryOperatorName)> AssignedOperatorNotifications { get; } = [];
 
         public WorkOrder CreateWorkOrder(string plate)
         {
@@ -284,9 +327,16 @@ public sealed class YardKanbanApplicationServiceTests
             return Task.CompletedTask;
         }
 
-        public Task NotifyOperatorAssignedAsync(Guid tenantId, Guid workOrderId, Guid? operatorId, string? operatorName, CancellationToken ct = default)
+        public Task NotifyOperatorAssignedAsync(
+            Guid tenantId,
+            Guid workOrderId,
+            Guid? operatorId,
+            string? operatorName,
+            Guid? secondaryOperatorId = null,
+            string? secondaryOperatorName = null,
+            CancellationToken ct = default)
         {
-            AssignedOperatorNotifications.Add((workOrderId, operatorId, operatorName));
+            AssignedOperatorNotifications.Add((workOrderId, operatorId, operatorName, secondaryOperatorId, secondaryOperatorName));
             return Task.CompletedTask;
         }
 

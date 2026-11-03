@@ -93,9 +93,10 @@ flowchart TD
    * Uma vez no status `ReadyForPickup`, o veículo não pode ser reaberto (`work_order.already_ready_for_pickup`).
 3. **Refação com Justificativa Compulsória:**
    * Retornos de etapas (`QualityControl` $\rightarrow$ `Finishing`, `QualityControl` $\rightarrow$ `InWashing`, `Finishing` $\rightarrow$ `InWashing`) exigem obrigatoriamente preenchimento de justificativa/motivo (`work_order.rework_notes_required`).
-4. **Atribuição de Operador Responsável:**
-   * A OS pode ter um operador atribuído (`AssignedOperatorId` e snapshot `AssignedOperatorName`).
+4. **Atribuição de Operadores Responsáveis (Trabalho Individual ou em Dupla):**
+   * A OS suporta até dois operadores atribuídos: Operador Principal (`AssignedOperatorId` e snapshot `AssignedOperatorName`) e Segundo Operador / Auxiliar (`AssignedSecondaryOperatorId` e snapshot `AssignedSecondaryOperatorName`).
    * Apenas colaboradores com status ativo (`IsActive = true`) cadastrados no estabelecimento (`TeamMember`) podem ser vinculados (`team_member.inactive`).
+   * O sistema impede atribuir o mesmo colaborador como operador principal e secundário simultaneamente (`work_order.duplicate_assigned_operator`).
 5. **Histórico Imutável e Auditoria:**
    * Toda criação de OS e cada transição de status gera compulsoriamente um registro em `yard.WorkOrderStatusHistories` contendo `Id`, `TenantId`, `WorkOrderId`, `FromStatus`, `ToStatus`, `ChangedAtUtc`, `ChangedByOperatorId`, `ChangedByOperatorName` e `Notes`.
 6. **Capacidade Física de Pátio:**
@@ -127,6 +128,7 @@ flowchart TD
 | `work_order.already_ready_for_pickup` | A OS já está pronta para retirada e não pode ser alterada | 409 Conflict |
 | `team_member.not_found` | Colaborador/operador informado não existe | 404 Not Found |
 | `team_member.inactive` | Colaborador inativo não pode receber atribuição de serviço | 400 Bad Request |
+| `work_order.duplicate_assigned_operator` | O mesmo colaborador não pode ser atribuído como principal e secundário | 400 Bad Request |
 
 ---
 
@@ -144,6 +146,13 @@ Funcionalidade: Fluxo Operacional e Kanban do Pátio
     Então a OS avança para "Em Lavagem"
     E "Carlos" passa a constar como operador atribuído
     E o histórico registra a transição de "Aguardando" para "Em Lavagem"
+
+  Cenário: Atribuição de dupla de operadores na lavagem
+    Dado que a OS está no status "Em Lavagem"
+    Quando o encarregado atribui "Lucas" como 1º Operador e "Pedro" como 2º Operador
+    Então ambos os colaboradores passam a constar na OS
+    E o card do Kanban apresenta os badges de ambos os operadores
+    E a tentativa de selecionar "Lucas" em ambas as posições é rejeitada com "work_order.duplicate_assigned_operator"
 
   Cenário: Reprovação no controle de qualidade com justificativa
     Dado que a OS está no status "Controle de Qualidade"

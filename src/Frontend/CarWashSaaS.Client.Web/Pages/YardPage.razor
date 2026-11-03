@@ -185,8 +185,8 @@
         _actionError = null;
         try
         {
-            await WorkOrderApi.AssignOperatorAsync(args.WorkOrderId, args.OperatorId);
-            ToastService.ShowSuccess("Operador atribuído com sucesso.");
+            await WorkOrderApi.AssignOperatorAsync(args.WorkOrderId, args.OperatorId, args.SecondaryOperatorId);
+            ToastService.ShowSuccess("Operadores atribuídos com sucesso.");
             await RefreshBoardAsync();
         }
         catch (Exception ex)
