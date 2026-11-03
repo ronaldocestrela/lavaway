@@ -12,7 +12,9 @@ public sealed class StoreProfileRepository(
 {
     public async Task<StoreProfile?> GetByTenantIdAsync(Guid tenantId, CancellationToken ct = default)
     {
+        EnsureTenantContext(tenantId);
         return await dbContext.StoreProfiles
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(profile => profile.TenantId == tenantId, ct);
     }

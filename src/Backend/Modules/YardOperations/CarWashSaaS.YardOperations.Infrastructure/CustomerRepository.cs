@@ -8,6 +8,7 @@ public sealed class CustomerRepository(YardOperationsDbContext dbContext) : ICus
 {
     public Task<Customer?> GetByIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
         dbContext.Customers
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(customer => customer.TenantId == tenantId && customer.Id == customerId, ct);
 
     public Task<Customer?> GetByNormalizedPhoneAsync(Guid tenantId, string normalizedPhone, CancellationToken ct = default) =>

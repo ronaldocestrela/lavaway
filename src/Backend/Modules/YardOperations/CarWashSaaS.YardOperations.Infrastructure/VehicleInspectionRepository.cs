@@ -8,6 +8,7 @@ public sealed class VehicleInspectionRepository(YardOperationsDbContext dbContex
 {
     public Task<VehicleInspection?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct = default) =>
         dbContext.VehicleInspections
+            .IgnoreQueryFilters()
             .Include(i => i.Damages)
             .Include(i => i.ChecklistItems)
             .Include(i => i.Photos)
@@ -15,6 +16,7 @@ public sealed class VehicleInspectionRepository(YardOperationsDbContext dbContex
 
     public Task<VehicleInspection?> GetByWorkOrderIdAsync(Guid tenantId, Guid workOrderId, CancellationToken ct = default) =>
         dbContext.VehicleInspections
+            .IgnoreQueryFilters()
             .Include(i => i.Damages)
             .Include(i => i.ChecklistItems)
             .Include(i => i.Photos)

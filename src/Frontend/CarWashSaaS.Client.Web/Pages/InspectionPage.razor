@@ -138,8 +138,8 @@
                 }
                 else
                 {
-                    <button type="button" class="btn-secondary-action" @onclick="GoBack">
-                        <span>Retornar para o Pátio</span>
+                    <button id="btn-return-yard" type="button" class="btn-secondary-action" @onclick="GoBack">
+                        <span>Ir para o Painel Kanban</span>
                     </button>
                 }
             </div>
@@ -242,7 +242,6 @@
         try
         {
             _inspection = await InspectionApi.UpdateChecklistAsync(WorkOrderId, request);
-            ShowAlert("Checklist e dados do veículo salvos com sucesso!", true);
         }
         catch (Exception ex)
         {
@@ -305,7 +304,7 @@
 
     private void GoBack()
     {
-        Navigation.NavigateTo("/reception");
+        Navigation.NavigateTo("/yard");
     }
 
     private static string FormatPlate(string raw)

@@ -81,6 +81,7 @@ public sealed class PublicInspectionApplicationServiceTests
         Assert.Equal("Top Clean", dto.StoreTradeName);
         Assert.Equal("Ana Souza", dto.CustomerName);
         Assert.Equal("ABC1D23", dto.VehiclePlate);
+        Assert.Equal("Veículo (Hatch / Sedan)", dto.VehicleModel);
         Assert.Equal(25000, dto.OdometerKm);
         Assert.Equal("Full", dto.FuelLevel);
         Assert.Single(dto.Photos);

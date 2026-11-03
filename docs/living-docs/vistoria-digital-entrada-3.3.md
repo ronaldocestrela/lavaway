@@ -26,7 +26,7 @@ flowchart TD
     end
 
     TAB1 -->|POST /damages| DAMAGE_API[Grava Avaria com Coordenadas X%, Y%]
-    TAB2 -->|PUT /checklist| CHECKLIST_API[Salva Conferência de Pertences]
+    TAB2 -->|PUT /checklist auto-save| CHECKLIST_API[Persistência Automática a cada Modificação]
     TAB3 -->|POST /photos multipart| PHOTO_API[Armazena Foto no MinIO e Associa à Vistoria]
 
     PHOTO_API --> CHECK_PHOTOS{As 4 Fotos Obrigatórias\nForam Enviadas?}
@@ -73,7 +73,7 @@ flowchart TD
 ## Componentes Blazor
 
 - `VehicleInspectionDiagram.razor` (`CarWashSaaS.Client.Components`): Diagrama SVG interativo de 5 vistas (Superior, Lateral Esquerda, Lateral Direita, Frente, Traseira) com toque na lataria/vidros, modal de seleção de tipo/severidade e pinos pulsantes.
-- `InspectionChecklistCard.razor` (`CarWashSaaS.Client.Components`): Seletor de combustível tipo pill (Reserva a Cheio), input numérico de odômetro e lista de itens rápidos (estepe, macaco, pertences, tapetes, painel).
+- `InspectionChecklistCard.razor` (`CarWashSaaS.Client.Components`): Seletor de combustível tipo pill (Reserva a Cheio), input numérico de odômetro e lista de itens rápidos (estepe, macaco, pertences, tapetes, painel) com **persistência contínua reativa (auto-save)** com debounce em campos textuais, flush em blur/descarte e badge indicador de status de sincronização (`Salvando...`, `Salvo automaticamente`), eliminando a necessidade de botão manual de salvar.
 - `InspectionPhotoGallery.razor` (`CarWashSaaS.Client.Components`): Grade tátil com 4 slots obrigatórios destacados, suporte a disparo de câmera nativa de smartphone (`capture="environment"`), preview imediato com URLs autenticadas (`?access_token=...`) e galeria de fotos adicionais.
 - `WorkOrderCreatedModal.razor` (`CarWashSaaS.Client.Components`): Modal de sucesso pós-check-in com novo botão em destaque "Fazer Vistoria" e link direto autenticado para download do PDF da OS.
 - `InspectionPage.razor` (`CarWashSaaS.Client.Web`): Página orquestradora em `/work-orders/{workOrderId}/inspection` com abas ágeis e barra fixa inferior de conclusão.
@@ -110,8 +110,15 @@ flowchart TD
 - **E** o stream da foto é retornado com HTTP 200 OK
 - **E** requisições sem token continuam protegidas, retornando HTTP 401 Unauthorized.
 
-### Cenário 5: Reatividade Imediata na Seleção de Status do Checklist
+### Cenário 5: Reatividade Imediata e Persistência Automática na Seleção de Status do Checklist
 - **Dado** que o operador está na conferência de itens e combustível da vistoria
-- **Quando** o operador clica em qualquer botão de status (OK, Faltando, Avariado, N/A)
-- **Então** o componente reflete imediatamente o estado ativo na interface via `GetItemStatus` antes da persistência
-- **E** as alterações locais são consolidadas e limpas ao persistir no backend via "Salvar Checklist".
+- **Quando** o operador clica em qualquer botão de status (OK, Faltando, Avariado, N/A) ou nível de combustível
+- **Então** o componente reflete imediatamente o estado ativo na interface via `GetItemStatus`
+- **E** dispara automaticamente a persistência no backend via `PUT /checklist` sem necessidade de confirmação manual por botão.
+
+### Cenário 6: Auto-Save com Debounce e Indicador Visual na Conferência
+- **Dado** que o operador está editando a quilometragem (odômetro) ou observações gerais da vistoria
+- **Quando** o operador digita dados no campo ou remove o foco do elemento (`onblur`)
+- **Então** o sistema exibe o indicador visual de sincronização (`Salvando...` -> `Salvo automaticamente`)
+- **E** o payload consolidado é persistido no backend sem requisições concorrentes duplicadas
+- **E** nenhum botão manual de salvar é renderizado em tela.
