@@ -237,8 +237,31 @@ public sealed class WorkOrderApplicationService(
             operatorName = member.FullName;
         }
 
+        string? secondaryOperatorName = null;
+        if (request.SecondaryOperatorId.HasValue && request.SecondaryOperatorId.Value != Guid.Empty && teamMemberRepository is not null)
+        {
+            var secondaryMember = await teamMemberRepository.GetByIdAsync(tenantId, request.SecondaryOperatorId.Value, ct);
+            if (secondaryMember is null)
+            {
+                return Result<WorkOrderDto>.Failure(new Error("team_member.not_found", "Segundo colaborador não encontrado.", ErrorType.NotFound));
+            }
+
+            if (!secondaryMember.IsActive)
+            {
+                return Result<WorkOrderDto>.Failure(new Error("team_member.inactive", "Segundo colaborador está inativo e não pode receber ordens de serviço.", ErrorType.Validation));
+            }
+
+            secondaryOperatorName = secondaryMember.FullName;
+        }
+
         var previousStatus = workOrder.Status.ToString();
-        var changeResult = workOrder.ChangeStatus(targetStatus, request.OperatorId, operatorName, request.Notes);
+        var changeResult = workOrder.ChangeStatus(
+            targetStatus,
+            request.OperatorId,
+            operatorName,
+            request.Notes,
+            request.SecondaryOperatorId,
+            secondaryOperatorName);
         if (!changeResult.IsSuccess)
         {
             return Result<WorkOrderDto>.Failure(changeResult.Error!);
@@ -259,7 +282,9 @@ public sealed class WorkOrderApplicationService(
                 workOrder.AssignedOperatorId,
                 workOrder.AssignedOperatorName,
                 DateTimeOffset.UtcNow,
-                request.Notes);
+                request.Notes,
+                workOrder.AssignedSecondaryOperatorId,
+                workOrder.AssignedSecondaryOperatorName);
             await realtimeNotifier.NotifyWorkOrderMovedAsync(tenantId, notification, ct);
         }
 
@@ -293,11 +318,17 @@ public sealed class WorkOrderApplicationService(
         Guid tenantId,
         Guid workOrderId,
         Guid? operatorId,
+        Guid? secondaryOperatorId = null,
         CancellationToken ct = default)
     {
         if (tenantId == Guid.Empty || workOrderId == Guid.Empty)
         {
             return Result<WorkOrderDto>.Failure(new Error("work_order.id.required", "Tenant e ID da ordem de serviço são obrigatórios.", ErrorType.Validation));
+        }
+
+        if (operatorId.HasValue && secondaryOperatorId.HasValue && operatorId.Value == secondaryOperatorId.Value)
+        {
+            return Result<WorkOrderDto>.Failure(new Error("work_order.duplicate_assigned_operator", "Não é permitido atribuir o mesmo operador como principal e secundário.", ErrorType.Validation));
         }
 
         var workOrder = await workOrderRepository.GetByIdAsync(tenantId, workOrderId, ct);
@@ -323,7 +354,24 @@ public sealed class WorkOrderApplicationService(
             operatorName = member.FullName;
         }
 
-        var assignResult = workOrder.AssignOperator(operatorId, operatorName);
+        string? secondaryOperatorName = null;
+        if (secondaryOperatorId.HasValue && secondaryOperatorId.Value != Guid.Empty && teamMemberRepository is not null)
+        {
+            var secondaryMember = await teamMemberRepository.GetByIdAsync(tenantId, secondaryOperatorId.Value, ct);
+            if (secondaryMember is null)
+            {
+                return Result<WorkOrderDto>.Failure(new Error("team_member.not_found", "Segundo colaborador não encontrado.", ErrorType.NotFound));
+            }
+
+            if (!secondaryMember.IsActive)
+            {
+                return Result<WorkOrderDto>.Failure(new Error("team_member.inactive", "Segundo colaborador está inativo e não pode receber ordens de serviço.", ErrorType.Validation));
+            }
+
+            secondaryOperatorName = secondaryMember.FullName;
+        }
+
+        var assignResult = workOrder.AssignOperator(operatorId, operatorName, secondaryOperatorId, secondaryOperatorName);
         if (!assignResult.IsSuccess)
         {
             return Result<WorkOrderDto>.Failure(assignResult.Error!);
@@ -337,7 +385,14 @@ public sealed class WorkOrderApplicationService(
 
         if (realtimeNotifier is not null)
         {
-            await realtimeNotifier.NotifyOperatorAssignedAsync(tenantId, workOrder.Id, workOrder.AssignedOperatorId, workOrder.AssignedOperatorName, ct);
+            await realtimeNotifier.NotifyOperatorAssignedAsync(
+                tenantId,
+                workOrder.Id,
+                workOrder.AssignedOperatorId,
+                workOrder.AssignedOperatorName,
+                workOrder.AssignedSecondaryOperatorId,
+                workOrder.AssignedSecondaryOperatorName,
+                ct);
         }
 
         var customer = await customerRepository.GetByIdAsync(tenantId, workOrder.CustomerId, ct);
@@ -429,7 +484,9 @@ public sealed class WorkOrderApplicationService(
                 order.SurveyRating,
                 order.IsPaid,
                 order.PaidAtUtc,
-                order.PaymentMethod));
+                order.PaymentMethod,
+                order.AssignedSecondaryOperatorId,
+                order.AssignedSecondaryOperatorName));
         }
 
         var columns = new List<YardKanbanColumnDto>(WorkOrderStatusConstants.OrderedStatuses.Count);
@@ -859,7 +916,9 @@ public sealed class WorkOrderApplicationService(
                 order.AssignedOperatorId,
                 order.AssignedOperatorName,
                 paidAtUtc,
-                $"Pagamento confirmado ({paymentMethod}) - OS Baixada");
+                $"Pagamento confirmado ({paymentMethod}) - OS Baixada",
+                order.AssignedSecondaryOperatorId,
+                order.AssignedSecondaryOperatorName);
 
             await realtimeNotifier.NotifyWorkOrderMovedAsync(tenantId, notification, ct);
         }
@@ -932,5 +991,7 @@ public sealed class WorkOrderApplicationService(
             order.PaymentMethod,
             order.PaidAmount,
             order.PaymentTransactionId,
-            order.TrackingToken);
+            order.TrackingToken,
+            order.AssignedSecondaryOperatorId,
+            order.AssignedSecondaryOperatorName);
 }

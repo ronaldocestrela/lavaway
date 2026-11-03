@@ -23,7 +23,9 @@ public sealed record WorkOrderKanbanCardDto(
     int? SurveyRating = null,
     bool IsPaid = false,
     DateTimeOffset? PaidAtUtc = null,
-    string? PaymentMethod = null);
+    string? PaymentMethod = null,
+    Guid? AssignedSecondaryOperatorId = null,
+    string? AssignedSecondaryOperatorName = null);
 
 public sealed record YardKanbanColumnDto(
     string Status,

@@ -22,7 +22,7 @@ public sealed class CommissionApplicationServiceTests
             var query = Orders.Where(o => o.TenantId == tenantId);
             if (operatorId.HasValue)
             {
-                query = query.Where(o => o.AssignedOperatorId == operatorId.Value);
+                query = query.Where(o => o.AssignedOperatorId == operatorId.Value || o.AssignedSecondaryOperatorId == operatorId.Value);
             }
 
             return Task.FromResult<IReadOnlyCollection<WorkOrder>>(query.ToList());
@@ -209,6 +209,63 @@ public sealed class CommissionApplicationServiceTests
         Assert.Equal("Roberto Detailer", collaborator.FullName);
         Assert.Equal(115.00m, collaborator.TotalCommission);
         Assert.Equal(2, collaborator.Items.Count);
+    }
+
+    [Fact]
+    public async Task GetCommissionReport_WithTwoOperatorsOnSameOrder_CalculatesFullCommissionForBothOperators()
+    {
+        var workOrderRepo = new FakeWorkOrderRepository();
+        var teamMemberRepo = new FakeTeamMemberRepository();
+        var commissionRuleRepo = new FakeCommissionRuleRepository();
+        var customerRepo = new FakeCustomerRepository();
+        var vehicleRepo = new FakeVehicleRepository();
+
+        var service = new CommissionApplicationService(
+            workOrderRepo,
+            teamMemberRepo,
+            commissionRuleRepo,
+            customerRepo,
+            vehicleRepo);
+
+        var primaryOperator = TeamMember.Create(_tenantId, "Lavador 1", "Lavador", "lavador1@lavaway.com").Value!;
+        var secondaryOperator = TeamMember.Create(_tenantId, "Secador 2", "Secador", "secador2@lavaway.com").Value!;
+        teamMemberRepo.Members.AddRange([primaryOperator, secondaryOperator]);
+
+        commissionRuleRepo.Rules.AddRange([
+            CommissionRule.Create(_tenantId, "Lavagem Completa", "Lavador", 10.0m).Value!,
+            CommissionRule.Create(_tenantId, "Lavagem Completa", "Secador", 8.0m).Value!
+        ]);
+
+        var customer = Customer.Create(_tenantId, "Mariana Silva", "11977776666").Value!;
+        customerRepo.Customers.Add(customer);
+
+        var vehicle = Vehicle.Create(_tenantId, customer.Id, "XYZ9W88", VehicleSize.HatchSedan).Value!;
+        vehicleRepo.Vehicles.Add(vehicle);
+
+        var item = WorkOrderItem.Create(_tenantId, Guid.NewGuid(), "Lavagem Completa", 100.00m, 50, 1).Value!;
+        var workOrder = WorkOrder.Create(_tenantId, customer.Id, vehicle.Id, [item]).Value!;
+        workOrder.AssignOperator(primaryOperator.Id, primaryOperator.FullName, secondaryOperator.Id, secondaryOperator.FullName);
+        workOrder.MarkPaymentConfirmed(100.00m, PaymentMethodConstants.Pix, DateTimeOffset.UtcNow);
+        workOrderRepo.Orders.Add(workOrder);
+
+        var startDate = new DateOnly(2026, 10, 1);
+        var endDate = new DateOnly(2026, 10, 5);
+
+        var result = await service.GetCommissionReportAsync(_tenantId, startDate, endDate);
+
+        Assert.True(result.IsSuccess);
+        var report = result.Value!;
+        // Primary: 100 * 10% = 10. Secondary: 100 * 8% = 8. Total = 18.
+        Assert.Equal(18.00m, report.TotalCommission);
+        Assert.Equal(2, report.Collaborators.Count);
+
+        var primaryCollab = report.Collaborators.First(c => c.TeamMemberId == primaryOperator.Id);
+        Assert.Equal(10.00m, primaryCollab.TotalCommission);
+        Assert.Single(primaryCollab.Items);
+
+        var secondaryCollab = report.Collaborators.First(c => c.TeamMemberId == secondaryOperator.Id);
+        Assert.Equal(8.00m, secondaryCollab.TotalCommission);
+        Assert.Single(secondaryCollab.Items);
     }
 
     [Fact]

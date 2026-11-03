@@ -103,13 +103,13 @@ public sealed class WorkOrderRepository(YardOperationsDbContext dbContext) : IWo
         var query = dbContext.WorkOrders
             .Include(order => order.Items)
             .Where(order => order.TenantId == tenantId &&
-                            order.AssignedOperatorId.HasValue &&
+                            (order.AssignedOperatorId.HasValue || order.AssignedSecondaryOperatorId.HasValue) &&
                             ((order.PaidAtUtc.HasValue && order.PaidAtUtc.Value >= startUtc && order.PaidAtUtc.Value <= endUtc) ||
                              (!order.PaidAtUtc.HasValue && order.CreatedAtUtc >= startUtc && order.CreatedAtUtc <= endUtc)));
 
         if (operatorId.HasValue)
         {
-            query = query.Where(order => order.AssignedOperatorId == operatorId.Value);
+            query = query.Where(order => order.AssignedOperatorId == operatorId.Value || order.AssignedSecondaryOperatorId == operatorId.Value);
         }
 
         return await query.OrderByDescending(order => order.CreatedAtUtc).ToListAsync(ct);

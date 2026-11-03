@@ -699,11 +699,12 @@ public static class YardOperationsEndpoints
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var result = await service.AssignOperatorAsync(tenantId, id, request.OperatorId);
+            var result = await service.AssignOperatorAsync(tenantId, id, request.OperatorId, request.SecondaryOperatorId);
             return result.IsSuccess ? Results.Ok(result.Value) : result.Error!.Type switch
             {
                 ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
                 ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.UpdateWorkOrderStatus);

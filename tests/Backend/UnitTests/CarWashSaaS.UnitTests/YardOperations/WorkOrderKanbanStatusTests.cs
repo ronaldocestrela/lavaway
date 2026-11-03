@@ -57,6 +57,50 @@ public sealed class WorkOrderKanbanStatusTests
     }
 
     [Fact]
+    public void AssignOperator_ShouldSupportTwoDistinctOperators()
+    {
+        var order = CreateTestWorkOrder();
+        var primaryId = Guid.CreateVersion7();
+        var secondaryId = Guid.CreateVersion7();
+
+        var result = order.AssignOperator(primaryId, "Carlos Operador", secondaryId, "João Lavador");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(primaryId, order.AssignedOperatorId);
+        Assert.Equal("Carlos Operador", order.AssignedOperatorName);
+        Assert.Equal(secondaryId, order.AssignedSecondaryOperatorId);
+        Assert.Equal("João Lavador", order.AssignedSecondaryOperatorName);
+    }
+
+    [Fact]
+    public void AssignOperator_WhenPrimaryAndSecondaryAreSame_ShouldReturnValidationError()
+    {
+        var order = CreateTestWorkOrder();
+        var operatorId = Guid.CreateVersion7();
+
+        var result = order.AssignOperator(operatorId, "Carlos Operador", operatorId, "Carlos Operador");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("work_order.duplicate_assigned_operator", result.Error!.Code);
+    }
+
+    [Fact]
+    public void AssignOperator_ShouldAllowClearingSecondaryOperatorIndependently()
+    {
+        var order = CreateTestWorkOrder();
+        var primaryId = Guid.CreateVersion7();
+        var secondaryId = Guid.CreateVersion7();
+
+        order.AssignOperator(primaryId, "Carlos Operador", secondaryId, "João Lavador");
+        var result = order.AssignOperator(primaryId, "Carlos Operador", null, null);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(primaryId, order.AssignedOperatorId);
+        Assert.Null(order.AssignedSecondaryOperatorId);
+        Assert.Null(order.AssignedSecondaryOperatorName);
+    }
+
+    [Fact]
     public void ChangeStatus_ShouldFollowStandardForwardFlow()
     {
         var order = CreateTestWorkOrder();

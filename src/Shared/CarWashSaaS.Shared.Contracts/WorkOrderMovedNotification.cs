@@ -7,4 +7,7 @@ public sealed record WorkOrderMovedNotification(
     Guid? OperatorId,
     string? OperatorName,
     DateTimeOffset ChangedAtUtc,
-    string? Notes);
+    string? Notes,
+    Guid? SecondaryOperatorId = null,
+    string? SecondaryOperatorName = null);
+

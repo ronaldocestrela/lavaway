@@ -470,6 +470,67 @@
     color: #9cb2a7;
 }
 
+.modal-dialog-wide {
+    max-width: 760px;
+    width: 95%;
+}
+
+.assign-dual-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 680px) {
+    .assign-dual-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.assign-slot-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.slot-title {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #c9dbd3;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.assign-error-alert {
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+    border-radius: 8px;
+    font-size: 0.82rem;
+}
+
+.operator-choice-btn.disabled-op {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.operator-choice-btn.selected.secondary-selected {
+    background: rgba(86, 178, 255, 0.12);
+    border-color: rgba(86, 178, 255, 0.45);
+}
+
+.operator-choice-avatar.secondary {
+    background: #17385c;
+    color: #8cc4ff;
+}
+
 /* Mobile Kanban Tabs (oculto no desktop) */
 .mobile-kanban-tabs {
     display: none;

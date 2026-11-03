@@ -566,6 +566,13 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<Guid?>("AssignedSecondaryOperatorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AssignedSecondaryOperatorName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("datetimeoffset");
 

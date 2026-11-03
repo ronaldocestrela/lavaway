@@ -20,6 +20,8 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.Property(order => order.Notes).HasMaxLength(500);
         builder.Property(order => order.AssignedOperatorId);
         builder.Property(order => order.AssignedOperatorName).HasMaxLength(200);
+        builder.Property(order => order.AssignedSecondaryOperatorId);
+        builder.Property(order => order.AssignedSecondaryOperatorName).HasMaxLength(200);
         builder.Property(order => order.PickedUpAtUtc).HasColumnType("datetimeoffset");
         builder.Property(order => order.SurveySentAtUtc).HasColumnType("datetimeoffset");
         builder.Property(order => order.SurveyRating);

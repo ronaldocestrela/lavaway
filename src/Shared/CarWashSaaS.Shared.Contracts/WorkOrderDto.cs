@@ -26,7 +26,9 @@ public sealed record WorkOrderDto(
     string? PaymentMethod = null,
     decimal? PaidAmount = null,
     string? PaymentTransactionId = null,
-    string TrackingToken = "");
+    string TrackingToken = "",
+    Guid? AssignedSecondaryOperatorId = null,
+    string? AssignedSecondaryOperatorName = null);
 
 public sealed record WorkOrderItemDto(
     Guid Id,

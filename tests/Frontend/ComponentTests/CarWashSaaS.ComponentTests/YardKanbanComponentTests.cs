@@ -313,5 +313,66 @@ public sealed class YardKanbanComponentTests : BunitContext
         Assert.Contains("ABC-1234", cut.Markup);
         Assert.DoesNotContain("XYZ-9999", cut.Markup);
     }
+
+    [Fact]
+    public void YardKanbanCard_WithTwoAssignedOperators_ShouldRenderBothBadges()
+    {
+        var card = new WorkOrderKanbanCardDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Cliente VIP",
+            Guid.NewGuid(),
+            "ABC1D23",
+            "Sedan",
+            "InWashing",
+            120m,
+            40,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddMinutes(40),
+            Guid.NewGuid(),
+            "Lucas Mendes",
+            null,
+            ["Lavagem"],
+            1,
+            DateTimeOffset.UtcNow,
+            AssignedSecondaryOperatorId: Guid.NewGuid(),
+            AssignedSecondaryOperatorName: "Pedro Alves");
+
+        var cut = Render<YardKanbanCard>(parameters => parameters
+            .Add(p => p.Card, card));
+
+        Assert.Contains("Lucas Mendes", cut.Markup);
+        Assert.Contains("Pedro Alves", cut.Markup);
+        Assert.NotEmpty(cut.FindAll(".operator-badge-secondary"));
+    }
+
+    [Fact]
+    public void YardKanbanCard_WithOneAssignedOperator_ShouldRenderBadgeAndAddSecondaryButton()
+    {
+        var card = new WorkOrderKanbanCardDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Cliente VIP",
+            Guid.NewGuid(),
+            "ABC1D23",
+            "Sedan",
+            "InWashing",
+            120m,
+            40,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddMinutes(40),
+            Guid.NewGuid(),
+            "Lucas Mendes",
+            null,
+            ["Lavagem"],
+            1,
+            DateTimeOffset.UtcNow);
+
+        var cut = Render<YardKanbanCard>(parameters => parameters
+            .Add(p => p.Card, card));
+
+        Assert.Contains("Lucas Mendes", cut.Markup);
+        Assert.NotEmpty(cut.FindAll(".btn-add-secondary-operator"));
+    }
 }
 
