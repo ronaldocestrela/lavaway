@@ -21,6 +21,13 @@ body:has(.bottom-action-bar) .mobile-bottom-nav {
     display: none !important;
 }
 
+/* Oculta a barra de navegação inferior quando qualquer modal estiver aberto */
+body:has(.modal-backdrop) .mobile-bottom-nav,
+body:has(.dialog-backdrop) .mobile-bottom-nav,
+body:has(.gallery-modal-backdrop) .mobile-bottom-nav {
+    display: none !important;
+}
+
 body:has(.bottom-action-bar) .page-content {
     padding-bottom: 20px !important;
 }
