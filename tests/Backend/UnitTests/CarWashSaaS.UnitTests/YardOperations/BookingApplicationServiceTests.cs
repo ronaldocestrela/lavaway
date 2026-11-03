@@ -418,6 +418,134 @@ public sealed class BookingApplicationServiceTests
             => Task.FromResult<IReadOnlyCollection<CustomerVehicleMatchDto>>([]);
     }
 
+    [Fact]
+    public async Task PrepareCheckInAsync_WhenBookingNotFound_ShouldReturnNotFound()
+    {
+        var result = await _sut.PrepareCheckInAsync(_tenantId, Guid.NewGuid());
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.NotFound, result.Error!.Type);
+    }
+
+    [Fact]
+    public async Task PrepareCheckInAsync_WhenTenantMismatch_ShouldReturnNotFound()
+    {
+        var booking = Booking.Create(_tenantId, "Maria Silva", "11999998888", "ABC1D23", null, VehicleSize.Suv, _serviceId, "Ducha", 60m, DateOnly.FromDateTime(DateTime.Today), new TimeOnly(10, 0)).Value!;
+        await _bookingRepo.AddAsync(booking);
+
+        var otherTenantId = Guid.NewGuid();
+        var result = await _sut.PrepareCheckInAsync(otherTenantId, booking.Id);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.NotFound, result.Error!.Type);
+    }
+
+    [Fact]
+    public async Task PrepareCheckInAsync_WhenBookingCancelled_ShouldReturnConflict()
+    {
+        var booking = Booking.Create(_tenantId, "Maria Silva", "11999998888", "ABC1D23", null, VehicleSize.Suv, _serviceId, "Ducha", 60m, DateOnly.FromDateTime(DateTime.Today), new TimeOnly(10, 0)).Value!;
+        booking.Cancel("Cliente desistiu");
+        await _bookingRepo.AddAsync(booking);
+
+        var result = await _sut.PrepareCheckInAsync(_tenantId, booking.Id);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, result.Error!.Type);
+    }
+
+    [Fact]
+    public async Task PrepareCheckInAsync_WhenCustomerAndVehicleDoNotExist_ShouldCreateCustomerAndVehicleAndReturnContext()
+    {
+        var customerRepo = new InMemoryCustomerRepo();
+        var vehicleRepo = new InMemoryVehicleRepo();
+        var sut = new BookingApplicationService(
+            _bookingRepo,
+            _serviceRepo,
+            _capacityRepo,
+            _customerSearchRepo,
+            _unitOfWork,
+            customerRepo,
+            vehicleRepo);
+
+        var booking = Booking.Create(
+            _tenantId,
+            "Roberto Almeida",
+            "11988881234",
+            "BRA2E19",
+            "Jeep Compass",
+            VehicleSize.Suv,
+            _serviceId,
+            "Lavagem Detalhada",
+            120m,
+            DateOnly.FromDateTime(DateTime.Today),
+            new TimeOnly(14, 0),
+            notes: "Cuidado com o retrovisor esquerdo").Value!;
+        await _bookingRepo.AddAsync(booking);
+
+        var result = await sut.PrepareCheckInAsync(_tenantId, booking.Id);
+
+        Assert.True(result.IsSuccess);
+        var ctx = result.Value!;
+        Assert.Equal(booking.Id, ctx.BookingId);
+        Assert.Equal("Roberto Almeida", ctx.CustomerName);
+        Assert.Equal("11988881234", ctx.CustomerPhone);
+        Assert.Equal("BRA2E19", ctx.VehiclePlate);
+        Assert.Equal("Jeep Compass", ctx.VehicleModel);
+        Assert.Equal(VehicleSize.Suv.ToString(), ctx.VehicleSize);
+        Assert.Equal(_serviceId, ctx.ServiceId);
+        Assert.Equal("Lavagem Detalhada", ctx.ServiceName);
+        Assert.Equal("Cuidado com o retrovisor esquerdo", ctx.Notes);
+
+        // Verify entities were created in repositories
+        var savedCustomer = await customerRepo.GetByIdAsync(_tenantId, ctx.CustomerId);
+        Assert.NotNull(savedCustomer);
+        Assert.Equal("Roberto Almeida", savedCustomer.Name);
+
+        var savedVehicle = await vehicleRepo.GetByIdAsync(_tenantId, ctx.VehicleId);
+        Assert.NotNull(savedVehicle);
+        Assert.Equal("BRA2E19", savedVehicle.Plate);
+        Assert.Equal(savedCustomer.Id, savedVehicle.CustomerId);
+
+        // Verify booking customerId was linked
+        Assert.Equal(savedCustomer.Id, booking.CustomerId);
+    }
+
+    private sealed class InMemoryCustomerRepo : ICustomerRepository
+    {
+        private readonly List<Customer> _customers = [];
+
+        public Task<Customer?> GetByIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default)
+            => Task.FromResult(_customers.FirstOrDefault(c => c.TenantId == tenantId && c.Id == customerId));
+
+        public Task<Customer?> GetByNormalizedPhoneAsync(Guid tenantId, string normalizedPhone, CancellationToken ct = default)
+            => Task.FromResult(_customers.FirstOrDefault(c => c.TenantId == tenantId && c.NormalizedPhone == normalizedPhone));
+
+        public Task AddAsync(Customer customer, CancellationToken ct = default)
+        {
+            _customers.Add(customer);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class InMemoryVehicleRepo : IVehicleRepository
+    {
+        private readonly List<Vehicle> _vehicles = [];
+
+        public Task<Vehicle?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken ct = default)
+            => Task.FromResult(_vehicles.FirstOrDefault(v => v.TenantId == tenantId && v.Id == id));
+
+        public Task<Vehicle?> GetByPlateAsync(Guid tenantId, string normalizedPlate, CancellationToken ct = default)
+            => Task.FromResult(_vehicles.FirstOrDefault(v => v.TenantId == tenantId && v.Plate == normalizedPlate));
+
+        public Task<bool> IsPlateRegisteredAsync(Guid tenantId, string normalizedPlate, CancellationToken ct = default)
+            => Task.FromResult(_vehicles.Any(v => v.TenantId == tenantId && v.Plate == normalizedPlate));
+
+        public Task AddAsync(Vehicle vehicle, CancellationToken ct = default)
+        {
+            _vehicles.Add(vehicle);
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
         public int SaveCount { get; private set; }

@@ -16,7 +16,8 @@ public sealed class WorkOrderApplicationService(
     IVehicleInspectionRepository? vehicleInspectionRepository = null,
     IBackgroundQueue? backgroundQueue = null,
     LoyaltyApplicationService? loyaltyApplicationService = null,
-    ITenantPlanQuotaLookup? quotaLookup = null) : IWorkOrderPaymentLookup, IWorkOrderPaymentSettlementService
+    ITenantPlanQuotaLookup? quotaLookup = null,
+    IBookingRepository? bookingRepository = null) : IWorkOrderPaymentLookup, IWorkOrderPaymentSettlementService
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -140,6 +141,20 @@ public sealed class WorkOrderApplicationService(
 
         var workOrder = workOrderResult.Value!;
         await workOrderRepository.AddAsync(workOrder, ct);
+
+        if (command.BookingId.HasValue && bookingRepository is not null)
+        {
+            var linkedBooking = await bookingRepository.GetByIdAsync(command.BookingId.Value, ct);
+            if (linkedBooking is not null && linkedBooking.TenantId == tenantId)
+            {
+                var arrivedResult = linkedBooking.MarkAsArrived(workOrder.Id);
+                if (arrivedResult.IsSuccess)
+                {
+                    bookingRepository.Update(linkedBooking);
+                }
+            }
+        }
+
         var saveResult = await unitOfWork.SaveChangesAsync(ct);
         if (!saveResult.IsSuccess)
         {

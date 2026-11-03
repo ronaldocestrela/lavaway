@@ -14,16 +14,17 @@ A implementação contempla de ponta a ponta:
 ```mermaid
 flowchart TD
     R[Recepção / ReceptionPage] -->|Avança com customerId e vehicleId| CK[Tela de Check-in /work-orders/new]
+    AG[Agenda & Reservas / SchedulingPage] -->|Iniciar Atendimento com bookingId| CK
     CK --> V[Carrega Dados do Cliente, Veículo e Catálogo de Serviços]
     V --> P{Porte do Veículo confere?}
-    P -->|Confirmar ou Alternar| S[Seleciona Serviços do Catálogo]
+    P -->|Confirmar ou Alternar| S[Seleciona Serviços do Catálogo / Pré-seleciona do Agendamento]
     S --> CALC[Cálculo Reativo em Tempo Real:\nTotal R$ + Duração Total + Horário Previsto]
     CALC --> OBS[Informa Observações / Instruções de Check-in]
-    OBS --> SUBMIT[POST /work-orders]
+    OBS --> SUBMIT[POST /work-orders com BookingId opcional]
     SUBMIT --> AUTH[TenantResolverMiddleware + Validação de Tenant]
-    AUTH --> APP[WorkOrderApplicationService: Snapshot de Preços/Duração por Porte]
-    APP --> DB[(yard.WorkOrders & yard.WorkOrderItems)]
-    DB --> SUCC[WorkOrder Criada com Status 'Waiting']
+    AUTH --> APP[WorkOrderApplicationService: Snapshot de Preços/Duração por Porte + Atualiza Booking para Arrived]
+    APP --> DB[(yard.WorkOrders & yard.WorkOrderItems & yard.Bookings)]
+    DB --> SUCC[WorkOrder Criada com Status 'Waiting' + Booking 'Arrived']
     SUCC --> MODAL[Exibe WorkOrderCreatedModal com Resumo e Horário de Entrega]
     MODAL --> NEXT[Direciona para Vistoria 3.3 ou Pátio 3.4]
 ```
@@ -42,7 +43,7 @@ flowchart TD
 ## API REST
 
 - `POST /work-orders`: cria uma nova ordem de serviço.
-  - Body: `CreateWorkOrderRequest(Guid CustomerId, Guid VehicleId, IReadOnlyCollection<CreateWorkOrderItemRequest> Items, string? Notes)`.
+  - Body: `CreateWorkOrderRequest(Guid CustomerId, Guid VehicleId, IReadOnlyCollection<CreateWorkOrderItemRequest> Items, string? Notes, Guid? BookingId)`.
   - Resposta: `201 Created` com header `Location: /work-orders/{id}` e payload `WorkOrderDto`.
   - Respostas de erro: `400 Bad Request` (validação de itens, notas ou porte não configurado), `404 Not Found` (cliente, veículo ou serviço inexistente), `409 Conflict` (veículo não pertence ao cliente ou serviços duplicados).
 - `GET /work-orders/{id}`: retorna os detalhes completos da OS (`WorkOrderDto`).
@@ -54,5 +55,5 @@ flowchart TD
 - `ServiceSelectorCard.razor` (`CarWashSaaS.Client.Components`): grade dos serviços disponíveis agrupados por categoria, com indicação de preço/tempo para o porte selecionado, estado de seleção iluminado e controladores de quantidade (+ / -).
 - `WorkOrderSummaryCard.razor` (`CarWashSaaS.Client.Components`): painel lateral com cálculo reativo em tempo real do valor total, tempo acumulado, banner de previsão de entrega com relógio, campo de observações com contador de caracteres e botão de confirmação com loading state.
 - `WorkOrderCreatedModal.razor` (`CarWashSaaS.Client.Components`): modal de confirmação com efeito de glassmorphism, indicador luminoso de sucesso, resumo do atendimento e ações para nova recepção ou visualização no pátio.
-- `NewWorkOrderPage.razor` (`CarWashSaaS.Client.Web`): página orquestradora na rota `/work-orders/new`, conectada via query parameters (`customerId`, `vehicleId`) ou `ReceptionSessionState`.
+- `NewWorkOrderPage.razor` (`CarWashSaaS.Client.Web`): página orquestradora na rota `/work-orders/new`, conectada via query parameters (`customerId`, `vehicleId`, ou `bookingId`) ou `ReceptionSessionState`.
 - `WorkOrderApiClient.cs` (`CarWashSaaS.Client.Core`): cliente HTTP fortemente tipado com tratamento robusto de erros e deserialização de `WorkOrderDto`.

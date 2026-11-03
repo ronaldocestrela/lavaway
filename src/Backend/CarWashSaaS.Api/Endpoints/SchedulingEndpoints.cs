@@ -78,6 +78,28 @@ public static class SchedulingEndpoints
                 };
         }).RequireAuthorization(AuthorizationPolicyNames.Receptionist);
 
+        group.MapPost("/bookings/{id:guid}/prepare-checkin", async (
+            Guid id,
+            ICurrentTenantAccessor currentTenantAccessor,
+            BookingApplicationService service,
+            CancellationToken ct) =>
+        {
+            if (currentTenantAccessor.TenantId is not Guid tenantId)
+            {
+                return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var result = await service.PrepareCheckInAsync(tenantId, id, ct);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Conflict => Results.Conflict(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.BadRequest(new { result.Error.Code, result.Error.Description })
+                };
+        }).RequireAuthorization(AuthorizationPolicyNames.Receptionist);
+
         group.MapPost("/bookings/{id:guid}/cancel", async (
             Guid id,
             CancelBookingRequest? request,

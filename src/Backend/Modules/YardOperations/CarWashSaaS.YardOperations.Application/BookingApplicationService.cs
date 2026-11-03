@@ -8,7 +8,9 @@ public sealed class BookingApplicationService(
     IServiceRepository serviceRepository,
     IYardCapacityRepository capacityRepository,
     ICustomerVehicleSearchRepository customerSearchRepository,
-    IUnitOfWork unitOfWork) : ISchedulingBookingLookup
+    IUnitOfWork unitOfWork,
+    ICustomerRepository? customerRepository = null,
+    IVehicleRepository? vehicleRepository = null) : ISchedulingBookingLookup
 {
     private readonly BookingCapacityChecker _capacityChecker = new(capacityRepository, bookingRepository);
 
@@ -406,6 +408,105 @@ public sealed class BookingApplicationService(
 
         var booking = await bookingRepository.GetUpcomingActiveBookingByPhoneAsync(tenantId, customerPhone, ct);
         return Result<BookingSummaryDto?>.Success(booking is null ? null : MapToSummaryDto(booking));
+    }
+
+    public async Task<Result<BookingCheckInContextDto>> PrepareCheckInAsync(
+        Guid tenantId,
+        Guid bookingId,
+        CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty || bookingId == Guid.Empty)
+        {
+            return Result<BookingCheckInContextDto>.Failure(new Error("booking.invalid_input", "Tenant e identificador da reserva são obrigatórios.", ErrorType.Validation));
+        }
+
+        var booking = await bookingRepository.GetByIdAsync(bookingId, ct);
+        if (booking is null || booking.TenantId != tenantId)
+        {
+            return Result<BookingCheckInContextDto>.Failure(new Error("booking.not_found", "Agendamento não encontrado.", ErrorType.NotFound));
+        }
+
+        if (booking.Status == BookingStatus.Cancelled)
+        {
+            return Result<BookingCheckInContextDto>.Failure(new Error("booking.cancelled", "Não é possível iniciar atendimento de uma reserva cancelada.", ErrorType.Conflict));
+        }
+
+        Customer? customer = null;
+        if (booking.CustomerId.HasValue && customerRepository is not null)
+        {
+            customer = await customerRepository.GetByIdAsync(tenantId, booking.CustomerId.Value, ct);
+        }
+
+        var normalizedPhone = Customer.NormalizePhone(booking.CustomerPhone);
+        if (customer is null && customerRepository is not null && !string.IsNullOrWhiteSpace(normalizedPhone))
+        {
+            customer = await customerRepository.GetByNormalizedPhoneAsync(tenantId, normalizedPhone, ct);
+        }
+
+        if (customer is null && customerRepository is not null)
+        {
+            var createCustomerResult = Customer.Create(tenantId, booking.CustomerName, booking.CustomerPhone);
+            if (!createCustomerResult.IsSuccess)
+            {
+                return Result<BookingCheckInContextDto>.Failure(createCustomerResult.Error!);
+            }
+            customer = createCustomerResult.Value!;
+            await customerRepository.AddAsync(customer, ct);
+        }
+
+        if (customer is not null && (!booking.CustomerId.HasValue || booking.CustomerId.Value != customer.Id))
+        {
+            booking.LinkCustomer(customer.Id);
+            bookingRepository.Update(booking);
+        }
+
+        var normalizedPlate = Vehicle.NormalizePlate(booking.VehiclePlate);
+        Vehicle? vehicle = null;
+        if (vehicleRepository is not null && !string.IsNullOrWhiteSpace(normalizedPlate))
+        {
+            vehicle = await vehicleRepository.GetByPlateAsync(tenantId, normalizedPlate, ct);
+        }
+
+        if (vehicle is null && vehicleRepository is not null && customer is not null)
+        {
+            var createVehicleResult = Vehicle.Create(tenantId, customer.Id, booking.VehiclePlate, booking.VehicleSize);
+            if (!createVehicleResult.IsSuccess)
+            {
+                return Result<BookingCheckInContextDto>.Failure(createVehicleResult.Error!);
+            }
+            vehicle = createVehicleResult.Value!;
+            await vehicleRepository.AddAsync(vehicle, ct);
+        }
+        else if (vehicle is not null && customer is not null && vehicle.CustomerId != customer.Id)
+        {
+            vehicle.ReassignCustomer(customer.Id);
+        }
+
+        var saveResult = await unitOfWork.SaveChangesAsync(ct);
+        if (!saveResult.IsSuccess)
+        {
+            return Result<BookingCheckInContextDto>.Failure(saveResult.Error!);
+        }
+
+        if (customer is null || vehicle is null)
+        {
+            return Result<BookingCheckInContextDto>.Failure(new Error("booking.checkin_failed", "Não foi possível carregar ou criar o cliente e veículo para a ordem de serviço.", ErrorType.Conflict));
+        }
+
+        var dto = new BookingCheckInContextDto(
+            booking.Id,
+            customer.Id,
+            vehicle.Id,
+            customer.Name,
+            customer.Phone,
+            vehicle.Plate,
+            booking.VehicleModel,
+            booking.VehicleSize.ToString(),
+            booking.ServiceId,
+            booking.ServiceName,
+            booking.Notes);
+
+        return Result<BookingCheckInContextDto>.Success(dto);
     }
 
     public async Task<Result> MarkBookingArrivedAsync(

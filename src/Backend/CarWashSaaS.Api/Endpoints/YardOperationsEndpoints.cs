@@ -601,7 +601,8 @@ public static class YardOperationsEndpoints
                 request.CustomerId,
                 request.VehicleId,
                 request.Items.Select(i => new CreateWorkOrderItemInput(i.ServiceId, i.Quantity)).ToList(),
-                request.Notes);
+                request.Notes,
+                request.BookingId);
 
             var result = await service.CreateAsync(tenantId, command);
             return result.IsSuccess ? Results.Created($"/work-orders/{result.Value!.Id}", result.Value) : result.Error!.Type switch

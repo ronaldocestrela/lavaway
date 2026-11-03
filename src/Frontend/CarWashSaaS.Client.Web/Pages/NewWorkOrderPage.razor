@@ -6,6 +6,7 @@
 @inject CustomerVehicleApiClient CustomerApi
 @inject ServiceCatalogApiClient ServiceApi
 @inject WorkOrderApiClient WorkOrderApi
+@inject SchedulingApiClient SchedulingApi
 @inject ReceptionSessionState ReceptionState
 @inject NavigationManager Navigation
 @inject IToastService ToastService
@@ -75,6 +76,9 @@
     [SupplyParameterFromQuery(Name = "vehicleId")]
     public Guid? VehicleIdQuery { get; set; }
 
+    [SupplyParameterFromQuery(Name = "bookingId")]
+    public Guid? BookingIdQuery { get; set; }
+
     private bool _isLoading = true;
     private string? _loadError;
     private bool _isSubmitting;
@@ -121,6 +125,38 @@
 
         try
         {
+            if (BookingIdQuery.HasValue)
+            {
+                var bookingContext = await SchedulingApi.PrepareCheckInAsync(BookingIdQuery.Value);
+                _customer = await CustomerApi.GetAsync(bookingContext.CustomerId);
+                if (_customer is not null)
+                {
+                    _vehicle = _customer.Vehicles.FirstOrDefault(v => v.Id == bookingContext.VehicleId);
+                }
+
+                if (_customer is null || _vehicle is null)
+                {
+                    _loadError = "Não foi possível carregar os dados de cliente e veículo do agendamento.";
+                    _isLoading = false;
+                    return;
+                }
+
+                _selectedVehicleSize = !string.IsNullOrWhiteSpace(bookingContext.VehicleSize)
+                    ? bookingContext.VehicleSize
+                    : _vehicle.Size;
+
+                _notes = bookingContext.Notes ?? string.Empty;
+
+                _availableServices = await ServiceApi.GetServicesAsync();
+
+                if (bookingContext.ServiceId != Guid.Empty && _availableServices.Any(s => s.Id == bookingContext.ServiceId))
+                {
+                    _selectedServiceQuantities[bookingContext.ServiceId] = 1;
+                }
+
+                return;
+            }
+
             // 1. Try to obtain customer & vehicle from query params or session state
             var customerId = CustomerIdQuery ?? ReceptionState.SelectedCustomer?.CustomerId;
             var vehicleId = VehicleIdQuery ?? ReceptionState.SelectedVehicle?.Id;
@@ -217,7 +253,8 @@
                 _customer.CustomerId,
                 _vehicle.Id,
                 items,
-                string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim());
+                string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
+                BookingIdQuery);
 
             _createdWorkOrder = await WorkOrderApi.CreateWorkOrderAsync(request);
             ToastService.ShowSuccess($"Ordem de Serviço criada com sucesso!");
@@ -258,6 +295,13 @@
 
     private void GoBackToReception()
     {
-        Navigation.NavigateTo("/reception");
+        if (BookingIdQuery.HasValue)
+        {
+            Navigation.NavigateTo("/scheduling");
+        }
+        else
+        {
+            Navigation.NavigateTo("/reception");
+        }
     }
 }
