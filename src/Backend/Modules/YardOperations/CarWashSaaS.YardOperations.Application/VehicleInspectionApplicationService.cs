@@ -386,7 +386,7 @@ public sealed class VehicleInspectionApplicationService
         var customerName = customer?.Name ?? "Cliente";
         var plate = vehicle?.Plate ?? "---";
         var size = vehicle?.Size.ToString() ?? "Padrão";
-        var model = vehicle is not null ? $"Veículo ({vehicle.Size})" : "Veículo";
+        var model = vehicle is not null ? $"Veículo ({FormatVehicleSize(vehicle.Size)})" : "Veículo";
 
         var publicDto = new PublicInspectionDto(
             workOrder.Id,
@@ -454,6 +454,15 @@ public sealed class VehicleInspectionApplicationService
 
         return Result<StoredObject>.Success(stored);
     }
+
+    private static string FormatVehicleSize(VehicleSize size) => size switch
+    {
+        VehicleSize.HatchSedan => "Hatch / Sedan",
+        VehicleSize.Suv => "SUV",
+        VehicleSize.PickupVan => "Picape / Van",
+        VehicleSize.Motorcycle => "Motocicleta",
+        _ => size.ToString()
+    };
 
     private static string GetCategoryLabel(InspectionPhotoCategory category) => category switch
     {

@@ -59,7 +59,14 @@
         <!-- Status e Identificação do Veículo -->
         <section class="vehicle-card">
             <div class="vehicle-top">
-                <span class="badge-status-completed">✓ Check-in & Vistoria Realizados</span>
+                @if (_data.InspectionCompletedAtUtc.HasValue)
+                {
+                    <span class="badge-status-completed">✓ Vistoria Concluída</span>
+                }
+                else
+                {
+                    <span class="badge-status-completed">✓ Check-in Realizado</span>
+                }
                 <span class="checkin-date">&#128197; @_data.CheckInAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
             </div>
 
@@ -68,7 +75,7 @@
                     <h2 class="vehicle-model">@_data.VehicleModel</h2>
                     <div class="vehicle-pills">
                         <span class="plate-pill">@FormatPlate(_data.VehiclePlate)</span>
-                        <span class="size-pill">@_data.VehicleSize</span>
+                        <span class="size-pill">@FormatVehicleSize(_data.VehicleSize)</span>
                     </div>
                 </div>
                 <div class="customer-info">
@@ -262,22 +269,22 @@
     private bool _isLoading = true;
     private string? _errorMessage;
     private PublicInspectionDto? _data;
+    private string? _loadedToken;
 
     private PublicInspectionPhotoDto? _modalPhoto;
     private string? _modalPhotoUrl;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadPublicInspectionAsync();
-    }
-
     protected override async Task OnParametersSetAsync()
     {
-        await LoadPublicInspectionAsync();
+        if (!string.Equals(TrackingToken, _loadedToken, StringComparison.Ordinal))
+        {
+            await LoadPublicInspectionAsync();
+        }
     }
 
     private async Task LoadPublicInspectionAsync()
     {
+        _loadedToken = TrackingToken;
         if (string.IsNullOrWhiteSpace(TrackingToken))
         {
             _errorMessage = "Token de vistoria inválido ou não informado.";
@@ -317,9 +324,15 @@
 
     private string GetFullPhotoUrl(string relativeUrl)
     {
+        if (string.IsNullOrWhiteSpace(relativeUrl)) return string.Empty;
+        if (relativeUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            relativeUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return relativeUrl;
+        }
         var baseAddress = Http.BaseAddress?.ToString().TrimEnd('/') ?? string.Empty;
         var cleanRelative = relativeUrl.TrimStart('/');
-        return $"{baseAddress}/{cleanRelative}";
+        return string.IsNullOrEmpty(baseAddress) ? $"/{cleanRelative}" : $"{baseAddress}/{cleanRelative}";
     }
 
     private void OpenPhotoModal(PublicInspectionPhotoDto photo, string fullUrl)
@@ -340,6 +353,15 @@
         var clean = (raw ?? string.Empty).Replace("-", "").Trim().ToUpperInvariant();
         return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
     }
+
+    private static string FormatVehicleSize(string size) => size switch
+    {
+        "HatchSedan" => "Hatch / Sedan",
+        "Suv" => "SUV",
+        "PickupVan" or "Pickup" or "Van" => "Picape / Van",
+        "Motorcycle" => "Motocicleta",
+        _ => size
+    };
 
     private static string FormatStatus(string status) => status switch
     {
