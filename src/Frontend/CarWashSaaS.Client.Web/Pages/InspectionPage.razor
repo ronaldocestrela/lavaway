@@ -242,7 +242,6 @@
         try
         {
             _inspection = await InspectionApi.UpdateChecklistAsync(WorkOrderId, request);
-            ShowAlert("Checklist e dados do veículo salvos com sucesso!", true);
         }
         catch (Exception ex)
         {

@@ -1,8 +1,15 @@
 @using CarWashSaaS.Shared.Contracts
+@implements IAsyncDisposable
 
 <div class="checklist-card">
     <div class="card-header">
-        <span class="header-tag">CONFERÊNCIA DE ENTRADA</span>
+        <div class="card-header-top">
+            <span class="header-tag">CONFERÊNCIA DE ENTRADA</span>
+            <div class="autosave-indicator @GetStatusClass()">
+                <span class="status-dot"></span>
+                <span class="status-text">@GetStatusText()</span>
+            </div>
+        </div>
         <h3 class="header-title">Itens e Estado do Veículo</h3>
     </div>
 
@@ -37,7 +44,9 @@
                    class="odometer-input"
                    placeholder="Ex.: 45000"
                    value="@OdometerKm"
+                   @oninput="HandleOdometerInput"
                    @onchange="HandleOdometerChange"
+                   @onblur="HandleOdometerBlur"
                    disabled="@IsReadOnly" />
             <span class="odometer-unit">km</span>
         </div>
@@ -95,20 +104,13 @@
                   placeholder="Ex.: Pertences no porta-malas conferidos com o cliente..."
                   rows="3"
                   value="@Notes"
+                  @oninput="HandleNotesInput"
                   @onchange="HandleNotesChange"
+                  @onblur="HandleNotesBlur"
                   disabled="@IsReadOnly"
                   maxlength="500"></textarea>
         <span class="char-count">@((Notes?.Length ?? 0))/500 caracteres</span>
     </div>
-
-    @if (!IsReadOnly)
-    {
-        <div class="checklist-save-action">
-            <button type="button" class="btn-save-checklist" @onclick="HandleSave">
-                Salvar Checklist
-            </button>
-        </div>
-    }
 </div>
 
 @code {
@@ -119,29 +121,78 @@
     [Parameter] public bool IsReadOnly { get; set; }
     [Parameter] public EventCallback<UpdateInspectionChecklistRequest> OnSave { get; set; }
 
+    private enum AutoSaveStatus { Saved, Saving, Error }
+    private AutoSaveStatus _status = AutoSaveStatus.Saved;
+    private CancellationTokenSource? _debounceCts;
+
     private readonly Dictionary<string, (ChecklistItemStatus Status, string? Obs)> _localChanges = [];
 
-    private void SetFuel(string level)
+    protected override void OnParametersSet()
+    {
+        if (Items.Count > 0 && _localChanges.Count > 0)
+        {
+            var keysToRemove = _localChanges
+                .Where(kv =>
+                {
+                    var matching = Items.FirstOrDefault(i => i.ItemKey == kv.Key);
+                    return matching is not null && matching.Status == kv.Value.Status && matching.Observation == kv.Value.Obs;
+                })
+                .Select(kv => kv.Key)
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                _localChanges.Remove(key);
+            }
+        }
+    }
+
+    private async Task SetFuel(string level)
     {
         if (IsReadOnly) return;
         FuelLevel = level;
+        await TriggerAutoSaveAsync();
     }
 
-    private void HandleOdometerChange(ChangeEventArgs e)
+    private void HandleOdometerInput(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out var km))
         {
             OdometerKm = km;
         }
-        else
+        else if (string.IsNullOrWhiteSpace(e.Value?.ToString()))
         {
             OdometerKm = null;
         }
+        ScheduleDebouncedSave();
     }
 
-    private void HandleNotesChange(ChangeEventArgs e)
+    private async Task HandleOdometerBlur()
+    {
+        await FlushAutoSaveAsync();
+    }
+
+    private async Task HandleOdometerChange(ChangeEventArgs e)
+    {
+        HandleOdometerInput(e);
+        await FlushAutoSaveAsync();
+    }
+
+    private void HandleNotesInput(ChangeEventArgs e)
     {
         Notes = e.Value?.ToString();
+        ScheduleDebouncedSave();
+    }
+
+    private async Task HandleNotesBlur()
+    {
+        await FlushAutoSaveAsync();
+    }
+
+    private async Task HandleNotesChange(ChangeEventArgs e)
+    {
+        Notes = e.Value?.ToString();
+        await FlushAutoSaveAsync();
     }
 
     private ChecklistItemStatus GetItemStatus(InspectionChecklistItemDto item)
@@ -151,26 +202,103 @@
             : item.Status;
     }
 
-    private void SetItemStatus(InspectionChecklistItemDto item, ChecklistItemStatus status)
+    private async Task SetItemStatus(InspectionChecklistItemDto item, ChecklistItemStatus status)
     {
         if (IsReadOnly) return;
         var currentObs = _localChanges.TryGetValue(item.ItemKey, out var existing) ? existing.Obs : item.Observation;
         _localChanges[item.ItemKey] = (status, currentObs);
+        await TriggerAutoSaveAsync();
     }
 
-    private async Task HandleSave()
+    private void ScheduleDebouncedSave()
     {
-        var updatedItems = Items.Select(i =>
-        {
-            if (_localChanges.TryGetValue(i.ItemKey, out var change))
-            {
-                return new UpdateChecklistItemRequest(i.ItemKey, i.Title, change.Status, change.Obs);
-            }
-            return new UpdateChecklistItemRequest(i.ItemKey, i.Title, i.Status, i.Observation);
-        }).ToArray();
+        if (IsReadOnly) return;
+        _status = AutoSaveStatus.Saving;
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
 
-        var request = new UpdateInspectionChecklistRequest(FuelLevel, OdometerKm, Notes, updatedItems);
-        await OnSave.InvokeAsync(request);
-        _localChanges.Clear();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(400, token);
+                if (!token.IsCancellationRequested)
+                {
+                    await InvokeAsync(TriggerAutoSaveAsync);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Debounce cancelado por alteração subsequente
+            }
+        }, token);
+    }
+
+    private async Task FlushAutoSaveAsync()
+    {
+        if (IsReadOnly) return;
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = null;
+        await TriggerAutoSaveAsync();
+    }
+
+    private async Task TriggerAutoSaveAsync()
+    {
+        if (IsReadOnly) return;
+        try
+        {
+            _status = AutoSaveStatus.Saving;
+            StateHasChanged();
+
+            var updatedItems = Items.Select(i =>
+            {
+                if (_localChanges.TryGetValue(i.ItemKey, out var change))
+                {
+                    return new UpdateChecklistItemRequest(i.ItemKey, i.Title, change.Status, change.Obs);
+                }
+                return new UpdateChecklistItemRequest(i.ItemKey, i.Title, i.Status, i.Observation);
+            }).ToArray();
+
+            var request = new UpdateInspectionChecklistRequest(FuelLevel, OdometerKm, Notes, updatedItems);
+            await OnSave.InvokeAsync(request);
+            _status = AutoSaveStatus.Saved;
+        }
+        catch
+        {
+            _status = AutoSaveStatus.Error;
+            throw;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private string GetStatusClass() => _status switch
+    {
+        AutoSaveStatus.Saving => "saving",
+        AutoSaveStatus.Error => "error",
+        _ => "saved"
+    };
+
+    private string GetStatusText() => _status switch
+    {
+        AutoSaveStatus.Saving => "Salvando...",
+        AutoSaveStatus.Error => "Falha ao salvar",
+        _ => "Salvo automaticamente"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_debounceCts is not null)
+        {
+            _debounceCts.Cancel();
+            _debounceCts.Dispose();
+            _debounceCts = null;
+            await TriggerAutoSaveAsync();
+        }
     }
 }

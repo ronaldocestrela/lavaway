@@ -82,6 +82,87 @@ public sealed class InspectionComponentTests : BunitContext
     }
 
     [Fact]
+    public void InspectionChecklistCard_ShouldNotRenderSaveButton()
+    {
+        var cut = Render<InspectionChecklistCard>(parameters => parameters
+            .Add(p => p.IsReadOnly, false));
+
+        Assert.DoesNotContain("Salvar Checklist", cut.Markup);
+        Assert.Empty(cut.FindAll("button.btn-save-checklist"));
+    }
+
+    [Fact]
+    public void InspectionChecklistCard_ShouldAutomaticallyTriggerOnSave_WhenFuelLevelChanged()
+    {
+        UpdateInspectionChecklistRequest? capturedRequest = null;
+        var cut = Render<InspectionChecklistCard>(parameters => parameters
+            .Add(p => p.FuelLevel, "Empty")
+            .Add(p => p.IsReadOnly, false)
+            .Add(p => p.OnSave, (UpdateInspectionChecklistRequest req) => capturedRequest = req));
+
+        var fullPill = cut.FindAll("button.btn-pill").First(b => b.TextContent.Contains("Cheio"));
+        fullPill.Click();
+
+        Assert.NotNull(capturedRequest);
+        Assert.Equal("Full", capturedRequest.FuelLevel);
+    }
+
+    [Fact]
+    public void InspectionChecklistCard_ShouldAutomaticallyTriggerOnSave_WhenItemStatusChanged()
+    {
+        UpdateInspectionChecklistRequest? capturedRequest = null;
+        var items = new List<InspectionChecklistItemDto>
+        {
+            new(Guid.NewGuid(), "spare_tire", "Estepe", ChecklistItemStatus.Ok, null)
+        };
+
+        var cut = Render<InspectionChecklistCard>(parameters => parameters
+            .Add(p => p.Items, items)
+            .Add(p => p.IsReadOnly, false)
+            .Add(p => p.OnSave, (UpdateInspectionChecklistRequest req) => capturedRequest = req));
+
+        var missingBtn = cut.Find("button.btn-status.missing");
+        missingBtn.Click();
+
+        Assert.NotNull(capturedRequest);
+        var updatedItem = Assert.Single(capturedRequest.Items);
+        Assert.Equal("spare_tire", updatedItem.ItemKey);
+        Assert.Equal(ChecklistItemStatus.Missing, updatedItem.Status);
+    }
+
+    [Fact]
+    public void InspectionChecklistCard_ShouldRenderAutoSaveIndicator()
+    {
+        var cut = Render<InspectionChecklistCard>(parameters => parameters
+            .Add(p => p.IsReadOnly, false));
+
+        var indicator = cut.Find(".autosave-indicator");
+        Assert.NotNull(indicator);
+    }
+
+    [Fact]
+    public void InspectionChecklistCard_ShouldAutomaticallyTriggerOnSave_WhenOdometerOrNotesChanged()
+    {
+        UpdateInspectionChecklistRequest? capturedRequest = null;
+        var cut = Render<InspectionChecklistCard>(parameters => parameters
+            .Add(p => p.OdometerKm, 10000)
+            .Add(p => p.Notes, "Inicial")
+            .Add(p => p.IsReadOnly, false)
+            .Add(p => p.OnSave, (UpdateInspectionChecklistRequest req) => capturedRequest = req));
+
+        var odometerInput = cut.Find("input.odometer-input");
+        odometerInput.Change("54321");
+
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(54321, capturedRequest.OdometerKm);
+
+        var notesTextarea = cut.Find("textarea.notes-textarea");
+        notesTextarea.Change("Veículo com pequenas avarias");
+
+        Assert.Equal("Veículo com pequenas avarias", capturedRequest.Notes);
+    }
+
+    [Fact]
     public void InspectionPhotoGallery_ShouldShowFourRequiredSlotsAndStatus()
     {
         var photos = new List<InspectionPhotoDto>
