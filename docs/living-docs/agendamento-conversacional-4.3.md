@@ -151,3 +151,35 @@ stateDiagram-v2
 | `POST` | `/scheduling/bookings/{id}/prepare-checkin` | `Receptionist` | Prepara contexto de check-in assegurando cliente/veículo e retornando dados para abertura da OS |
 | `POST` | `/scheduling/bookings/{id}/cancel` | `Receptionist` | Cancelamento de reserva com justificativa |
 | `GET` | `/scheduling/slots` | `Receptionist` | Consulta horários vagos e capacidade de boxes |
+
+---
+
+## 6. Especificação Visual do Componente BookingCard (Agenda Operacional)
+
+### 6.1 Hierarquia Visual e Isolamento de Estilos
+
+```mermaid
+flowchart TD
+    subgraph Card ["BookingCard (.booking-card.card-status-*)"]
+        direction TB
+        Header["Header (.booking-header, flex-wrap)"]
+        subgraph HeaderElements ["Elementos do Header"]
+            Time["TimeBadge (.time-badge)"]
+            Badges["HeaderBadges (.header-badges, wrap)"]
+            Origin["Origem (.origin-badge)"]
+            StatusBadge["Status (.status-badge.status-*)"]
+        end
+        Vehicle["Veículo (.booking-vehicle-row): Placa Mercosul + Modelo + Porte"]
+        Customer["Cliente (.booking-customer-row): Nome (WCAG AA) + Telefone Formatado"]
+        Service["Serviço (.booking-service-row): Nome do Serviço + Preço Estimado"]
+        Notes["Observações (.booking-notes, condicional)"]
+        Footer["Footer (.booking-footer): Protocolo + Ações / Atendimento Aberto"]
+    end
+```
+
+### 6.2 Diretrizes de Estilização e Acessibilidade (WCAG AA)
+1. **Superfície Sólida do Card (`#122421`):** O container possui fundo escuro sólido e borda de destaque superior (`card-status-*`), prevenindo qualquer colisão de especificidade CSS com os badges de status internos.
+2. **Badges Escopados:** Classes de status (`status-scheduled`, `status-confirmed`, `status-arrived`, `status-completed`, `status-cancelled`) são escopadas a `.status-badge`, mantendo `white-space: nowrap`.
+3. **Responsividade sem Transbordamento:** Cabeçalho e rodapé utilizam `flex-wrap: wrap` e `gap: 6px-8px`, garantindo que cards em colunas de 320px acomodem múltiplos badges sem truncamento.
+4. **Formatação de Dados:** Telefone exibido com máscara brasileira legível `(XX) XXXXX-XXXX` ou `(XX) XXXX-XXXX` e link direto para conversa via `wa.me`.
+

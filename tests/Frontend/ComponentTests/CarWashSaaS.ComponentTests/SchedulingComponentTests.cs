@@ -144,4 +144,48 @@ public sealed class SchedulingComponentTests : BunitContext
         Assert.Contains("style=\"width: 75%;\"", cut.Markup);
         Assert.Contains("progress-warning", cut.Markup);
     }
+
+    [Fact]
+    public void BookingCard_ShouldScopeCardStatusClass_AndKeepBadgeDistinct()
+    {
+        var sample = CreateSampleBooking(BookingStatusConstants.Arrived);
+
+        var cut = Render<BookingCard>(parameters => parameters
+            .Add(p => p.Booking, sample));
+
+        var rootCard = cut.Find(".booking-card");
+        Assert.Contains("card-status-arrived", rootCard.ClassName);
+
+        var statusBadge = cut.Find(".status-badge");
+        Assert.Contains("status-arrived", statusBadge.ClassName);
+        Assert.Equal("Em Atendimento", statusBadge.TextContent.Trim());
+    }
+
+    [Fact]
+    public void BookingCard_ShouldFormatCustomerPhone_InHumanReadablePattern()
+    {
+        var sample = CreateSampleBooking();
+        var bookingWithPhone = sample with { CustomerPhone = "557592169254" };
+
+        var cut = Render<BookingCard>(parameters => parameters
+            .Add(p => p.Booking, bookingWithPhone));
+
+        var phoneLink = cut.Find("a.customer-phone");
+        Assert.Contains("(75) 9216-9254", phoneLink.TextContent);
+        Assert.Contains("wa.me/557592169254", phoneLink.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void BookingCard_ShouldRenderCleanly_WhenVehicleModelIsEmpty()
+    {
+        var sample = CreateSampleBooking();
+        var bookingWithoutModel = sample with { VehicleModel = null, VehicleSize = VehicleSizeConstants.Suv };
+
+        var cut = Render<BookingCard>(parameters => parameters
+            .Add(p => p.Booking, bookingWithoutModel));
+
+        Assert.Contains("SUV", cut.Markup);
+        var modelNodes = cut.FindAll(".vehicle-model");
+        Assert.Empty(modelNodes);
+    }
 }
