@@ -14,6 +14,7 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.Property(order => order.TenantId).IsRequired();
         builder.Property(order => order.CustomerId).IsRequired();
         builder.Property(order => order.VehicleId).IsRequired();
+        builder.Property(order => order.TrackingToken).HasMaxLength(64).IsRequired();
         builder.Property(order => order.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(order => order.CreatedAtUtc).HasColumnType("datetimeoffset").IsRequired();
         builder.Property(order => order.Notes).HasMaxLength(500);
@@ -39,6 +40,7 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.HasIndex(order => new { order.TenantId, order.Status });
         builder.HasIndex(order => new { order.TenantId, order.PickedUpAtUtc, order.SurveySentAtUtc });
         builder.HasIndex(order => new { order.TenantId, order.IsPaid });
+        builder.HasIndex(order => order.TrackingToken).IsUnique();
 
         builder.HasOne<Customer>()
             .WithMany()

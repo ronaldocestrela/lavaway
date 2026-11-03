@@ -145,6 +145,18 @@ public sealed class WorkOrderRepository(YardOperationsDbContext dbContext) : IWo
             .OrderByDescending(order => order.CreatedAtUtc)
             .ToListAsync(ct);
 
+    public Task<WorkOrder?> GetByTrackingTokenAsync(string trackingToken, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(trackingToken)) return Task.FromResult<WorkOrder?>(null);
+        var cleanToken = trackingToken.Trim();
+        return dbContext.WorkOrders
+            .IgnoreQueryFilters()
+            .Include(order => order.Items)
+            .Include(order => order.StatusHistory)
+            .Include(order => order.PostServicePhotos)
+            .FirstOrDefaultAsync(order => order.TrackingToken == cleanToken, ct);
+    }
+
     public async Task AddAsync(WorkOrder workOrder, CancellationToken ct = default) =>
         await dbContext.WorkOrders.AddAsync(workOrder, ct);
 

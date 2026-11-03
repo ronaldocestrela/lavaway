@@ -18,6 +18,9 @@ public sealed class VehicleInspectionApplicationService
     private readonly IWorkOrderRepository _workOrderRepository;
     private readonly ITenantObjectStorage _storage;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICustomerRepository? _customerRepository;
+    private readonly IVehicleRepository? _vehicleRepository;
+    private readonly ITenantStoreProfileLookup? _storeProfileLookup;
     private readonly IBackgroundQueue? _backgroundQueue;
 
     public VehicleInspectionApplicationService(
@@ -25,12 +28,18 @@ public sealed class VehicleInspectionApplicationService
         IWorkOrderRepository workOrderRepository,
         ITenantObjectStorage storage,
         IUnitOfWork unitOfWork,
+        ICustomerRepository? customerRepository = null,
+        IVehicleRepository? vehicleRepository = null,
+        ITenantStoreProfileLookup? storeProfileLookup = null,
         IBackgroundQueue? backgroundQueue = null)
     {
         _inspectionRepository = inspectionRepository;
         _workOrderRepository = workOrderRepository;
         _storage = storage;
         _unitOfWork = unitOfWork;
+        _customerRepository = customerRepository;
+        _vehicleRepository = vehicleRepository;
+        _storeProfileLookup = storeProfileLookup;
         _backgroundQueue = backgroundQueue;
     }
 
@@ -304,6 +313,167 @@ public sealed class VehicleInspectionApplicationService
 
         return Result<VehicleInspectionDto>.Success(MapToDto(inspection));
 
+    }
+
+    public async Task<Result<PublicInspectionDto>> GetPublicInspectionByTokenAsync(
+        string trackingToken,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(trackingToken))
+        {
+            return Result<PublicInspectionDto>.Failure(new Error("token.required", "Token de rastreamento é obrigatório.", ErrorType.Validation));
+        }
+
+        var workOrder = await _workOrderRepository.GetByTrackingTokenAsync(trackingToken, ct);
+        if (workOrder is null)
+        {
+            return Result<PublicInspectionDto>.Failure(new Error("work_order.not_found", "Ordem de serviço ou vistoria não encontrada.", ErrorType.NotFound));
+        }
+
+        var tenantId = workOrder.TenantId;
+        var customer = _customerRepository != null
+            ? await _customerRepository.GetByIdAsync(tenantId, workOrder.CustomerId, ct)
+            : null;
+
+        var vehicle = _vehicleRepository != null
+            ? await _vehicleRepository.GetByIdAsync(tenantId, workOrder.VehicleId, ct)
+            : null;
+
+        StoreProfileDto? storeProfile = null;
+        if (_storeProfileLookup != null)
+        {
+            var profileResult = await _storeProfileLookup.GetProfileAsync(tenantId, ct);
+            if (profileResult.IsSuccess)
+            {
+                storeProfile = profileResult.Value;
+            }
+        }
+
+        var inspection = await _inspectionRepository.GetByWorkOrderIdAsync(tenantId, workOrder.Id, ct);
+
+        var photos = (inspection?.Photos ?? [])
+            .OrderBy(p => p.Category)
+            .ThenBy(p => p.UploadedAtUtc)
+            .Select(p => new PublicInspectionPhotoDto(
+                p.Id,
+                p.Category.ToString(),
+                GetCategoryLabel(p.Category),
+                $"/public/inspections/{workOrder.TrackingToken}/photos/{p.Id}",
+                p.IsPurged,
+                p.UploadedAtUtc))
+            .ToList();
+
+        var damages = (inspection?.Damages ?? [])
+            .Select(d => new PublicInspectionDamageDto(
+                d.Type.ToString(),
+                d.View.ToString(),
+                d.CoordinateX,
+                d.CoordinateY,
+                d.Severity.ToString(),
+                d.Description))
+            .ToList();
+
+        var checklistItems = (inspection?.ChecklistItems ?? [])
+            .Select(c => new PublicInspectionChecklistItemDto(
+                c.Title,
+                c.Status.ToString(),
+                c.Observation))
+            .ToList();
+
+        var storeTradeName = storeProfile?.TradeName ?? "Lava-Jato";
+        var storePhone = storeProfile?.Phone;
+        var storeAddress = BuildStoreAddress(storeProfile);
+        var customerName = customer?.Name ?? "Cliente";
+        var plate = vehicle?.Plate ?? "---";
+        var size = vehicle?.Size.ToString() ?? "Padrão";
+        var model = vehicle is not null ? $"Veículo ({vehicle.Size})" : "Veículo";
+
+        var publicDto = new PublicInspectionDto(
+            workOrder.Id,
+            workOrder.TrackingToken,
+            storeTradeName,
+            storePhone,
+            storeAddress,
+            storeProfile?.LogoUrl,
+            storeProfile?.BrandPrimaryColor,
+            customerName,
+            plate,
+            model,
+            size,
+            workOrder.CreatedAtUtc,
+            workOrder.Status.ToString(),
+            inspection?.OdometerKm,
+            inspection?.FuelLevel,
+            inspection?.Notes,
+            inspection?.CompletedAtUtc,
+            photos,
+            damages,
+            checklistItems);
+
+        return Result<PublicInspectionDto>.Success(publicDto);
+    }
+
+    public async Task<Result<StoredObject>> GetPublicPhotoStreamAsync(
+        string trackingToken,
+        Guid photoId,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(trackingToken) || photoId == Guid.Empty)
+        {
+            return Result<StoredObject>.Failure(new Error("photo.not_found", "Foto não encontrada.", ErrorType.NotFound));
+        }
+
+        var workOrder = await _workOrderRepository.GetByTrackingTokenAsync(trackingToken, ct);
+        if (workOrder is null)
+        {
+            return Result<StoredObject>.Failure(new Error("photo.not_found", "Foto não encontrada.", ErrorType.NotFound));
+        }
+
+        var inspection = await _inspectionRepository.GetByWorkOrderIdAsync(workOrder.TenantId, workOrder.Id, ct);
+        if (inspection is null)
+        {
+            return Result<StoredObject>.Failure(new Error("photo.not_found", "Foto não encontrada.", ErrorType.NotFound));
+        }
+
+        var photo = inspection.Photos.FirstOrDefault(p => p.Id == photoId);
+        if (photo is null)
+        {
+            return Result<StoredObject>.Failure(new Error("photo.not_found", "Foto não encontrada.", ErrorType.NotFound));
+        }
+
+        if (photo.IsPurged)
+        {
+            return Result<StoredObject>.Failure(new Error("photo.purged", "A foto foi expurgada em conformidade com a política de retenção de dados da LGPD (Art. 16).", ErrorType.Conflict));
+        }
+
+        var stored = await _storage.GetAsync(workOrder.TenantId, "inspections", photo.FileName, ct);
+        if (stored is null)
+        {
+            return Result<StoredObject>.Failure(new Error("photo.file.not_found", "Arquivo físico não encontrado no storage.", ErrorType.NotFound));
+        }
+
+        return Result<StoredObject>.Success(stored);
+    }
+
+    private static string GetCategoryLabel(InspectionPhotoCategory category) => category switch
+    {
+        InspectionPhotoCategory.Front => "Frente / Placa Dianteira",
+        InspectionPhotoCategory.Rear => "Traseira / Placa Traseira",
+        InspectionPhotoCategory.LeftSide => "Lateral Esquerda",
+        InspectionPhotoCategory.RightSide => "Lateral Direita",
+        InspectionPhotoCategory.DamageDetail => "Detalhe de Avaria",
+        InspectionPhotoCategory.Interior => "Interior / Painel",
+        _ => "Foto do Veículo"
+    };
+
+    private static string? BuildStoreAddress(StoreProfileDto? profile)
+    {
+        if (profile is null) return null;
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(profile.Street)) parts.Add(profile.Street);
+        if (!string.IsNullOrWhiteSpace(profile.City)) parts.Add(profile.City);
+        if (!string.IsNullOrWhiteSpace(profile.State)) parts.Add(profile.State);
+        return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
     private static VehicleInspectionDto MapToDto(VehicleInspection inspection)

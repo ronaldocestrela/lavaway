@@ -65,6 +65,7 @@ public sealed class WorkOrderNotificationApplicationService(
         var plate = vehicle?.Plate ?? "";
         var forecast = workOrder.EstimatedCompletionAtUtc.ToLocalTime().ToString("dd/MM HH:mm", PtBr);
         var totalStr = workOrder.TotalAmount.ToString("C2", PtBr);
+        var trackingUrl = $"https://app.lavaway.com.br/vistoria/{workOrder.TrackingToken}";
 
         var caption = !string.IsNullOrWhiteSpace(customMessage)
             ? customMessage.Trim()
@@ -74,6 +75,7 @@ public sealed class WorkOrderNotificationApplicationService(
               $"OS: *#{shortOs}*\n" +
               $"Previsão de conclusão: *{forecast}*\n" +
               $"Valor total: *{totalStr}*\n\n" +
+              $"📷 *Fotos e Laudo da Vistoria Online:*\n{trackingUrl}\n\n" +
               $"Segue anexo o comprovante digital com o checklist da vistoria.\n\n" +
               $"🔒 *Privacidade & LGPD:* Seus dados e fotos de vistoria são tratados com segurança e exclusivamente para a prestação do serviço contratado. Para consultar nossa Política de Privacidade, acesse lavaway.com.br/privacidade. Envie 'PARAR' a qualquer momento para não receber mensagens promocionais.";
 
@@ -372,7 +374,8 @@ public sealed class WorkOrderNotificationApplicationService(
             workOrder.TotalAmount,
             workOrder.Notes,
             items,
-            inspectionModel);
+            inspectionModel,
+            workOrder.TrackingToken);
     }
 }
 

@@ -109,3 +109,9 @@ flowchart TD
 - **E** o backend valida a permissão `ViewCustomers` e o `tenant_id`
 - **E** o stream da foto é retornado com HTTP 200 OK
 - **E** requisições sem token continuam protegidas, retornando HTTP 401 Unauthorized.
+
+### Cenário 5: Reatividade Imediata na Seleção de Status do Checklist
+- **Dado** que o operador está na conferência de itens e combustível da vistoria
+- **Quando** o operador clica em qualquer botão de status (OK, Faltando, Avariado, N/A)
+- **Então** o componente reflete imediatamente o estado ativo na interface via `GetItemStatus` antes da persistência
+- **E** as alterações locais são consolidadas e limpas ao persistir no backend via "Salvar Checklist".

@@ -987,6 +987,40 @@ public static class YardOperationsEndpoints
                 _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
             };
         }).RequireAuthorization(AuthorizationPolicyNames.ViewCustomers);
+
+        app.MapGet("/public/inspections/{trackingToken}", async (
+            string trackingToken,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetPublicInspectionByTokenAsync(trackingToken, ct);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : result.Error!.Type switch
+                {
+                    ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                    ErrorType.Validation => Results.BadRequest(new { result.Error.Code, result.Error.Description }),
+                    _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                };
+        }).AllowAnonymous();
+
+        app.MapGet("/public/inspections/{trackingToken}/photos/{photoId:guid}", async (
+            string trackingToken,
+            Guid photoId,
+            VehicleInspectionApplicationService service,
+            CancellationToken ct) =>
+        {
+            var result = await service.GetPublicPhotoStreamAsync(trackingToken, photoId, ct);
+            return result.IsSuccess
+                ? Results.File(result.Value!.Content, result.Value.ContentType)
+                : result.Error!.Code == "photo.purged"
+                    ? Results.Problem(result.Error.Description, statusCode: StatusCodes.Status410Gone)
+                    : result.Error.Type switch
+                    {
+                        ErrorType.NotFound => Results.NotFound(new { result.Error.Code, result.Error.Description }),
+                        _ => Results.Problem(result.Error.Description, statusCode: StatusCodes.Status400BadRequest)
+                    };
+        }).AllowAnonymous();
     }
 
     private static void MapPostServicePhotosEndpoints(IEndpointRouteBuilder app)

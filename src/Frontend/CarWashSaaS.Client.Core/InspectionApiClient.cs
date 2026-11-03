@@ -88,6 +88,17 @@ public sealed class InspectionApiClient(HttpClient httpClient)
         return await ReadResponseAsync<VehicleInspectionDto>(response, ct);
     }
 
+    public async Task<PublicInspectionDto?> GetPublicInspectionAsync(string trackingToken, CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync($"public/inspections/{Uri.EscapeDataString(trackingToken)}", ct);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        return await ReadResponseAsync<PublicInspectionDto>(response, ct);
+    }
+
     private static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken ct)
     {
         if (!response.IsSuccessStatusCode)

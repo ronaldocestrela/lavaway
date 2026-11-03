@@ -931,5 +931,6 @@ public sealed class WorkOrderApplicationService(
             order.PaidAtUtc,
             order.PaymentMethod,
             order.PaidAmount,
-            order.PaymentTransactionId);
+            order.PaymentTransactionId,
+            order.TrackingToken);
 }

@@ -17,6 +17,8 @@ public interface IWorkOrderRepository
         Task.FromResult<IReadOnlyList<WorkOrder>>([]);
     Task<IReadOnlyList<WorkOrder>> GetByCustomerIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<WorkOrder>>([]);
+    Task<WorkOrder?> GetByTrackingTokenAsync(string trackingToken, CancellationToken ct = default) =>
+        Task.FromResult<WorkOrder?>(null);
     Task AddAsync(WorkOrder workOrder, CancellationToken ct = default);
     void Update(WorkOrder workOrder);
 }
