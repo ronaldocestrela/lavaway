@@ -1,7 +1,7 @@
 @using CarWashSaaS.Shared.Contracts
 @using System.Globalization
 
-<div class="booking-card @GetStatusClass(Booking.Status)" id="booking-@Booking.Id">
+<div class="booking-card @GetCardStatusClass(Booking.Status)" id="booking-@Booking.Id">
     <div class="booking-header">
         <div class="time-badge">
             <span class="time-icon">&#128337;</span>
@@ -54,7 +54,8 @@
     <div class="booking-customer-row">
         <span class="customer-name" title="@Booking.CustomerName">@Booking.CustomerName</span>
         <a class="customer-phone" href="https://wa.me/@FormatPhoneLink(Booking.CustomerPhone)" target="_blank" rel="noopener noreferrer" title="Conversar no WhatsApp">
-            <span>&#128222; @Booking.CustomerPhone</span>
+            <span class="phone-icon" aria-hidden="true">&#128222;</span>
+            <span class="phone-number">@FormatDisplayPhone(Booking.CustomerPhone)</span>
         </a>
     </div>
 
@@ -164,6 +165,17 @@
         }
     }
 
+    private static string GetCardStatusClass(string status) => status switch
+    {
+        BookingStatusConstants.Scheduled => "card-status-scheduled",
+        BookingStatusConstants.Confirmed => "card-status-confirmed",
+        BookingStatusConstants.Arrived => "card-status-arrived",
+        BookingStatusConstants.Completed => "card-status-completed",
+        BookingStatusConstants.Cancelled => "card-status-cancelled",
+        BookingStatusConstants.NoShow => "card-status-noshow",
+        _ => "card-status-default"
+    };
+
     private static string GetStatusClass(string status) => status switch
     {
         BookingStatusConstants.Scheduled => "status-scheduled",
@@ -180,6 +192,25 @@
         if (string.IsNullOrWhiteSpace(plate)) return string.Empty;
         var clean = plate.Trim().ToUpperInvariant();
         return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
+    }
+
+    private static string FormatDisplayPhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return string.Empty;
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("55") && digits.Length is 12 or 13)
+        {
+            digits = digits[2..];
+        }
+        if (digits.Length == 11)
+        {
+            return $"({digits[..2]}) {digits.Substring(2, 5)}-{digits.Substring(7, 4)}";
+        }
+        if (digits.Length == 10)
+        {
+            return $"({digits[..2]}) {digits.Substring(2, 4)}-{digits.Substring(6, 4)}";
+        }
+        return phone;
     }
 
     private static string FormatPhoneLink(string? phone)
