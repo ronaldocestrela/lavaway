@@ -293,8 +293,14 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    z-index: 1000;
+    z-index: 1020;
     box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 992px) {
+    .bottom-action-bar {
+        left: 232px;
+    }
 }
 
 .bottom-status {
@@ -377,7 +383,7 @@
 
 @media (max-width: 640px) {
     .inspection-page-container {
-        padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
     }
 
     .bottom-action-bar {
