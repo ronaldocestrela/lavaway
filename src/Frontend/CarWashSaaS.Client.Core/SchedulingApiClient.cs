@@ -46,6 +46,12 @@ public sealed class SchedulingApiClient(HttpClient httpClient)
         return await ReadResponseAsync<BookingSummaryDto>(response, ct);
     }
 
+    public async Task<BookingCheckInContextDto> PrepareCheckInAsync(Guid id, CancellationToken ct = default)
+    {
+        using var response = await httpClient.PostAsync($"scheduling/bookings/{id}/prepare-checkin", null, ct);
+        return await ReadResponseAsync<BookingCheckInContextDto>(response, ct);
+    }
+
     public async Task<BookingConfirmationDto> CreateBookingAsync(CreateManualBookingRequest request, CancellationToken ct = default)
     {
         using var response = await httpClient.PostAsJsonAsync("scheduling/bookings", request, ct);

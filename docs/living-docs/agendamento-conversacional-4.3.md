@@ -120,10 +120,11 @@ stateDiagram-v2
 - **E** o chatbot informa educadamente que a vaga acabou de ser preenchida e convida o cliente a selecionar outro horário vago.
 
 ### Cenário 3: Operador inicia atendimento a partir da reserva
-- **Dado** que existe um agendamento confirmado na agenda para o veículo "ABC-1D23" do cliente "Carlos",
+- **Dado** que existe um agendamento confirmado na agenda para o veículo "ABC-1D23" do cliente "Carlos" com serviço e observações,
 - **Quando** o cliente chega à loja e o operador clica no botão "Iniciar Atendimento" no card da reserva,
-- **Então** o sistema redireciona para a tela de Recepção com a placa e o telefone pré-preenchidos,
-- **E** a busca automática é disparada para agilizar a criação da Ordem de Serviço.
+- **Então** o sistema prepara o contexto de check-in (assegurando cadastro de cliente e veículo se ainda não persistidos) e abre diretamente a tela de Abertura de OS (`/work-orders/new?bookingId={id}`),
+- **E** a OS é carregada com cliente, veículo, serviço contratado pré-selecionado (Qtd 1) e observações preenchidas,
+- **E** ao confirmar a abertura da OS, a reserva é vinculada ao `WorkOrderId` e tem seu status atualizado para `Arrived` ("Em Atendimento").
 
 ### Cenário 4: Cliente não cadastrado inicia agendamento e confirma PushName
 - **Dado** que um cliente não cadastrado no lava-jato envia mensagem com PushName "Mariana",
@@ -147,5 +148,6 @@ stateDiagram-v2
 | `GET` | `/scheduling/bookings` | `Receptionist` | Lista agendamentos do dia por data, status e busca |
 | `GET` | `/scheduling/bookings/{id}` | `Receptionist` | Consulta detalhes de um agendamento |
 | `POST` | `/scheduling/bookings` | `Receptionist` | Criação manual de reserva pela equipe |
+| `POST` | `/scheduling/bookings/{id}/prepare-checkin` | `Receptionist` | Prepara contexto de check-in assegurando cliente/veículo e retornando dados para abertura da OS |
 | `POST` | `/scheduling/bookings/{id}/cancel` | `Receptionist` | Cancelamento de reserva com justificativa |
 | `GET` | `/scheduling/slots` | `Receptionist` | Consulta horários vagos e capacidade de boxes |

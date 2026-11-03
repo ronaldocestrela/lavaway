@@ -352,8 +352,8 @@
 
     private void HandleCheckIn(BookingSummaryDto booking)
     {
-        // Redireciona para a recepção com placa e telefone pré-preenchidos para abertura imediata da OS
-        Navigation.NavigateTo($"reception?plate={Uri.EscapeDataString(booking.VehiclePlate)}&phone={Uri.EscapeDataString(booking.CustomerPhone)}");
+        // Redireciona diretamente para a abertura da OS com as informações do agendamento
+        Navigation.NavigateTo($"work-orders/new?bookingId={booking.Id}");
     }
 
     private async Task HandleCancelBooking(BookingSummaryDto booking)

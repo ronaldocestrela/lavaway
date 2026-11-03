@@ -203,6 +203,98 @@ public sealed class WorkOrderApplicationServiceTests
         Assert.Equal(ErrorType.NotFound, result.Error!.Type);
     }
 
+    [Fact]
+    public async Task CreateAsync_WithBookingId_ShouldMarkBookingAsArrivedAndLinkWorkOrderId()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var customer = Customer.Create(tenantId, "Carlos Silva", "11988887777").Value!;
+        var vehicle = Vehicle.Create(tenantId, customer.Id, "ABC1D23", VehicleSize.Suv).Value!;
+        var price = ServicePrice.Create(tenantId, VehicleSize.Suv, 80m, 45).Value!;
+        var service = Service.Create(tenantId, "Lavagem Completa", "Lavagem", [price]).Value!;
+
+        var booking = Booking.Create(
+            tenantId,
+            "Carlos Silva",
+            "11988887777",
+            "ABC1D23",
+            null,
+            VehicleSize.Suv,
+            service.Id,
+            "Lavagem Completa",
+            80m,
+            DateOnly.FromDateTime(DateTime.Today),
+            new TimeOnly(9, 0)).Value!;
+
+        var repo = new FakeWorkOrderRepository();
+        repo.Customers.Add(customer);
+        repo.Vehicles.Add(vehicle);
+        repo.Services.Add(service);
+
+        var bookingRepo = new FakeBookingRepo([booking]);
+
+        var appService = new WorkOrderApplicationService(
+            repo,
+            repo,
+            repo,
+            repo,
+            repo,
+            bookingRepository: bookingRepo);
+
+        var command = new CreateWorkOrderCommand(
+            customer.Id,
+            vehicle.Id,
+            [new CreateWorkOrderItemInput(service.Id, 1)],
+            "Vindo de agendamento",
+            booking.Id);
+
+        var result = await appService.CreateAsync(tenantId, command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(BookingStatus.Arrived, booking.Status);
+        Assert.Equal(result.Value!.Id, booking.WorkOrderId);
+    }
+
+    private sealed class FakeBookingRepo(IEnumerable<Booking> initial) : IBookingRepository
+    {
+        private readonly List<Booking> _bookings = [.. initial];
+
+        public Task<Booking?> GetByIdAsync(Guid id, CancellationToken ct = default)
+            => Task.FromResult(_bookings.FirstOrDefault(b => b.Id == id));
+
+        public Task<Booking?> GetByProtocolAsync(string protocol, CancellationToken ct = default)
+            => Task.FromResult(_bookings.FirstOrDefault(b => b.Protocol == protocol));
+
+        public Task<IReadOnlyList<Booking>> GetByDateAsync(Guid tenantId, DateOnly date, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Booking>>(_bookings.Where(b => b.TenantId == tenantId && b.ScheduledDate == date).ToList());
+
+        public Task<IReadOnlyList<Booking>> GetActiveBookingsByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Booking>>([]);
+
+        public Task<int> CountActiveBookingsInSlotAsync(Guid tenantId, DateOnly date, TimeOnly startTime, TimeOnly endTime, CancellationToken ct = default)
+            => Task.FromResult(0);
+
+        public Task<IReadOnlyList<Booking>> GetBookingsPending24hReminderAsync(Guid tenantId, DateTimeOffset referenceTime, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Booking>>([]);
+
+        public Task<IReadOnlyList<Booking>> GetBookingsPending2hReminderAsync(Guid tenantId, DateTimeOffset referenceTime, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Booking>>([]);
+
+        public Task<Booking?> GetUpcomingActiveBookingByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
+            => Task.FromResult<Booking?>(null);
+
+        public Task AddAsync(Booking booking, CancellationToken ct = default)
+        {
+            _bookings.Add(booking);
+            return Task.CompletedTask;
+        }
+
+        public void Update(Booking booking)
+        {
+            var idx = _bookings.FindIndex(b => b.Id == booking.Id);
+            if (idx >= 0) _bookings[idx] = booking;
+        }
+    }
+
     private sealed class FakeWorkOrderRepository : IWorkOrderRepository, ICustomerRepository, IVehicleRepository, IServiceRepository, IUnitOfWork
     {
         public List<WorkOrder> SavedWorkOrders { get; } = [];

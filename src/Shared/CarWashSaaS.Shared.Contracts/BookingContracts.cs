@@ -106,6 +106,19 @@ public sealed record CreateManualBookingRequest(
     TimeOnly ScheduledTime,
     string? Notes);
 
+public sealed record BookingCheckInContextDto(
+    Guid BookingId,
+    Guid CustomerId,
+    Guid VehicleId,
+    string CustomerName,
+    string CustomerPhone,
+    string VehiclePlate,
+    string? VehicleModel,
+    string VehicleSize,
+    Guid ServiceId,
+    string ServiceName,
+    string? Notes);
+
 public sealed record InboundWhatsAppReceivedEvent(
     Guid TenantId,
     string SenderPhone,
