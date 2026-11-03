@@ -102,6 +102,7 @@
                                 <th>Cotas Consumidas</th>
                                 <th>Status</th>
                                 <th>Vigência</th>
+                                <th class="text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -133,6 +134,15 @@
                                         <span class="period-text">
                                             @sub.CurrentPeriodStartUtc.ToString("dd/MM") a @sub.CurrentPeriodEndUtc.ToString("dd/MM/yyyy")
                                         </span>
+                                    </td>
+                                    <td class="text-right">
+                                        <button type="button"
+                                                class="btn-table-action"
+                                                id="btn-override-plan-@sub.TenantId"
+                                                @onclick="@(() => OpenOverridePlanModal(sub))"
+                                                title="Modificar plano do estabelecimento">
+                                            <span>⚙️ Alterar Plano</span>
+                                        </button>
                                     </td>
                                 </tr>
                             }
@@ -256,6 +266,15 @@
                    OnClose="@CloseEditPlanModal"
                    OnSave="@HandleSavePlanAsync" />
 
+<!-- Modal de Modificação do Plano do Tenant (Backoffice) -->
+<OverrideTenantPlanModal IsOpen="@_isOverrideModalOpen"
+                         TenantId="@(_selectedSubscriptionForOverride?.TenantId ?? Guid.Empty)"
+                         TenantName="@(_selectedSubscriptionForOverride?.TenantName ?? string.Empty)"
+                         CurrentTier="@(_selectedSubscriptionForOverride?.PlanTier ?? SaasPlanTier.Basic)"
+                         CurrentStatus="@(_selectedSubscriptionForOverride?.Status ?? TenantSubscriptionStatus.Active)"
+                         OnClose="@CloseOverridePlanModal"
+                         OnPlanOverridden="@HandlePlanOverriddenAsync" />
+
 @code {
     private string _activeTab = "subscriptions";
     private IReadOnlyList<TenantSubscriptionOverviewDto> Subscriptions { get; set; } = [];
@@ -263,10 +282,14 @@
     private bool IsLoading { get; set; } = true;
     private bool IsLoadingPlans { get; set; } = true;
 
-    // Modal de Edição
+    // Modal de Edição de Plano do Catálogo
     private bool _isEditModalOpen;
     private SaasPlanDto? _selectedPlan;
     private bool _isSavingPlan;
+
+    // Modal de Sobrescrita de Plano do Estabelecimento
+    private bool _isOverrideModalOpen;
+    private TenantSubscriptionOverviewDto? _selectedSubscriptionForOverride;
 
     private decimal TotalMrr => Subscriptions
         .Where(s => s.Status == TenantSubscriptionStatus.Active)
@@ -383,6 +406,24 @@
         {
             _isSavingPlan = false;
         }
+    }
+
+    private void OpenOverridePlanModal(TenantSubscriptionOverviewDto sub)
+    {
+        _selectedSubscriptionForOverride = sub;
+        _isOverrideModalOpen = true;
+    }
+
+    private void CloseOverridePlanModal()
+    {
+        _isOverrideModalOpen = false;
+        _selectedSubscriptionForOverride = null;
+    }
+
+    private async Task HandlePlanOverriddenAsync(TenantSubscriptionOverviewDto updated)
+    {
+        CloseOverridePlanModal();
+        await LoadDataAsync();
     }
 
     private static string GetStatusBadgeClass(TenantSubscriptionStatus status) => status switch

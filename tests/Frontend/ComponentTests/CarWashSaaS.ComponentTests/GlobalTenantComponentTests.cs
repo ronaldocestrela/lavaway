@@ -190,6 +190,7 @@ public sealed class GlobalTenantComponentTests : BunitContext
 
         var httpClient = new HttpClient(httpHandler) { BaseAddress = new Uri("http://localhost/") };
         Services.AddSingleton(new GlobalTenantApiClient(httpClient));
+        Services.AddSingleton(new SaasBillingApiClient(httpClient));
         Services.AddSingleton(new ImpersonationSessionState());
         Services.AddSingleton<IToastService>(new ToastService());
         var auth = this.AddAuthorization();

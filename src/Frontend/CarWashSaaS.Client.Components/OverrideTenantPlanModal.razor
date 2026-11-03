@@ -1,0 +1,183 @@
+@inject SaasBillingApiClient BillingApiClient
+@inject IToastService ToastService
+
+@if (IsOpen && TenantId != Guid.Empty)
+{
+    <div class="modal-backdrop" @onclick="HandleClose">
+        <div class="modal-container" @onclick:stopPropagation="true" role="dialog" aria-modal="true" aria-labelledby="override-plan-modal-title">
+            <div class="modal-header">
+                <div>
+                    <h2 id="override-plan-modal-title" class="modal-title">Modificar Plano do Estabelecimento</h2>
+                    <p class="modal-subtitle">Estabelecimento: <strong>@TenantName</strong></p>
+                </div>
+                <button type="button" class="btn-close" @onclick="HandleClose" aria-label="Fechar modal">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="current-plan-banner">
+                    <div class="banner-col">
+                        <span class="info-label">PLANO ATUAL</span>
+                        <span class="tier-pill tier-@CurrentTier.ToString().ToLowerInvariant()">@CurrentTier.ToString().ToUpperInvariant()</span>
+                    </div>
+                    <div class="banner-col">
+                        <span class="info-label">STATUS ATUAL</span>
+                        <span class="status-badge status-@CurrentStatus.ToString().ToLowerInvariant()">@CurrentStatus</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="newPlanTier" class="form-label">Novo Plano Contratado <span class="required">*</span></label>
+                    <select id="newPlanTier" class="form-control" @bind="selectedTier" disabled="@isSubmitting">
+                        @if (availablePlans.Count > 0)
+                        {
+                            @foreach (var plan in availablePlans)
+                            {
+                                <option value="@plan.Tier">
+                                    @plan.Name — R$ @plan.MonthlyPrice.ToString("N2")/mês (@(plan.MaxWorkOrdersPerCycle > 0 ? $"{plan.MaxWorkOrdersPerCycle} OS" : "OS Ilimitadas"))
+                                </option>
+                            }
+                        }
+                        else
+                        {
+                            <option value="@SaasPlanTier.Basic">Básico — R$ 149,00/mês (Até 150 OS)</option>
+                            <option value="@SaasPlanTier.Pro">Pro — R$ 299,00/mês (Até 600 OS)</option>
+                            <option value="@SaasPlanTier.Enterprise">Enterprise — R$ 599,00/mês (Ilimitado)</option>
+                        }
+                    </select>
+                    <span class="form-hint">O novo plano ajustará as cotas operacionais e recursos disponíveis para este estabelecimento.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="newSubStatus" class="form-label">Status Comercial da Assinatura (Opcional)</label>
+                    <select id="newSubStatus" class="form-control" @bind="selectedStatus" disabled="@isSubmitting">
+                        <option value="">Manter status atual (@CurrentStatus)</option>
+                        <option value="@TenantSubscriptionStatus.Active">Ativo (Liberar operação normalmente)</option>
+                        <option value="@TenantSubscriptionStatus.Delinquent">Suspenso (Inadimplência financeira)</option>
+                        <option value="@TenantSubscriptionStatus.Canceled">Cancelado (Rescindir acesso)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="overrideReason" class="form-label">Motivo / Justificativa Administrativa <span class="required">*</span></label>
+                    <textarea id="overrideReason" 
+                              class="form-control textarea" 
+                              rows="3" 
+                              placeholder="Informe o motivo da alteração de plano (ex: Upgrade solicitado via televendas, Cortesia comercial, Regularização financeira, etc.)..."
+                              @bind="reason" 
+                              disabled="@isSubmitting"></textarea>
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="form-error">@errorMessage</div>
+                    }
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="HandleClose" disabled="@isSubmitting" id="btn-cancel-override-plan">Cancelar</button>
+                <button type="button" class="btn btn-primary" @onclick="SubmitAsync" disabled="@isSubmitting" id="btn-save-override-plan">
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span>Salvando alteração...</span>
+                    }
+                    else
+                    {
+                        <span>Salvar Novo Plano</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public Guid TenantId { get; set; }
+    [Parameter] public string TenantName { get; set; } = string.Empty;
+    [Parameter] public SaasPlanTier CurrentTier { get; set; } = SaasPlanTier.Basic;
+    [Parameter] public TenantSubscriptionStatus CurrentStatus { get; set; } = TenantSubscriptionStatus.Active;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<TenantSubscriptionOverviewDto> OnPlanOverridden { get; set; }
+
+    private SaasPlanTier selectedTier = SaasPlanTier.Basic;
+    private string selectedStatus = string.Empty;
+    private string reason = string.Empty;
+    private string? errorMessage;
+    private bool isSubmitting;
+    private IReadOnlyList<SaasPlanDto> availablePlans = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && TenantId != Guid.Empty)
+        {
+            selectedTier = CurrentTier;
+            selectedStatus = string.Empty;
+            reason = string.Empty;
+            errorMessage = null;
+
+            if (availablePlans.Count == 0)
+            {
+                var plansResult = await BillingApiClient.ListAllPlansForPlatformAsync();
+                if (plansResult.IsSuccess && plansResult.Value is not null)
+                {
+                    availablePlans = plansResult.Value;
+                }
+            }
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        if (isSubmitting) return;
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            errorMessage = "O motivo/justificativa é obrigatório para registrar a trilha de auditoria.";
+            return;
+        }
+
+        errorMessage = null;
+        isSubmitting = true;
+
+        try
+        {
+            TenantSubscriptionStatus? newStatus = null;
+            if (!string.IsNullOrWhiteSpace(selectedStatus) && Enum.TryParse<TenantSubscriptionStatus>(selectedStatus, out var parsedStatus))
+            {
+                newStatus = parsedStatus;
+            }
+
+            var request = new AdminOverridePlanRequest(
+                TargetTier: selectedTier,
+                NewStatus: newStatus,
+                Reason: reason.Trim());
+
+            var result = await BillingApiClient.AdminOverridePlanAsync(TenantId, request);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                ToastService.ShowSuccess($"Plano do estabelecimento '{TenantName}' alterado para {selectedTier} com sucesso!");
+                await OnPlanOverridden.InvokeAsync(result.Value);
+                await HandleClose();
+            }
+            else
+            {
+                errorMessage = result.Error?.Description ?? "Ocorreu um erro ao alterar o plano.";
+                ToastService.ShowError(errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro de comunicação: {ex.Message}";
+            ToastService.ShowError(errorMessage);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
+

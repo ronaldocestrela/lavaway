@@ -7,7 +7,8 @@ public sealed class PlatformSaasBillingApplicationService(
     ITenantSaasSubscriptionRepository subscriptionRepository,
     ISaasPlanRepository planRepository,
     ITenantPlanQuotaLookup quotaLookup,
-    IGlobalTenantLookup globalTenantLookup)
+    IGlobalTenantLookup globalTenantLookup,
+    ISaasBillingGatewayProvider? gatewayProvider = null)
 {
     public async Task<Result<IReadOnlyList<TenantSubscriptionOverviewDto>>> ListAllTenantSubscriptionsAsync(CancellationToken ct = default)
     {
@@ -49,7 +50,16 @@ public sealed class PlatformSaasBillingApplicationService(
             return Result<TenantSubscriptionOverviewDto>.Failure(new Error("saas_plan.not_found", "Plano solicitado não encontrado.", ErrorType.NotFound));
         }
 
-        subscription.ChangePlan(targetPlan);
+        var changeResult = subscription.ChangePlan(targetPlan);
+        if (!changeResult.IsSuccess)
+        {
+            return Result<TenantSubscriptionOverviewDto>.Failure(changeResult.Error!);
+        }
+
+        if (gatewayProvider is not null && !string.IsNullOrWhiteSpace(subscription.GatewaySubscriptionId))
+        {
+            await gatewayProvider.ChangeSubscriptionPlanAsync(subscription.GatewaySubscriptionId, targetPlan, ct);
+        }
 
         if (request.NewStatus.HasValue)
         {
