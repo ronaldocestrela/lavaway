@@ -188,6 +188,18 @@
                                             </button>
                                         </Authorized>
                                     </AuthorizeView>
+
+                                    <AuthorizeView Roles="SuperAdmin,PlatformBillingAdmin,PlatformSupport">
+                                        <Authorized>
+                                            <button type="button" 
+                                                    class="btn-action btn-plan" 
+                                                    @onclick="() => OpenPlanModal(tenant)"
+                                                    title="Modificar Plano do Estabelecimento"
+                                                    id="btn-tenant-plan-@tenant.Id">
+                                                <span>💳 Plano</span>
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
                                 </td>
                             </tr>
                         }
@@ -229,6 +241,14 @@
                              Tenant="@selectedTenant" 
                              OnClose="CloseStatusModal" 
                              OnStatusUpdated="HandleStatusUpdated" />
+
+    <OverrideTenantPlanModal IsOpen="@isPlanModalOpen"
+                             TenantId="@(selectedTenantForPlan?.Id ?? Guid.Empty)"
+                             TenantName="@(selectedTenantForPlan?.Name ?? string.Empty)"
+                             CurrentTier="SaasPlanTier.Basic"
+                             CurrentStatus="@(selectedTenantForPlan?.Status == TenantStatus.Delinquent ? TenantSubscriptionStatus.Delinquent : selectedTenantForPlan?.Status == TenantStatus.Canceled ? TenantSubscriptionStatus.Canceled : selectedTenantForPlan?.Status == TenantStatus.Trial ? TenantSubscriptionStatus.Trial : TenantSubscriptionStatus.Active)"
+                             OnClose="ClosePlanModal"
+                             OnPlanOverridden="HandlePlanOverridden" />
 </div>
 
 @code {
@@ -251,6 +271,9 @@
     private bool isImpersonationModalOpen;
     private bool isStatusModalOpen;
     private GlobalTenantSummaryDto? selectedTenant;
+
+    private bool isPlanModalOpen;
+    private GlobalTenantSummaryDto? selectedTenantForPlan;
 
     protected override async Task OnInitializedAsync()
     {
@@ -376,6 +399,24 @@
         {
             tenants[index] = updated;
         }
+        await LoadTenantsAsync();
+    }
+
+    private void OpenPlanModal(GlobalTenantSummaryDto tenant)
+    {
+        selectedTenantForPlan = tenant;
+        isPlanModalOpen = true;
+    }
+
+    private void ClosePlanModal()
+    {
+        isPlanModalOpen = false;
+        selectedTenantForPlan = null;
+    }
+
+    private async Task HandlePlanOverridden(TenantSubscriptionOverviewDto overview)
+    {
+        ClosePlanModal();
         await LoadTenantsAsync();
     }
 

@@ -1,13 +1,22 @@
+using System.Net;
+using System.Text.Json;
 using Bunit;
 using CarWashSaaS.Client.Components;
+using CarWashSaaS.Client.Core;
 using CarWashSaaS.Shared.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CarWashSaaS.ComponentTests;
 
 public sealed class SaasBillingComponentTests : BunitContext
 {
+    private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(handler(request));
+    }
     [Fact]
     public void PlanQuotaProgressBar_Should_Render_Counters_And_Progress()
     {
@@ -212,6 +221,145 @@ public sealed class SaasBillingComponentTests : BunitContext
         await stripeButton.ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
         Assert.Equal(SaasPlanTier.Pro, checkoutTier);
+    }
+
+    [Fact]
+    public void OverrideTenantPlanModal_WhenClosed_ShouldRenderNothing()
+    {
+        Services.AddSingleton<IToastService>(new ToastService());
+        var httpClient = new HttpClient(new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)))
+        {
+            BaseAddress = new Uri("http://localhost/")
+        };
+        Services.AddSingleton(new SaasBillingApiClient(httpClient));
+
+        var cut = Render<OverrideTenantPlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, false)
+            .Add(p => p.TenantId, Guid.NewGuid()));
+
+        Assert.Empty(cut.Markup.Trim());
+    }
+
+    [Fact]
+    public void OverrideTenantPlanModal_WhenOpen_ShouldRenderTenantNameAndCurrentPlan()
+    {
+        Services.AddSingleton<IToastService>(new ToastService());
+        var httpClient = new HttpClient(new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
+        }))
+        {
+            BaseAddress = new Uri("http://localhost/")
+        };
+        Services.AddSingleton(new SaasBillingApiClient(httpClient));
+
+        var tenantId = Guid.NewGuid();
+        var cut = Render<OverrideTenantPlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, true)
+            .Add(p => p.TenantId, tenantId)
+            .Add(p => p.TenantName, "Lava-Jato Jardins")
+            .Add(p => p.CurrentTier, SaasPlanTier.Pro)
+            .Add(p => p.CurrentStatus, TenantSubscriptionStatus.Active));
+
+        Assert.Contains("Modificar Plano do Estabelecimento", cut.Markup);
+        Assert.Contains("Lava-Jato Jardins", cut.Markup);
+        Assert.Contains("PRO", cut.Markup);
+        Assert.Contains("Active", cut.Markup);
+        Assert.NotNull(cut.Find("#newPlanTier"));
+        Assert.NotNull(cut.Find("#overrideReason"));
+        Assert.NotNull(cut.Find("#btn-save-override-plan"));
+    }
+
+    [Fact]
+    public async Task OverrideTenantPlanModal_WhenReasonIsEmpty_ShouldShowValidationError()
+    {
+        Services.AddSingleton<IToastService>(new ToastService());
+        var httpClient = new HttpClient(new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
+        }))
+        {
+            BaseAddress = new Uri("http://localhost/")
+        };
+        Services.AddSingleton(new SaasBillingApiClient(httpClient));
+
+        var tenantId = Guid.NewGuid();
+        var cut = Render<OverrideTenantPlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, true)
+            .Add(p => p.TenantId, tenantId)
+            .Add(p => p.TenantName, "Lava-Jato Jardins")
+            .Add(p => p.CurrentTier, SaasPlanTier.Basic));
+
+        var saveButton = cut.Find("#btn-save-override-plan");
+        await saveButton.ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        Assert.Contains("O motivo/justificativa é obrigatório", cut.Markup);
+    }
+
+    [Fact]
+    public async Task OverrideTenantPlanModal_WhenValidSubmission_ShouldCallApiAndTriggerCallback()
+    {
+        var toastService = new ToastService();
+        Services.AddSingleton<IToastService>(toastService);
+
+        var tenantId = Guid.NewGuid();
+        var overviewResponse = new TenantSubscriptionOverviewDto(
+            TenantId: tenantId,
+            TenantName: "Lava-Jato Jardins",
+            PlanTier: SaasPlanTier.Enterprise,
+            PlanName: "Enterprise",
+            MonthlyPrice: 599m,
+            Status: TenantSubscriptionStatus.Active,
+            CurrentPeriodStartUtc: DateTimeOffset.UtcNow,
+            CurrentPeriodEndUtc: DateTimeOffset.UtcNow.AddMonths(1),
+            GracePeriodEndsAtUtc: null,
+            NextBillingDateUtc: DateTimeOffset.UtcNow.AddMonths(1),
+            UsedWorkOrders: 0,
+            MaxWorkOrders: 0,
+            UsedWhatsAppMessages: 0,
+            MaxWhatsAppMessages: 0,
+            GatewaySubscriptionId: null,
+            PendingInvoice: null,
+            Invoices: []);
+
+        var httpClient = new HttpClient(new FakeHttpMessageHandler(req =>
+        {
+            if (req.Method == HttpMethod.Post && req.RequestUri!.ToString().Contains($"subscriptions/{tenantId}/override"))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(overviewResponse), System.Text.Encoding.UTF8, "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
+            };
+        }))
+        {
+            BaseAddress = new Uri("http://localhost/")
+        };
+        Services.AddSingleton(new SaasBillingApiClient(httpClient));
+
+        TenantSubscriptionOverviewDto? receivedOverview = null;
+
+        var cut = Render<OverrideTenantPlanModal>(parameters => parameters
+            .Add(p => p.IsOpen, true)
+            .Add(p => p.TenantId, tenantId)
+            .Add(p => p.TenantName, "Lava-Jato Jardins")
+            .Add(p => p.CurrentTier, SaasPlanTier.Basic)
+            .Add(p => p.OnPlanOverridden, (TenantSubscriptionOverviewDto dto) => { receivedOverview = dto; }));
+
+        var textarea = cut.Find("#overrideReason");
+        textarea.Change("Upgrade manual autorizado pelo setor de faturamento");
+
+        var saveButton = cut.Find("#btn-save-override-plan");
+        await saveButton.ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        Assert.NotNull(receivedOverview);
+        Assert.Equal(SaasPlanTier.Enterprise, receivedOverview.PlanTier);
+        Assert.Equal("Enterprise", receivedOverview.PlanName);
     }
 }
 

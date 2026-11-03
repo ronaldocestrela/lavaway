@@ -1,5 +1,8 @@
+using System.Security.Claims;
+using System.Text.Json;
 using CarWashSaaS.Billing.Application;
 using CarWashSaaS.Billing.Infrastructure;
+using CarWashSaaS.Identity.Application;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Shared.Contracts;
 using Microsoft.Extensions.Options;
@@ -251,10 +254,50 @@ public static class SaasBillingEndpoints
             Guid tenantId,
             AdminOverridePlanRequest request,
             PlatformSaasBillingApplicationService service,
+            AuditTrailApplicationService auditService,
+            ClaimsPrincipal user,
+            HttpContext context,
             CancellationToken ct) =>
         {
             var result = await service.AdminOverridePlanAsync(tenantId, request, ct);
-            return result.IsSuccess ? Results.Ok(result.Value) : MapErrorToResult(result.Error!);
+            if (!result.IsSuccess)
+            {
+                return MapErrorToResult(result.Error!);
+            }
+
+            var actorIdClaim = user.FindFirst("sub")?.Value;
+            var actorEmailClaim = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value ?? "admin@lavaway.com";
+            var actorRoleClaim = user.FindFirst("role")?.Value ?? user.FindFirst(ClaimTypes.Role)?.Value ?? "PlatformBillingAdmin";
+            var actorRealm = user.FindFirst("user_realm")?.Value ?? "Platform";
+            var actorId = Guid.TryParse(actorIdClaim, out var parsedId) ? parsedId : Guid.NewGuid();
+
+            var ipAddress = context.Connection.RemoteIpAddress?.ToString();
+            var userAgent = context.Request.Headers.UserAgent.ToString();
+            var detailsJson = JsonSerializer.Serialize(new
+            {
+                tenantId,
+                targetTier = request.TargetTier.ToString(),
+                newStatus = request.NewStatus?.ToString(),
+                reason = request.Reason,
+                planName = result.Value?.PlanName,
+                monthlyPrice = result.Value?.MonthlyPrice
+            });
+
+            await auditService.RecordEventAsync(new RecordAuditEventRequest(
+                ActorId: actorId,
+                ActorEmail: actorEmailClaim,
+                ActorRole: actorRoleClaim,
+                ActorRealm: actorRealm,
+                Action: PlatformActionConstants.BillingPlanModified,
+                TargetType: PlatformTargetTypeConstants.Tenant,
+                TargetId: tenantId.ToString(),
+                TenantId: tenantId,
+                IpAddress: ipAddress,
+                UserAgent: userAgent,
+                DetailsJson: detailsJson,
+                Outcome: "Success"), ct);
+
+            return Results.Ok(result.Value);
         });
 
         platformBilling.MapGet("/plans", async (

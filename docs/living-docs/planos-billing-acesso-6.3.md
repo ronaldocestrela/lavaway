@@ -207,3 +207,44 @@ erDiagram
   * **Capacidade de Boxes e Equipe Ativa**: Em `YardSetupApplicationService`, ultrapassar os boxes permitidos retorna `tenant.plan.boxes_limit_reached` (`409 Conflict`). O cadastro de novos membros ou reativação de colaboradores inativos verifica apenas a contagem de ativos (`IsActive == true`), bloqueando com `tenant.plan.team_limit_reached` (`409 Conflict`) quando atingido o limite.
   * **Chatbot IA & Fallback Cordial**: Em `InboundWhatsAppMessageHandler`, se o estabelecimento não possui `SaasFeature.AiChatbot`, a mensagem de entrada é interceptada e uma resposta padrão cordial personalizada é enviada (informando que o atendimento automatizado está indisponível e que um atendente responderá em breve), sem iniciar a máquina de estados do chatbot. Se palavras-chave de fidelidade forem digitadas no bot de um tenant sem módulo de fidelidade, uma resposta explicativa amigável é retornada.
 
+### Cenário 8: Modificação Manual e Emergencial de Plano via Backoffice com Auditoria
+* **Dado** um operador autenticado com a role `PlatformBillingAdmin` ou `SuperAdmin` no Backoffice da Plataforma (`/platform/billing` ou `/platform/tenants`),
+* **Quando** ele visualiza um estabelecimento e abre o modal `OverrideTenantPlanModal`:
+  * Ele pode selecionar qualquer tier disponível no catálogo (`Basic`, `Pro`, `Enterprise`).
+  * Ele pode opcionalmente atualizar o status comercial da assinatura (`Active`, `Delinquent`, `Canceled`).
+  * Ele é obrigado a fornecer um motivo/justificativa administrativa detalhada.
+* **E quando** a alteração é confirmada:
+  * O endpoint `POST /platform/billing/subscriptions/{tenantId}/override` executa a troca via `PlatformSaasBillingApplicationService.AdminOverridePlanAsync`.
+  * Se o tenant possuir uma assinatura ativa no gateway Stripe, a alteração de plano é sincronizada via `ISaasBillingGatewayProvider.ChangeSubscriptionPlanAsync`.
+  * A ação é compulsoriamente registrada na trilha imutável via `AuditTrailApplicationService` com a ação `BillingPlan.Modified`, capturando as credenciais do operador, IP, User-Agent, justificativa e detalhes do plano anterior e novo.
+  * O modal fecha, o grid de estabelecimentos é atualizado e o novo limite de cotas e funções entra em vigor imediatamente para o tenant.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Operador Backoffice (PlatformBillingAdmin)
+    participant UI as OverrideTenantPlanModal (Blazor)
+    participant Client as SaasBillingApiClient
+    participant Api as POST /platform/billing/subscriptions/{id}/override
+    participant Service as PlatformSaasBillingApplicationService
+    participant Repo as ITenantSaasSubscriptionRepository
+    participant Gateway as ISaasBillingGatewayProvider (Stripe/Simulado)
+    participant Audit as AuditTrailApplicationService
+
+    Admin->>UI: Seleciona novo plano, status e digita justificativa
+    UI->>Client: AdminOverridePlanAsync(tenantId, request)
+    Client->>Api: POST /platform/billing/subscriptions/{tenantId}/override
+    Api->>Service: AdminOverridePlanAsync(tenantId, request)
+    Service->>Repo: GetByTenantIdAsync(tenantId)
+    Service->>Service: subscription.ChangePlan(newPlan)
+    opt Se possuir GatewaySubscriptionId
+        Service->>Gateway: ChangeSubscriptionPlanAsync(...)
+    end
+    Service->>Repo: Update & SaveChangesAsync()
+    Service-->>Api: Result.Success(overview)
+    Api->>Audit: RecordEventAsync(BillingPlanModified, Details)
+    Api-->>Client: 200 OK (TenantSubscriptionOverviewDto)
+    Client-->>UI: Sucesso
+    UI->>Admin: Toast de confirmação e atualização da tabela
+```
+
