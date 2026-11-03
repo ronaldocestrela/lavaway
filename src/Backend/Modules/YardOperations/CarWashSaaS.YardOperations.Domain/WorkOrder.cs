@@ -12,7 +12,7 @@ public sealed class WorkOrder : IMustHaveTenant
     {
     }
 
-    private WorkOrder(Guid id, Guid tenantId, Guid customerId, Guid vehicleId, IEnumerable<WorkOrderItem> items, string? notes = null)
+    private WorkOrder(Guid id, Guid tenantId, Guid customerId, Guid vehicleId, IEnumerable<WorkOrderItem> items, string? notes = null, string? trackingToken = null)
     {
         Id = id;
         TenantId = tenantId;
@@ -21,6 +21,7 @@ public sealed class WorkOrder : IMustHaveTenant
         Status = WorkOrderStatus.Waiting;
         CreatedAtUtc = DateTimeOffset.UtcNow;
         Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        TrackingToken = string.IsNullOrWhiteSpace(trackingToken) ? Guid.NewGuid().ToString("N") : trackingToken.Trim();
         _items.AddRange(items);
 
         _statusHistory.Add(new WorkOrderStatusHistory(
@@ -45,6 +46,7 @@ public sealed class WorkOrder : IMustHaveTenant
 
     public Guid CustomerId { get; private set; }
     public Guid VehicleId { get; private set; }
+    public string TrackingToken { get; private set; } = string.Empty;
     public WorkOrderStatus Status { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public string? Notes { get; private set; }

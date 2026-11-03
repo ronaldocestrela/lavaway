@@ -102,7 +102,14 @@ public sealed class WorkOrderReceiptPdfGenerator : IWorkOrderReceiptPdfGenerator
             var fuel = !string.IsNullOrWhiteSpace(model.Inspection.FuelLevel) ? model.Inspection.FuelLevel : "Nao informado";
             sb.AppendLine("0.2 0.2 0.2 rg");
             sb.AppendLine($"BT /F1 9 Tf 36 {currentY} Td (Odometro: " + EscapePdfText(odo) + "   |   Nivel de Combustivel: " + EscapePdfText(fuel) + ") Tj ET");
-            currentY -= 16;
+            currentY -= 14;
+
+            if (!string.IsNullOrWhiteSpace(model.TrackingToken))
+            {
+                sb.AppendLine("0.15 0.39 0.92 rg");
+                sb.AppendLine($"BT /F2 8.5 Tf 36 {currentY} Td (Fotos da Vistoria Online: app.lavaway.com.br/vistoria/" + EscapePdfText(model.TrackingToken) + ") Tj ET");
+                currentY -= 14;
+            }
 
             // Itens do checklist
             if (model.Inspection.ChecklistItems.Count > 0)

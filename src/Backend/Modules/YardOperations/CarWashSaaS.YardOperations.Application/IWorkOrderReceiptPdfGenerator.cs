@@ -23,7 +23,8 @@ public sealed record WorkOrderReceiptPdfModel(
     decimal TotalAmount,
     string? Notes,
     IReadOnlyList<WorkOrderReceiptItemModel> Items,
-    WorkOrderReceiptInspectionModel? Inspection);
+    WorkOrderReceiptInspectionModel? Inspection,
+    string? TrackingToken = null);
 
 public sealed record WorkOrderReceiptItemModel(
     string ServiceName,

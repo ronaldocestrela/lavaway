@@ -1,0 +1,353 @@
+@page "/vistoria/{TrackingToken}"
+@attribute [AllowAnonymous]
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject InspectionApiClient InspectionApi
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Laudo da Vistoria do Veículo — Lava Aê</PageTitle>
+
+<div class="public-vistoria-page">
+    @if (_isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner"></div>
+            <p>Carregando laudo fotográfico da vistoria...</p>
+        </div>
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="error-container">
+            <div class="error-card">
+                <span class="error-icon">&#9888;</span>
+                <h2>Vistoria não encontrada</h2>
+                <p>@_errorMessage</p>
+                <span class="error-hint">Verifique se o link enviado pelo WhatsApp está correto ou se o período de retenção da vistoria expirou.</span>
+            </div>
+        </div>
+    }
+    else if (_data is not null)
+    {
+        <!-- Header da Loja -->
+        <header class="store-header" style="@GetHeaderStyle()">
+            <div class="store-brand">
+                @if (!string.IsNullOrWhiteSpace(_data.StoreLogoUrl))
+                {
+                    <img src="@_data.StoreLogoUrl" alt="@_data.StoreTradeName" class="store-logo" />
+                }
+                else
+                {
+                    <div class="store-logo-placeholder">
+                        @(_data.StoreTradeName.Length > 0 ? _data.StoreTradeName[..1].ToUpperInvariant() : "L")
+                    </div>
+                }
+                <div class="store-meta">
+                    <h1 class="store-name">@_data.StoreTradeName</h1>
+                    @if (!string.IsNullOrWhiteSpace(_data.StorePhone))
+                    {
+                        <a href="tel:@_data.StorePhone" class="store-phone">&#128222; @_data.StorePhone</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_data.StoreAddress))
+                    {
+                        <span class="store-address">&#128205; @_data.StoreAddress</span>
+                    }
+                </div>
+            </div>
+        </header>
+
+        <!-- Status e Identificação do Veículo -->
+        <section class="vehicle-card">
+            <div class="vehicle-top">
+                <span class="badge-status-completed">✓ Check-in & Vistoria Realizados</span>
+                <span class="checkin-date">&#128197; @_data.CheckInAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+            </div>
+
+            <div class="vehicle-details">
+                <div class="vehicle-main">
+                    <h2 class="vehicle-model">@_data.VehicleModel</h2>
+                    <div class="vehicle-pills">
+                        <span class="plate-pill">@FormatPlate(_data.VehiclePlate)</span>
+                        <span class="size-pill">@_data.VehicleSize</span>
+                    </div>
+                </div>
+                <div class="customer-info">
+                    <span class="info-label">CLIENTE</span>
+                    <span class="info-val">@_data.CustomerName</span>
+                </div>
+            </div>
+
+            <!-- Nível de Combustível e Odômetro -->
+            <div class="specs-grid">
+                <div class="spec-box">
+                    <span class="spec-label">&#9881; Odômetro</span>
+                    <strong class="spec-value">@(_data.OdometerKm.HasValue ? $"{_data.OdometerKm.Value:N0} km" : "Não informado")</strong>
+                </div>
+                <div class="spec-box">
+                    <span class="spec-label">&#9981; Combustível</span>
+                    <strong class="spec-value">@(!string.IsNullOrWhiteSpace(_data.FuelLevel) ? _data.FuelLevel : "Não informado")</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- Galeria de Fotos de Perímetro Obrigatórias -->
+        <section class="section-card">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="section-eyebrow">REGISTRO FOTOGRÁFICO DE ENTRADA</span>
+                    <h3 class="section-title">&#128247; Fotos do Veículo</h3>
+                </div>
+                <span class="photo-counter">@_data.Photos.Count foto(s)</span>
+            </div>
+
+            @if (_data.Photos.Count == 0)
+            {
+                <div class="empty-photos">
+                    <p>Nenhuma foto foi registrada para esta vistoria.</p>
+                </div>
+            }
+            else
+            {
+                <div class="photos-grid">
+                    @foreach (var photo in _data.Photos)
+                    {
+                        var fullUrl = GetFullPhotoUrl(photo.Url);
+                        <div class="photo-card" @onclick="() => OpenPhotoModal(photo, fullUrl)">
+                            <div class="photo-wrapper">
+                                @if (photo.IsPurged)
+                                {
+                                    <div class="purged-badge">
+                                        <span class="purged-icon">&#128737;</span>
+                                        <span>Expurgada (LGPD)</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <img src="@fullUrl" alt="@photo.CategoryLabel" class="photo-thumb" loading="lazy" />
+                                    <div class="zoom-overlay">
+                                        <span>&#128269; Ver ampliada</span>
+                                    </div>
+                                }
+                            </div>
+                            <div class="photo-footer">
+                                <span class="photo-category">@photo.CategoryLabel</span>
+                                <span class="photo-time">@photo.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        <!-- Avarias Registradas -->
+        @if (_data.Damages.Count > 0)
+        {
+            <section class="section-card damages-section">
+                <div class="section-header">
+                    <div class="section-title-wrap">
+                        <span class="section-eyebrow">AVARIAS PRÉ-EXISTENTES</span>
+                        <h3 class="section-title">&#9888; Danos Registrados na Entrada (@_data.Damages.Count)</h3>
+                    </div>
+                </div>
+
+                <div class="damages-list">
+                    @foreach (var dmg in _data.Damages)
+                    {
+                        <div class="damage-item">
+                            <div class="damage-badge @dmg.Severity.ToLowerInvariant()">
+                                <span>@dmg.Severity</span>
+                            </div>
+                            <div class="damage-content">
+                                <strong class="damage-type">@dmg.Type (@dmg.View)</strong>
+                                <p class="damage-desc">@(string.IsNullOrWhiteSpace(dmg.Description) ? "Sem anotações complementares" : dmg.Description)</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+
+        <!-- Checklist de Itens Inspecionados -->
+        @if (_data.ChecklistItems.Count > 0)
+        {
+            <section class="section-card">
+                <div class="section-header">
+                    <div class="section-title-wrap">
+                        <span class="section-eyebrow">CONFERÊNCIA DE ENTRADA</span>
+                        <h3 class="section-title">&#9745; Checklist de Itens e Pertences</h3>
+                    </div>
+                </div>
+
+                <div class="checklist-table-wrapper">
+                    <table class="checklist-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Status</th>
+                                <th>Observação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _data.ChecklistItems)
+                            {
+                                <tr>
+                                    <td class="col-item">@item.Title</td>
+                                    <td class="col-status">
+                                        <span class="status-chip @item.Status.ToLowerInvariant()">
+                                            @FormatStatus(item.Status)
+                                        </span>
+                                    </td>
+                                    <td class="col-obs">@(string.IsNullOrWhiteSpace(item.Observation) ? "-" : item.Observation)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_data.InspectionNotes))
+        {
+            <section class="section-card">
+                <div class="section-header">
+                    <h3 class="section-title">&#128221; Observações Gerais da Recepção</h3>
+                </div>
+                <p class="inspection-notes">@_data.InspectionNotes</p>
+            </section>
+        }
+
+        <!-- Termo de Ciência e LGPD -->
+        <footer class="public-footer">
+            <div class="lgpd-card">
+                <div class="lgpd-icon">&#128274;</div>
+                <div class="lgpd-text">
+                    <strong>Privacidade e Proteção de Dados (LGPD)</strong>
+                    <p>
+                        Este laudo fotográfico comprova as condições físicas em que o veículo foi entregue para os serviços contratados.
+                        As fotos são armazenadas de forma segura e expurgadas automaticamente após o encerramento do prazo de retenção legal.
+                    </p>
+                    <a href="/privacidade" target="_blank" class="lgpd-link">Ver Política de Privacidade &rarr;</a>
+                </div>
+            </div>
+            <div class="branding-footer">
+                <span>Tecnologia <strong>Lava Aê SaaS</strong> &bull; Sistema de Gestão para Estéticas Automotivas</span>
+            </div>
+        </footer>
+    }
+
+    <!-- Modal de Visualização da Foto Ampliada (Lightbox) -->
+    @if (_modalPhoto is not null)
+    {
+        <div class="lightbox-backdrop" @onclick="ClosePhotoModal">
+            <div class="lightbox-content" @onclick:stopPropagation>
+                <header class="lightbox-header">
+                    <span class="lightbox-title">@_modalPhoto.CategoryLabel</span>
+                    <button type="button" class="btn-close-lightbox" @onclick="ClosePhotoModal">&times;</button>
+                </header>
+                <div class="lightbox-img-wrapper">
+                    <img src="@_modalPhotoUrl" alt="@_modalPhoto.CategoryLabel" class="lightbox-img" />
+                </div>
+                <footer class="lightbox-footer">
+                    <span>Capturada em @_modalPhoto.UploadedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    <a href="@_modalPhotoUrl" download target="_blank" class="btn-download-photo">Baixar Imagem Original</a>
+                </footer>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string TrackingToken { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private PublicInspectionDto? _data;
+
+    private PublicInspectionPhotoDto? _modalPhoto;
+    private string? _modalPhotoUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPublicInspectionAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadPublicInspectionAsync();
+    }
+
+    private async Task LoadPublicInspectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(TrackingToken))
+        {
+            _errorMessage = "Token de vistoria inválido ou não informado.";
+            _isLoading = false;
+            return;
+        }
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _data = await InspectionApi.GetPublicInspectionAsync(TrackingToken);
+            if (_data is null)
+            {
+                _errorMessage = "Não encontramos a vistoria correspondente a este link.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erro ao carregar dados: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetHeaderStyle()
+    {
+        if (_data is not null && !string.IsNullOrWhiteSpace(_data.StorePrimaryColor))
+        {
+            return $"--store-primary: {_data.StorePrimaryColor};";
+        }
+        return string.Empty;
+    }
+
+    private string GetFullPhotoUrl(string relativeUrl)
+    {
+        var baseAddress = Http.BaseAddress?.ToString().TrimEnd('/') ?? string.Empty;
+        var cleanRelative = relativeUrl.TrimStart('/');
+        return $"{baseAddress}/{cleanRelative}";
+    }
+
+    private void OpenPhotoModal(PublicInspectionPhotoDto photo, string fullUrl)
+    {
+        if (photo.IsPurged) return;
+        _modalPhoto = photo;
+        _modalPhotoUrl = fullUrl;
+    }
+
+    private void ClosePhotoModal()
+    {
+        _modalPhoto = null;
+        _modalPhotoUrl = null;
+    }
+
+    private static string FormatPlate(string raw)
+    {
+        var clean = (raw ?? string.Empty).Replace("-", "").Trim().ToUpperInvariant();
+        return clean.Length == 7 ? $"{clean[..3]}-{clean[3..]}" : clean;
+    }
+
+    private static string FormatStatus(string status) => status switch
+    {
+        "Present" or "OK" or "Ok" => "OK / Conforme",
+        "Missing" or "Ausente" => "Ausente",
+        "Damaged" or "Avariado" => "Avariado",
+        "NotApplicable" or "NaoAplica" => "Não se aplica",
+        _ => status
+    };
+}
+

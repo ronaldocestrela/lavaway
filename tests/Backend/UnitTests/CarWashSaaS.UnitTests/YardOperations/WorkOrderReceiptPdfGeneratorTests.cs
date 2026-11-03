@@ -42,7 +42,8 @@ public sealed class WorkOrderReceiptPdfGeneratorTests
                 Damages:
                 [
                     new WorkOrderReceiptDamageModel("Arranhao", "Lateral Esquerda", "Leve", "Porta do motorista")
-                ]));
+                ]),
+            TrackingToken: "track123456");
 
         var result = generator.GenerateReceiptPdf(model);
 
@@ -58,6 +59,8 @@ public sealed class WorkOrderReceiptPdfGeneratorTests
         Assert.Contains("LAVA CAR PREMIUM", rawString);
         Assert.Contains("Carlos Eduardo", rawString);
         Assert.Contains("BRA2E19", rawString);
+        Assert.Contains("track123456", rawString);
+        Assert.Contains("Fotos da Vistoria Online", rawString);
         Assert.Contains("Lavagem Completa", rawString);
         Assert.Contains("CHECKLIST DA VISTORIA", rawString);
         Assert.Contains("45.200 km", rawString);
