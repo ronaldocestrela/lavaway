@@ -77,6 +77,8 @@ if (!Uri.TryCreate(rabbitMqUri, UriKind.Absolute, out var rabbitMqConnectionUri)
     throw new InvalidOperationException("Messaging:RabbitMq:Uri must be a valid AMQP or AMQPS URI.");
 }
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAppUrlResolver, AppUrlResolver>();
 builder.Services.AddScoped<CurrentTenantAccessor>();
 builder.Services.AddScoped<ICurrentTenantAccessor>(services => services.GetRequiredService<CurrentTenantAccessor>());
 builder.Services.AddScoped<ITokenService, JwtTokenService>();

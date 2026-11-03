@@ -96,4 +96,40 @@ public sealed class WorkOrderReceiptPdfGeneratorTests
         Assert.False(result.IsSuccess);
         Assert.Equal("receipt_pdf.invalid_data", result.Error!.Code);
     }
+
+    [Fact]
+    public void GenerateReceiptPdf_Should_Use_Custom_AppBaseUrl_When_Provided()
+    {
+        var generator = new WorkOrderReceiptPdfGenerator();
+        var model = new WorkOrderReceiptPdfModel(
+            TenantId: Guid.NewGuid(),
+            WorkOrderId: Guid.NewGuid(),
+            StoreTradeName: "Centro Automotivo Elite",
+            StorePhone: "(11) 99999-8888",
+            StoreAddress: "Rua do Ouro, 50",
+            CustomerName: "Lucas Lima",
+            CustomerPhone: "(11) 98888-7777",
+            VehiclePlate: "XYZ1234",
+            VehicleModel: "Toyota Corolla",
+            VehicleSize: "Sedan",
+            CreatedAtUtc: DateTimeOffset.UtcNow,
+            EstimatedCompletionAtUtc: DateTimeOffset.UtcNow.AddMinutes(60),
+            TotalAmount: 150.00m,
+            Notes: null,
+            Items: [new WorkOrderReceiptItemModel("Ducha + Cera", 1, 150m, 150m)],
+            Inspection: new WorkOrderReceiptInspectionModel(
+                OdometerKm: 12000,
+                FuelLevel: "Cheio",
+                ChecklistItems: [],
+                Damages: []),
+            TrackingToken: "track-custom-999",
+            AppBaseUrl: "https://estetica.customgarage.com.br");
+
+        var result = generator.GenerateReceiptPdf(model);
+
+        Assert.True(result.IsSuccess);
+        var rawString = Encoding.Latin1.GetString(result.Value!);
+        Assert.Contains("Fotos da Vistoria Online: estetica.customgarage.com.br/vistoria/track-custom-999", rawString);
+        Assert.Contains("Politica de Privacidade: estetica.customgarage.com.br/privacidade", rawString);
+    }
 }

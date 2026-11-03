@@ -24,7 +24,8 @@ public sealed record WorkOrderReceiptPdfModel(
     string? Notes,
     IReadOnlyList<WorkOrderReceiptItemModel> Items,
     WorkOrderReceiptInspectionModel? Inspection,
-    string? TrackingToken = null);
+    string? TrackingToken = null,
+    string? AppBaseUrl = null);
 
 public sealed record WorkOrderReceiptItemModel(
     string ServiceName,

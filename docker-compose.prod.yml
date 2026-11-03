@@ -199,6 +199,7 @@ services:
       WhatsApp__EvolutionApi__InstanceNamePrefix: ${WHATSAPP_INSTANCE_PREFIX:-lavaway}
       WhatsApp__EvolutionApi__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:?WHATSAPP_WEBHOOK_SECRET obrigatoria}
       WhatsApp__EvolutionApi__WebhookUrl: http://api:8080/whatsapp/webhooks/evolution?secret=${WHATSAPP_WEBHOOK_SECRET}
+      App__BaseUrl: ${APP_URL:-http://localhost}
       Cors__AllowedOrigins__0: ${APP_URL:-http://localhost}
       Cors__AllowedOrigins__1: http://localhost:${WEB_PORT:-80}
       Cors__AllowedOrigins__2: http://127.0.0.1:${WEB_PORT:-80}

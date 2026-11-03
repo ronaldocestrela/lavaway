@@ -12,7 +12,8 @@ public sealed class WorkOrderNotificationApplicationService(
     IWorkOrderReceiptPdfGenerator pdfGenerator,
     ITenantObjectStorage objectStorage,
     IOutboundWhatsAppDispatcher whatsAppDispatcher,
-    ITenantStoreProfileLookup storeProfileLookup)
+    ITenantStoreProfileLookup storeProfileLookup,
+    IAppUrlResolver? appUrlResolver = null)
 {
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
 
@@ -65,7 +66,10 @@ public sealed class WorkOrderNotificationApplicationService(
         var plate = vehicle?.Plate ?? "";
         var forecast = workOrder.EstimatedCompletionAtUtc.ToLocalTime().ToString("dd/MM HH:mm", PtBr);
         var totalStr = workOrder.TotalAmount.ToString("C2", PtBr);
-        var trackingUrl = $"https://app.lavaway.com.br/vistoria/{workOrder.TrackingToken}";
+        var baseUrl = ResolveBaseUrl();
+        var displayDomain = ResolveDisplayDomain(baseUrl);
+        var trackingUrl = $"{baseUrl}/vistoria/{workOrder.TrackingToken}";
+        var privacyUrl = $"{displayDomain}/privacidade";
 
         var caption = !string.IsNullOrWhiteSpace(customMessage)
             ? customMessage.Trim()
@@ -77,7 +81,7 @@ public sealed class WorkOrderNotificationApplicationService(
               $"Valor total: *{totalStr}*\n\n" +
               $"📷 *Fotos e Laudo da Vistoria Online:*\n{trackingUrl}\n\n" +
               $"Segue anexo o comprovante digital com o checklist da vistoria.\n\n" +
-              $"🔒 *Privacidade & LGPD:* Seus dados e fotos de vistoria são tratados com segurança e exclusivamente para a prestação do serviço contratado. Para consultar nossa Política de Privacidade, acesse lavaway.com.br/privacidade. Envie 'PARAR' a qualquer momento para não receber mensagens promocionais.";
+              $"🔒 *Privacidade & LGPD:* Seus dados e fotos de vistoria são tratados com segurança e exclusivamente para a prestação do serviço contratado. Para consultar nossa Política de Privacidade, acesse {privacyUrl}. Envie 'PARAR' a qualquer momento para não receber mensagens promocionais.";
 
         // 4. Despachar via WhatsApp com Idempotência
         var base64Data = $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
@@ -319,7 +323,7 @@ public sealed class WorkOrderNotificationApplicationService(
             RecentMessages: relatedMessages));
     }
 
-    private static WorkOrderReceiptPdfModel BuildPdfModel(
+    private WorkOrderReceiptPdfModel BuildPdfModel(
         Guid tenantId,
         WorkOrder workOrder,
         Customer? customer,
@@ -358,6 +362,7 @@ public sealed class WorkOrderNotificationApplicationService(
             ? $"{storeProfile.Street}, {storeProfile.City} - {storeProfile.State}"
             : null;
 
+        var baseUrl = ResolveBaseUrl();
         return new WorkOrderReceiptPdfModel(
             tenantId,
             workOrder.Id,
@@ -375,7 +380,33 @@ public sealed class WorkOrderNotificationApplicationService(
             workOrder.Notes,
             items,
             inspectionModel,
-            workOrder.TrackingToken);
+            workOrder.TrackingToken,
+            baseUrl);
+    }
+
+    private string ResolveBaseUrl()
+    {
+        return appUrlResolver?.GetBaseUrl() ?? "https://app.lavaway.com.br";
+    }
+
+    private static string ResolveDisplayDomain(string baseUrl)
+    {
+        if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+        {
+            return uri.IsDefaultPort ? uri.Host : $"{uri.Host}:{uri.Port}";
+        }
+
+        var trimmed = baseUrl.Trim().TrimEnd('/');
+        if (trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[8..];
+        }
+        else if (trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[7..];
+        }
+
+        return string.IsNullOrWhiteSpace(trimmed) ? "app.lavaway.com.br" : trimmed.TrimEnd('/');
     }
 }
 

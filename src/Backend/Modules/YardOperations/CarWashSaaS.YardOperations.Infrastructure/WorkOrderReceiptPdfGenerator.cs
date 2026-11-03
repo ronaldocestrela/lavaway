@@ -5,7 +5,7 @@ using CarWashSaaS.YardOperations.Application;
 
 namespace CarWashSaaS.YardOperations.Infrastructure;
 
-public sealed class WorkOrderReceiptPdfGenerator : IWorkOrderReceiptPdfGenerator
+public sealed class WorkOrderReceiptPdfGenerator(IAppUrlResolver? appUrlResolver = null) : IWorkOrderReceiptPdfGenerator
 {
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
 
@@ -27,9 +27,15 @@ public sealed class WorkOrderReceiptPdfGenerator : IWorkOrderReceiptPdfGenerator
         }
     }
 
-    private static byte[] BuildPdf(WorkOrderReceiptPdfModel model)
+    private byte[] BuildPdf(WorkOrderReceiptPdfModel model)
     {
         var sb = new StringBuilder();
+
+        var baseDomainUrl = !string.IsNullOrWhiteSpace(model.AppBaseUrl)
+            ? model.AppBaseUrl
+            : appUrlResolver?.GetBaseUrl();
+
+        var displayDomain = FormatDisplayDomain(baseDomainUrl);
 
         // 1. Top Header Banner
         // Banner retangular azul no topo (0.15 0.38 0.92)
@@ -107,7 +113,7 @@ public sealed class WorkOrderReceiptPdfGenerator : IWorkOrderReceiptPdfGenerator
             if (!string.IsNullOrWhiteSpace(model.TrackingToken))
             {
                 sb.AppendLine("0.15 0.39 0.92 rg");
-                sb.AppendLine($"BT /F2 8.5 Tf 36 {currentY} Td (Fotos da Vistoria Online: app.lavaway.com.br/vistoria/" + EscapePdfText(model.TrackingToken) + ") Tj ET");
+                sb.AppendLine($"BT /F2 8.5 Tf 36 {currentY} Td (Fotos da Vistoria Online: " + EscapePdfText($"{displayDomain}/vistoria/{model.TrackingToken}") + ") Tj ET");
                 currentY -= 14;
             }
 
@@ -160,7 +166,7 @@ public sealed class WorkOrderReceiptPdfGenerator : IWorkOrderReceiptPdfGenerator
         sb.AppendLine($"BT /F1 7 Tf 42 {currentY - 22} Td (Nao nos responsabilizamos por objetos de valor deixados no interior do veiculo que nao constem no checklist acima.) Tj ET");
         sb.AppendLine($"BT /F1 7 Tf 42 {currentY - 33} Td (Apos o aviso de conclusao, gentileza retirar o veiculo no prazo acordado.) Tj ET");
         sb.AppendLine($"BT /F1 6.5 Tf 42 {currentY - 45} Td (Privacidade e LGPD: Dados e fotos de vistoria sao tratados com seguranca para a execucao deste servico e salvaguarda do veiculo.) Tj ET");
-        sb.AppendLine($"BT /F1 6.5 Tf 42 {currentY - 55} Td (Politica de Privacidade: lavaway.com.br/privacidade  |  Para cancelar mensagens promocionais no WhatsApp, envie 'PARAR'.) Tj ET");
+        sb.AppendLine($"BT /F1 6.5 Tf 42 {currentY - 55} Td (Politica de Privacidade: " + EscapePdfText($"{displayDomain}/privacidade") + "  |  Para cancelar mensagens promocionais no WhatsApp, envie 'PARAR'.) Tj ET");
 
         // 6. Rodapé
         sb.AppendLine("0.5 0.5 0.5 rg");
@@ -179,6 +185,31 @@ public sealed class WorkOrderReceiptPdfGenerator : IWorkOrderReceiptPdfGenerator
         if (!string.IsNullOrWhiteSpace(model.StorePhone)) parts.Add("Tel: " + model.StorePhone);
         if (!string.IsNullOrWhiteSpace(model.StoreAddress)) parts.Add("End: " + model.StoreAddress);
         return parts.Count > 0 ? string.Join("  •  ", parts) : "Atendimento ao Cliente";
+    }
+
+    private static string FormatDisplayDomain(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return "app.lavaway.com.br";
+        }
+
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return uri.IsDefaultPort ? uri.Host : $"{uri.Host}:{uri.Port}";
+        }
+
+        var trimmed = url.Trim().TrimEnd('/');
+        if (trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[8..];
+        }
+        else if (trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[7..];
+        }
+
+        return string.IsNullOrWhiteSpace(trimmed) ? "app.lavaway.com.br" : trimmed.TrimEnd('/');
     }
 
     private static string EscapePdfText(string text)

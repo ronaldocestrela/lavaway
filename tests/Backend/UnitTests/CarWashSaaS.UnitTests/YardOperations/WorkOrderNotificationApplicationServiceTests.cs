@@ -169,11 +169,62 @@ public sealed class WorkOrderNotificationApplicationServiceTests
         Assert.Contains("Capô Polido", dispatch.Caption);
     }
 
+    [Fact]
+    public async Task SendReceiptNotificationAsync_Should_Use_AppUrlResolver_When_Configured()
+    {
+        var tenantId = Guid.NewGuid();
+        var customer = Customer.Create(tenantId, "Carlos Silva", "11987654321").Value!;
+        var vehicle = Vehicle.Create(tenantId, customer.Id, "BRA2E19", VehicleSize.HatchSedan).Value!;
+        var item = WorkOrderItem.Create(tenantId, Guid.NewGuid(), "Lavagem Completa", 80m, 60, 1).Value!;
+        var workOrder = WorkOrder.Create(tenantId, customer.Id, vehicle.Id, [item]).Value!;
+
+        var workOrderRepo = new FakeWorkOrderRepository([workOrder]);
+        var customerRepo = new FakeCustomerRepository([customer]);
+        var vehicleRepo = new FakeVehicleRepository([vehicle]);
+        var inspectionRepo = new FakeVehicleInspectionRepository([]);
+        WorkOrderReceiptPdfModel? capturedModel = null;
+        var pdfGenerator = new FakePdfGenerator(m => capturedModel = m);
+        var storage = new FakeTenantObjectStorage();
+        var whatsAppDispatcher = new FakeWhatsAppDispatcher();
+        var storeProfileLookup = new FakeStoreProfileLookup(new StoreProfileDto(
+            Guid.NewGuid(), tenantId, "Lava Car Ltda", "Lava Car Top", "12345678000199", "1133334444", "Rua das Flores, 123", "São Paulo", "SP", "01234-000", null, null, null));
+        var appUrlResolver = new FakeAppUrlResolver("https://sistema.lavajato.com.br", "sistema.lavajato.com.br");
+
+        var service = new WorkOrderNotificationApplicationService(
+            workOrderRepo,
+            customerRepo,
+            vehicleRepo,
+            inspectionRepo,
+            pdfGenerator,
+            storage,
+            whatsAppDispatcher,
+            storeProfileLookup,
+            appUrlResolver);
+
+        var result = await service.SendReceiptNotificationAsync(tenantId, workOrder.Id);
+
+        Assert.True(result.IsSuccess);
+        var dispatch = whatsAppDispatcher.MediaDispatches.First();
+        Assert.Contains("https://sistema.lavajato.com.br/vistoria/" + workOrder.TrackingToken, dispatch.Caption);
+        Assert.Contains("sistema.lavajato.com.br/privacidade", dispatch.Caption);
+        Assert.NotNull(capturedModel);
+        Assert.Equal("https://sistema.lavajato.com.br", capturedModel.AppBaseUrl);
+    }
+
     // Fakes para teste unitário
-    private sealed class FakePdfGenerator : IWorkOrderReceiptPdfGenerator
+    private sealed class FakeAppUrlResolver(string baseUrl, string displayDomain) : IAppUrlResolver
+    {
+        public string GetBaseUrl() => baseUrl;
+        public string GetDisplayDomain() => displayDomain;
+    }
+
+    private sealed class FakePdfGenerator(Action<WorkOrderReceiptPdfModel>? onGenerate = null) : IWorkOrderReceiptPdfGenerator
     {
         public Result<byte[]> GenerateReceiptPdf(WorkOrderReceiptPdfModel model)
-            => Result<byte[]>.Success(System.Text.Encoding.ASCII.GetBytes("%PDF-1.4\nFAKE\n%%EOF"));
+        {
+            onGenerate?.Invoke(model);
+            return Result<byte[]>.Success(System.Text.Encoding.ASCII.GetBytes("%PDF-1.4\nFAKE\n%%EOF"));
+        }
     }
 
     private sealed class FakeWhatsAppDispatcher : IOutboundWhatsAppDispatcher
