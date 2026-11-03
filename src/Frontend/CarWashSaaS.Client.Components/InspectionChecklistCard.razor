@@ -59,25 +59,25 @@
                     </div>
                     <div class="item-status-actions">
                         <button type="button"
-                                class="btn-status ok @(item.Status == ChecklistItemStatus.Ok ? "active" : "")"
+                                class="btn-status ok @(GetItemStatus(item) == ChecklistItemStatus.Ok ? "active" : "")"
                                 @onclick="() => SetItemStatus(item, ChecklistItemStatus.Ok)"
                                 disabled="@IsReadOnly">
                             OK
                         </button>
                         <button type="button"
-                                class="btn-status missing @(item.Status == ChecklistItemStatus.Missing ? "active" : "")"
+                                class="btn-status missing @(GetItemStatus(item) == ChecklistItemStatus.Missing ? "active" : "")"
                                 @onclick="() => SetItemStatus(item, ChecklistItemStatus.Missing)"
                                 disabled="@IsReadOnly">
                             Faltando
                         </button>
                         <button type="button"
-                                class="btn-status damaged @(item.Status == ChecklistItemStatus.Damaged ? "active" : "")"
+                                class="btn-status damaged @(GetItemStatus(item) == ChecklistItemStatus.Damaged ? "active" : "")"
                                 @onclick="() => SetItemStatus(item, ChecklistItemStatus.Damaged)"
                                 disabled="@IsReadOnly">
                             Avariado
                         </button>
                         <button type="button"
-                                class="btn-status na @(item.Status == ChecklistItemStatus.NotApplicable ? "active" : "")"
+                                class="btn-status na @(GetItemStatus(item) == ChecklistItemStatus.NotApplicable ? "active" : "")"
                                 @onclick="() => SetItemStatus(item, ChecklistItemStatus.NotApplicable)"
                                 disabled="@IsReadOnly">
                             N/A
@@ -144,11 +144,18 @@
         Notes = e.Value?.ToString();
     }
 
+    private ChecklistItemStatus GetItemStatus(InspectionChecklistItemDto item)
+    {
+        return _localChanges.TryGetValue(item.ItemKey, out var change)
+            ? change.Status
+            : item.Status;
+    }
+
     private void SetItemStatus(InspectionChecklistItemDto item, ChecklistItemStatus status)
     {
         if (IsReadOnly) return;
-        _localChanges[item.ItemKey] = (status, item.Observation);
-        // Atualiza temporariamente em tela se possível
+        var currentObs = _localChanges.TryGetValue(item.ItemKey, out var existing) ? existing.Obs : item.Observation;
+        _localChanges[item.ItemKey] = (status, currentObs);
     }
 
     private async Task HandleSave()
@@ -164,5 +171,6 @@
 
         var request = new UpdateInspectionChecklistRequest(FuelLevel, OdometerKm, Notes, updatedItems);
         await OnSave.InvokeAsync(request);
+        _localChanges.Clear();
     }
 }

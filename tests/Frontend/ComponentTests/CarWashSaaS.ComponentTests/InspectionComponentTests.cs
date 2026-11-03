@@ -52,6 +52,36 @@ public sealed class InspectionComponentTests : BunitContext
     }
 
     [Fact]
+    public void InspectionChecklistCard_ShouldImmediatelyUpdateItemStatusVisualState_WhenStatusButtonClickedBeforeSaving()
+    {
+        var items = new List<InspectionChecklistItemDto>
+        {
+            new(Guid.NewGuid(), "spare_tire", "Estepe", ChecklistItemStatus.Ok, null)
+        };
+
+        var cut = Render<InspectionChecklistCard>(parameters => parameters
+            .Add(p => p.Items, items)
+            .Add(p => p.IsReadOnly, false));
+
+        // Estado inicial: "OK" está ativo, "Avariado" não está ativo
+        var okButton = cut.Find("button.btn-status.ok");
+        var damagedButton = cut.Find("button.btn-status.damaged");
+
+        Assert.Contains("active", okButton.ClassName);
+        Assert.DoesNotContain("active", damagedButton.ClassName);
+
+        // Clica no botão "Avariado"
+        damagedButton.Click();
+
+        // O feedback visual deve refletir imediatamente a seleção
+        okButton = cut.Find("button.btn-status.ok");
+        damagedButton = cut.Find("button.btn-status.damaged");
+
+        Assert.Contains("active", damagedButton.ClassName);
+        Assert.DoesNotContain("active", okButton.ClassName);
+    }
+
+    [Fact]
     public void InspectionPhotoGallery_ShouldShowFourRequiredSlotsAndStatus()
     {
         var photos = new List<InspectionPhotoDto>
