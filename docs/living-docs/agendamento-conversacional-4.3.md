@@ -43,19 +43,24 @@ sequenceDiagram
         FSM->>WAppSender: Envia Menu Principal com Opções (1: Agendar, 2: Catálogo, 3: Minhas Reservas)
         FSM->>SessionRepo: MoveToStep(Menu) & UpdateAsync(session) [persiste transição]
     else Escolheu Agendar (Opção 1)
+        FSM->>SchedContract: ICustomerLookupService.GetByPhoneAsync(tenantId, phone)
         FSM->>SchedContract: GetAvailableServicesCatalogAsync(tenantId)
         SchedContract-->>FSM: Lista de Serviços com Menor Preço
-        FSM->>WAppSender: Envia Catálogo Numerado
+        FSM->>WAppSender: Saúda cliente cadastrado (ou solicita nome se novo) e envia Catálogo Numerado
         FSM->>SessionRepo: MoveToStep(SelectingService) & UpdateAsync(session)
-    else Selecionou Serviço e Porte
+    else Selecionou Serviço (Cliente com Veículos Cadastrados)
+        FSM->>SchedContract: ICustomerLookupService.GetByPhoneAsync(tenantId, phone)
+        FSM->>WAppSender: Lista veículos já cadastrados (placa/porte) + opção "Outro veículo"
+        FSM->>SessionRepo: MoveToStep(SelectingRegisteredVehicle) & UpdateAsync(session)
+    else Selecionou Veículo Cadastrado (ou Porte Manual) e Data
         FSM->>SchedContract: GetAvailableTimeSlotsAsync(tenantId, date, serviceId, size)
         SchedContract->>YardApp: Calcula Slots Vagos vs YardCapacity.TotalBoxes
         YardApp-->>SchedContract: Slots com Vagas Disponíveis
         FSM->>WAppSender: Envia Horários Vagos Disponíveis
-        FSM->>SessionRepo: MoveToStep(SelectingDate) & UpdateAsync(session)
-    else Confirmou Horário e Placa
-        FSM->>SchedContract: CreateBookingFromChatbotAsync(tenantId, request)
-        SchedContract->>YardApp: Cria Booking no banco com trava de capacidade
+        FSM->>SessionRepo: MoveToStep(SelectingTimeSlot) & UpdateAsync(session)
+    else Confirmou Reserva
+        FSM->>SchedContract: CreateBookingFromChatbotAsync(tenantId, request c/ CustomerId)
+        SchedContract->>YardApp: Reutiliza Customer existente e cria Booking com trava de capacidade
         YardApp-->>SchedContract: BookingConfirmationDto
         FSM->>SessionRepo: Complete() & UpdateAsync(session) [persiste conclusão e desativação]
         FSM->>WAppSender: Envia Confirmação Formal com Protocolo
@@ -73,7 +78,13 @@ stateDiagram-v2
     Greeting --> Menu: Primeira interação ou comando "menu"
     
     Menu --> SelectingService: Opção 2 (Catálogo)
-    Menu --> ViewingBookings: Opção 3 (Minhas Reservas)
+    Menu --> AwaitingReminderAction: Opção 3 (Minhas Reservas — 1 reserva ativa)
+    Menu --> SelectingBookingToManage: Opção 3 (Minhas Reservas — múltiplas reservas ativas)
+    SelectingBookingToManage --> AwaitingReminderAction: Escolhe reserva (1..N ou protocolo)
+    AwaitingReminderAction --> Menu: Digita 1 (Confirmar) ou 3 (Cancelar)
+    AwaitingReminderAction --> ReschedulingDate: Digita 2 (Remarcar)
+    ReschedulingDate --> ReschedulingTimeSlot: Informa nova data
+    ReschedulingTimeSlot --> Menu: Escolhe novo horário
     
     Menu --> CheckingCustomer: Opção 1 (Agendar)
     CheckingCustomer --> SelectingService: Cliente já cadastrado
@@ -84,17 +95,21 @@ stateDiagram-v2
     ConfirmingCustomerName --> CollectingCustomerName: Opção 2 (Informar outro nome)
     CollectingCustomerName --> SelectingService: Envia nome completo válido -> Cadastra Cliente
     
-    SelectingService --> SelectingVehicleSize: Escolhe número do serviço
+    SelectingService --> SelectingRegisteredVehicle: Escolhe serviço & cliente possui veículos cadastrados
+    SelectingService --> SelectingVehicleSize: Escolhe serviço & cliente sem veículos cadastrados
+    
+    SelectingRegisteredVehicle --> SelectingDate: Seleciona veículo salvo (1..N) -> Define Placa, Porte e Preço
+    SelectingRegisteredVehicle --> CollectingPlate: Seleciona "Outro veículo" (N+1)
+    CollectingPlate --> SelectingVehicleSize: Informa placa válida (quando veio de "Outro veículo")
+    
     SelectingVehicleSize --> SelectingDate: Escolhe porte (1: Hatch, 2: SUV, 3: Picape, 4: Moto)
     SelectingDate --> SelectingTimeSlot: Informa data (Hoje, Amanhã ou DD/MM)
     
-    SelectingTimeSlot --> SelectingRegisteredVehicle: Possui veículos salvos no cadastro
-    SelectingRegisteredVehicle --> AwaitingConfirmation: Seleciona veículo salvo (1..N)
-    SelectingRegisteredVehicle --> CollectingPlate: Seleciona "Outro veículo"
+    SelectingTimeSlot --> AwaitingConfirmation: Placa já definida (veículo salvo ou "Outro veículo")
+    SelectingTimeSlot --> CollectingPlate: Placa ainda não definida (cliente sem veículos prévios)
+    CollectingPlate --> AwaitingConfirmation: Informa placa válida (quando porte já estava definido)
     
-    SelectingTimeSlot --> CollectingPlate: Não possui veículos salvos
-    CollectingPlate --> AwaitingConfirmation: Informa placa válida
-    AwaitingConfirmation --> Completed: Digita 1 (Confirmar) -> Salva Veículo & Confirma Reserva
+    AwaitingConfirmation --> Completed: Digita 1 (Confirmar) -> Salva Veículo (se novo) & Confirma Reserva
     AwaitingConfirmation --> Menu: Digita 2 (Cancelar)
     Completed --> [*]
 ```
@@ -127,16 +142,23 @@ stateDiagram-v2
 - **E** ao confirmar a abertura da OS, a reserva é vinculada ao `WorkOrderId` e tem seu status atualizado para `Arrived` ("Em Atendimento").
 
 ### Cenário 4: Cliente não cadastrado inicia agendamento e confirma PushName
-- **Dado** que um cliente não cadastrado no lava-jato envia mensagem com PushName "Mariana",
+- **Dado** que um cliente cujo número de WhatsApp não possui correspondência no cadastro do lava-jato (mesmo considerando variações com/sem DDI `55` e 8 ou 9 dígitos) envia mensagem com PushName "Mariana",
 - **Quando** seleciona a opção 1 para agendar,
 - **Então** o chatbot pergunta se confirma o cadastro com o nome "Mariana",
 - **E** ao responder "1" (Sim), o sistema cadastra o cliente no tenant e avança diretamente para a escolha do serviço.
 
-### Cenário 5: Cliente recorrente com veículos cadastrados seleciona veículo por atalho
-- **Dado** que um cliente já possui cadastro com os veículos "ABC-1D23" e "XYZ-9876",
-- **Quando** escolhe agendar,
-- **Então** o chatbot o saúda pelo nome ("Que bom ter você de volta, {Nome}!"),
-- **E** após a escolha de data e horário, apresenta a lista numerada dos seus veículos cadastrados para seleção rápida.
+### Cenário 5: Cliente recorrente com veículos cadastrados seleciona veículo logo após o serviço
+- **Dado** que um cliente já possui cadastro no lava-jato (localizado pelo número de WhatsApp com equivalência de DDI `55` e 8/9 dígitos) com os veículos "ABC1D23" (Hatch/Sedan) e "XYZ9876" (SUV),
+- **Quando** escolhe agendar e seleciona o serviço desejado,
+- **Então** o chatbot o reconhece pelo nome sem recadastrá-lo e apresenta imediatamente a lista numerada dos seus veículos já cadastrados (junto à opção "Outro veículo"),
+- **E** ao escolher um veículo cadastrado, o sistema preenche automaticamente a placa, o porte e o valor correspondente ao porte daquele veículo, avançando direto para a escolha de data e horário,
+- **E** caso escolha "Outro veículo", o chatbot solicita a nova placa e o porte antes de prosseguir para a escolha de data e horário.
+
+### Cenário 6: Cliente com múltiplos agendamentos ativos escolhe qual reserva cancelar
+- **Dado** que o cliente possui mais de um agendamento ativo a partir da data atual (localizados por equivalência de telefone `Customer.GetCandidateNormalizedPhones` ou vínculo `CustomerId`, ordenados cronologicamente),
+- **Quando** o cliente acessa a opção 3 ("Meus agendamentos") ou envia "cancelar" no WhatsApp,
+- **Então** o chatbot apresenta a lista numerada de seus agendamentos futuros e solicita que informe qual deles deseja gerenciar (`SelectingBookingToManage`),
+- **E** ao selecionar o agendamento desejado e optar por cancelar ("3"), o sistema altera o status da reserva selecionada para `Cancelled`, limpa o carimbo `ConfirmedAtUtc` e atualiza automaticamente o painel de Agenda & Reservas.
 
 ---
 

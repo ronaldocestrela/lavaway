@@ -15,13 +15,16 @@ Restrições arquiteturais ([agents.md](file:///home/rony/LPR/lavaway/agents.md)
 
 ## Decisões
 
-### 1. Comunicação Desacoplada entre Chatbot e Pátio via `ISchedulingBookingLookup`
-- Criada a interface pública `ISchedulingBookingLookup` no projeto `CarWashSaaS.Shared.Contracts`.
-- Implementada pelo serviço `BookingApplicationService` no módulo `YardOperations`.
-- O motor do chatbot (`ChatbotConversationEngine`) no módulo `WhatsApp` consome unicamente essa interface, sem acesso ao banco de dados do pátio ou entidades internas.
+### 1. Comunicação Desacoplada entre Chatbot e Pátio via `ISchedulingBookingLookup` e `ICustomerLookupService`
+- Criadas as interfaces públicas `ISchedulingBookingLookup` e `ICustomerLookupService` no projeto `CarWashSaaS.Shared.Contracts`.
+- Implementadas pelos serviços `BookingApplicationService` e `CustomerLookupService` no módulo `YardOperations`.
+- O motor do chatbot (`ChatbotConversationEngine`) no módulo `WhatsApp` consome unicamente essas interfaces públicas, sem acesso ao banco de dados do pátio ou entidades internas.
+- Ao identificar o telefone do remetente no WhatsApp, o sistema valida se o cliente já possui cadastro no tenant (considerando equivalência de variações brasileiras com/sem DDI `55` e 8 ou 9 dígitos pós-DDD), reutilizando o `CustomerId` existente na sessão e na reserva (`CreateBookingFromChatbotRequest.CustomerId`) e só registrando um novo cliente caso não seja encontrado.
 
 ### 2. Máquina de Estados FSM e Gestão de Sessões do Chatbot
-- Implementada a entidade de domínio `ChatbotConversationSession` no módulo `WhatsApp` (schema `whatsapp`) com máquina de estados finitos (`ChatbotStep`: `Greeting`, `Menu`, `SelectingService`, `SelectingVehicleSize`, `SelectingDate`, `SelectingTimeSlot`, `CollectingPlate`, `AwaitingConfirmation`, `Completed`).
+- Implementada a entidade de domínio `ChatbotConversationSession` no módulo `WhatsApp` (schema `whatsapp`) com máquina de estados finitos (`ChatbotStep`: `Greeting`, `Menu`, `ConfirmingCustomerName`, `CollectingCustomerName`, `SelectingService`, `SelectingRegisteredVehicle`, `SelectingVehicleSize`, `SelectingDate`, `SelectingTimeSlot`, `CollectingPlate`, `AwaitingConfirmation`, `SelectingBookingToManage`, `AwaitingReminderAction`, `ReschedulingDate`, `ReschedulingTimeSlot`, `Completed`).
+- Quando um cliente já cadastrado possui veículos registrados, logo após escolher o serviço (`SelectingService`), a máquina de estados transita imediatamente para `SelectingRegisteredVehicle`, listando seus veículos salvos (com aplicação automática de placa, porte e preço ao selecionar um) e oferecendo a opção `"Outro veículo"` para informar uma nova placa e porte antes de escolher data e horário.
+- Quando o cliente consulta seus agendamentos ou envia comando de cancelamento/remarcação/confirmação e possui múltiplas reservas futuras ativas (localizadas via `Customer.GetCandidateNormalizedPhones` e vínculo `CustomerId` em ordem cronológica crescente), a máquina de estados transita para `SelectingBookingToManage` para que o cliente selecione qual reserva específica deseja gerenciar.
 - Timeout automático de inatividade fixado em 30 minutos e suporte a comandos globais de reinício (`menu`, `cancelar`, `sair`, `voltar`).
 - Descarte obrigatório de mensagens inbound com `fromMe == true` no webhook para prevenir loops de respostas automatizadas.
 

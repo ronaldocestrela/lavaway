@@ -86,12 +86,14 @@ O componente `BookingCard.razor` exibe selos em tempo real da situação de prev
 
 | Selo / Badge | Visual | Significado |
 |---|---|---|
-| **✅ Confirmado** | Fundo verde esmeralda com carimbo UTC | O cliente confirmou a presença proativamente via WhatsApp ou balcão |
+| **✅ Confirmado** | Fundo verde esmeralda com carimbo UTC | O cliente confirmou a presença proativamente via WhatsApp ou balcão (ocultado automaticamente caso a reserva seja cancelada ou marcada como falta) |
 | **🔔 24h** | Fundo azul com ícone de sino | Lembrete de 24h disparado com sucesso |
 | **⏳ 2h** | Fundo âmbar com ícone de ampulheta | Lembrete urgente de 2h disparado com sucesso |
 | **Ação "Confirmar"** | Botão primário com ícone de check | Permite à recepção confirmar manualmente clientes que telefonaram |
 | **Ação "Remarcar"** | Botão secundário com modal de data/hora | Altera horário validando capacidade dos boxes |
 | **Ação "Reenviar Lembrete"** | Botão com ícone de sino | Disparo pontual e sob demanda via WhatsApp |
+
+> **Nota operacional:** A tela `SchedulingPage.razor` executa polling silencioso em background (a cada 10 segundos) quando nenhum modal está aberto, refletindo automaticamente no painel as confirmações, remarcações e cancelamentos realizados pelos clientes via WhatsApp.
 
 ---
 
@@ -119,10 +121,11 @@ Funcionalidade: Confirmação e Prevenção de Faltas via WhatsApp
     E uma mensagem de agradecimento é enviada confirmando a vaga
 
   Cenário: Cliente cancela e libera vaga imediatamente
-    Dado que o cliente recebeu o lembrete
-    Quando o cliente responde "3" ou "Cancelar"
-    Então o status da reserva é alterado para "Cancelled"
+    Dado que o cliente recebeu o lembrete (ou consultou seus agendamentos ativos)
+    Quando o cliente seleciona a reserva (caso possua mais de uma ativa) e responde "3" ou "Cancelar"
+    Então o status da reserva é alterado para "Cancelled" e o campo ConfirmedAtUtc é limpo
     E o box correspondente fica imediatamente disponível para novos agendamentos
+    E a tela de Agenda & Reservas reflete o status "Cancelado" sem o selo de confirmado
 
   Cenário: Cliente remarca e box anterior é liberado
     Dado que o cliente possui reserva para hoje às 10:00

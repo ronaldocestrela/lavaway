@@ -289,19 +289,21 @@ A tela **Agenda & Reservas** (`/scheduling`) permite gerenciar agendamentos pres
 
 ### 6.2 Agendamento Conversacional pelo Chatbot do WhatsApp
 Quando um cliente envia uma mensagem como *"Olá, quero agendar uma lavagem"* para o número do lava-jato:
-1. O robô apresenta o menu de serviços cadastrados com os respectivos preços.
-2. O cliente escolhe o tipo de veículo e os serviços desejados.
-3. O robô consulta a disponibilidade de boxes em tempo real e oferece as opções de horários livres.
-4. O cliente confirma e o agendamento é gerado com protocolo único (ex.: `#BK-2610-0042`), aparecendo imediatamente na agenda do estabelecimento.
+1. O robô verifica pelo número de WhatsApp se o cliente já possui cadastro na loja (reconhecendo-o pelo nome automaticamente) ou solicita o nome caso seja o primeiro atendimento.
+2. O robô apresenta o menu de serviços cadastrados com os respectivos preços.
+3. Se o cliente já possuir veículos cadastrados, o robô lista imediatamente os veículos existentes para seleção rápida (preenchendo placa, porte e preço automaticamente) junto com a opção *"Outro veículo"* caso queira cadastrar um diferente; se não possuir veículos salvos, solicita o porte e a placa.
+4. O robô consulta a disponibilidade de boxes em tempo real e oferece as opções de datas e horários livres.
+5. O cliente confirma e o agendamento é gerado com protocolo único (ex.: `#BK-2610-0042`), aparecendo imediatamente na agenda do estabelecimento.
 
 ### 6.3 Prevenção Proativa de Faltas (Lembretes 24h e 2h)
 O Lavaway combate as faltas (*no-show*) com automação inteligente em segundo plano:
 - **Lembrete de 24 Horas:** Disparado um dia antes do horário reservado.
 - **Lembrete de 2 Horas:** Disparado no dia do atendimento.
-- **Respostas do Cliente no WhatsApp:**
+- **Respostas do Cliente no WhatsApp (via Lembrete ou Opção 3 - Meus Agendamentos):**
+  - Caso o cliente possua mais de uma reserva futura ativa, o robô lista as reservas numeradas para que ele selecione qual deseja gerenciar.
   - Digitar **1 (Confirmar):** A reserva ganha a badge verde `✅ Confirmado` na agenda.
   - Digitar **2 (Remarcar):** O robô apresenta novas datas e horários livres para reagendar.
-  - Digitar **3 (Cancelar):** A vaga é liberada imediatamente na agenda da oficina.
+  - Digitar **3 (Cancelar):** A reserva passa imediatamente para o status `Cancelado` na agenda da oficina (atualizada automaticamente em tempo real) e a vaga é liberada.
 
 ---
 
