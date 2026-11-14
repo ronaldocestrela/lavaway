@@ -134,7 +134,7 @@ public static class WhatsAppEndpoints
 
                         if (TryGetJsonString(key, "remoteJid", out var remoteJid) && !remoteJid.EndsWith("@g.us", StringComparison.OrdinalIgnoreCase))
                         {
-                            var senderPhone = remoteJid.Split('@')[0];
+                            var senderPhone = remoteJid.Split('@')[0].Split(':')[0];
                             var pushName = TryGetJsonString(data, "pushName", out var name) ? name : null;
                             var messageId = TryGetJsonString(key, "id", out var id) ? id : Guid.NewGuid().ToString("N");
                             var messageText = string.Empty;

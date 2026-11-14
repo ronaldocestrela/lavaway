@@ -1,6 +1,7 @@
 using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.WhatsApp.Application;
 using CarWashSaaS.WhatsApp.Domain;
+using CarWashSaaS.YardOperations.Domain;
 
 namespace CarWashSaaS.UnitTests.WhatsApp;
 
@@ -822,6 +823,79 @@ public sealed class ChatbotConversationEngineTests
         Assert.Contains("Digite a *placa do veículo*", _dispatcher.SentMessages[0].Text);
     }
 
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerRegisteredWith8Digits_AndWhatsAppSends9Digits_ShouldRecognizeCustomerAndNotAskToRegister()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var existingCustomerId = Guid.NewGuid();
+        // Cliente cadastrado no banco com 8 dígitos ("1188887777")
+        customerLookup.Customers.Add(new CustomerVehicleMatchDto(existingCustomerId, "Renato Carioca", "1188887777", []));
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        // WhatsApp envia com 55 e 9 dígitos ("5511988887777")
+        var whatsappPhone = "5511988887777";
+        await sut.ProcessIncomingMessageAsync(_tenantId, whatsappPhone, "Renato", "Oi");
+        _dispatcher.SentMessages.Clear();
+
+        // 1: Agendar serviço
+        var bookResult = await sut.ProcessIncomingMessageAsync(_tenantId, whatsappPhone, "Renato", "1");
+        Assert.True(bookResult.IsSuccess);
+        Assert.Equal(2, _dispatcher.SentMessages.Count);
+        // Não deve pedir confirmação/cadastro de nome, mas sim dar boas-vindas reconhecendo o cliente
+        Assert.Contains("Que bom ter você de volta, *Renato Carioca*", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("Escolha o serviço para agendamento", _dispatcher.SentMessages[1].Text);
+        Assert.Single(customerLookup.Customers); // Nenhum cliente novo criado
+
+        // Segue o fluxo de agendamento até a confirmação
+        await sut.ProcessIncomingMessageAsync(_tenantId, whatsappPhone, "Renato", "1"); // Serviço
+        await sut.ProcessIncomingMessageAsync(_tenantId, whatsappPhone, "Renato", "1"); // Porte
+        await sut.ProcessIncomingMessageAsync(_tenantId, whatsappPhone, "Renato", "1"); // Data
+        await sut.ProcessIncomingMessageAsync(_tenantId, whatsappPhone, "Renato", "1"); // Horário
+        await sut.ProcessIncomingMessageAsync(_tenantId, whatsappPhone, "Renato", "ABC-1234"); // Placa
+        var confirmResult = await sut.ProcessIncomingMessageAsync(_tenantId, whatsappPhone, "Renato", "1"); // Confirma
+
+        Assert.True(confirmResult.IsSuccess);
+        Assert.NotNull(_schedulingLookup.LastCreatedRequest);
+        Assert.Equal(existingCustomerId, _schedulingLookup.LastCreatedRequest.CustomerId);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerBrowsesCatalogOption2_AndCustomerAlreadyRegistered_ShouldRecognizeCustomerAndLinkBooking()
+    {
+        var customerLookup = new FakeCustomerLookup();
+        var existingCustomerId = Guid.NewGuid();
+        customerLookup.Customers.Add(new CustomerVehicleMatchDto(existingCustomerId, "Marina Lima", _customerPhone, []));
+        var sut = CreateSutWithCustomerLookup(customerLookup);
+
+        // 1: Menu
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Marina", "Oi");
+
+        // 2: Ver catálogo
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Marina", "2");
+
+        // 3: Escolhe serviço 1
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Marina", "1");
+
+        // 4: Escolhe porte
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Marina", "1");
+
+        // 5: Escolhe data
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Marina", "1");
+
+        // 6: Escolhe horário
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Marina", "1");
+
+        // 7: Placa
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Marina", "BRA2E19");
+
+        // 8: Confirma
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Marina", "1");
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(_schedulingLookup.LastCreatedRequest);
+        Assert.Equal(existingCustomerId, _schedulingLookup.LastCreatedRequest.CustomerId);
+    }
+
     private ChatbotConversationEngine CreateSutWithCustomerLookup(ICustomerLookup customerLookup) =>
         new(
             _sessionRepo,
@@ -856,13 +930,23 @@ public sealed class ChatbotConversationEngineTests
 
         public Task<Result<CustomerVehicleMatchDto?>> GetByPhoneAsync(Guid tenantId, string phone, CancellationToken ct = default)
         {
-            var match = Customers.FirstOrDefault(c => c.Phone.Contains(phone) || phone.Contains(c.Phone));
+            var candidates = Customer.GetCandidateNormalizedPhones(phone);
+            var match = Customers.FirstOrDefault(c =>
+            {
+                var storedCandidates = Customer.GetCandidateNormalizedPhones(c.Phone);
+                return candidates.Any(cand => storedCandidates.Contains(cand)) || c.Phone.Contains(phone) || phone.Contains(c.Phone);
+            });
             return Task.FromResult(Result<CustomerVehicleMatchDto?>.Success(match));
         }
 
         public Task<Result<CustomerVehicleMatchDto>> RegisterCustomerAsync(Guid tenantId, string name, string phone, CancellationToken ct = default)
         {
-            var existing = Customers.FirstOrDefault(c => c.Phone.Contains(phone) || phone.Contains(c.Phone));
+            var candidates = Customer.GetCandidateNormalizedPhones(phone);
+            var existing = Customers.FirstOrDefault(c =>
+            {
+                var storedCandidates = Customer.GetCandidateNormalizedPhones(c.Phone);
+                return candidates.Any(cand => storedCandidates.Contains(cand)) || c.Phone.Contains(phone) || phone.Contains(c.Phone);
+            });
             if (existing is not null) return Task.FromResult(Result<CustomerVehicleMatchDto>.Success(existing));
 
             var newCustomer = new CustomerVehicleMatchDto(Guid.NewGuid(), name, phone, []);

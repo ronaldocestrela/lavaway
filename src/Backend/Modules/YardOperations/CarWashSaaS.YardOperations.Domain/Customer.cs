@@ -36,12 +36,49 @@ public sealed class Customer : IMustHaveTenant
     public static string NormalizePhone(string? phone)
     {
         var digits = new string((phone ?? string.Empty)
+            .Split('@')[0]
+            .Split(':')[0]
             .Where(char.IsAsciiDigit)
             .ToArray());
 
         return digits.StartsWith("55", StringComparison.Ordinal) && digits.Length is 12 or 13
             ? digits[2..]
             : digits;
+    }
+
+    public static IReadOnlyList<string> GetCandidateNormalizedPhones(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return [];
+
+        var clean = phone.Split('@')[0].Split(':')[0];
+        var digits = new string(clean.Where(char.IsAsciiDigit).ToArray());
+        if (digits.Length == 0) return [];
+
+        var national = digits.StartsWith("55", StringComparison.Ordinal) && digits.Length is 12 or 13
+            ? digits[2..]
+            : digits;
+
+        var candidates = new HashSet<string>(StringComparer.Ordinal)
+        {
+            digits,
+            national,
+            $"55{national}"
+        };
+
+        if (national.Length == 11 && national[2] == '9')
+        {
+            var eightDigits = string.Concat(national.AsSpan(0, 2), national.AsSpan(3));
+            candidates.Add(eightDigits);
+            candidates.Add($"55{eightDigits}");
+        }
+        else if (national.Length == 10)
+        {
+            var nineDigits = string.Concat(national.AsSpan(0, 2), "9", national.AsSpan(2));
+            candidates.Add(nineDigits);
+            candidates.Add($"55{nineDigits}");
+        }
+
+        return candidates.ToList();
     }
 
     public static Result<Customer> Create(Guid tenantId, string name, string phone)

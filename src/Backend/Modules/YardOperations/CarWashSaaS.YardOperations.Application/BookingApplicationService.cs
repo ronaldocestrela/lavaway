@@ -97,12 +97,27 @@ public sealed class BookingApplicationService(
             return Result<BookingConfirmationDto>.Failure(new Error("booking.capacity.exceeded", "No boxes available for the selected time slot.", ErrorType.Conflict));
         }
 
-        var customerMatches = await customerSearchRepository.SearchAsync(tenantId, null, request.CustomerPhone, 1, ct);
-        var existingCustomer = customerMatches.FirstOrDefault();
+        CustomerVehicleMatchDto? existingCustomer = null;
+        if (request.CustomerId.HasValue)
+        {
+            existingCustomer = await customerSearchRepository.GetByCustomerIdAsync(tenantId, request.CustomerId.Value, ct);
+        }
+
+        if (existingCustomer is null && !string.IsNullOrWhiteSpace(request.CustomerPhone))
+        {
+            var normalizedPhone = Customer.NormalizePhone(request.CustomerPhone);
+            var customerMatches = await customerSearchRepository.SearchAsync(tenantId, null, normalizedPhone, 1, ct);
+            existingCustomer = customerMatches.FirstOrDefault();
+        }
+
+        var customerId = request.CustomerId ?? existingCustomer?.CustomerId;
+        var resolvedName = string.IsNullOrWhiteSpace(request.CustomerName)
+            ? existingCustomer?.CustomerName ?? "Cliente WhatsApp"
+            : request.CustomerName;
 
         var bookingResult = Booking.Create(
             tenantId,
-            string.IsNullOrWhiteSpace(request.CustomerName) ? existingCustomer?.CustomerName ?? "Cliente WhatsApp" : request.CustomerName,
+            resolvedName,
             request.CustomerPhone,
             request.VehiclePlate,
             request.VehicleModel,
@@ -114,7 +129,7 @@ public sealed class BookingApplicationService(
             request.ScheduledTime,
             price.EstimatedDurationMinutes,
             BookingOrigin.WhatsAppBot,
-            existingCustomer?.CustomerId);
+            customerId);
 
         if (!bookingResult.IsSuccess)
         {

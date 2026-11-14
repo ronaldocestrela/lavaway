@@ -26,6 +26,24 @@ public sealed class CustomerAndVehicleTests
     }
 
     [Fact]
+    public void Customer_ShouldGenerateEquivalentCandidateNormalizedPhones()
+    {
+        // 11 digits: DDD 11 + 9 + 8 digits
+        var candidates11 = Customer.GetCandidateNormalizedPhones("+55 (11) 98765-4321");
+        Assert.Contains("11987654321", candidates11);
+        Assert.Contains("1187654321", candidates11);
+        Assert.Contains("5511987654321", candidates11);
+        Assert.Contains("551187654321", candidates11);
+
+        // 10 digits: DDD 11 + 8 digits
+        var candidates10 = Customer.GetCandidateNormalizedPhones("551187654321:1@s.whatsapp.net");
+        Assert.Contains("1187654321", candidates10);
+        Assert.Contains("11987654321", candidates10);
+        Assert.Contains("551187654321", candidates10);
+        Assert.Contains("5511987654321", candidates10);
+    }
+
+    [Fact]
     public void Customer_ShouldAllowDifferentCustomersToSharePhoneNumber()
     {
         var tenantId = Guid.CreateVersion7();

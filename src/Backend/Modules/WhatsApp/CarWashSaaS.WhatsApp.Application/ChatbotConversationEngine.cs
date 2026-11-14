@@ -302,14 +302,20 @@ public sealed class ChatbotConversationEngine(
     {
         if (customerLookup is not null)
         {
-            var customerResult = await customerLookup.GetByPhoneAsync(tenantId, session.CustomerPhone, ct);
-            if (customerResult.IsSuccess && customerResult.Value is not null)
+            if (!session.CustomerId.HasValue)
             {
-                var customer = customerResult.Value;
-                session.SetCustomerId(customer.CustomerId);
-                session.SetCustomerName(customer.CustomerName);
+                var customerResult = await customerLookup.GetByPhoneAsync(tenantId, session.CustomerPhone, ct);
+                if (customerResult.IsSuccess && customerResult.Value is not null)
+                {
+                    var customer = customerResult.Value;
+                    session.SetCustomerId(customer.CustomerId);
+                    session.SetCustomerName(customer.CustomerName);
+                }
+            }
 
-                var welcomeBack = $"Que bom ter você de volta, *{customer.CustomerName}*! Vamos agendar seu serviço. 🚗✨";
+            if (session.CustomerId.HasValue)
+            {
+                var welcomeBack = $"Que bom ter você de volta, *{session.CustomerName}*! Vamos agendar seu serviço. 🚗✨";
                 await SendBotReplyAsync(tenantId, session.CustomerPhone, welcomeBack, ct);
                 return await PresentServiceCatalogAsync(tenantId, session, isDirectBooking: true, ct);
             }
@@ -351,8 +357,22 @@ public sealed class ChatbotConversationEngine(
             }
             session.SetPendingCustomerName(null);
 
-            var reply = $"Cadastro realizado com sucesso, *{session.CustomerName}*! 🎉\n\nAgora vamos escolher o serviço para o seu veículo:";
-            await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+            if (session.SelectedServiceId.HasValue)
+            {
+                session.MoveToStep(ChatbotStep.SelectingVehicleSize);
+                var reply = $"Cadastro realizado com sucesso, *{session.CustomerName}*! 🎉\n\n" +
+                            $"Você selecionou: *{session.SelectedServiceName}*\n\n" +
+                            "🚗 *Qual é o porte do seu veículo?*\n" +
+                            "1 - Hatch / Sedan\n" +
+                            "2 - SUV\n" +
+                            "3 - Picape / Van\n" +
+                            "4 - Moto\n\n" +
+                            "Digite o *número do porte*:";
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+            }
+
+            var defaultReply = $"Cadastro realizado com sucesso, *{session.CustomerName}*! 🎉\n\nAgora vamos escolher o serviço para o seu veículo:";
+            await SendBotReplyAsync(tenantId, session.CustomerPhone, defaultReply, ct);
             return await PresentServiceCatalogAsync(tenantId, session, isDirectBooking: true, ct);
         }
 
@@ -395,6 +415,20 @@ public sealed class ChatbotConversationEngine(
 
         session.SetPendingCustomerName(null);
 
+        if (session.SelectedServiceId.HasValue)
+        {
+            session.MoveToStep(ChatbotStep.SelectingVehicleSize);
+            var reply = $"Prazer em te conhecer, *{session.CustomerName}*! Seu cadastro foi realizado com sucesso. 🎉\n\n" +
+                        $"Você selecionou: *{session.SelectedServiceName}*\n\n" +
+                        "🚗 *Qual é o porte do seu veículo?*\n" +
+                        "1 - Hatch / Sedan\n" +
+                        "2 - SUV\n" +
+                        "3 - Picape / Van\n" +
+                        "4 - Moto\n\n" +
+                        "Digite o *número do porte*:";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
         var successReply = $"Prazer em te conhecer, *{session.CustomerName}*! Seu cadastro foi realizado com sucesso. 🎉\n\nAgora vamos escolher o serviço para o seu veículo:";
         await SendBotReplyAsync(tenantId, session.CustomerPhone, successReply, ct);
         return await PresentServiceCatalogAsync(tenantId, session, isDirectBooking: true, ct);
@@ -419,6 +453,36 @@ public sealed class ChatbotConversationEngine(
 
         var selected = services[index - 1];
         session.SelectService(selected.Id, selected.Name);
+
+        if (!session.CustomerId.HasValue && customerLookup is not null)
+        {
+            var customerResult = await customerLookup.GetByPhoneAsync(tenantId, session.CustomerPhone, ct);
+            if (customerResult.IsSuccess && customerResult.Value is not null)
+            {
+                var customer = customerResult.Value;
+                session.SetCustomerId(customer.CustomerId);
+                session.SetCustomerName(customer.CustomerName);
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(session.CustomerName))
+                {
+                    session.SetPendingCustomerName(session.CustomerName);
+                    session.MoveToStep(ChatbotStep.ConfirmingCustomerName);
+
+                    var confirmPrompt = $"Olá! Notamos que seu nome no WhatsApp é *{session.CustomerName}*. Podemos te cadastrar com esse nome para agendar este serviço?\n\n" +
+                                        "1️⃣ - Sim, está correto\n" +
+                                        "2️⃣ - Não, quero informar outro nome\n\n" +
+                                        "Digite *1* ou *2*:";
+                    return await SendBotReplyAsync(tenantId, session.CustomerPhone, confirmPrompt, ct);
+                }
+
+                session.MoveToStep(ChatbotStep.CollectingCustomerName);
+                var askNamePrompt = "Para prosseguirmos com seu agendamento, por favor informe seu *nome completo*:";
+                return await SendBotReplyAsync(tenantId, session.CustomerPhone, askNamePrompt, ct);
+            }
+        }
+
         session.MoveToStep(ChatbotStep.SelectingVehicleSize);
 
         var message = $"Você selecionou: *{selected.Name}*\n\n" +
@@ -625,7 +689,8 @@ public sealed class ChatbotConversationEngine(
                 session.SelectedVehicleSize!,
                 session.SelectedServiceId!.Value,
                 session.SelectedDate!.Value,
-                session.SelectedTime!.Value);
+                session.SelectedTime!.Value,
+                session.CustomerId);
 
             var createResult = await schedulingLookup.CreateBookingFromChatbotAsync(tenantId, bookingRequest, ct);
             if (!createResult.IsSuccess)
@@ -671,6 +736,17 @@ public sealed class ChatbotConversationEngine(
 
     private async Task<Result> SendMainMenuAsync(Guid tenantId, ChatbotConversationSession session, CancellationToken ct)
     {
+        if (customerLookup is not null && !session.CustomerId.HasValue)
+        {
+            var customerResult = await customerLookup.GetByPhoneAsync(tenantId, session.CustomerPhone, ct);
+            if (customerResult.IsSuccess && customerResult.Value is not null)
+            {
+                var customer = customerResult.Value;
+                session.SetCustomerId(customer.CustomerId);
+                session.SetCustomerName(customer.CustomerName);
+            }
+        }
+
         session.MoveToStep(ChatbotStep.Menu);
         var storeProfile = await storeProfileLookup.GetProfileAsync(tenantId, ct);
         var storeName = storeProfile.Value?.TradeName ?? "Lava Aê Estética Automotiva";
