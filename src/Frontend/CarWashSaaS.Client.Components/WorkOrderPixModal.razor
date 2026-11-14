@@ -76,7 +76,7 @@
                             <div class="settled-details-card">
                                 <div class="settled-row">
                                     <span class="row-label">Data da Confirmação:</span>
-                                    <span class="row-value">@(_charge.PaidAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? DateTime.Now.ToString("dd/MM/yyyy HH:mm"))</span>
+                                    <span class="row-value">@(_charge.PaidAtUtc?.ToBrazilTime().ToString("dd/MM/yyyy HH:mm") ?? BrazilTime.Now.ToString("dd/MM/yyyy HH:mm"))</span>
                                 </div>
                                 <div class="settled-row">
                                     <span class="row-label">Valor Quitado:</span>
@@ -105,7 +105,7 @@
                                     <img src="@imageSrc" alt="QR Code Pix" class="qr-code-image" />
                                 }
                                 <span class="qr-expiration-hint">
-                                    Válido até @_charge.ExpiresAtUtc.ToLocalTime().ToString("HH:mm")
+                                    Válido até @_charge.ExpiresAtUtc.ToBrazilTime().ToString("HH:mm")
                                 </span>
                             </div>
 
@@ -137,7 +137,7 @@
                                         @if (_charge.WhatsAppSentAtUtc.HasValue)
                                         {
                                             <span class="whatsapp-sent-tag">
-                                                Enviado em @_charge.WhatsAppSentAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")
+                                                Enviado em @_charge.WhatsAppSentAtUtc.Value.ToBrazilTime().ToString("dd/MM HH:mm")
                                             </span>
                                         }
                                         else

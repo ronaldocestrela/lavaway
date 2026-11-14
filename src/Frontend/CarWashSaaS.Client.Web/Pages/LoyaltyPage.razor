@@ -155,7 +155,7 @@
                                         }
                                     </td>
                                     <td><span class="reward-tag">🎁 @acc.RewardTitle</span></td>
-                                    <td>@(acc.LastAccrualAtUtc.HasValue ? acc.LastAccrualAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                    <td>@(acc.LastAccrualAtUtc.HasValue ? acc.LastAccrualAtUtc.Value.ToBrazilTime().ToString("dd/MM/yyyy HH:mm") : "-")</td>
                                     <td class="text-right">
                                         <div class="action-buttons">
                                             <button class="btn-action btn-history" type="button" title="Ver Extrato" @onclick="() => OpenHistoryModal(acc)">

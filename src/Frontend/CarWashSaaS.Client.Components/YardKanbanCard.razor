@@ -51,7 +51,7 @@
                 }
                 else
                 {
-                    <span class="payment-badge-paid" title="Pagamento confirmado em @(Card.PaidAtUtc?.ToLocalTime().ToString("dd/MM HH:mm") ?? "Recebido")">
+                    <span class="payment-badge-paid" title="Pagamento confirmado em @(Card.PaidAtUtc?.ToBrazilTime().ToString("dd/MM HH:mm") ?? "Recebido")">
                         💳 Pago
                     </span>
                 }
@@ -149,7 +149,7 @@
             }
             else
             {
-                <div class="pickup-info-badge" title="Retirado em @Card.PickedUpAtUtc.Value.ToLocalTime().ToString("g")">
+                <div class="pickup-info-badge" title="Retirado em @Card.PickedUpAtUtc.Value.ToBrazilTime().ToString("g")">
                     <span class="pickup-tag">✅ Retirado</span>
                     @if (Card.SurveyRating.HasValue)
                     {

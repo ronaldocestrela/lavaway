@@ -149,9 +149,9 @@
                                 <td>
                                     @if (tenant.Status == TenantStatus.Trial && tenant.TrialEndsAtUtc.HasValue)
                                     {
-                                        var daysLeft = (tenant.TrialEndsAtUtc.Value.Date - DateTime.UtcNow.Date).Days;
+                                        var daysLeft = (tenant.TrialEndsAtUtc.Value.ToBrazilTime().Date - BrazilTime.Now.Date).Days;
                                         <div class="trial-cell">
-                                            <span class="trial-date">Até @tenant.TrialEndsAtUtc.Value.ToString("dd/MM/yyyy")</span>
+                                            <span class="trial-date">Até @tenant.TrialEndsAtUtc.Value.ToBrazilTime().ToString("dd/MM/yyyy")</span>
                                             <span class="trial-days @(daysLeft <= 3 ? "text-amber" : "text-cyan")">
                                                 @(daysLeft >= 0 ? $"{daysLeft} dias restantes" : "Expirado")
                                             </span>
@@ -163,7 +163,7 @@
                                     }
                                 </td>
                                 <td>
-                                    <span class="created-date">@tenant.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm")</span>
+                                    <span class="created-date">@tenant.CreatedAtUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")</span>
                                 </td>
                                 <td class="actions-cell text-right">
                                     <AuthorizeView Roles="SuperAdmin,PlatformSupport">

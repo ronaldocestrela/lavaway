@@ -1268,7 +1268,7 @@ public static class YardOperationsEndpoints
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = BrazilTime.Today;
             var start = startDate ?? new DateOnly(today.Year, today.Month, 1);
             var end = endDate ?? today;
 

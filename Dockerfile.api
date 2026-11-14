@@ -40,17 +40,20 @@ RUN dotnet publish "src/Backend/CarWashSaaS.Api/CarWashSaaS.Api.csproj" \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Install curl for healthcheck
+# Install curl for healthcheck and tzdata for Brazil timezone
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates tzdata \
+    && ln -snf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
+    && echo "America/Sao_Paulo" > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=app:app /app/publish .
 
 ENV ASPNETCORE_ENVIRONMENT=Production \
     ASPNETCORE_HTTP_PORTS=8080 \
-    DOTNET_ENABLE_DIAGNOSTICS=0
+    DOTNET_ENABLE_DIAGNOSTICS=0 \
+    TZ=America/Sao_Paulo
 
 EXPOSE 8080
 

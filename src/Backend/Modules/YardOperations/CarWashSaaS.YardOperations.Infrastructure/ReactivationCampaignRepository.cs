@@ -34,7 +34,7 @@ public sealed class ReactivationCampaignRepository(YardOperationsDbContext dbCon
         CancellationToken ct = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var today = DateOnly.FromDateTime(now.DateTime);
+        var today = BrazilTime.Today;
 
         // 1. Clientes com ordens ativas no pátio ou agendamentos futuros não são ausentes
         var customersWithActiveWorkOrders = await dbContext.WorkOrders

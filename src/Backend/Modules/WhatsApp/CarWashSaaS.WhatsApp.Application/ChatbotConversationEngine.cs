@@ -548,7 +548,7 @@ public sealed class ChatbotConversationEngine(
         session.SelectVehicleSize(size, price);
         session.MoveToStep(ChatbotStep.SelectingDate);
 
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = BrazilTime.Today;
         var tomorrow = today.AddDays(1);
         var dayAfter = today.AddDays(2);
 
@@ -563,7 +563,7 @@ public sealed class ChatbotConversationEngine(
 
     private async Task<Result> HandleSelectingDateAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = BrazilTime.Today;
         DateOnly targetDate;
 
         if (text is "1") targetDate = today;
@@ -665,7 +665,7 @@ public sealed class ChatbotConversationEngine(
                 session.SelectVehicleSize(vehicleSize, price);
                 session.MoveToStep(ChatbotStep.SelectingDate);
 
-                var today = DateOnly.FromDateTime(DateTime.Today);
+                var today = BrazilTime.Today;
                 var tomorrow = today.AddDays(1);
                 var dayAfter = today.AddDays(2);
 
@@ -961,7 +961,7 @@ public sealed class ChatbotConversationEngine(
 
     private async Task<Result> HandleReschedulingDateAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = BrazilTime.Today;
         DateOnly targetDate;
 
         if (text is "1") targetDate = today;
@@ -1110,7 +1110,7 @@ public sealed class ChatbotConversationEngine(
         session.SetVehiclePlate(booking.VehiclePlate);
         session.MoveToStep(ChatbotStep.ReschedulingDate);
 
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = BrazilTime.Today;
         var tomorrow = today.AddDays(1);
         var dayAfter = today.AddDays(2);
 
@@ -1189,9 +1189,10 @@ public sealed class ChatbotConversationEngine(
         {
             try
             {
-                var year = DateTime.Today.Year;
+                var today = BrazilTime.Today;
+                var year = today.Year;
                 date = new DateOnly(year, month, day);
-                if (date < DateOnly.FromDateTime(DateTime.Today).AddMonths(-1))
+                if (date < today.AddMonths(-1))
                 {
                     date = date.AddYears(1);
                 }

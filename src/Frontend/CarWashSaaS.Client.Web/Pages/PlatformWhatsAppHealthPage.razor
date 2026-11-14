@@ -137,13 +137,13 @@
                                     }
                                 </td>
                                 <td>
-                                    <span class="date-text">@(instance.LastConnectedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</span>
+                                    <span class="date-text">@(instance.LastConnectedAtUtc?.ToBrazilTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</span>
                                 </td>
                                 <td>
                                     @if (instance.LastDisconnectedAtUtc.HasValue)
                                     {
                                         <div class="disconnect-cell">
-                                            <span class="disconnect-date">@instance.LastDisconnectedAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                            <span class="disconnect-date">@instance.LastDisconnectedAtUtc.Value.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")</span>
                                             <span class="disconnect-reason" title="@instance.DisconnectReason">
                                                 @(instance.DisconnectReason ?? "Sem detalhes")
                                             </span>

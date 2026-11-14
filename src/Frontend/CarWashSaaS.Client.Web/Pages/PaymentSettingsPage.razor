@@ -340,7 +340,7 @@
                         <div class="feedback-content">
                             <div class="feedback-title">@(_testResult.Success ? "Conexão Validada com Sucesso" : "Falha na Verificação da Conexão")</div>
                             <p class="feedback-msg">@_testResult.Message</p>
-                            <span class="feedback-time">Testado às @_testResult.TestedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</span>
+                            <span class="feedback-time">Testado às @_testResult.TestedAtUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm:ss")</span>
                         </div>
                     </div>
                 }

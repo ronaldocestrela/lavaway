@@ -9,6 +9,7 @@ services:
     restart: unless-stopped
     container_name: sql-lavaae
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       ACCEPT_EULA: "Y"
       MSSQL_PID: ${MSSQL_PID:-Standard}
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD obrigatoria}
@@ -34,6 +35,7 @@ services:
     restart: unless-stopped
     container_name: minio-lavaae
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-lavaway}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD obrigatoria}
     volumes:
@@ -49,6 +51,7 @@ services:
     restart: unless-stopped
     container_name: rabbitmq-lavaae
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-lavaway}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS obrigatoria}
     volumes:
@@ -70,6 +73,8 @@ services:
     restart: unless-stopped
     container_name: evolution-postgres-lavaae
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
+      PGTZ: ${TZ:-America/Sao_Paulo}
       POSTGRES_DB: ${EVOLUTION_POSTGRES_DB:-evolution}
       POSTGRES_USER: ${EVOLUTION_POSTGRES_USER:-evolution}
       POSTGRES_PASSWORD: ${EVOLUTION_POSTGRES_PASSWORD:?EVOLUTION_POSTGRES_PASSWORD obrigatoria}
@@ -92,6 +97,8 @@ services:
     command: redis-server --port 6379 --appendonly yes
     restart: unless-stopped
     container_name: evolution-redis-lavaae
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
     volumes:
       - evolution-redis-prod-data:/data
     networks:
@@ -116,6 +123,7 @@ services:
       evolution-redis:
         condition: service_healthy
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       SERVER_PORT: "8080"
       SERVER_URL: ${EVOLUTION_SERVER_URL:-http://evolution-api:8080}
       AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?EVOLUTION_API_KEY obrigatoria}
@@ -153,6 +161,7 @@ services:
       sqlserver:
         condition: service_healthy
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       ConnectionStrings__CarWashSaaS: Server=sqlserver,1433;Database=${SQL_DATABASE:-CarWashSaaS};User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True;Encrypt=True;
     networks:
       - backend-net
@@ -178,6 +187,7 @@ services:
       evolution-api:
         condition: service_started
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "8080"
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
@@ -235,6 +245,8 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     restart: unless-stopped
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
     depends_on:
       api:
         condition: service_healthy

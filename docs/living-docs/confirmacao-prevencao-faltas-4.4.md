@@ -93,7 +93,7 @@ O componente `BookingCard.razor` exibe selos em tempo real da situação de prev
 | **Ação "Remarcar"** | Botão secundário com modal de data/hora | Altera horário validando capacidade dos boxes |
 | **Ação "Reenviar Lembrete"** | Botão com ícone de sino | Disparo pontual e sob demanda via WhatsApp |
 
-> **Nota operacional:** A tela `SchedulingPage.razor` executa polling silencioso em background (a cada 10 segundos) quando nenhum modal está aberto, refletindo automaticamente no painel as confirmações, remarcações e cancelamentos realizados pelos clientes via WhatsApp.
+> **Nota operacional:** A tela `SchedulingPage.razor` executa polling silencioso em background (a cada 10 segundos) quando nenhum modal está aberto, refletindo automaticamente no painel as confirmações, remarcações e cancelamentos realizados pelos clientes via WhatsApp. As janelas de varredura de 24h (`+23h` a `+25h`) e 2h (`+105min` a `+135min`) em `BookingRepository` convertem o instante de referência UTC para `BrazilTime` (`ToBrazilTime().DateTime`) antes de comparar com `ScheduledDate` e `ScheduledTime`.
 
 ---
 

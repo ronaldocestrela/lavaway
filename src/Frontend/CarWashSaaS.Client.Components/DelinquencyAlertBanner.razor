@@ -12,7 +12,7 @@
             <h4 class="alert-title">Período de Tolerância Ativo (Fatura Pendente)</h4>
             <p class="alert-text">
                 Sua assinatura do Lava Aê possui uma fatura em aberto. Você pode continuar operando até
-                <strong>@(GracePeriodEndsAtUtc?.ToString("dd/MM/yyyy HH:mm") ?? "breve")</strong>. Após este prazo, o acesso à emissão de novas OS será suspenso.
+                <strong>@(GracePeriodEndsAtUtc?.ToBrazilTime().ToString("dd/MM/yyyy HH:mm") ?? "breve")</strong>. Após este prazo, o acesso à emissão de novas OS será suspenso.
             </p>
             @if (OnSettleClicked.HasDelegate)
             {

@@ -121,7 +121,7 @@
         get
         {
             if (TotalDurationMinutes == 0) return "--:--";
-            var estimatedTime = DateTime.Now.AddMinutes(TotalDurationMinutes);
+            var estimatedTime = BrazilTime.Now.DateTime.AddMinutes(TotalDurationMinutes);
             return $"Hoje às {estimatedTime:HH:mm}";
         }
     }

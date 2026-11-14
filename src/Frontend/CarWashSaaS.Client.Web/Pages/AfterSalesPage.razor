@@ -181,7 +181,7 @@
                                                 <span class="plate-pill">@s.VehiclePlate</span>
                                             </td>
                                             <td>
-                                                @s.PickedUpAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                                @s.PickedUpAtUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")
                                             </td>
                                             <td>
                                                 @if (s.SurveySentAtUtc.HasValue)
@@ -211,7 +211,7 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                @(s.RespondedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")
+                                                @(s.RespondedAtUtc?.ToBrazilTime().ToString("dd/MM/yyyy HH:mm") ?? "—")
                                             </td>
                                         </tr>
                                     }
@@ -362,7 +362,7 @@
                                                         <tr>
                                                             <td><strong>@c.CustomerName</strong></td>
                                                             <td>@FormatPhone(c.CustomerPhone)</td>
-                                                            <td>@c.LastVisitAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                                            <td>@c.LastVisitAtUtc.ToBrazilTime().ToString("dd/MM/yyyy")</td>
                                                             <td><span class="days-badge">@c.DaysSinceLastVisit dias</span></td>
                                                             <td>
                                                                 @if (c.IsEligible)
@@ -475,7 +475,7 @@
                                                 <span class="reason-cell">@(p.Reason ?? "Opt-in ativo")</span>
                                             </td>
                                             <td>
-                                                @p.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                                @p.UpdatedAt.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")
                                             </td>
                                             <td>
                                                 <button type="button" class="btn-toggle-pref @(p.IsOptedIn ? "btn-opt-out" : "btn-opt-in")"

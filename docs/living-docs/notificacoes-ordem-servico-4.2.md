@@ -105,10 +105,10 @@ sequenceDiagram
 O gerador `WorkOrderReceiptPdfGenerator` foi desenvolvido em C# puro sem dependências externas de bibliotecas nativas de terceiros, garantindo 100% de compatibilidade em ambientes Linux, Docker e containers Alpine:
 - **Metadados:** Sintaxe padrão PDF 1.4 (`%PDF-1.4`), tabela de referências cruzadas (`xref`) e catálogo do documento.
 - **Cabeçalho:** Nome fantasia, telefone e endereço do estabelecimento recuperados de forma desacoplada via `ITenantStoreProfileLookup`.
-- **Dados do Atendimento:** Número da OS, data/hora de entrada, previsão estimada de entrega, identificação do cliente e veículo (Placa padrão Mercosul e porte).
+- **Dados do Atendimento:** Número da OS, data/hora de entrada, previsão estimada de entrega (convertidas para o fuso de Brasília via `BrazilTime.ToBrazilTime()`), identificação do cliente e veículo (Placa padrão Mercosul e porte).
 - **Discriminação de Serviços:** Tabela com nome do serviço, quantidade, valor unitário e valor total.
 - **Vistoria e Avarias:** Leitura do odômetro, nível de combustível, status dos itens de checklist inspecionados (Conforme, Não Conforme, etc.) e avarias registradas com tipo, severidade e descrição.
-- **Rodapé:** Protocolo criptográfico / hash de conferência e assinatura de tecnologia Lavaway SaaS.
+- **Rodapé:** Protocolo criptográfico / hash de conferência, carimbo de emissão em horário de Brasília (`BrazilTime.Now`) e assinatura de tecnologia Lavaway SaaS.
 
 ---
 

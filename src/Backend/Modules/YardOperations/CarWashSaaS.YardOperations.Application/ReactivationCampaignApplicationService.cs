@@ -164,7 +164,7 @@ public sealed class ReactivationCampaignApplicationService(
                 }
 
                 var message = RenderTemplate(rule.MessageTemplate, customer, storeName, rule.PromotionalOffer);
-                var cycleKey = $"reactivation-{rule.DaysInactive}d-{customer.CustomerId:N}-{DateTime.UtcNow:yyyyMM}";
+                var cycleKey = $"reactivation-{rule.DaysInactive}d-{customer.CustomerId:N}-{BrazilTime.Now:yyyyMM}";
 
                 var dispatchResult = await whatsAppDispatcher.DispatchTextMessageAsync(
                     tenantId,
@@ -234,7 +234,7 @@ public sealed class ReactivationCampaignApplicationService(
             }
 
             var message = RenderTemplate(rule.MessageTemplate, customer, storeName, rule.PromotionalOffer);
-            var cycleKey = $"reactivation-{rule.DaysInactive}d-{customer.CustomerId:N}-{DateTime.UtcNow:yyyyMM}";
+            var cycleKey = $"reactivation-{rule.DaysInactive}d-{customer.CustomerId:N}-{BrazilTime.Now:yyyyMM}";
 
             var dispatchResult = await whatsAppDispatcher.DispatchTextMessageAsync(
                 tenantId,

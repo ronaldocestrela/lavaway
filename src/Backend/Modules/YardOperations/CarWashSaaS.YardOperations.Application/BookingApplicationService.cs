@@ -191,7 +191,7 @@ public sealed class BookingApplicationService(
             return Result<IReadOnlyList<BookingSummaryDto>>.Failure(new Error("booking.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
-        var targetDate = date ?? DateOnly.FromDateTime(DateTime.Today);
+        var targetDate = date ?? BrazilTime.Today;
         var bookings = await bookingRepository.GetByDateAsync(tenantId, targetDate, ct);
 
         var query = bookings.AsEnumerable();

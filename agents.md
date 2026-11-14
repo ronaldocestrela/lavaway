@@ -214,4 +214,5 @@ Ao receber qualquer comando de código, o agente deve seguir o seguinte checklis
 * [ ] **Hexagonal Integrity:** Estou colocando regras de domínio dentro de controllers ou DbContext? (Se sim, pare e mova para o Domain/Application).
 * [ ] **TDD First:** Foi apresentado ou planejado o teste correspondente para esta funcionalidade?
 * [ ] **Single Project Responsibility:** O código do Backend reside nos módulos da API e o código de tela reside nos projetos Blazor, usando apenas `Shared.Contracts` para dados comuns?
+* [ ] **Timezone Check (`BrazilTime`):** Persistência de timestamps utiliza `DateTimeOffset.UtcNow` e toda resolução de data comercial ("hoje"), recorte diário de caixa/comissões (`StartOfDayUtc`/`EndOfDayUtc`) e exibição visual (PDF, WhatsApp e UI Blazor) utiliza `BrazilTime` (`UTC-03:00`), sem jamais usar `DateTime.Now`, `DateTime.Today` ou `.ToLocalTime()`?
 * [ ] **Living Docs Update:** O diagrama ou especificação foi atualizado junto à alteração?

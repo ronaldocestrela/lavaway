@@ -108,7 +108,6 @@ public sealed class TenantWhatsAppQuota : IMustHaveTenant
 
     private static DateTimeOffset GetCurrentDayUtc()
     {
-        var now = DateTimeOffset.UtcNow;
-        return new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        return BrazilTime.Today.StartOfDayUtc();
     }
 }

@@ -18,7 +18,7 @@ public sealed class SchedulingApiClient(HttpClient httpClient)
         string? search = null,
         CancellationToken ct = default)
     {
-        var targetDate = (date ?? DateOnly.FromDateTime(DateTime.Today)).ToString("yyyy-MM-dd");
+        var targetDate = (date ?? BrazilTime.Today).ToString("yyyy-MM-dd");
         var uri = $"scheduling/bookings?date={targetDate}";
 
         if (!string.IsNullOrWhiteSpace(status))

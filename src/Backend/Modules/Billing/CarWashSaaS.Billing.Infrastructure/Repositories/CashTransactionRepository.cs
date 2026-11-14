@@ -1,5 +1,6 @@
 using CarWashSaaS.Billing.Application;
 using CarWashSaaS.Billing.Domain;
+using CarWashSaaS.Shared.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarWashSaaS.Billing.Infrastructure.Repositories;
@@ -13,8 +14,8 @@ public sealed class CashTransactionRepository(BillingDbContext dbContext) : ICas
 
     public async Task<IReadOnlyList<CashTransaction>> ListByDateAsync(Guid tenantId, DateOnly date, CancellationToken ct = default)
     {
-        var startUtc = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var endUtc = date.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+        var startUtc = date.StartOfDayUtc();
+        var endUtc = date.EndOfDayUtc();
 
         return await dbContext.CashTransactions
             .Where(t => t.TenantId == tenantId && t.OccurredAtUtc >= startUtc && t.OccurredAtUtc <= endUtc)
@@ -24,8 +25,8 @@ public sealed class CashTransactionRepository(BillingDbContext dbContext) : ICas
 
     public async Task<IReadOnlyList<CashTransaction>> ListByPeriodAsync(Guid tenantId, DateOnly startDate, DateOnly endDate, CancellationToken ct = default)
     {
-        var startUtc = startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var endUtc = endDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+        var startUtc = startDate.StartOfDayUtc();
+        var endUtc = endDate.EndOfDayUtc();
 
         return await dbContext.CashTransactions
             .Where(t => t.TenantId == tenantId && t.OccurredAtUtc >= startUtc && t.OccurredAtUtc <= endUtc)

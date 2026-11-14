@@ -146,7 +146,7 @@
                                         </td>
                                         <td>
                                             <div class="period-info">
-                                                <span>Até @sub.CurrentPeriodEndUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                                <span>Até @sub.CurrentPeriodEndUtc.ToBrazilTime().ToString("dd/MM/yyyy")</span>
                                                 @if (sub.CardLastFourDigits is not null)
                                                 {
                                                     <small class="text-muted">💳 final @sub.CardLastFourDigits (@sub.CardBrand)</small>

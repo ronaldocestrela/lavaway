@@ -4,6 +4,8 @@
 
 Permitir que clientes de lava-jatos e estética automotiva consultem o catálogo de serviços, verifiquem horários vagos e reservem horários pelo WhatsApp da loja de forma 100% autônoma através de um chatbot conversacional com máquina de estados. O sistema garante a prevenção de conflitos de capacidade física (`TotalBoxes`), gerencia sessões com timeout de 30 minutos e exibe as reservas em tempo real para a equipe na tela de **Agenda & Reservas**, com ação de check-in para abertura direta de Ordem de Serviço na recepção.
 
+> **Padronização de Fuso Horário (`BrazilTime`):** A resolução de "Hoje" e "Amanhã" no `ChatbotConversationEngine`, bem como o filtro de horários já decorridos no dia atual em `BookingCapacityChecker`, utilizam `BrazilTime.Today` e `BrazilTime.CurrentTime` (`America/Sao_Paulo` / `UTC-03:00`), evitando bloqueio prematuro de vagas vespertinas ou virada de dia às 21h00 em servidores internacionais.
+
 ---
 
 ## 2. Diagrama de Sequência & Ingestão Assíncrona

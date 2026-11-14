@@ -4,6 +4,8 @@
 
 A subfase **5.3** do Lavaway SaaS implementa o controle operacional de caixa e o cálculo automatizado de comissões para lava-jatos e centros de estética automotiva. O sistema permite dar baixa imediata em ordens de serviço por múltiplos métodos (**Pix**, **Dinheiro** com troco calculado, **Cartão de Crédito** e **Cartão de Débito**), efetuar sangrias e aportes, emitir o fechamento diário do caixa com conferência cega/assistida de gaveta e gerar relatórios detalhados de comissões por colaborador com base nas regras configuradas no estabelecimento.
 
+> **Fuso Horário e Janela de Dia Comercial (`BrazilTime`):** Tanto a listagem diária de transações do caixa (`CashTransactionRepository`) quanto a apuração de comissões por período (`CommissionApplicationService`) convertem cada `DateOnly` comercial usando `date.StartOfDayUtc()` (`00:00:00 -03:00` $\rightarrow$ `03:00:00Z`) e `date.EndOfDayUtc()` (`23:59:59.9999999 -03:00` $\rightarrow$ `02:59:59.9999999Z` do dia seguinte), garantindo que atendimentos e pagamentos realizados após as 21h00 no horário de Brasília sejam contabilizados no dia correto mesmo quando hospedado em VPS internacional.
+
 ---
 
 ## 2. Diagrama de Sequência Mermaid: Baixa de Pagamento Presencial

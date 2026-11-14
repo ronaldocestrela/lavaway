@@ -34,9 +34,8 @@ public sealed class BookingCapacityChecker(
     {
         var totalBoxes = await GetTotalBoxesAsync(tenantId, ct);
         var slots = new List<AvailableTimeSlotDto>();
-        var now = DateTimeOffset.Now;
-        var today = DateOnly.FromDateTime(now.Date);
-        var currentTime = TimeOnly.FromTimeSpan(now.TimeOfDay);
+        var today = BrazilTime.Today;
+        var currentTime = BrazilTime.CurrentTime;
 
         foreach (var start in StandardOperatingHours)
         {

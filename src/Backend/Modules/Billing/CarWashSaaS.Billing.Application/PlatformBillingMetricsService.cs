@@ -82,7 +82,7 @@ public sealed class PlatformBillingMetricsService(
 
         var dailyVolume = paidCharges
             .Where(c => c.PaidAtUtc.HasValue)
-            .GroupBy(c => DateOnly.FromDateTime(c.PaidAtUtc!.Value.UtcDateTime))
+            .GroupBy(c => c.PaidAtUtc!.Value.ToBrazilDateOnly())
             .OrderBy(g => g.Key)
             .Select(g => new DailyPixVolumeDto(
                 Date: g.Key,

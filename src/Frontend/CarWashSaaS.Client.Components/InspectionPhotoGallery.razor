@@ -145,7 +145,7 @@
                     {
                         <img src="@GetPhotoStreamUrl(photo!.Id)" alt="@title" class="preview-img" />
                         <div class="photo-meta">
-                            <span>@photo.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                            <span>@photo.UploadedAtUtc.ToBrazilTime().ToString("HH:mm")</span>
                         </div>
                     }
                 }

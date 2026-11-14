@@ -53,7 +53,7 @@
                     @if (_summary.IsClosed)
                     {
                         <strong>Caixa Fechado</strong>
-                        <span class="status-sub"> (fechado às @(_summary.ClosedAtUtc?.ToLocalTime().ToString("HH:mm")) por @(_summary.ClosedByUserName ?? "Gestor"))</span>
+                        <span class="status-sub"> (fechado às @(_summary.ClosedAtUtc?.ToBrazilTime().ToString("HH:mm")) por @(_summary.ClosedByUserName ?? "Gestor"))</span>
                     }
                     else
                     {
@@ -236,7 +236,7 @@
                                 @foreach (var t in _summary.Transactions)
                                 {
                                     <tr>
-                                        <td>@t.OccurredAtUtc.ToLocalTime().ToString("HH:mm:ss")</td>
+                                        <td>@t.OccurredAtUtc.ToBrazilTime().ToString("HH:mm:ss")</td>
                                         <td>
                                             <span class="type-tag type-@t.Type.ToLowerInvariant()">
                                                 @CashTransactionTypeConstants.ToDisplayName(t.Type)
@@ -376,7 +376,7 @@
                                                 @foreach (var item in collab.Items)
                                                 {
                                                     <tr>
-                                                        <td>@item.CompletedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                                        <td>@item.CompletedAtUtc.ToBrazilTime().ToString("dd/MM HH:mm")</td>
                                                         <td><span class="plate-mini">@item.LicensePlate</span></td>
                                                         <td>@item.CustomerName</td>
                                                         <td>@item.ServiceName</td>
@@ -432,7 +432,7 @@
                             {
                                 <tr>
                                     <td><strong>@c.ClosingDate.ToString("dd/MM/yyyy")</strong></td>
-                                    <td>@c.ClosedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                    <td>@c.ClosedAtUtc.ToBrazilTime().ToString("dd/MM HH:mm")</td>
                                     <td>@c.ClosedByUserName</td>
                                     <td class="text-right font-bold">@c.TotalIncome.ToString("C2", PtBr)</td>
                                     <td class="text-right">@c.ExpectedCashInDrawer.ToString("C2", PtBr)</td>
@@ -476,7 +476,7 @@
 
     private enum CommissionRangeType { Today, ThisWeek, ThisMonth }
 
-    private DateOnly _today = DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly _today = BrazilTime.Today;
     private DateOnly _selectedDate;
     private string _activeTab = "summary";
     private bool _isLoading;

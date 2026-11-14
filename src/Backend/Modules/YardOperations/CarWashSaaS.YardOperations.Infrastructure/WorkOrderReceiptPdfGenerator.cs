@@ -61,8 +61,8 @@ public sealed class WorkOrderReceiptPdfGenerator(IAppUrlResolver? appUrlResolver
         sb.AppendLine("BT /F1 9 Tf 46 722 Td (Cliente: " + EscapePdfText(model.CustomerName) + "  |  Telefone: " + EscapePdfText(model.CustomerPhone) + ") Tj ET");
         sb.AppendLine("BT /F1 9 Tf 46 706 Td (Veiculo: " + EscapePdfText(model.VehicleModel) + "  |  Placa: " + EscapePdfText(model.VehiclePlate) + " (" + EscapePdfText(model.VehicleSize) + ")) Tj ET");
 
-        var checkinStr = model.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", PtBr);
-        var forecastStr = model.EstimatedCompletionAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", PtBr);
+        var checkinStr = model.CreatedAtUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm", PtBr);
+        var forecastStr = model.EstimatedCompletionAtUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm", PtBr);
         sb.AppendLine("BT /F1 9 Tf 46 688 Td (Entrada: " + EscapePdfText(checkinStr) + "  |  Previsao de Entrega: " + EscapePdfText(forecastStr) + ") Tj ET");
 
         // 3. Tabela de Serviços
@@ -171,7 +171,7 @@ public sealed class WorkOrderReceiptPdfGenerator(IAppUrlResolver? appUrlResolver
         // 6. Rodapé
         sb.AppendLine("0.5 0.5 0.5 rg");
         sb.AppendLine("BT /F1 7 Tf 36 20 Td (Lava Ae SaaS - Gestao Inteligente para Estetica Automotiva e Lava-Jato  |  Conformidade LGPD) Tj ET");
-        sb.AppendLine("BT /F1 7 Tf 420 20 Td (Documento gerado em " + EscapePdfText(DateTimeOffset.UtcNow.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss", PtBr)) + ") Tj ET");
+        sb.AppendLine("BT /F1 7 Tf 420 20 Td (Documento gerado em " + EscapePdfText(BrazilTime.Now.ToString("dd/MM/yyyy HH:mm:ss", PtBr)) + ") Tj ET");
 
         var contentStream = sb.ToString();
         var contentBytes = Encoding.Latin1.GetBytes(contentStream);

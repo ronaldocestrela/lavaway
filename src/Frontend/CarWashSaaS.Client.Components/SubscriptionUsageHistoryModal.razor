@@ -44,7 +44,7 @@
                                 @foreach (var usage in Usages)
                                 {
                                     <tr>
-                                        <td>@usage.ConsumedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>@usage.ConsumedAtUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")</td>
                                         <td><span class="plate-badge">@usage.Plate</span></td>
                                         <td>@(usage.ServiceName ?? "Lavagem Inclusa")</td>
                                         <td>

@@ -40,7 +40,7 @@
             </div>
             <div class="detail-row forecast-row">
                 <span class="detail-label">PREVISÃO DE ENTREGA</span>
-                <span class="detail-value forecast-val">&#9200; @WorkOrder.EstimatedCompletionAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                <span class="detail-value forecast-val">&#9200; @WorkOrder.EstimatedCompletionAtUtc.ToBrazilTime().ToString("HH:mm")</span>
             </div>
             @if (!string.IsNullOrWhiteSpace(WorkOrder.Notes))
             {
