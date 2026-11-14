@@ -21,7 +21,7 @@
                     ⏳ 2h
                 </span>
             }
-            @if (Booking.ConfirmedAtUtc.HasValue)
+            @if (Booking.ConfirmedAtUtc.HasValue && Booking.Status is not BookingStatusConstants.Cancelled and not BookingStatusConstants.NoShow)
             {
                 <span class="confirmed-badge" title="Confirmado pelo cliente em @Booking.ConfirmedAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")">
                     ✅ Confirmado

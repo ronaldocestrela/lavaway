@@ -289,14 +289,27 @@ public sealed class ChatbotConversationEngineTests
             return Task.FromResult(Result<BookingConfirmationDto>.Success(confirmation));
         }
 
+        public List<BookingSummaryDto> ActiveBookingsToReturn { get; } = [];
+
         public Task<Result<IReadOnlyList<BookingSummaryDto>>> GetCustomerActiveBookingsAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
         {
+            if (ActiveBookingsToReturn.Count > 0)
+            {
+                return Task.FromResult<Result<IReadOnlyList<BookingSummaryDto>>>(Result<IReadOnlyList<BookingSummaryDto>>.Success(ActiveBookingsToReturn));
+            }
+
+            if (UpcomingBookingToReturn is not null)
+            {
+                return Task.FromResult<Result<IReadOnlyList<BookingSummaryDto>>>(Result<IReadOnlyList<BookingSummaryDto>>.Success([UpcomingBookingToReturn]));
+            }
+
             return Task.FromResult<Result<IReadOnlyList<BookingSummaryDto>>>(Result<IReadOnlyList<BookingSummaryDto>>.Success([]));
         }
 
         public BookingSummaryDto? UpcomingBookingToReturn { get; set; }
         public bool ConfirmBookingCalled { get; private set; }
         public bool CancelBookingCalled { get; private set; }
+        public Guid? LastCancelledBookingId { get; private set; }
         public bool RescheduleBookingCalled { get; private set; }
 
         public Task<Result<BookingSummaryDto>> ConfirmBookingAsync(Guid tenantId, Guid bookingId, CancellationToken ct = default)
@@ -333,27 +346,31 @@ public sealed class ChatbotConversationEngineTests
         public Task<Result<BookingSummaryDto>> CancelBookingAsync(Guid tenantId, Guid bookingId, string? reason, CancellationToken ct = default)
         {
             CancelBookingCalled = true;
-            var summary = UpcomingBookingToReturn ?? new BookingSummaryDto(
-                bookingId,
-                tenantId,
-                "BK-CANC-1234",
-                null,
-                "Cliente Teste",
-                "11999998888",
-                "ABC1234",
-                "Civic",
-                VehicleSizeConstants.HatchSedan,
-                Guid.NewGuid(),
-                "Lavagem",
-                60m,
-                DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
-                new TimeOnly(10, 0),
-                60,
-                BookingStatusConstants.Cancelled,
-                BookingOriginConstants.WhatsAppBot,
-                null,
-                reason,
-                DateTimeOffset.UtcNow);
+            LastCancelledBookingId = bookingId;
+            var matched = ActiveBookingsToReturn.FirstOrDefault(b => b.Id == bookingId) ?? UpcomingBookingToReturn;
+            var summary = matched is not null
+                ? matched with { Status = BookingStatusConstants.Cancelled, ConfirmedAtUtc = null }
+                : new BookingSummaryDto(
+                    bookingId,
+                    tenantId,
+                    "BK-CANC-1234",
+                    null,
+                    "Cliente Teste",
+                    "11999998888",
+                    "ABC1234",
+                    "Civic",
+                    VehicleSizeConstants.HatchSedan,
+                    Guid.NewGuid(),
+                    "Lavagem",
+                    60m,
+                    DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+                    new TimeOnly(10, 0),
+                    60,
+                    BookingStatusConstants.Cancelled,
+                    BookingOriginConstants.WhatsAppBot,
+                    null,
+                    reason,
+                    DateTimeOffset.UtcNow);
 
             return Task.FromResult(Result<BookingSummaryDto>.Success(summary));
         }
@@ -916,6 +933,89 @@ public sealed class ChatbotConversationEngineTests
         Assert.True(result.IsSuccess);
         Assert.NotNull(_schedulingLookup.LastCreatedRequest);
         Assert.Equal(existingCustomerId, _schedulingLookup.LastCreatedRequest.CustomerId);
+    }
+
+    [Fact]
+    public async Task ProcessIncomingMessage_WhenCustomerHasMultipleActiveBookings_ShouldAskWhichBookingToManageAndCancelSelected()
+    {
+        var booking1 = new BookingSummaryDto(
+            Guid.NewGuid(),
+            _tenantId,
+            "BK-HOJE-1111",
+            null,
+            "Carlos",
+            _customerPhone,
+            "ABC1D23",
+            "Civic",
+            VehicleSizeConstants.HatchSedan,
+            Guid.NewGuid(),
+            "Lavagem Completa",
+            60m,
+            DateOnly.FromDateTime(DateTime.Today),
+            new TimeOnly(10, 0),
+            60,
+            BookingStatusConstants.Confirmed,
+            BookingOriginConstants.WhatsAppBot,
+            null,
+            null,
+            DateTimeOffset.UtcNow);
+
+        var booking2 = new BookingSummaryDto(
+            Guid.NewGuid(),
+            _tenantId,
+            "BK-AMANHA-2222",
+            null,
+            "Carlos",
+            _customerPhone,
+            "XYZ9876",
+            "Compass",
+            VehicleSizeConstants.Suv,
+            Guid.NewGuid(),
+            "Polimento",
+            150m,
+            DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
+            new TimeOnly(14, 0),
+            90,
+            BookingStatusConstants.Confirmed,
+            BookingOriginConstants.WhatsAppBot,
+            null,
+            null,
+            DateTimeOffset.UtcNow);
+
+        _schedulingLookup.ActiveBookingsToReturn.Add(booking1);
+        _schedulingLookup.ActiveBookingsToReturn.Add(booking2);
+
+        // 1: Menu
+        await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "Oi");
+        _dispatcher.SentMessages.Clear();
+
+        // 2: Escolhe 3 (Meus agendamentos) -> Deve listar numerado e pedir escolha de 1 a 2
+        var listResult = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "3");
+        Assert.True(listResult.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("1 - *BK-HOJE-1111*", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("2 - *BK-AMANHA-2222*", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("Qual agendamento você deseja gerenciar?", _dispatcher.SentMessages[0].Text);
+
+        _dispatcher.SentMessages.Clear();
+
+        // 3: Escolhe o agendamento 2 (BK-AMANHA-2222)
+        var selectResult = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "2");
+        Assert.True(selectResult.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("Agendamento selecionado", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("BK-AMANHA-2222", _dispatcher.SentMessages[0].Text);
+
+        _dispatcher.SentMessages.Clear();
+
+        // 4: Escolhe 3 (Cancelar agendamento)
+        var cancelResult = await _sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "3");
+        Assert.True(cancelResult.IsSuccess);
+        Assert.True(_schedulingLookup.CancelBookingCalled);
+        Assert.Equal(booking2.Id, _schedulingLookup.LastCancelledBookingId);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("Agendamento Cancelado com Sucesso", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("BK-AMANHA-2222", _dispatcher.SentMessages[0].Text);
     }
 
     private ChatbotConversationEngine CreateSutWithCustomerLookup(ICustomerLookup customerLookup) =>

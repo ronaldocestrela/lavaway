@@ -4,6 +4,7 @@
 @using CarWashSaaS.Client.Components
 @using CarWashSaaS.Shared.Contracts
 @using System.Globalization
+@implements IDisposable
 @inject SchedulingApiClient SchedulingApi
 @inject ServiceCatalogApiClient ServiceApi
 @inject NavigationManager Navigation
@@ -275,11 +276,43 @@
     private DateOnly _manualDate = DateOnly.FromDateTime(DateTime.Today);
     private TimeOnly _manualTime = new(9, 0);
     private string? _manualNotes;
+    private System.Threading.Timer? _pollTimer;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadServicesAsync();
         await LoadBookingsAsync();
+
+        _pollTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (!_isLoading && !_showCreateModal && !_showRescheduleModal)
+                {
+                    await RefreshBookingsSilentAsync();
+                }
+            });
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task RefreshBookingsSilentAsync()
+    {
+        try
+        {
+            var result = await SchedulingApi.GetBookingsAsync(_selectedDate);
+            _bookings = result.ToList();
+            ApplyFilters();
+            StateHasChanged();
+        }
+        catch
+        {
+            // Silencioso em atualizações em background
+        }
+    }
+
+    public void Dispose()
+    {
+        _pollTimer?.Dispose();
     }
 
     private async Task LoadServicesAsync()

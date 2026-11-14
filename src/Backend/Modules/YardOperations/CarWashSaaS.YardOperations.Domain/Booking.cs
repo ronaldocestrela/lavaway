@@ -243,6 +243,7 @@ public sealed partial class Booking : IMustHaveTenant
     public Result<Booking> Cancel(string? reason)
     {
         Status = BookingStatus.Cancelled;
+        ConfirmedAtUtc = null;
         CancellationReason = string.IsNullOrWhiteSpace(reason) ? "Cancelado" : reason.Trim();
         UpdatedAt = DateTimeOffset.UtcNow;
         return Result<Booking>.Success(this);

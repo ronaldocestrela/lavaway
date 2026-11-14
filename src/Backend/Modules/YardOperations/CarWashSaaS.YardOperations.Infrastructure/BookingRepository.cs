@@ -29,12 +29,26 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
 
     public async Task<IReadOnlyList<Booking>> GetActiveBookingsByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
     {
-        var normalizedPhone = new string(customerPhone.Where(char.IsDigit).ToArray());
+        var phoneCandidates = Customer.GetCandidateNormalizedPhones(customerPhone);
+        if (phoneCandidates.Count == 0)
+        {
+            return [];
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var matchingCustomerIds = await dbContext.Customers
+            .Where(c => c.TenantId == tenantId &&
+                        (phoneCandidates.Contains(c.NormalizedPhone) || phoneCandidates.Contains(c.Phone)))
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+
         return await dbContext.Bookings
             .Where(b => b.TenantId == tenantId &&
-                        b.CustomerPhone == normalizedPhone &&
-                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed))
-            .OrderByDescending(b => b.ScheduledDate)
+                        (phoneCandidates.Contains(b.CustomerPhone) ||
+                         (b.CustomerId.HasValue && matchingCustomerIds.Contains(b.CustomerId.Value))) &&
+                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed) &&
+                        b.ScheduledDate >= today)
+            .OrderBy(b => b.ScheduledDate)
             .ThenBy(b => b.ScheduledTime)
             .ToListAsync(ct);
     }
@@ -129,18 +143,7 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
         string customerPhone,
         CancellationToken ct = default)
     {
-        var normalizedPhone = new string(customerPhone.Where(char.IsDigit).ToArray());
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
-        var activeBookings = await dbContext.Bookings
-            .Where(b => b.TenantId == tenantId &&
-                        b.CustomerPhone == normalizedPhone &&
-                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed) &&
-                        b.ScheduledDate >= today)
-            .OrderBy(b => b.ScheduledDate)
-            .ThenBy(b => b.ScheduledTime)
-            .ToListAsync(ct);
-
+        var activeBookings = await GetActiveBookingsByPhoneAsync(tenantId, customerPhone, ct);
         return activeBookings.FirstOrDefault();
     }
 }

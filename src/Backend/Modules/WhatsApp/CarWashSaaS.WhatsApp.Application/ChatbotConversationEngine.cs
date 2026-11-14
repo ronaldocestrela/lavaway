@@ -221,10 +221,25 @@ public sealed class ChatbotConversationEngine(
 
             if (isConfirm || isReschedule || isCancel)
             {
-                var upcomingResult = await schedulingLookup.GetUpcomingBookingForCustomerAsync(tenantId, senderPhone, ct);
-                if (upcomingResult.IsSuccess && upcomingResult.Value is not null)
+                var activeBookingsResult = await schedulingLookup.GetCustomerActiveBookingsAsync(tenantId, senderPhone, ct);
+                var activeBookings = activeBookingsResult.Value ?? [];
+
+                if (activeBookings.Count > 1)
                 {
-                    var upcoming = upcomingResult.Value;
+                    var selectResult = await PresentCustomerBookingsAsync(tenantId, session, ct);
+                    await sessionRepository.UpdateAsync(session, ct);
+                    return selectResult;
+                }
+
+                var upcoming = activeBookings.FirstOrDefault();
+                if (upcoming is null)
+                {
+                    var upcomingResult = await schedulingLookup.GetUpcomingBookingForCustomerAsync(tenantId, senderPhone, ct);
+                    upcoming = upcomingResult.Value;
+                }
+
+                if (upcoming is not null)
+                {
                     if (isConfirm)
                     {
                         var confirmResult = await ExecuteConfirmationAsync(tenantId, session, upcoming, ct);
@@ -262,6 +277,7 @@ public sealed class ChatbotConversationEngine(
             ChatbotStep.SelectingRegisteredVehicle => await HandleSelectingRegisteredVehicleAsync(tenantId, session, text, ct),
             ChatbotStep.CollectingPlate => await HandleCollectingPlateAsync(tenantId, session, text, ct),
             ChatbotStep.AwaitingConfirmation => await HandleAwaitingConfirmationAsync(tenantId, session, text, ct),
+            ChatbotStep.SelectingBookingToManage => await HandleSelectingBookingToManageAsync(tenantId, session, text, ct),
             ChatbotStep.AwaitingReminderAction => await HandleAwaitingReminderActionAsync(tenantId, session, text, ct),
             ChatbotStep.ReschedulingDate => await HandleReschedulingDateAsync(tenantId, session, text, ct),
             ChatbotStep.ReschedulingTimeSlot => await HandleReschedulingTimeSlotAsync(tenantId, session, text, ct),
@@ -831,6 +847,17 @@ public sealed class ChatbotConversationEngine(
             return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
         }
 
+        if (bookings.Count > 1)
+        {
+            session.MoveToStep(ChatbotStep.SelectingBookingToManage);
+            var numberedLines = bookings.Select((b, i) =>
+                $"{i + 1} - *{b.Protocol}*: {b.ServiceName} ({b.VehiclePlate}) em {b.ScheduledDate:dd/MM} às {b.ScheduledTime:HH\\:mm} - Status: *{BookingStatusConstants.GetDisplayName(b.Status)}*");
+            var multiMessage = "🕒 *Seus Próximos Agendamentos:*\n\n" +
+                               string.Join("\n\n", numberedLines) + "\n\n" +
+                               $"Qual agendamento você deseja gerenciar? Digite o *número de 1 a {bookings.Count}* correspondente (ou *menu* para voltar):";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, multiMessage, ct);
+        }
+
         session.SetTargetBooking(bookings[0].Id);
         session.MoveToStep(ChatbotStep.AwaitingReminderAction);
 
@@ -844,6 +871,49 @@ public sealed class ChatbotConversationEngine(
                       "Ou digite *menu* para voltar.";
 
         return await SendBotReplyAsync(tenantId, session.CustomerPhone, message, ct);
+    }
+
+    private async Task<Result> HandleSelectingBookingToManageAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)
+    {
+        var bookingsResult = await schedulingLookup.GetCustomerActiveBookingsAsync(tenantId, session.CustomerPhone, ct);
+        var bookings = bookingsResult.Value ?? [];
+
+        if (bookings.Count == 0)
+        {
+            session.Reset();
+            var reply = "Nenhum agendamento ativo encontrado para gerenciar. Digite *menu* para voltar ao início.";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, reply, ct);
+        }
+
+        BookingSummaryDto? selected = null;
+        var trimmed = text.Trim();
+
+        if (int.TryParse(trimmed, out var index) && index >= 1 && index <= bookings.Count)
+        {
+            selected = bookings[index - 1];
+        }
+        else
+        {
+            selected = bookings.FirstOrDefault(b => b.Protocol.Equals(trimmed.TrimStart('#'), StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (selected is null)
+        {
+            var invalidReply = $"Por favor, digite um número de *1 a {bookings.Count}* correspondente ao agendamento que deseja gerenciar (ou *menu* para voltar):";
+            return await SendBotReplyAsync(tenantId, session.CustomerPhone, invalidReply, ct);
+        }
+
+        session.SetTargetBooking(selected.Id);
+        session.MoveToStep(ChatbotStep.AwaitingReminderAction);
+
+        var actionPrompt = $"Agendamento selecionado:\n• *{selected.Protocol}*: {selected.ServiceName} ({selected.VehiclePlate}) em {selected.ScheduledDate:dd/MM} às {selected.ScheduledTime:HH\\:mm}\n\n" +
+                           "O que você deseja fazer? Digite:\n" +
+                           "1️⃣ para *Confirmar presença*\n" +
+                           "2️⃣ para *Remarcar horário*\n" +
+                           "3️⃣ para *Cancelar agendamento*\n\n" +
+                           "Ou digite *menu* para voltar.";
+
+        return await SendBotReplyAsync(tenantId, session.CustomerPhone, actionPrompt, ct);
     }
 
     private async Task<Result> HandleAwaitingReminderActionAsync(Guid tenantId, ChatbotConversationSession session, string text, CancellationToken ct)

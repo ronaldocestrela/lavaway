@@ -13,6 +13,7 @@ public enum ChatbotStep
     SelectingRegisteredVehicle,
     CollectingPlate,
     AwaitingConfirmation,
+    SelectingBookingToManage,
     AwaitingReminderAction,
     ReschedulingDate,
     ReschedulingTimeSlot,
