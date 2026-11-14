@@ -64,7 +64,7 @@ public sealed class WorkOrderNotificationApplicationService(
         var shortOs = workOrder.Id.ToString("D")[..8].ToUpperInvariant();
         var tradeName = storeProfile?.TradeName ?? "Lava-Jato";
         var plate = vehicle?.Plate ?? "";
-        var forecast = workOrder.EstimatedCompletionAtUtc.ToLocalTime().ToString("dd/MM HH:mm", PtBr);
+        var forecast = workOrder.EstimatedCompletionAtUtc.ToBrazilTime().ToString("dd/MM HH:mm", PtBr);
         var totalStr = workOrder.TotalAmount.ToString("C2", PtBr);
         var baseUrl = ResolveBaseUrl();
         var displayDomain = ResolveDisplayDomain(baseUrl);

@@ -153,7 +153,7 @@
                                             O nome e dados de contato foram irreversivelmente anonimizados.
                                             @if (_selectedCustomer.AnonymizedAtUtc.HasValue)
                                             {
-                                                <span>Operação registrada em @_selectedCustomer.AnonymizedAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm").</span>
+                                                <span>Operação registrada em @_selectedCustomer.AnonymizedAtUtc.Value.ToBrazilTime().ToString("dd/MM/yyyy 'às' HH:mm").</span>
                                             }
                                         </p>
                                     </div>

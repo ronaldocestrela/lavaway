@@ -37,19 +37,20 @@ Restrições arquiteturais ([agents.md](file:///home/rony/LPR/lavaway/agents.md)
 
 ### 3. FSM de Interação Conversacional no WhatsApp
 - A máquina de estados do chatbot (`ChatbotConversationEngine`) foi estendida com os estados:
-  - `AwaitingReminderAction`: Quando o cliente responde ao lembrete ativo, permitindo digitar 1 (Confirmar), 2 (Remarcar) ou 3 (Cancelar).
+  - `SelectingBookingToManage`: Quando o cliente possui mais de um agendamento futuro ativo (localizados com equivalência de formato de telefone `Customer.GetCandidateNormalizedPhones` e `CustomerId` em ordem cronológica crescente), permitindo escolher pelo índice ou protocolo qual reserva deseja gerenciar.
+  - `AwaitingReminderAction`: Quando o cliente responde ao lembrete ativo ou seleciona uma reserva, permitindo digitar 1 (Confirmar), 2 (Remarcar) ou 3 (Cancelar).
   - `ReschedulingDate`: Recebe a nova data solicitada.
   - `ReschedulingTimeSlot`: Exibe os novos horários vagos e conclui a remarcação.
 - Integração com `ISchedulingBookingLookup`:
   - `ConfirmBookingAsync`: Atualiza o status para `Confirmed` e registra `ConfirmedAtUtc`.
-  - `CancelBookingAsync`: Atualiza o status para `Cancelled`, liberando imediatamente a vaga para novos clientes.
+  - `CancelBookingAsync`: Atualiza o status para `Cancelled`, limpa `ConfirmedAtUtc` e libera imediatamente a vaga para novos clientes.
   - `RescheduleBookingAsync`: Valida concorrentemente a disponibilidade de box no novo horário antes de aplicar a alteração.
 
 ### 4. Visão Operacional e Reenvio Manual no Frontend Blazor
 - Atualização do componente `BookingCard.razor`:
-  - Badges visuais indicando: Confirmação expressa (`✅ Confirmado`), Lembrete 24h enviado (`🔔 24h`) e Lembrete 2h enviado (`⏳ 2h`).
+  - Badges visuais indicando: Confirmação expressa (`✅ Confirmado`, exibido apenas quando o agendamento não está cancelado ou marcado como falta), Lembrete 24h enviado (`🔔 24h`) e Lembrete 2h enviado (`⏳ 2h`).
   - Botão de ação "Confirmar" (quando pendente), "Remarcar" (abre modal de data/hora) e "Reenviar Lembrete" (dispara notificação imediata via WhatsApp).
-- Modal `RescheduleBookingModal` integrado na `SchedulingPage.razor` para remarcações manuais pela recepção física.
+- Modal `RescheduleBookingModal` integrado na `SchedulingPage.razor` para remarcações manuais pela recepção física, além de polling silencioso em background (a cada 10s) para atualizar automaticamente a lista de reservas quando o cliente interage via WhatsApp.
 
 ## Consequências
 

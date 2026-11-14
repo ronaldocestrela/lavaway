@@ -183,11 +183,11 @@ Quadro em tempo real, com cinco etapas:
 
 ### O que o cliente resolve sozinho no WhatsApp
 
-- Agendar: nome, serviço, porte, data, horário livre e placa.
+- Agendar: reconhece o cliente já cadastrado pelo número (ou cadastra se for novo), permite escolher o serviço, selecionar imediatamente um veículo já registrado (ou informar outro veículo e seu porte), data e horário livre.
 - Ver o catálogo e os preços.
-- Consultar as reservas dele.
-- Confirmar, remarcar ou cancelar a partir dos lembretes de 24 horas e de 2 horas.
-- A remarcação só aceita horário com vaga. O cancelamento libera o box na hora.
+- Consultar as reservas futuras dele (e escolher qual reserva gerenciar caso possua mais de uma ativa).
+- Confirmar, remarcar ou cancelar pelo menu de agendamentos ou a partir dos lembretes de 24 horas e de 2 horas.
+- A remarcação só aceita horário com vaga. O cancelamento libera o box na hora e atualiza automaticamente o status para Cancelado na tela de Agenda.
 - Escrever `menu` volta ao início.
 
 ---

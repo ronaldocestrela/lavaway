@@ -155,10 +155,14 @@ public sealed class BookingTests
             60,
             BookingOrigin.WhatsAppBot).Value!;
 
+        booking.Confirm();
+        Assert.NotNull(booking.ConfirmedAtUtc);
+
         var result = booking.Cancel("Cliente desistiu por imprevisto");
 
         Assert.True(result.IsSuccess);
         Assert.Equal(BookingStatus.Cancelled, booking.Status);
+        Assert.Null(booking.ConfirmedAtUtc);
         Assert.Equal("Cliente desistiu por imprevisto", booking.CancellationReason);
     }
 

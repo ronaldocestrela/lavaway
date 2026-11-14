@@ -51,7 +51,7 @@
                                             @WorkOrderStatusConstants.ToDisplayName(item.ToStatus)
                                         </span>
                                         <span class="timeline-time">
-                                            @item.ChangedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                                            @item.ChangedAtUtc.ToBrazilTime().ToString("dd/MM HH:mm")
                                         </span>
                                     </div>
 

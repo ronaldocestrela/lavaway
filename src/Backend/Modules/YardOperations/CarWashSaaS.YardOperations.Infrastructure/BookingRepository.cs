@@ -1,3 +1,4 @@
+using CarWashSaaS.Shared.Contracts;
 using CarWashSaaS.YardOperations.Application;
 using CarWashSaaS.YardOperations.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -29,12 +30,26 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
 
     public async Task<IReadOnlyList<Booking>> GetActiveBookingsByPhoneAsync(Guid tenantId, string customerPhone, CancellationToken ct = default)
     {
-        var normalizedPhone = new string(customerPhone.Where(char.IsDigit).ToArray());
+        var phoneCandidates = Customer.GetCandidateNormalizedPhones(customerPhone);
+        if (phoneCandidates.Count == 0)
+        {
+            return [];
+        }
+
+        var today = BrazilTime.Today;
+        var matchingCustomerIds = await dbContext.Customers
+            .Where(c => c.TenantId == tenantId &&
+                        (phoneCandidates.Contains(c.NormalizedPhone) || phoneCandidates.Contains(c.Phone)))
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+
         return await dbContext.Bookings
             .Where(b => b.TenantId == tenantId &&
-                        b.CustomerPhone == normalizedPhone &&
-                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed))
-            .OrderByDescending(b => b.ScheduledDate)
+                        (phoneCandidates.Contains(b.CustomerPhone) ||
+                         (b.CustomerId.HasValue && matchingCustomerIds.Contains(b.CustomerId.Value))) &&
+                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed) &&
+                        b.ScheduledDate >= today)
+            .OrderBy(b => b.ScheduledDate)
             .ThenBy(b => b.ScheduledTime)
             .ToListAsync(ct);
     }
@@ -71,10 +86,10 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
         DateTimeOffset referenceTime,
         CancellationToken ct = default)
     {
-        var targetStart = referenceTime.AddHours(23);
-        var targetEnd = referenceTime.AddHours(25);
-        var minDate = DateOnly.FromDateTime(targetStart.LocalDateTime);
-        var maxDate = DateOnly.FromDateTime(targetEnd.LocalDateTime);
+        var targetStart = referenceTime.AddHours(23).ToBrazilTime().DateTime;
+        var targetEnd = referenceTime.AddHours(25).ToBrazilTime().DateTime;
+        var minDate = DateOnly.FromDateTime(targetStart);
+        var maxDate = DateOnly.FromDateTime(targetEnd);
 
         var candidates = await dbContext.Bookings
             .Where(b => b.TenantId == tenantId &&
@@ -88,7 +103,7 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
             .Where(b =>
             {
                 var dt = b.ScheduledDate.ToDateTime(b.ScheduledTime);
-                return dt >= targetStart.LocalDateTime && dt <= targetEnd.LocalDateTime;
+                return dt >= targetStart && dt <= targetEnd;
             })
             .OrderBy(b => b.ScheduledDate)
             .ThenBy(b => b.ScheduledTime)
@@ -100,10 +115,10 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
         DateTimeOffset referenceTime,
         CancellationToken ct = default)
     {
-        var targetStart = referenceTime.AddMinutes(105);
-        var targetEnd = referenceTime.AddMinutes(135);
-        var minDate = DateOnly.FromDateTime(targetStart.LocalDateTime);
-        var maxDate = DateOnly.FromDateTime(targetEnd.LocalDateTime);
+        var targetStart = referenceTime.AddMinutes(105).ToBrazilTime().DateTime;
+        var targetEnd = referenceTime.AddMinutes(135).ToBrazilTime().DateTime;
+        var minDate = DateOnly.FromDateTime(targetStart);
+        var maxDate = DateOnly.FromDateTime(targetEnd);
 
         var candidates = await dbContext.Bookings
             .Where(b => b.TenantId == tenantId &&
@@ -117,7 +132,7 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
             .Where(b =>
             {
                 var dt = b.ScheduledDate.ToDateTime(b.ScheduledTime);
-                return dt >= targetStart.LocalDateTime && dt <= targetEnd.LocalDateTime;
+                return dt >= targetStart && dt <= targetEnd;
             })
             .OrderBy(b => b.ScheduledDate)
             .ThenBy(b => b.ScheduledTime)
@@ -129,18 +144,7 @@ public sealed class BookingRepository(YardOperationsDbContext dbContext) : IBook
         string customerPhone,
         CancellationToken ct = default)
     {
-        var normalizedPhone = new string(customerPhone.Where(char.IsDigit).ToArray());
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
-        var activeBookings = await dbContext.Bookings
-            .Where(b => b.TenantId == tenantId &&
-                        b.CustomerPhone == normalizedPhone &&
-                        (b.Status == BookingStatus.Scheduled || b.Status == BookingStatus.Confirmed) &&
-                        b.ScheduledDate >= today)
-            .OrderBy(b => b.ScheduledDate)
-            .ThenBy(b => b.ScheduledTime)
-            .ToListAsync(ct);
-
+        var activeBookings = await GetActiveBookingsByPhoneAsync(tenantId, customerPhone, ct);
         return activeBookings.FirstOrDefault();
     }
 }

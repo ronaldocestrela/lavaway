@@ -50,7 +50,7 @@
                                 @Truncate(msg.MessageText, 60)
                             </td>
                             <td class="cell-date">
-                                @msg.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                @msg.CreatedAt.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")
                             </td>
                             <td class="cell-status">
                                 <span class="status-pill @GetStatusClass(msg.Status)">

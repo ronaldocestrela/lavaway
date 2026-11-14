@@ -92,7 +92,7 @@
         if (Tenant is not null)
         {
             selectedStatus = Tenant.Status;
-            trialEndsAtLocal = Tenant.TrialEndsAtUtc?.LocalDateTime ?? DateTime.UtcNow.AddDays(14);
+            trialEndsAtLocal = Tenant.TrialEndsAtUtc?.ToBrazilTime().DateTime ?? BrazilTime.Now.DateTime.AddDays(14);
             reason = Tenant.StatusReason ?? string.Empty;
         }
     }

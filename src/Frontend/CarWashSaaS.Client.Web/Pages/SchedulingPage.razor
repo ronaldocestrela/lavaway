@@ -4,6 +4,7 @@
 @using CarWashSaaS.Client.Components
 @using CarWashSaaS.Shared.Contracts
 @using System.Globalization
+@implements IDisposable
 @inject SchedulingApiClient SchedulingApi
 @inject ServiceCatalogApiClient ServiceApi
 @inject NavigationManager Navigation
@@ -119,7 +120,7 @@
                             <div class="form-row">
                                 <label class="form-label">
                                     <span>Nova Data *</span>
-                                    <input type="date" value="@_rescheduleDate.ToString("yyyy-MM-dd")" @onchange="OnRescheduleDateChanged" required min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                    <input type="date" value="@_rescheduleDate.ToString("yyyy-MM-dd")" @onchange="OnRescheduleDateChanged" required min="@BrazilTime.Today.ToString("yyyy-MM-dd")" />
                                 </label>
 
                                 <label class="form-label">
@@ -249,9 +250,9 @@
         </section>
 
 @code {
-    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
-    private readonly DateOnly _tomorrow = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
-    private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
+    private readonly DateOnly _today = BrazilTime.Today;
+    private readonly DateOnly _tomorrow = BrazilTime.Today.AddDays(1);
+    private DateOnly _selectedDate = BrazilTime.Today;
 
     private List<BookingSummaryDto> _bookings = [];
     private List<BookingSummaryDto> _filteredBookings = [];
@@ -272,14 +273,46 @@
     private string _manualPlate = string.Empty;
     private string _manualSize = VehicleSizeConstants.HatchSedan;
     private string _manualServiceId = string.Empty;
-    private DateOnly _manualDate = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly _manualDate = BrazilTime.Today;
     private TimeOnly _manualTime = new(9, 0);
     private string? _manualNotes;
+    private System.Threading.Timer? _pollTimer;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadServicesAsync();
         await LoadBookingsAsync();
+
+        _pollTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (!_isLoading && !_showCreateModal && !_showRescheduleModal)
+                {
+                    await RefreshBookingsSilentAsync();
+                }
+            });
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task RefreshBookingsSilentAsync()
+    {
+        try
+        {
+            var result = await SchedulingApi.GetBookingsAsync(_selectedDate);
+            _bookings = result.ToList();
+            ApplyFilters();
+            StateHasChanged();
+        }
+        catch
+        {
+            // Silencioso em atualizações em background
+        }
+    }
+
+    public void Dispose()
+    {
+        _pollTimer?.Dispose();
     }
 
     private async Task LoadServicesAsync()
@@ -488,7 +521,7 @@
     private bool _showRescheduleModal;
     private bool _isSavingReschedule;
     private BookingSummaryDto? _rescheduleBooking;
-    private DateOnly _rescheduleDate = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly _rescheduleDate = BrazilTime.Today;
     private string _rescheduleTimeStr = string.Empty;
     private List<AvailableTimeSlotDto> _rescheduleSlots = [];
 

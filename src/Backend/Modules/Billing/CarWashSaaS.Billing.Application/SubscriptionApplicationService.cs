@@ -434,8 +434,8 @@ public sealed class SubscriptionApplicationService(
         var totalCredits = activeList.Sum(s => s.AvailableCredits);
         var mrr = await subscriptionRepository.GetEstimatedMonthlyRevenueAsync(tenantId, ct);
 
-        var now = DateTimeOffset.UtcNow;
-        var firstDayOfMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
+        var today = BrazilTime.Today;
+        var firstDayOfMonth = new DateOnly(today.Year, today.Month, 1).StartOfDayUtc();
         var totalUsagesThisMonth = activeSubs
             .SelectMany(s => s.Usages)
             .Count(u => u.ConsumedAtUtc >= firstDayOfMonth);

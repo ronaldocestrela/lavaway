@@ -45,8 +45,8 @@ public sealed class CommissionApplicationService(
             return Result<CommissionReportDto>.Failure(new Error("commission.date_range.invalid", "A data final não pode ser anterior à data inicial.", ErrorType.Validation));
         }
 
-        var startUtc = startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var endUtc = endDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+        var startUtc = startDate.StartOfDayUtc();
+        var endUtc = endDate.EndOfDayUtc();
 
         var teamMembers = await teamMemberRepository.ListByTenantAsync(tenantId, ct);
         var teamMembersMap = teamMembers.ToDictionary(m => m.Id);

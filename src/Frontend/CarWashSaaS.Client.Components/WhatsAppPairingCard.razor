@@ -119,7 +119,7 @@
                     @if (Connection?.UpdatedAt.HasValue == true)
                     {
                         <span class="connected-timestamp">
-                            Última atualização: @Connection.UpdatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            Última atualização: @Connection.UpdatedAt.Value.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")
                         </span>
                     }
                 </div>

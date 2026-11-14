@@ -135,7 +135,7 @@
                         {
                             <tr>
                                 <td class="font-mono text-small">
-                                    @evt.TimestampUtc.ToString("dd/MM/yyyy HH:mm:ss")
+                                    @evt.TimestampUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm:ss")
                                 </td>
                                 <td>
                                     <strong>@evt.ActorEmail</strong>

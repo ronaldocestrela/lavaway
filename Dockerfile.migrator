@@ -32,6 +32,13 @@ COPY --from=build /app/bundle-* ./
 COPY scripts/docker-entrypoint-migrator.sh ./entrypoint.sh
 
 USER root
-RUN chmod +x ./entrypoint.sh ./bundle-*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && ln -snf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
+    && echo "America/Sao_Paulo" > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/* \
+    && chmod +x ./entrypoint.sh ./bundle-*
+
+ENV TZ=America/Sao_Paulo
 
 ENTRYPOINT ["./entrypoint.sh"]

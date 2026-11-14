@@ -179,11 +179,11 @@
                                 </div>
 
                                 <div class="slider-controls">
-                                    <span class="control-label label-before">Antes (@pair.BeforePhoto.UploadedAtUtc.ToLocalTime().ToString("HH:mm"))</span>
+                                    <span class="control-label label-before">Antes (@pair.BeforePhoto.UploadedAtUtc.ToBrazilTime().ToString("HH:mm"))</span>
                                     <input type="range" min="0" max="100" value="@sliderValue"
                                            @oninput="@((ChangeEventArgs e) => SetSliderPosition(pair.AfterPhoto.Id, e.Value))"
                                            class="range-slider" />
-                                    <span class="control-label label-after">Depois (@pair.AfterPhoto.UploadedAtUtc.ToLocalTime().ToString("HH:mm"))</span>
+                                    <span class="control-label label-after">Depois (@pair.AfterPhoto.UploadedAtUtc.ToBrazilTime().ToString("HH:mm"))</span>
                                 </div>
                             </div>
                         }
@@ -196,7 +196,7 @@
                                     <div class="comparison-column column-before">
                                         <div class="column-badge badge-before">
                                             <span>ANTES</span>
-                                            <span class="badge-time">@pair.BeforePhoto.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                                            <span class="badge-time">@pair.BeforePhoto.UploadedAtUtc.ToBrazilTime().ToString("HH:mm")</span>
                                         </div>
                                         <div class="column-image">
                                             <img src="@GetBeforePhotoUrl(pair.BeforePhoto.Id)" alt="Antes" />
@@ -218,7 +218,7 @@
                                 <div class="comparison-column column-after">
                                     <div class="column-badge badge-after">
                                         <span>DEPOIS</span>
-                                        <span class="badge-time">@pair.AfterPhoto.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                                        <span class="badge-time">@pair.AfterPhoto.UploadedAtUtc.ToBrazilTime().ToString("HH:mm")</span>
                                     </div>
                                     <div class="column-image">
                                         <img src="@GetAfterPhotoUrl(pair.AfterPhoto.Id)" alt="Depois: @pair.Title" />
@@ -313,7 +313,7 @@
                                 <option value="">Sem vínculo automático (foto avulsa)</option>
                                 @foreach (var bp in Gallery.UnpairedBeforePhotos)
                                 {
-                                    <option value="@bp.Id">@GetCategoryName(bp.Category) — @bp.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</option>
+                                    <option value="@bp.Id">@GetCategoryName(bp.Category) — @bp.UploadedAtUtc.ToBrazilTime().ToString("HH:mm")</option>
                                 }
                             </select>
                         </div>

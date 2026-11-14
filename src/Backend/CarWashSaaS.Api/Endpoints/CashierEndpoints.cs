@@ -64,7 +64,7 @@ public static class CashierEndpoints
                 return Results.Problem("A valid tenant is required.", statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var targetDate = date ?? BrazilTime.Today;
             var result = await service.GetDailySummaryAsync(tenantId, targetDate, ct);
             return result.IsSuccess
                 ? Results.Ok(result.Value)

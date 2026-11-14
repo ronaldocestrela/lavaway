@@ -313,20 +313,21 @@ Menu principal:
 
 No agendamento, o robô:
 
-- confirma ou pede o nome;
+- identifica automaticamente se o cliente já tem cadastro pelo número do WhatsApp (ou confirma/pede o nome caso seja novo);
 - mostra os serviços;
-- pede o porte do veículo;
+- para clientes já cadastrados com veículos salvos, lista imediatamente os veículos registrados (aplicando placa, porte e preço automaticamente) ou permite escolher "Outro veículo";
+- para novos veículos ou clientes sem veículo salvo, pede o porte e a placa;
 - pede a data e oferece só horários com box livre;
-- usa um veículo já cadastrado ou pede a placa;
-- pede confirmação e grava a reserva com protocolo.
+- pede confirmação e grava a reserva com protocolo vinculada ao cadastro do cliente.
 
-Antes do horário:
+Antes do horário (ou na opção 3 — Consultar agendamentos):
 
 - lembrete 24 horas antes;
 - lembrete 2 horas antes;
+- caso o cliente possua mais de um agendamento futuro ativo, o robô apresenta a lista numerada para que ele escolha qual reserva deseja gerenciar;
 - o cliente responde 1 para confirmar, 2 para remarcar ou 3 para cancelar;
 - a remarcação só aceita horário com vaga;
-- o cancelamento libera o box na hora.
+- o cancelamento libera o box na hora e reflete automaticamente como Cancelado no painel de Agenda & Reservas.
 
 Fora do menu, estas palavras também funcionam:
 

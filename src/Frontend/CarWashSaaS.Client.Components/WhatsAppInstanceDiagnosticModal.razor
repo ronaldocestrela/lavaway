@@ -54,10 +54,10 @@
 
                         <div class="row g-2 small text-muted mt-2">
                             <div class="col-sm-6">
-                                <strong>Última Conexão:</strong> @(Instance.LastConnectedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nunca")
+                                <strong>Última Conexão:</strong> @(Instance.LastConnectedAtUtc?.ToBrazilTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nunca")
                             </div>
                             <div class="col-sm-6">
-                                <strong>Última Queda:</strong> @(Instance.LastDisconnectedAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nenhuma")
+                                <strong>Última Queda:</strong> @(Instance.LastDisconnectedAtUtc?.ToBrazilTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nenhuma")
                             </div>
                             <div class="col-12 mt-2">
                                 <strong>Motivo da Queda:</strong>
@@ -67,7 +67,7 @@
                                 <strong>Alertas Enviados:</strong> @Instance.AlertCount
                             </div>
                             <div class="col-sm-6 mt-2">
-                                <strong>Último Alerta:</strong> @(Instance.LastAlertSentAtUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nenhum")
+                                <strong>Último Alerta:</strong> @(Instance.LastAlertSentAtUtc?.ToBrazilTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "Nenhum")
                             </div>
                         </div>
                     </div>
@@ -77,7 +77,7 @@
                         <div class="alert @(_probeResult.IsReachable ? "alert-success" : "alert-danger") p-3 rounded-3 mb-4">
                             <div class="d-flex align-items-center justify-content-between mb-1">
                                 <strong>Resultado da Sondagem (Probe):</strong>
-                                <span class="small text-muted">@_probeResult.CheckedAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+                                <span class="small text-muted">@_probeResult.CheckedAtUtc.ToBrazilTime().ToString("HH:mm:ss")</span>
                             </div>
                             <p class="m-0 small">@_probeResult.Message</p>
                         </div>

@@ -118,6 +118,7 @@ cp .env.example .env
 ```
 
 O arquivo `.env` já vem pré-configurado com as credenciais padrões de desenvolvimento local:
+- Fuso horário padrão do Brasil (`TZ="America/Sao_Paulo"`).
 - String de conexão para o SQL Server local.
 - Credenciais e portas para MinIO e RabbitMQ.
 - Chave de assinatura e emissores para JWT (`Authentication__*`).
@@ -275,6 +276,10 @@ O ambiente de produção é orquestrado de forma totalmente autônoma pelo arqui
 
 ### Como Iniciar em Produção
 
+> [!IMPORTANT]
+> **Fuso Horário do Brasil em VPS Internacional (`TZ=America/Sao_Paulo`):**
+> A stack de produção e as imagens Docker (`Dockerfile.api`, `Dockerfile.migrator` e `Dockerfile.frontend`) já vêm pré-configuradas com `tzdata` e `TZ=America/Sao_Paulo`, além do utilitário interno `BrazilTime` (`UTC-03:00`) no Backend e no Frontend ([ADR-0032](docs/architecture/ADR-0032-padronizacao-fuso-horario-brasil.md)). Isso garante que agendamentos, chatbot WhatsApp, lembretes, comprovantes em PDF, fechamento de caixa e comissões operem sempre no Horário de Brasília, independentemente do país onde a VPS esteja hospedada.
+
 1. Copie o arquivo de exemplo de ambiente e preencha as credenciais seguras:
    ```sh
    cp .env.prod.example .env.prod
@@ -387,5 +392,6 @@ dotnet ef migrations add <NomeDaMigration> \
 - [ADR-0001: Isolamento de Tenant com EF Core](docs/architecture/ADR-0001-isolamento-tenant-ef-core.md)
 - [ADR-0004: Storage Privado e Fila Self-Hosted](docs/architecture/ADR-0004-storage-fila-self-hosted.md)
 - [ADR-0006: Organização das Minimal APIs Modulares](docs/architecture/ADR-0006-organizacao-minimal-apis-modulares.md)
+- [ADR-0032: Padronização do Fuso Horário Oficial do Brasil (America/Sao_Paulo)](docs/architecture/ADR-0032-padronizacao-fuso-horario-brasil.md)
 - [Modelo de Domínio e Dados da Fase 1.1](docs/living-docs/modelo-dominio-dados-1.1.md)
 - [Cadastro e Perfil do Estabelecimento — Fase 2.1](docs/living-docs/cadastro-perfil-estabelecimento-2.1.md)

@@ -30,7 +30,7 @@ public sealed class PlatformYardMetricsService(
         var averageDaily = Math.Round((decimal)totalAttended / days, 1);
 
         var dailyVolume = attendedOrders
-            .GroupBy(w => DateOnly.FromDateTime(w.PickedUpAtUtc!.Value.UtcDateTime))
+            .GroupBy(w => w.PickedUpAtUtc!.Value.ToBrazilDateOnly())
             .OrderBy(g => g.Key)
             .Select(g => new DailyVehicleVolumeDto(
                 Date: g.Key,

@@ -4,6 +4,7 @@ services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       ACCEPT_EULA: "Y"
       MSSQL_PID: Developer
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-LavawaySqlDev2026!}
@@ -25,6 +26,7 @@ services:
     image: cgr.dev/chainguard/minio:latest
     command: server /data --console-address ":9001"
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       MINIO_ROOT_USER: ${Storage__Minio__AccessKey:-lavaway}
       MINIO_ROOT_PASSWORD: ${Storage__Minio__SecretKey:-LavawayMinioDev2026}
     ports:
@@ -37,6 +39,7 @@ services:
   rabbitmq:
     image: rabbitmq:4-management
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-lavaway}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-LavawayRabbitDev2026}
     ports:
@@ -55,6 +58,8 @@ services:
   evolution-postgres:
     image: postgres:15-alpine
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
+      PGTZ: ${TZ:-America/Sao_Paulo}
       POSTGRES_DB: ${EVOLUTION_POSTGRES_DB:-evolution}
       POSTGRES_USER: ${EVOLUTION_POSTGRES_USER:-evolution}
       POSTGRES_PASSWORD: ${EVOLUTION_POSTGRES_PASSWORD:-LavawayEvolutionDbDev2026!}
@@ -70,6 +75,8 @@ services:
   evolution-redis:
     image: redis:7-alpine
     command: redis-server --port 6379 --appendonly yes
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
     volumes:
       - evolution-redis-data:/data
     healthcheck:
@@ -87,6 +94,7 @@ services:
       evolution-redis:
         condition: service_healthy
     environment:
+      TZ: ${TZ:-America/Sao_Paulo}
       SERVER_PORT: "8080"
       SERVER_URL: "http://localhost:8080"
       AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-CHANGE_ME}

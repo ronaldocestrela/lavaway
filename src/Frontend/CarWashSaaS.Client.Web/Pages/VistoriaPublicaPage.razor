@@ -67,7 +67,7 @@
                 {
                     <span class="badge-status-completed">✓ Check-in Realizado</span>
                 }
-                <span class="checkin-date">&#128197; @_data.CheckInAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                <span class="checkin-date">&#128197; @_data.CheckInAtUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")</span>
             </div>
 
             <div class="vehicle-details">
@@ -138,7 +138,7 @@
                             </div>
                             <div class="photo-footer">
                                 <span class="photo-category">@photo.CategoryLabel</span>
-                                <span class="photo-time">@photo.UploadedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                                <span class="photo-time">@photo.UploadedAtUtc.ToBrazilTime().ToString("HH:mm")</span>
                             </div>
                         </div>
                     }
@@ -254,7 +254,7 @@
                     <img src="@_modalPhotoUrl" alt="@_modalPhoto.CategoryLabel" class="lightbox-img" />
                 </div>
                 <footer class="lightbox-footer">
-                    <span>Capturada em @_modalPhoto.UploadedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    <span>Capturada em @_modalPhoto.UploadedAtUtc.ToBrazilTime().ToString("dd/MM/yyyy HH:mm")</span>
                     <a href="@_modalPhotoUrl" download target="_blank" class="btn-download-photo">Baixar Imagem Original</a>
                 </footer>
             </div>
