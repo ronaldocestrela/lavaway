@@ -736,7 +736,7 @@ public sealed class ChatbotConversationEngineTests
     }
 
     [Fact]
-    public async Task ProcessIncomingMessage_WhenCustomerHasSavedVehicles_ShouldOfferVehiclesList()
+    public async Task ProcessIncomingMessage_WhenCustomerHasSavedVehicles_ShouldOfferVehiclesListImmediatelyAfterServiceSelection()
     {
         var customerLookup = new FakeCustomerLookup();
         var vehicles = new List<VehicleSummaryDto>
@@ -749,17 +749,15 @@ public sealed class ChatbotConversationEngineTests
 
         await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "Oi");
         await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Agendar
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Serviço
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Porte
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Data
         _dispatcher.SentMessages.Clear();
 
-        // Escolhe Horário (1) -> Sistema deve listar os veículos salvos
+        // Escolhe Serviço (1) -> Sistema deve listar imediatamente os veículos salvos sem perguntar o porte antes
         var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1");
 
         Assert.True(result.IsSuccess);
         Assert.Single(_dispatcher.SentMessages);
         var reply = _dispatcher.SentMessages[0].Text;
+        Assert.Contains("Você selecionou: *Lavagem Completa*", reply);
         Assert.Contains("Encontramos o(s) seguinte(s) veículo(s) no seu cadastro", reply);
         Assert.Contains("1 - *ABC1D23*", reply);
         Assert.Contains("2 - *XYZ9876*", reply);
@@ -767,7 +765,7 @@ public sealed class ChatbotConversationEngineTests
     }
 
     [Fact]
-    public async Task ProcessIncomingMessage_WhenCustomerSelectsSavedVehicle_ShouldProceedDirectlyToConfirmation()
+    public async Task ProcessIncomingMessage_WhenCustomerSelectsSavedVehicle_ShouldUseVehicleSizeAndProceedThroughDateAndTimeToConfirmation()
     {
         var customerLookup = new FakeCustomerLookup();
         var vehicles = new List<VehicleSummaryDto>
@@ -780,14 +778,21 @@ public sealed class ChatbotConversationEngineTests
 
         await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "Oi");
         await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Agendar
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Serviço
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Porte
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Data
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Horário
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Serviço -> Lista veículos
         _dispatcher.SentMessages.Clear();
 
-        // Escolhe veículo 2 (XYZ9876)
-        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "2");
+        // Escolhe veículo 2 (XYZ9876 - Suv, R$ 80,00) -> Deve pular pergunta de porte e pedir a Data
+        var selectVehicleResult = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "2");
+        Assert.True(selectVehicleResult.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains($"Veículo: *XYZ9876* (SUV - Valor: *R$ {80m:N2}*)", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("Para qual data deseja agendar?", _dispatcher.SentMessages[0].Text);
+
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Data
+        _dispatcher.SentMessages.Clear();
+
+        // Escolhe Horário (1) -> Como placa já foi definida pelo veículo salvo, vai direto para confirmação
+        var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1");
 
         Assert.True(result.IsSuccess);
         Assert.Single(_dispatcher.SentMessages);
@@ -797,7 +802,7 @@ public sealed class ChatbotConversationEngineTests
     }
 
     [Fact]
-    public async Task ProcessIncomingMessage_WhenCustomerSelectsOtherVehicle_ShouldAskForNewPlate()
+    public async Task ProcessIncomingMessage_WhenCustomerSelectsOtherVehicle_ShouldAskForNewPlateAndThenVehicleSize()
     {
         var customerLookup = new FakeCustomerLookup();
         var vehicles = new List<VehicleSummaryDto>
@@ -809,18 +814,35 @@ public sealed class ChatbotConversationEngineTests
 
         await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "Oi");
         await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Agendar
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Serviço
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Porte
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Data
-        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Horário
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Serviço -> Lista veículos
         _dispatcher.SentMessages.Clear();
 
-        // Opção 2 = Outro veículo
+        // Opção 2 = Outro veículo -> Pede a placa do novo veículo
         var result = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "2");
 
         Assert.True(result.IsSuccess);
         Assert.Single(_dispatcher.SentMessages);
         Assert.Contains("Digite a *placa do veículo*", _dispatcher.SentMessages[0].Text);
+
+        _dispatcher.SentMessages.Clear();
+
+        // Informa a placa do novo veículo -> Pede o porte do novo veículo
+        var plateResult = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "NEW-9999");
+        Assert.True(plateResult.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("Placa *NEW9999* informada!", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("Qual é o porte do seu veículo?", _dispatcher.SentMessages[0].Text);
+
+        // Escolhe porte (2 = SUV), Data (1), Horário (1) -> Vai direto para confirmação com NEW9999
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "2"); // Porte SUV
+        await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Data
+        _dispatcher.SentMessages.Clear();
+
+        var slotResult = await sut.ProcessIncomingMessageAsync(_tenantId, _customerPhone, "Carlos", "1"); // Horário
+        Assert.True(slotResult.IsSuccess);
+        Assert.Single(_dispatcher.SentMessages);
+        Assert.Contains("confira os dados do seu agendamento", _dispatcher.SentMessages[0].Text);
+        Assert.Contains("NEW9999", _dispatcher.SentMessages[0].Text);
     }
 
     [Fact]
