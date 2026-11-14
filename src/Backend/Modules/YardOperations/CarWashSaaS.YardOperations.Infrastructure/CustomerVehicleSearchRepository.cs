@@ -52,7 +52,10 @@ public sealed class CustomerVehicleSearchRepository(YardOperationsDbContext dbCo
 
         if (normalizedPhone is not null)
         {
-            customersQuery = customersQuery.Where(customer => customer.NormalizedPhone == normalizedPhone);
+            var phoneCandidates = Customer.GetCandidateNormalizedPhones(normalizedPhone);
+            customersQuery = customersQuery.Where(customer =>
+                phoneCandidates.Contains(customer.NormalizedPhone) ||
+                phoneCandidates.Contains(customer.Phone));
         }
 
         if (normalizedPlate is not null)

@@ -36,6 +36,27 @@ public sealed class CustomerLookupServiceTests
         Assert.Equal(customer.Id, result.Value.CustomerId);
     }
 
+    [Theory]
+    [InlineData("11988887777", "1188887777")] // 9 digits in DB, query with 8 digits
+    [InlineData("1188887777", "5511988887777")] // 8 digits in DB, query with 55 + 9 digits
+    [InlineData("11988887777", "551188887777:1@s.whatsapp.net")] // WhatsApp device remoteJid
+    [InlineData("11988887777", "+55 (11) 98888-7777")] // Formatted phone
+    public async Task GetByPhoneAsync_ShouldFindCustomer_AcrossEquivalentPhoneFormats(string storedPhone, string queryPhone)
+    {
+        var tenantId = Guid.CreateVersion7();
+        var repo = new FakeCustomerVehicleEnvironment();
+        var customer = Customer.Create(tenantId, "Carlos Eduardo", storedPhone).Value!;
+        repo.Customers.Add(customer);
+        var sut = new CustomerLookupService(repo, repo, repo, repo);
+
+        var result = await sut.GetByPhoneAsync(tenantId, queryPhone);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal("Carlos Eduardo", result.Value!.CustomerName);
+        Assert.Equal(customer.Id, result.Value.CustomerId);
+    }
+
     [Fact]
     public async Task RegisterCustomerAsync_ShouldCreateCustomer_WhenNotExists()
     {
@@ -147,8 +168,9 @@ public sealed class CustomerLookupServiceTests
             string? query,
             CancellationToken ct = default)
         {
+            var phoneCandidates = normalizedPhone != null ? Customer.GetCandidateNormalizedPhones(normalizedPhone) : null;
             var matches = Customers
-                .Where(c => c.TenantId == tenantId && (normalizedPhone is null || c.NormalizedPhone == normalizedPhone))
+                .Where(c => c.TenantId == tenantId && (phoneCandidates == null || phoneCandidates.Contains(c.NormalizedPhone) || phoneCandidates.Contains(c.Phone)))
                 .Select(c =>
                 {
                     var vehicles = Vehicles.Where(v => v.TenantId == tenantId && v.CustomerId == c.Id)
@@ -165,8 +187,11 @@ public sealed class CustomerLookupServiceTests
         public Task<Customer?> GetByIdAsync(Guid tenantId, Guid customerId, CancellationToken ct = default) =>
             Task.FromResult(Customers.FirstOrDefault(c => c.TenantId == tenantId && c.Id == customerId));
 
-        public Task<Customer?> GetByNormalizedPhoneAsync(Guid tenantId, string normalizedPhone, CancellationToken ct = default) =>
-            Task.FromResult(Customers.FirstOrDefault(c => c.TenantId == tenantId && c.NormalizedPhone == normalizedPhone));
+        public Task<Customer?> GetByNormalizedPhoneAsync(Guid tenantId, string normalizedPhone, CancellationToken ct = default)
+        {
+            var phoneCandidates = Customer.GetCandidateNormalizedPhones(normalizedPhone);
+            return Task.FromResult(Customers.FirstOrDefault(c => c.TenantId == tenantId && (phoneCandidates.Contains(c.NormalizedPhone) || phoneCandidates.Contains(c.Phone))));
+        }
 
         public Task AddAsync(Customer customer, CancellationToken ct = default)
         {

@@ -84,7 +84,8 @@ public sealed record CreateBookingFromChatbotRequest(
     string VehicleSize,
     Guid ServiceId,
     DateOnly ScheduledDate,
-    TimeOnly ScheduledTime);
+    TimeOnly ScheduledTime,
+    Guid? CustomerId = null);
 
 public sealed record BookingConfirmationDto(
     Guid BookingId,
