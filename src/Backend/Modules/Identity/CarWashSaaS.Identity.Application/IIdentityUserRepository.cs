@@ -10,4 +10,6 @@ public interface IIdentityUserRepository
     Task<bool> CheckPasswordAsync(Guid userId, string password, CancellationToken ct = default);
     Task<Result<IdentityUserSnapshot>> CreateUserAsync(Guid tenantId, string email, string password, ShopRole role, CancellationToken ct = default);
     Task<IReadOnlyCollection<IdentityUserSnapshot>> ListByTenantAsync(Guid tenantId, CancellationToken ct = default);
+    Task<Result> SetActiveStatusAsync(Guid userId, bool isActive, CancellationToken ct = default);
+    Task<Result> UpdateUserAsync(Guid userId, string email, string? newPassword, ShopRole? role, bool isActive, CancellationToken ct = default);
 }

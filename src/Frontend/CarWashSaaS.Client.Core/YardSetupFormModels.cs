@@ -39,9 +39,27 @@ public sealed class TeamMemberFormModel
     public string? Email { get; set; }
 
     public bool IsActive { get; set; } = true;
+    public Guid? UserId { get; set; }
+    public bool EnableSystemAccess { get; set; }
+    public string SystemRole { get; set; } = "Operator";
+    public string? Password { get; set; }
+    public bool HasExistingUser => UserId.HasValue;
 
-    public CreateTeamMemberRequest ToCreateRequest() => new(FullName.Trim(), Role.Trim(), string.IsNullOrWhiteSpace(Email) ? null : Email.Trim());
-    public UpdateTeamMemberRequest ToUpdateRequest() => new(FullName.Trim(), Role.Trim(), string.IsNullOrWhiteSpace(Email) ? null : Email.Trim());
+    public CreateTeamMemberRequest ToCreateRequest() => new(
+        FullName.Trim(),
+        Role.Trim(),
+        string.IsNullOrWhiteSpace(Email) ? null : Email.Trim(),
+        EnableSystemAccess,
+        EnableSystemAccess ? SystemRole : null,
+        EnableSystemAccess ? Password : null);
+
+    public UpdateTeamMemberRequest ToUpdateRequest() => new(
+        FullName.Trim(),
+        Role.Trim(),
+        string.IsNullOrWhiteSpace(Email) ? null : Email.Trim(),
+        EnableSystemAccess,
+        EnableSystemAccess ? SystemRole : null,
+        EnableSystemAccess && !string.IsNullOrWhiteSpace(Password) ? Password : null);
 
     public void LoadFrom(TeamMemberDto dto)
     {
@@ -50,6 +68,10 @@ public sealed class TeamMemberFormModel
         Role = dto.Role;
         Email = dto.Email;
         IsActive = dto.IsActive;
+        UserId = dto.UserId;
+        EnableSystemAccess = dto.HasSystemAccess;
+        SystemRole = dto.SystemRole ?? "Operator";
+        Password = null;
     }
 
     public void Reset()
@@ -59,6 +81,10 @@ public sealed class TeamMemberFormModel
         Role = "Lavador";
         Email = null;
         IsActive = true;
+        UserId = null;
+        EnableSystemAccess = false;
+        SystemRole = "Operator";
+        Password = null;
     }
 }
 

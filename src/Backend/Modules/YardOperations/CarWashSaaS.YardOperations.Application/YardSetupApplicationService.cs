@@ -7,7 +7,8 @@ public sealed class YardSetupApplicationService(
     IYardCapacityRepository yardCapacityRepository,
     ITeamMemberRepository teamMemberRepository,
     ICommissionRuleRepository commissionRuleRepository,
-    ITenantPlanQuotaLookup? quotaLookup = null)
+    ITenantPlanQuotaLookup? quotaLookup = null,
+    IUserAccountProvisioner? userProvisioner = null)
 {
     private async Task<Result> EnsureCommissionsFeatureAsync(Guid tenantId, CancellationToken ct)
     {
@@ -168,7 +169,49 @@ public sealed class YardSetupApplicationService(
             }
         }
 
-        var result = TeamMember.Create(tenantId, command.FullName, command.Role, command.Email);
+        Guid? provisionedUserId = null;
+        string? systemRole = null;
+
+        if (command.EnableSystemAccess)
+        {
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                return Result<TeamMember>.Failure(new Error("team_member.email.required_for_system_access", "E-mail é obrigatório para liberar acesso ao sistema.", ErrorType.Validation));
+            }
+
+            if (string.IsNullOrWhiteSpace(command.Password) || command.Password.Length < 6)
+            {
+                return Result<TeamMember>.Failure(new Error("team_member.password.invalid", "A senha deve conter pelo menos 6 caracteres.", ErrorType.Validation));
+            }
+
+            systemRole = string.IsNullOrWhiteSpace(command.SystemRole) ? "Operator" : command.SystemRole.Trim();
+
+            if (userProvisioner is not null)
+            {
+                var provisionResult = await userProvisioner.ProvisionUserAsync(
+                    tenantId,
+                    normalizedEmail,
+                    command.Password,
+                    systemRole,
+                    ct);
+
+                if (!provisionResult.IsSuccess)
+                {
+                    return Result<TeamMember>.Failure(provisionResult.Error!);
+                }
+
+                provisionedUserId = provisionResult.Value;
+            }
+        }
+
+        var result = TeamMember.Create(
+            tenantId,
+            command.FullName,
+            command.Role,
+            normalizedEmail,
+            provisionedUserId,
+            systemRole);
+
         if (!result.IsSuccess)
         {
             return result;
@@ -201,7 +244,75 @@ public sealed class YardSetupApplicationService(
             }
         }
 
-        var updateResult = member.Update(command.FullName, command.Role, command.Email);
+        if (command.EnableSystemAccess)
+        {
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                return Result<TeamMember>.Failure(new Error("team_member.email.required_for_system_access", "E-mail é obrigatório para liberar acesso ao sistema.", ErrorType.Validation));
+            }
+
+            var systemRole = string.IsNullOrWhiteSpace(command.SystemRole) ? (member.SystemRole ?? "Operator") : command.SystemRole.Trim();
+
+            if (member.UserId.HasValue)
+            {
+                // Já possui usuário, atualiza se necessário
+                if (userProvisioner is not null)
+                {
+                    var updateAccessResult = await userProvisioner.UpdateUserAccessAsync(
+                        tenantId,
+                        member.UserId.Value,
+                        normalizedEmail,
+                        command.Password,
+                        systemRole,
+                        member.IsActive,
+                        ct);
+
+                    if (!updateAccessResult.IsSuccess)
+                    {
+                        return Result<TeamMember>.Failure(updateAccessResult.Error!);
+                    }
+                }
+
+                member.LinkUserAccount(member.UserId.Value, systemRole);
+            }
+            else
+            {
+                // Concedendo acesso retroativo
+                if (string.IsNullOrWhiteSpace(command.Password) || command.Password.Length < 6)
+                {
+                    return Result<TeamMember>.Failure(new Error("team_member.password.invalid", "A senha deve conter pelo menos 6 caracteres.", ErrorType.Validation));
+                }
+
+                if (userProvisioner is not null)
+                {
+                    var provisionResult = await userProvisioner.ProvisionUserAsync(
+                        tenantId,
+                        normalizedEmail,
+                        command.Password,
+                        systemRole,
+                        ct);
+
+                    if (!provisionResult.IsSuccess)
+                    {
+                        return Result<TeamMember>.Failure(provisionResult.Error!);
+                    }
+
+                    member.LinkUserAccount(provisionResult.Value, systemRole);
+                }
+            }
+        }
+        else if (member.UserId.HasValue)
+        {
+            // Revogando acesso ao sistema
+            if (userProvisioner is not null)
+            {
+                await userProvisioner.SetUserActiveStatusAsync(tenantId, member.UserId.Value, false, ct);
+            }
+
+            member.UnlinkUserAccount();
+        }
+
+        var updateResult = member.Update(command.FullName, command.Role, normalizedEmail);
         if (!updateResult.IsSuccess)
         {
             return updateResult;
@@ -244,6 +355,12 @@ public sealed class YardSetupApplicationService(
             member.Activate();
         }
 
+        // Sincroniza o status de acesso com o Identity
+        if (member.UserId.HasValue && userProvisioner is not null)
+        {
+            await userProvisioner.SetUserActiveStatusAsync(tenantId, member.UserId.Value, member.IsActive, ct);
+        }
+
         await teamMemberRepository.UpdateAsync(member, ct);
         return Result<TeamMember>.Success(member);
     }
@@ -255,14 +372,36 @@ public sealed class YardSetupApplicationService(
             return Result<IReadOnlyCollection<CommissionRule>>.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
-        var featureAccess = await EnsureCommissionsFeatureAsync(tenantId, ct);
-        if (!featureAccess.IsSuccess)
+        var check = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!check.IsSuccess)
         {
-            return Result<IReadOnlyCollection<CommissionRule>>.Failure(featureAccess.Error!);
+            return Result<IReadOnlyCollection<CommissionRule>>.Failure(check.Error!);
         }
 
         var rules = await commissionRuleRepository.ListByTenantAsync(tenantId, ct);
         return Result<IReadOnlyCollection<CommissionRule>>.Success(rules);
+    }
+
+    public async Task<Result<CommissionRule>> GetCommissionRuleAsync(Guid tenantId, Guid id, CancellationToken ct = default)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            return Result<CommissionRule>.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
+        }
+
+        var check = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!check.IsSuccess)
+        {
+            return Result<CommissionRule>.Failure(check.Error!);
+        }
+
+        var rule = await commissionRuleRepository.GetByIdAsync(tenantId, id, ct);
+        if (rule is null)
+        {
+            return Result<CommissionRule>.Failure(new Error("commission_rule.not_found", "Commission rule was not found.", ErrorType.NotFound));
+        }
+
+        return Result<CommissionRule>.Success(rule);
     }
 
     public async Task<Result<CommissionRule>> CreateCommissionRuleAsync(Guid tenantId, CreateCommissionRuleCommand command, CancellationToken ct = default)
@@ -272,16 +411,16 @@ public sealed class YardSetupApplicationService(
             return Result<CommissionRule>.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
-        var featureAccess = await EnsureCommissionsFeatureAsync(tenantId, ct);
-        if (!featureAccess.IsSuccess)
+        var check = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!check.IsSuccess)
         {
-            return Result<CommissionRule>.Failure(featureAccess.Error!);
+            return Result<CommissionRule>.Failure(check.Error!);
         }
 
-        var existing = await commissionRuleRepository.GetByServiceAndRoleAsync(tenantId, command.ServiceName.Trim(), command.RoleName.Trim(), ct);
+        var existing = await commissionRuleRepository.GetByServiceAndRoleAsync(tenantId, command.ServiceName, command.RoleName, ct);
         if (existing is not null)
         {
-            return Result<CommissionRule>.Failure(new Error("commission_rule.duplicate", "A commission rule already exists for this service and role in this tenant.", ErrorType.Conflict));
+            return Result<CommissionRule>.Failure(new Error("commission_rule.duplicate", "A commission rule for this service and role already exists.", ErrorType.Conflict));
         }
 
         var result = CommissionRule.Create(tenantId, command.ServiceName, command.RoleName, command.Percentage);
@@ -301,10 +440,10 @@ public sealed class YardSetupApplicationService(
             return Result<CommissionRule>.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
-        var featureAccess = await EnsureCommissionsFeatureAsync(tenantId, ct);
-        if (!featureAccess.IsSuccess)
+        var check = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!check.IsSuccess)
         {
-            return Result<CommissionRule>.Failure(featureAccess.Error!);
+            return Result<CommissionRule>.Failure(check.Error!);
         }
 
         var rule = await commissionRuleRepository.GetByIdAsync(tenantId, id, ct);
@@ -330,10 +469,10 @@ public sealed class YardSetupApplicationService(
             return Result.Failure(new Error("commission_rule.tenant.required", "Tenant is required.", ErrorType.Validation));
         }
 
-        var featureAccess = await EnsureCommissionsFeatureAsync(tenantId, ct);
-        if (!featureAccess.IsSuccess)
+        var check = await EnsureCommissionsFeatureAsync(tenantId, ct);
+        if (!check.IsSuccess)
         {
-            return Result.Failure(featureAccess.Error!);
+            return check;
         }
 
         var rule = await commissionRuleRepository.GetByIdAsync(tenantId, id, ct);

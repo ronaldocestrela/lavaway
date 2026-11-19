@@ -233,6 +233,12 @@ public sealed class TenantOnboardingServiceTests
 
         public Task<IReadOnlyCollection<IdentityUserSnapshot>> ListByTenantAsync(Guid tenantId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyCollection<IdentityUserSnapshot>>(Users.Where(u => u.TenantId == tenantId).ToList());
+
+        public Task<Result> SetActiveStatusAsync(Guid userId, bool isActive, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+
+        public Task<Result> UpdateUserAsync(Guid userId, string email, string? newPassword, ShopRole? role, bool isActive, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
     }
 
     private sealed class FakeTenantSubscriptionRepository : ITenantSaasSubscriptionRepository

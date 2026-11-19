@@ -16,8 +16,14 @@ public sealed class TeamMemberConfiguration : IEntityTypeConfiguration<TeamMembe
         builder.Property(member => member.Role).HasMaxLength(80).IsRequired();
         builder.Property(member => member.Email).HasMaxLength(200);
         builder.Property(member => member.IsActive).IsRequired();
+        builder.Property(member => member.UserId);
+        builder.Property(member => member.SystemRole).HasMaxLength(50);
+
         builder.HasIndex(member => new { member.TenantId, member.Email })
             .IsUnique()
             .HasFilter("[Email] IS NOT NULL AND [Email] <> ''");
+
+        builder.HasIndex(member => new { member.TenantId, member.UserId })
+            .HasFilter("[UserId] IS NOT NULL");
     }
 }

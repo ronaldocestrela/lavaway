@@ -112,6 +112,106 @@ public sealed class YardCapacityAndTeamComponentTests : BunitContext
     }
 
     [Fact]
+    public void TeamMemberModal_ShouldDisplayAccessFields_WhenEnableSystemAccessIsChecked()
+    {
+        var model = new TeamMemberFormModel
+        {
+            FullName = "Carlos Operador",
+            Role = "Lavador",
+            Email = "carlos@lava.com",
+            EnableSystemAccess = true
+        };
+
+        var cut = Render<TeamMemberModal>(parameters => parameters
+            .Add(p => p.IsVisible, true)
+            .Add(p => p.Model, model));
+
+        Assert.NotNull(cut.Find("#member-enable-access"));
+        Assert.NotNull(cut.Find("#member-password"));
+        Assert.Contains("Operador", cut.Markup);
+        Assert.Contains("Recepcionista", cut.Markup);
+        Assert.Contains("Administrador", cut.Markup);
+    }
+
+    [Fact]
+    public void TeamMemberModal_ShouldPreventSave_WhenAccessEnabledWithoutEmail()
+    {
+        var model = new TeamMemberFormModel
+        {
+            FullName = "Carlos Operador",
+            Role = "Lavador",
+            Email = null,
+            EnableSystemAccess = true,
+            Password = "Password123!"
+        };
+
+        TeamMemberFormModel? saved = null;
+
+        var cut = Render<TeamMemberModal>(parameters => parameters
+            .Add(p => p.IsVisible, true)
+            .Add(p => p.Model, model)
+            .Add(p => p.OnSave, m => saved = m));
+
+        cut.Find("#btn-save-member").Click();
+
+        Assert.Null(saved);
+        Assert.Contains("É obrigatório informar um e-mail válido", cut.Markup);
+    }
+
+    [Fact]
+    public void TeamMemberModal_ShouldPreventSave_WhenAccessEnabledWithShortPassword()
+    {
+        var model = new TeamMemberFormModel
+        {
+            FullName = "Carlos Operador",
+            Role = "Lavador",
+            Email = "carlos@lava.com",
+            EnableSystemAccess = true,
+            Password = "123"
+        };
+
+        TeamMemberFormModel? saved = null;
+
+        var cut = Render<TeamMemberModal>(parameters => parameters
+            .Add(p => p.IsVisible, true)
+            .Add(p => p.Model, model)
+            .Add(p => p.OnSave, m => saved = m));
+
+        cut.Find("#btn-save-member").Click();
+
+        Assert.Null(saved);
+        Assert.Contains("pelo menos 6 caracteres", cut.Markup);
+    }
+
+    [Fact]
+    public void TeamMemberModal_ShouldTriggerOnSave_WithSystemAccessCredentials_WhenValid()
+    {
+        var model = new TeamMemberFormModel
+        {
+            FullName = "Carlos Operador",
+            Role = "Lavador",
+            Email = "carlos@lava.com",
+            EnableSystemAccess = true,
+            SystemRole = "Operator",
+            Password = "Password123!"
+        };
+
+        TeamMemberFormModel? saved = null;
+
+        var cut = Render<TeamMemberModal>(parameters => parameters
+            .Add(p => p.IsVisible, true)
+            .Add(p => p.Model, model)
+            .Add(p => p.OnSave, m => saved = m));
+
+        cut.Find("#btn-save-member").Click();
+
+        Assert.NotNull(saved);
+        Assert.True(saved.EnableSystemAccess);
+        Assert.Equal("Operator", saved.SystemRole);
+        Assert.Equal("Password123!", saved.Password);
+    }
+
+    [Fact]
     public void CommissionRuleModal_ShouldRenderFields_AndTriggerOnSave()
     {
         var model = new CommissionRuleFormModel

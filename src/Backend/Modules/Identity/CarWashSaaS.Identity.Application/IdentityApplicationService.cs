@@ -98,6 +98,10 @@ public sealed class IdentityApplicationService(
             return Result<AuthTokenResponse>.Failure(new Error("auth.invalid_credentials", "Invalid email or password.", ErrorType.Unauthorized));
         }
 
+        if (!user.IsActive)
+        {
+            return Result<AuthTokenResponse>.Failure(new Error("auth.user.inactive", "Este usuário está desativado. Entre em contato com o administrador.", ErrorType.Unauthorized));
+        }
 
         var passwordValid = await userRepository.CheckPasswordAsync(user.Id, request.Password, ct);
         if (!passwordValid)

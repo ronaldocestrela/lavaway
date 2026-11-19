@@ -8,13 +8,22 @@ public sealed class TeamMember : IMustHaveTenant
     {
     }
 
-    private TeamMember(Guid id, Guid tenantId, string fullName, string role, string? email)
+    private TeamMember(
+        Guid id,
+        Guid tenantId,
+        string fullName,
+        string role,
+        string? email,
+        Guid? userId,
+        string? systemRole)
     {
         Id = id;
         TenantId = tenantId;
         FullName = fullName;
         Role = role;
         Email = email;
+        UserId = userId;
+        SystemRole = systemRole;
         IsActive = true;
     }
 
@@ -30,8 +39,17 @@ public sealed class TeamMember : IMustHaveTenant
     public string Role { get; private set; } = string.Empty;
     public string? Email { get; private set; }
     public bool IsActive { get; private set; }
+    public Guid? UserId { get; private set; }
+    public string? SystemRole { get; private set; }
+    public bool HasSystemAccess => UserId.HasValue;
 
-    public static Result<TeamMember> Create(Guid tenantId, string fullName, string role, string? email)
+    public static Result<TeamMember> Create(
+        Guid tenantId,
+        string fullName,
+        string role,
+        string? email,
+        Guid? userId = null,
+        string? systemRole = null)
     {
         if (tenantId == Guid.Empty)
         {
@@ -61,7 +79,16 @@ public sealed class TeamMember : IMustHaveTenant
             return Result<TeamMember>.Failure(new Error("team_member.email.invalid", "A valid email is required.", ErrorType.Validation));
         }
 
-        return Result<TeamMember>.Success(new TeamMember(Guid.CreateVersion7(), tenantId, normalizedName, normalizedRole, normalizedEmail));
+        var normalizedSystemRole = string.IsNullOrWhiteSpace(systemRole) ? null : systemRole.Trim();
+
+        return Result<TeamMember>.Success(new TeamMember(
+            Guid.CreateVersion7(),
+            tenantId,
+            normalizedName,
+            normalizedRole,
+            normalizedEmail,
+            userId,
+            normalizedSystemRole));
     }
 
     public Result<TeamMember> Update(string fullName, string role, string? email)
@@ -93,6 +120,27 @@ public sealed class TeamMember : IMustHaveTenant
         Role = normalizedRole;
         Email = normalizedEmail;
 
+        return Result<TeamMember>.Success(this);
+    }
+
+    public Result<TeamMember> LinkUserAccount(Guid userId, string systemRole)
+    {
+        if (userId == Guid.Empty)
+        {
+            return Result<TeamMember>.Failure(new Error("team_member.user_id.invalid", "A valid user ID is required.", ErrorType.Validation));
+        }
+
+        var normalizedRole = string.IsNullOrWhiteSpace(systemRole) ? "Operator" : systemRole.Trim();
+        UserId = userId;
+        SystemRole = normalizedRole;
+
+        return Result<TeamMember>.Success(this);
+    }
+
+    public Result<TeamMember> UnlinkUserAccount()
+    {
+        UserId = null;
+        SystemRole = null;
         return Result<TeamMember>.Success(this);
     }
 

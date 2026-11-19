@@ -75,11 +75,15 @@ Todas as entidades implementam `IMustHaveTenant` e utilizam identificadores `Gui
   * `FullName` não nulo, entre 2 e 200 caracteres (`team_member.name.invalid`).
   * `Role` não nulo, entre 2 e 80 caracteres (`team_member.role.invalid`).
   * `Email` opcional, se preenchido deve conter `@` e até 200 caracteres (`team_member.email.invalid`).
+  * E-mail obrigatório quando o acesso ao sistema for liberado (`team_member.email.required_for_system_access`).
   * E-mail único por tenant (`team_member.email.duplicate`).
+  * Senha inicial com no mínimo 6 caracteres (`team_member.password.invalid`).
+  * Identificador desacoplado de usuário `UserId` (Guid?) e perfil de acesso `SystemRole` (string?).
 * **Operações:**
-  * `Create(tenantId, fullName, role, email)`
+  * `Create(tenantId, fullName, role, email, userId, systemRole)`
   * `Update(fullName, role, email)`
-  * `Deactivate()` e `Activate()` (controle de status ativo/inativo).
+  * `LinkUserAccount(userId, systemRole)` e `UnlinkUserAccount()`
+  * `Deactivate()` e `Activate()` (sincroniza bloqueio de login no Identity).
 
 ### 3.3 `CommissionRule`
 * **Invariantes:**
@@ -159,10 +163,18 @@ Funcionalidade: Gestão de Colaboradores e Comissões
   Quero cadastrar minha equipe e atribuir regras de comissão
   Para apurar a remuneração proporcional por serviço realizado
 
+  Cenário: Cadastrar colaborador com acesso liberado ao sistema
+    Dado que estou autenticado como administrador do estabelecimento
+    Quando eu cadastrar o colaborador "Carlos Alberto" com cargo "Lavador", email "carlos@lava.com" e liberar acesso com perfil "Operator" e senha "Carlos123!"
+    Então a conta de usuário é provisionada com sucesso no Identity
+    E o colaborador é salvo vinculado ao UserId correspondente
+    E o colaborador pode efetuar login no sistema com suas credenciais
+
   Cenário: Cadastrar e desativar colaborador
     Dado que cadastrei o colaborador "Carlos Alberto" com cargo "Lavador"
     Quando eu alternar o status do colaborador para inativo
     Então o colaborador permanece registrado no histórico mas com IsActive falso
+    E o acesso ao sistema deste colaborador é automaticamente suspenso/bloqueado
 
   Cenário: Impedir regras de comissão duplicadas para o mesmo cargo e serviço
     Dado que já existe uma regra de 10% para "Lavagem Completa" e cargo "Lavador"
@@ -176,9 +188,9 @@ Funcionalidade: Gestão de Colaboradores e Comissões
 
 A interface foi implementada com componentes modulares e estilização CSS isolada:
 1. **`YardCapacityCard.razor`**: Card visual que exibe métricas de boxes, grade visual de boxes interativa e botão de alteração inline.
-2. **`TeamMemberModal.razor`**: Modal com chips de seleção rápida de funções automotivas (Lavador, Secador, Polidor, Detailer, Encarregado, Gerente) e validação em tempo real.
+2. **`TeamMemberModal.razor`**: Modal com chips de seleção rápida de funções automotivas (Lavador, Secador, Polidor, Detailer, Encarregado, Gerente), seção retrátil de "Liberar acesso ao sistema" com seleção de papéis (`Operator`, `Receptionist`, `Administrator`), gerador de senha segura, alternador de visibilidade de senha e validação em tempo real.
 3. **`CommissionRuleModal.razor`**: Modal com integração direta ao catálogo de serviços existentes e presets rápidos de comissão (5%, 10%, 15%, 20%, 25%, 30%).
-4. **`CapacityAndTeamPage.razor` (`/settings/team`)**: Página administrativa centralizando a gestão de boxes, tabela responsiva de equipe com avatar e toggle de status, e matriz de comissões com exclusão e edição.
+4. **`CapacityAndTeamPage.razor` (`/settings/team`)**: Página administrativa centralizando a gestão de boxes, tabela responsiva de equipe com avatar, indicador de acesso ao sistema (badges coloridos por perfil), toggle de status e matriz de comissões com exclusão e edição.
 5. **`NavMenu.razor`**: Link de navegação rápida `04 Capacidade & Equipe` protegido por `AuthorizeView Roles="Administrator"`.
 
 ---

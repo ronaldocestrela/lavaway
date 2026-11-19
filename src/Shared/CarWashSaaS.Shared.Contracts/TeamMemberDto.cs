@@ -5,4 +5,7 @@ public sealed record TeamMemberDto(
     string FullName,
     string Role,
     string Email,
-    bool IsActive);
+    bool IsActive,
+    Guid? UserId = null,
+    bool HasSystemAccess = false,
+    string? SystemRole = null);

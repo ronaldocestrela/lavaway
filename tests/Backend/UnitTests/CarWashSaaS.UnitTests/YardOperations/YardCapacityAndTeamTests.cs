@@ -158,6 +158,64 @@ public sealed class YardCapacityAndTeamTests
     }
 
     [Fact]
+    public void TeamMember_Create_Should_Support_User_Account_Link()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var result = TeamMember.Create(tenantId, "Lucas Operador", "Lavador", "lucas@lava.com", userId, "Operator");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(userId, result.Value!.UserId);
+        Assert.Equal("Operator", result.Value!.SystemRole);
+        Assert.True(result.Value!.HasSystemAccess);
+    }
+
+    [Fact]
+    public void TeamMember_LinkUserAccount_Should_Set_UserId_And_SystemRole()
+    {
+        var tenantId = Guid.NewGuid();
+        var member = TeamMember.Create(tenantId, "Ana Recepcionista", "Recepcionista", "ana@lava.com").Value!;
+        Assert.False(member.HasSystemAccess);
+
+        var userId = Guid.NewGuid();
+        var linkResult = member.LinkUserAccount(userId, "Receptionist");
+
+        Assert.True(linkResult.IsSuccess);
+        Assert.Equal(userId, member.UserId);
+        Assert.Equal("Receptionist", member.SystemRole);
+        Assert.True(member.HasSystemAccess);
+    }
+
+    [Fact]
+    public void TeamMember_UnlinkUserAccount_Should_Clear_System_Access()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var member = TeamMember.Create(tenantId, "Lucas", "Polidor", "lucas@lava.com", userId, "Operator").Value!;
+        Assert.True(member.HasSystemAccess);
+
+        var unlinkResult = member.UnlinkUserAccount();
+
+        Assert.True(unlinkResult.IsSuccess);
+        Assert.Null(member.UserId);
+        Assert.Null(member.SystemRole);
+        Assert.False(member.HasSystemAccess);
+    }
+
+    [Fact]
+    public void TeamMember_LinkUserAccount_Should_Reject_Empty_UserId()
+    {
+        var tenantId = Guid.NewGuid();
+        var member = TeamMember.Create(tenantId, "Lucas", "Polidor", "lucas@lava.com").Value!;
+
+        var linkResult = member.LinkUserAccount(Guid.Empty, "Operator");
+
+        Assert.False(linkResult.IsSuccess);
+        Assert.Equal("team_member.user_id.invalid", linkResult.Error!.Code);
+    }
+
+    [Fact]
     public void CommissionRule_Create_Should_Succeed_With_Valid_Data()
     {
         var tenantId = Guid.NewGuid();

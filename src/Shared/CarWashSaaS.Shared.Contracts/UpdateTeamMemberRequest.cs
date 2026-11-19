@@ -3,4 +3,7 @@ namespace CarWashSaaS.Shared.Contracts;
 public sealed record UpdateTeamMemberRequest(
     string FullName,
     string Role,
-    string? Email);
+    string? Email,
+    bool EnableSystemAccess = false,
+    string? SystemRole = null,
+    string? Password = null);

@@ -26,8 +26,9 @@ public sealed class IdentityUserRepository(
 
         var roles = await userManager.GetRolesAsync(user);
         var role = ParseRole(roles);
+        var isActive = user.LockoutEnd is null || user.LockoutEnd <= DateTimeOffset.UtcNow;
 
-        return new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role);
+        return new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive);
     }
 
     public async Task<IdentityUserSnapshot?> FindByIdAsync(Guid userId, CancellationToken ct = default)
@@ -43,8 +44,9 @@ public sealed class IdentityUserRepository(
 
         var roles = await userManager.GetRolesAsync(user);
         var role = ParseRole(roles);
+        var isActive = user.LockoutEnd is null || user.LockoutEnd <= DateTimeOffset.UtcNow;
 
-        return new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role);
+        return new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive);
     }
 
     public async Task<bool> CheckPasswordAsync(Guid userId, string password, CancellationToken ct = default)
@@ -94,7 +96,8 @@ public sealed class IdentityUserRepository(
             NormalizedUserName = normalizedEmail,
             Email = email,
             NormalizedEmail = normalizedEmail,
-            EmailConfirmed = true
+            EmailConfirmed = true,
+            LockoutEnabled = true
         };
 
         var result = await userManager.CreateAsync(user, password);
@@ -117,7 +120,7 @@ public sealed class IdentityUserRepository(
                 ErrorType.Validation));
         }
 
-        return Result<IdentityUserSnapshot>.Success(new IdentityUserSnapshot(user.Id, user.TenantId, user.Email, role));
+        return Result<IdentityUserSnapshot>.Success(new IdentityUserSnapshot(user.Id, user.TenantId, user.Email, role, true));
     }
 
     public async Task<IReadOnlyCollection<IdentityUserSnapshot>> ListByTenantAsync(Guid tenantId, CancellationToken ct = default)
@@ -131,10 +134,95 @@ public sealed class IdentityUserRepository(
         {
             var roles = await userManager.GetRolesAsync(user);
             var role = ParseRole(roles);
-            list.Add(new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role));
+            var isActive = user.LockoutEnd is null || user.LockoutEnd <= DateTimeOffset.UtcNow;
+            list.Add(new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive));
         }
 
         return list;
+    }
+
+    public async Task<Result> SetActiveStatusAsync(Guid userId, bool isActive, CancellationToken ct = default)
+    {
+        var user = await context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is null)
+        {
+            return Result.Failure(new Error("user.not_found", "User was not found.", ErrorType.NotFound));
+        }
+
+        user.LockoutEnabled = true;
+        user.LockoutEnd = isActive ? null : DateTimeOffset.MaxValue;
+        await userManager.UpdateAsync(user);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> UpdateUserAsync(
+        Guid userId,
+        string email,
+        string? newPassword,
+        ShopRole? role,
+        bool isActive,
+        CancellationToken ct = default)
+    {
+        var user = await context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is null)
+        {
+            return Result.Failure(new Error("user.not_found", "User was not found.", ErrorType.NotFound));
+        }
+
+        var normalizedEmail = email.ToUpperInvariant();
+        if (user.NormalizedEmail != normalizedEmail)
+        {
+            var emailExists = await context.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.NormalizedEmail == normalizedEmail && u.Id != userId, ct);
+
+            if (emailExists)
+            {
+                return Result.Failure(new Error("user.email.duplicate", "A user with this email already exists.", ErrorType.Conflict));
+            }
+
+            user.Email = email;
+            user.NormalizedEmail = normalizedEmail;
+            user.UserName = email;
+            user.NormalizedUserName = normalizedEmail;
+        }
+
+        user.LockoutEnabled = true;
+        user.LockoutEnd = isActive ? null : DateTimeOffset.MaxValue;
+
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            var first = updateResult.Errors.FirstOrDefault();
+            return Result.Failure(new Error(first?.Code ?? "user.update.failed", first?.Description ?? "Failed to update user.", ErrorType.Validation));
+        }
+
+        if (!string.IsNullOrWhiteSpace(newPassword))
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+            var resetResult = await userManager.ResetPasswordAsync(user, token, newPassword);
+            if (!resetResult.Succeeded)
+            {
+                var first = resetResult.Errors.FirstOrDefault();
+                return Result.Failure(new Error(first?.Code ?? "user.password.failed", first?.Description ?? "Failed to update password.", ErrorType.Validation));
+            }
+        }
+
+        if (role.HasValue)
+        {
+            var currentRoles = await userManager.GetRolesAsync(user);
+            await userManager.RemoveFromRolesAsync(user, currentRoles);
+            await userManager.AddToRoleAsync(user, role.Value.ToString());
+        }
+
+        return Result.Success();
     }
 
     private static ShopRole ParseRole(IList<string> roles)

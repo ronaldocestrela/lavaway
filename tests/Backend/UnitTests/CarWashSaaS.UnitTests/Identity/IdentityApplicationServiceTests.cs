@@ -255,6 +255,32 @@ public sealed class IdentityApplicationServiceTests
             var list = Users.Where(u => u.TenantId == tenantId).ToArray();
             return Task.FromResult<IReadOnlyCollection<IdentityUserSnapshot>>(list);
         }
+
+        public Task<Result> SetActiveStatusAsync(Guid userId, bool isActive, CancellationToken ct = default)
+        {
+            var idx = Users.FindIndex(u => u.Id == userId);
+            if (idx >= 0)
+            {
+                var existing = Users[idx];
+                Users[idx] = new IdentityUserSnapshot(existing.Id, existing.TenantId, existing.Email, existing.Role, isActive);
+            }
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> UpdateUserAsync(Guid userId, string email, string? newPassword, ShopRole? role, bool isActive, CancellationToken ct = default)
+        {
+            var idx = Users.FindIndex(u => u.Id == userId);
+            if (idx >= 0)
+            {
+                var existing = Users[idx];
+                Users[idx] = new IdentityUserSnapshot(existing.Id, existing.TenantId, email, role ?? existing.Role, isActive);
+                if (!string.IsNullOrWhiteSpace(newPassword))
+                {
+                    Passwords[userId] = newPassword;
+                }
+            }
+            return Task.FromResult(Result.Success());
+        }
     }
 
     private sealed class FakeRefreshTokenRepository : IRefreshTokenRepository

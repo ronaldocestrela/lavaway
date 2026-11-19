@@ -14,11 +14,11 @@
             </header>
 
             <div class="modal-body">
-                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                @if (!string.IsNullOrWhiteSpace(DisplayErrorMessage))
                 {
                     <div class="feedback feedback-error" role="alert">
                         <span class="feedback-symbol">!</span>
-                        <div class="feedback-text">@ErrorMessage</div>
+                        <div class="feedback-text">@DisplayErrorMessage</div>
                     </div>
                 }
 
@@ -33,14 +33,14 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Função / Cargo *</label>
+                    <label class="form-label">Função / Cargo no Pátio *</label>
                     <div class="role-chips">
                         @foreach (var role in DefaultRoles)
                         {
                             var isSelected = string.Equals(Model.Role, role, StringComparison.OrdinalIgnoreCase);
                             <button type="button"
                                     class="role-chip @(isSelected ? "is-selected" : "")"
-                                    @onclick="() => Model.Role = role">
+                                    @onclick="() => SelectRole(role)">
                                 <span>@role</span>
                             </button>
                         }
@@ -54,14 +54,104 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="member-email" class="form-label">E-mail (Opcional)</label>
+                    <label for="member-email" class="form-label">
+                        E-mail @(Model.EnableSystemAccess ? "*" : "(Opcional)")
+                    </label>
                     <input id="member-email"
                            type="email"
                            class="form-control"
                            placeholder="Ex.: carlos@lava.com"
                            maxlength="200"
                            @bind="Model.Email" />
-                    <span class="form-hint">Usado para identificação de repasses e login futuro.</span>
+                    <span class="form-hint">
+                        @(Model.EnableSystemAccess
+                            ? "Obrigatório para login no sistema e identificação de repasses."
+                            : "Usado para identificação de repasses e login futuro.")
+                    </span>
+                </div>
+
+                <!-- SEÇÃO: ACESSO AO SISTEMA -->
+                <div class="access-section @(Model.EnableSystemAccess ? "is-active-access" : "")">
+                    <div class="access-header">
+                        <label class="toggle-control" for="member-enable-access">
+                            <input id="member-enable-access"
+                                   type="checkbox"
+                                   @bind="Model.EnableSystemAccess" />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Liberar acesso ao sistema (Login e Senha)</span>
+                        </label>
+                    </div>
+
+                    @if (Model.EnableSystemAccess)
+                    {
+                        <div class="access-fields">
+                            <div class="form-group">
+                                <label class="form-label">Perfil de Acesso no Sistema *</label>
+                                <div class="system-roles-grid">
+                                    <button type="button"
+                                            class="system-role-card @(Model.SystemRole == "Operator" ? "is-selected" : "")"
+                                            @onclick='() => Model.SystemRole = "Operator"'>
+                                        <span class="role-icon">🔧</span>
+                                        <div class="role-info">
+                                            <strong>Operador</strong>
+                                            <small>Atualização de serviços e checklist</small>
+                                        </div>
+                                    </button>
+                                    <button type="button"
+                                            class="system-role-card @(Model.SystemRole == "Receptionist" ? "is-selected" : "")"
+                                            @onclick='() => Model.SystemRole = "Receptionist"'>
+                                        <span class="role-icon">📋</span>
+                                        <div class="role-info">
+                                            <strong>Recepcionista</strong>
+                                            <small>Criação de ordens, clientes e caixa</small>
+                                        </div>
+                                    </button>
+                                    <button type="button"
+                                            class="system-role-card @(Model.SystemRole == "Administrator" ? "is-selected" : "")"
+                                            @onclick='() => Model.SystemRole = "Administrator"'>
+                                        <span class="role-icon">🛡️</span>
+                                        <div class="role-info">
+                                            <strong>Administrador</strong>
+                                            <small>Acesso total às configurações e equipe</small>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <div class="password-label-row">
+                                    <label for="member-password" class="form-label">
+                                        @(Model.HasExistingUser ? "Redefinir Senha (Opcional)" : "Senha Inicial de Acesso *")
+                                    </label>
+                                    <button type="button" class="btn-link-action" @onclick="GenerateRandomPassword">
+                                        🎲 Gerar Senha Segura
+                                    </button>
+                                </div>
+                                <div class="password-input-wrapper">
+                                    <input id="member-password"
+                                           type="@(_showPassword ? "text" : "password")"
+                                           class="form-control"
+                                           placeholder="@(Model.HasExistingUser ? "Deixe em branco para não alterar" : "Mínimo 6 caracteres")"
+                                           maxlength="100"
+                                           @bind="Model.Password" />
+                                    <button type="button"
+                                            class="password-toggle-btn"
+                                            @onclick="() => _showPassword = !_showPassword"
+                                            title="@(_showPassword ? "Ocultar senha" : "Exibir senha")">
+                                        @(_showPassword ? "🙈" : "👁️")
+                                    </button>
+                                </div>
+                                @if (Model.HasExistingUser)
+                                {
+                                    <span class="form-hint">O colaborador já possui usuário. Preencha uma nova senha apenas se desejar redefini-la.</span>
+                                }
+                                else
+                                {
+                                    <span class="form-hint">Mínimo de 6 caracteres. Compartilhe esta senha com o colaborador.</span>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
 
@@ -96,6 +186,11 @@
     [Parameter]
     public string? ErrorMessage { get; set; }
 
+    private string? _localValidationError;
+    private bool _showPassword;
+
+    private string? DisplayErrorMessage => _localValidationError ?? ErrorMessage;
+
     private static readonly string[] DefaultRoles =
     [
         "Lavador",
@@ -106,16 +201,92 @@
         "Gerente de Pátio"
     ];
 
+    private void SelectRole(string role)
+    {
+        Model.Role = role;
+
+        if (!Model.HasExistingUser && !Model.EnableSystemAccess)
+        {
+            // Sugestão de perfil se o usuário decidir marcar acesso depois
+            if (string.Equals(role, "Gerente de Pátio", StringComparison.OrdinalIgnoreCase))
+            {
+                Model.SystemRole = "Administrator";
+            }
+            else if (string.Equals(role, "Encarregado", StringComparison.OrdinalIgnoreCase))
+            {
+                Model.SystemRole = "Receptionist";
+            }
+            else
+            {
+                Model.SystemRole = "Operator";
+            }
+        }
+    }
+
+    private void GenerateRandomPassword()
+    {
+        const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string lower = "abcdefghijkmnopqrstuvwxyz";
+        const string digits = "23456789";
+        const string special = "@#$%&*!";
+        var rnd = new Random();
+        var chars = new char[]
+        {
+            upper[rnd.Next(upper.Length)],
+            lower[rnd.Next(lower.Length)],
+            digits[rnd.Next(digits.Length)],
+            special[rnd.Next(special.Length)],
+            lower[rnd.Next(lower.Length)],
+            digits[rnd.Next(digits.Length)],
+            upper[rnd.Next(upper.Length)],
+            digits[rnd.Next(digits.Length)]
+        };
+        Model.Password = new string(chars.OrderBy(_ => rnd.Next()).ToArray());
+        _showPassword = true;
+    }
+
     private async Task HandleCancel()
     {
+        _localValidationError = null;
+        _showPassword = false;
         await OnCancel.InvokeAsync();
     }
 
     private async Task HandleSave()
     {
-        if (string.IsNullOrWhiteSpace(Model.FullName) || string.IsNullOrWhiteSpace(Model.Role))
+        _localValidationError = null;
+
+        if (string.IsNullOrWhiteSpace(Model.FullName))
         {
+            _localValidationError = "O nome completo do colaborador é obrigatório.";
             return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Model.Role))
+        {
+            _localValidationError = "A função/cargo do colaborador é obrigatória.";
+            return;
+        }
+
+        if (Model.EnableSystemAccess)
+        {
+            if (string.IsNullOrWhiteSpace(Model.Email) || !Model.Email.Contains('@'))
+            {
+                _localValidationError = "É obrigatório informar um e-mail válido para liberar acesso ao sistema.";
+                return;
+            }
+
+            if (!Model.HasExistingUser && (string.IsNullOrWhiteSpace(Model.Password) || Model.Password.Length < 6))
+            {
+                _localValidationError = "A senha de acesso deve conter pelo menos 6 caracteres.";
+                return;
+            }
+
+            if (Model.HasExistingUser && !string.IsNullOrWhiteSpace(Model.Password) && Model.Password.Length < 6)
+            {
+                _localValidationError = "A nova senha deve conter pelo menos 6 caracteres.";
+                return;
+            }
         }
 
         await OnSave.InvokeAsync(Model);

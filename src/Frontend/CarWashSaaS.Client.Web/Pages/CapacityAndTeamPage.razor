@@ -105,6 +105,7 @@
                                     <th>Nome</th>
                                     <th>Função / Cargo</th>
                                     <th>E-mail</th>
+                                    <th>Acesso ao Sistema</th>
                                     <th>Status</th>
                                     <th class="actions-col">Ações</th>
                                 </tr>
@@ -124,6 +125,32 @@
                                         </td>
                                         <td>
                                             <span class="email-text">@(string.IsNullOrWhiteSpace(member.Email) ? "—" : member.Email)</span>
+                                        </td>
+                                        <td>
+                                            @if (member.HasSystemAccess)
+                                            {
+                                                var roleBadgeClass = member.SystemRole switch
+                                                {
+                                                    "Administrator" => "badge-admin",
+                                                    "Receptionist" => "badge-receptionist",
+                                                    _ => "badge-operator"
+                                                };
+                                                var roleDisplayName = member.SystemRole switch
+                                                {
+                                                    "Administrator" => "Administrador",
+                                                    "Receptionist" => "Recepcionista",
+                                                    _ => "Operador"
+                                                };
+                                                <span class="access-pill @roleBadgeClass" title="Login liberado: @member.Email">
+                                                    🔑 @roleDisplayName
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="access-pill badge-none" title="Colaborador sem acesso de login">
+                                                    Sem Acesso
+                                                </span>
+                                            }
                                         </td>
                                         <td>
                                             <span class="status-pill @(member.IsActive ? "pill-active" : "pill-inactive")">

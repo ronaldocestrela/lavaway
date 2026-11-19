@@ -467,11 +467,21 @@ namespace CarWashSaaS.YardOperations.Infrastructure.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SystemRole")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("TenantId", "Email")
                         .IsUnique()
                         .HasFilter("[Email] IS NOT NULL AND [Email] <> ''");
+
+                    b.HasIndex("TenantId", "UserId")
+                        .HasFilter("[UserId] IS NOT NULL");
 
                     b.ToTable("TeamMembers", "yard");
                 });

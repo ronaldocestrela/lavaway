@@ -202,6 +202,131 @@ public sealed class YardSetupApplicationServiceTests
         Assert.DoesNotContain(rules, r => r.Id == rule.Id);
     }
 
+    [Fact]
+    public async Task CreateTeamMemberAsync_ShouldProvisionUser_WhenEnableSystemAccessIsTrue()
+    {
+        var tenantId = Guid.NewGuid();
+        var fakeProvisioner = new FakeUserAccountProvisioner();
+        var serviceWithProvisioner = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, userProvisioner: fakeProvisioner);
+
+        var command = new CreateTeamMemberCommand("Lucas Operador", "Lavador", "lucas@lava.com", EnableSystemAccess: true, SystemRole: "Operator", Password: "Password123!");
+        var result = await serviceWithProvisioner.CreateTeamMemberAsync(tenantId, command);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.HasSystemAccess);
+        Assert.NotNull(result.Value.UserId);
+        Assert.Equal("Operator", result.Value.SystemRole);
+        Assert.Single(fakeProvisioner.ProvisionedUsers);
+    }
+
+    [Fact]
+    public async Task CreateTeamMemberAsync_ShouldFail_WhenSystemAccessEnabledWithoutEmail()
+    {
+        var tenantId = Guid.NewGuid();
+        var fakeProvisioner = new FakeUserAccountProvisioner();
+        var serviceWithProvisioner = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, userProvisioner: fakeProvisioner);
+
+        var command = new CreateTeamMemberCommand("Lucas Operador", "Lavador", null, EnableSystemAccess: true, SystemRole: "Operator", Password: "Password123!");
+        var result = await serviceWithProvisioner.CreateTeamMemberAsync(tenantId, command);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("team_member.email.required_for_system_access", result.Error!.Code);
+        Assert.Empty(fakeProvisioner.ProvisionedUsers);
+    }
+
+    [Fact]
+    public async Task CreateTeamMemberAsync_ShouldFail_WhenSystemAccessEnabledWithShortPassword()
+    {
+        var tenantId = Guid.NewGuid();
+        var fakeProvisioner = new FakeUserAccountProvisioner();
+        var serviceWithProvisioner = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, userProvisioner: fakeProvisioner);
+
+        var command = new CreateTeamMemberCommand("Lucas Operador", "Lavador", "lucas@lava.com", EnableSystemAccess: true, SystemRole: "Operator", Password: "123");
+        var result = await serviceWithProvisioner.CreateTeamMemberAsync(tenantId, command);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("team_member.password.invalid", result.Error!.Code);
+        Assert.Empty(fakeProvisioner.ProvisionedUsers);
+    }
+
+    [Fact]
+    public async Task CreateTeamMemberAsync_ShouldFail_WhenProvisionUserFails()
+    {
+        var tenantId = Guid.NewGuid();
+        var fakeProvisioner = new FakeUserAccountProvisioner { ShouldFailProvision = true };
+        var serviceWithProvisioner = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, userProvisioner: fakeProvisioner);
+
+        var command = new CreateTeamMemberCommand("Lucas Operador", "Lavador", "lucas@lava.com", EnableSystemAccess: true, SystemRole: "Operator", Password: "Password123!");
+        var result = await serviceWithProvisioner.CreateTeamMemberAsync(tenantId, command);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("user.email.duplicate", result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task ToggleTeamMemberStatusAsync_ShouldSyncUserStatus_WhenMemberHasUserId()
+    {
+        var tenantId = Guid.NewGuid();
+        var fakeProvisioner = new FakeUserAccountProvisioner();
+        var serviceWithProvisioner = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, userProvisioner: fakeProvisioner);
+
+        var command = new CreateTeamMemberCommand("Marcos", "Lavador", "marcos@lava.com", EnableSystemAccess: true, SystemRole: "Operator", Password: "Password123!");
+        var created = (await serviceWithProvisioner.CreateTeamMemberAsync(tenantId, command)).Value!;
+
+        var toggled = (await serviceWithProvisioner.ToggleTeamMemberStatusAsync(tenantId, created.Id)).Value!;
+        Assert.False(toggled.IsActive);
+        Assert.True(fakeProvisioner.LastUpdatedStatus.HasValue);
+        Assert.False(fakeProvisioner.LastUpdatedStatus.Value);
+    }
+
+    [Fact]
+    public async Task UpdateTeamMemberAsync_ShouldProvisionUser_WhenGrantingAccessLater()
+    {
+        var tenantId = Guid.NewGuid();
+        var fakeProvisioner = new FakeUserAccountProvisioner();
+        var serviceWithProvisioner = new YardSetupApplicationService(_capacityRepo, _teamRepo, _commissionRepo, userProvisioner: fakeProvisioner);
+
+        var created = (await serviceWithProvisioner.CreateTeamMemberAsync(tenantId, new CreateTeamMemberCommand("Pedro", "Lavador", "pedro@lava.com"))).Value!;
+        Assert.False(created.HasSystemAccess);
+
+        var updateCommand = new UpdateTeamMemberCommand("Pedro Silva", "Encarregado", "pedro@lava.com", EnableSystemAccess: true, SystemRole: "Receptionist", Password: "NewSecurePassword123!");
+        var updated = (await serviceWithProvisioner.UpdateTeamMemberAsync(tenantId, created.Id, updateCommand)).Value!;
+
+        Assert.True(updated.HasSystemAccess);
+        Assert.Equal("Receptionist", updated.SystemRole);
+        Assert.Single(fakeProvisioner.ProvisionedUsers);
+    }
+
+    private sealed class FakeUserAccountProvisioner : IUserAccountProvisioner
+    {
+        public List<(Guid TenantId, string Email, string Role)> ProvisionedUsers { get; } = [];
+        public bool ShouldFailProvision { get; set; }
+        public bool? LastUpdatedStatus { get; set; }
+
+        public Task<Result<Guid>> ProvisionUserAsync(Guid tenantId, string email, string password, string shopRole, CancellationToken ct = default)
+        {
+            if (ShouldFailProvision)
+            {
+                return Task.FromResult(Result<Guid>.Failure(new Error("user.email.duplicate", "Email already in use.", ErrorType.Conflict)));
+            }
+
+            var userId = Guid.NewGuid();
+            ProvisionedUsers.Add((tenantId, email, shopRole));
+            return Task.FromResult(Result<Guid>.Success(userId));
+        }
+
+        public Task<Result> UpdateUserAccessAsync(Guid tenantId, Guid userId, string email, string? newPassword, string? shopRole, bool isActive, CancellationToken ct = default)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> SetUserActiveStatusAsync(Guid tenantId, Guid userId, bool isActive, CancellationToken ct = default)
+        {
+            LastUpdatedStatus = isActive;
+            return Task.FromResult(Result.Success());
+        }
+    }
+
     private sealed class InMemoryYardCapacityRepository : IYardCapacityRepository
     {
         private readonly List<YardCapacity> _capacities = [];

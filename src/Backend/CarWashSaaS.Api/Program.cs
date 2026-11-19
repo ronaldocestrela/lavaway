@@ -84,6 +84,7 @@ builder.Services.AddScoped<ICurrentTenantAccessor>(services => services.GetRequi
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IIdentityUserRepository, IdentityUserRepository>();
+builder.Services.AddScoped<IUserAccountProvisioner, UserAccountProvisionerAdapter>();
 builder.Services.AddScoped<IdentityApplicationService>();
 builder.Services.AddScoped<TenantOnboardingService>();
 builder.Services.AddScoped<IAdministrativeAuditEventRepository, AdministrativeAuditEventRepository>();
