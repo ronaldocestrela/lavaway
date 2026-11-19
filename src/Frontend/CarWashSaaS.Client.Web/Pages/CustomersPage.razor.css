@@ -399,10 +399,19 @@ h1 {
 .detail-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 18px;
     padding: 24px;
     border-bottom: 1px solid #f1f5f9;
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.detail-identity {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex: 1;
+    min-width: 0;
 }
 
 .detail-avatar {
@@ -432,6 +441,7 @@ h1 {
     color: #64748b;
     letter-spacing: 0.05em;
     margin-bottom: 2px;
+    white-space: nowrap;
 }
 
 .detail-title-area h2 {
@@ -440,6 +450,7 @@ h1 {
     font-weight: 800;
     color: #1e293b;
     font-family: 'Manrope', sans-serif;
+    word-break: break-word;
 }
 
 .detail-contact-row {
@@ -454,6 +465,7 @@ h1 {
     font-size: 14px;
     font-weight: 600;
     color: #334155;
+    white-space: nowrap;
 }
 
 .whatsapp-link {
@@ -469,6 +481,8 @@ h1 {
     border-radius: 14px;
     text-decoration: none;
     transition: all 0.15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .whatsapp-link:hover {
@@ -482,6 +496,10 @@ h1 {
 }
 
 .detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
     flex-shrink: 0;
 }
 
@@ -721,6 +739,124 @@ h1 {
         align-items: flex-start;
         gap: 14px;
     }
+
+    .detail-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        padding: 20px;
+    }
+
+    .detail-identity {
+        width: 100%;
+    }
+
+    .detail-actions {
+        width: 100%;
+        justify-content: flex-start;
+        gap: 8px;
+    }
+
+    .detail-actions .button,
+    .detail-actions .dossier-export-group,
+    .detail-actions .btn-export-dossier {
+        flex: 1 1 auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .detail-header {
+        padding: 16px;
+        gap: 14px;
+    }
+
+    .detail-avatar {
+        width: 48px;
+        height: 48px;
+        font-size: 16px;
+    }
+
+    .detail-identity {
+        gap: 12px;
+    }
+
+    .detail-title-area h2 {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .detail-contact-row {
+        gap: 8px 12px;
+    }
+
+    .detail-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .detail-actions .button,
+    .detail-actions .dossier-export-group,
+    .detail-actions .btn-export-dossier {
+        width: 100%;
+        justify-content: center;
+        min-height: 42px;
+    }
+
+    .dossier-menu {
+        left: 0;
+        right: 0;
+        width: 100%;
+        min-width: unset;
+    }
+
+    .vehicles-section {
+        padding: 16px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .btn-add-vehicle {
+        width: 100%;
+        justify-content: center;
+        min-height: 40px;
+    }
+
+    .vehicles-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .vehicle-actions {
+        gap: 8px;
+    }
+
+    .action-btn {
+        min-height: 38px;
+    }
+
+    .detail-footer {
+        padding: 12px 16px;
+    }
+
+    .quick-nav-note {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .search-box {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn-search {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 /* ==========================================================================
@@ -839,6 +975,7 @@ h1 {
     border-radius: 8px;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
     min-width: 260px;
+    max-width: calc(100vw - 32px);
     z-index: 100;
     overflow: hidden;
     animation: menu-slide 0.15s ease-out;

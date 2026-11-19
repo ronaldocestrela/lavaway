@@ -126,56 +126,58 @@
         <section class="customer-detail-column">
             @if (_selectedCustomer is not null)
             {
-                <div class="detail-card">
+                <div class="detail-card" id="customer-detail-panel">
                     <!-- Hero do Cliente -->
                     <div class="detail-header">
-                        <div class="detail-avatar @(_selectedCustomer.IsAnonymized ? "is-anonymized" : "")">
-                            @GetInitials(_selectedCustomer.CustomerName)
-                        </div>
-                        <div class="detail-title-area">
-                            <div class="detail-eyebrow-row">
-                                <span class="detail-eyebrow">CADASTRO DE CLIENTE</span>
-                                @if (_selectedCustomer.IsAnonymized)
-                                {
-                                    <span class="badge-anonymized-detail" id="badge-anonymized-detail">
-                                        🛡️ Anonimizado - LGPD
-                                    </span>
-                                }
+                        <div class="detail-identity">
+                            <div class="detail-avatar @(_selectedCustomer.IsAnonymized ? "is-anonymized" : "")">
+                                @GetInitials(_selectedCustomer.CustomerName)
                             </div>
-                            <h2>@_selectedCustomer.CustomerName</h2>
-                            @if (_selectedCustomer.IsAnonymized)
-                            {
-                                <div class="anonymized-banner-notice" id="anonymized-banner-notice">
-                                    <span class="notice-icon">⚠️</span>
-                                    <div>
-                                        <strong>Titular com dados pessoais eliminados (Art. 18, VI da LGPD).</strong>
-                                        <p>
-                                            O nome e dados de contato foram irreversivelmente anonimizados.
-                                            @if (_selectedCustomer.AnonymizedAtUtc.HasValue)
-                                            {
-                                                <span>Operação registrada em @_selectedCustomer.AnonymizedAtUtc.Value.ToBrazilTime().ToString("dd/MM/yyyy 'às' HH:mm").</span>
-                                            }
-                                        </p>
-                                    </div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="detail-contact-row">
-                                    <span class="detail-phone-val">📞 @_selectedCustomer.Phone</span>
-                                    @if (!string.IsNullOrWhiteSpace(_selectedCustomer.Phone))
+                            <div class="detail-title-area">
+                                <div class="detail-eyebrow-row">
+                                    <span class="detail-eyebrow">CADASTRO DE CLIENTE</span>
+                                    @if (_selectedCustomer.IsAnonymized)
                                     {
-                                        <a href="https://wa.me/@GetWhatsAppLink(_selectedCustomer.Phone)"
-                                           target="_blank"
-                                           rel="noopener noreferrer"
-                                           class="whatsapp-link"
-                                           title="Abrir WhatsApp">
-                                            <span class="wa-icon">💬</span>
-                                            <span>Conversar no WhatsApp</span>
-                                        </a>
+                                        <span class="badge-anonymized-detail" id="badge-anonymized-detail">
+                                            🛡️ Anonimizado - LGPD
+                                        </span>
                                     }
                                 </div>
-                            }
+                                <h2>@_selectedCustomer.CustomerName</h2>
+                                @if (_selectedCustomer.IsAnonymized)
+                                {
+                                    <div class="anonymized-banner-notice" id="anonymized-banner-notice">
+                                        <span class="notice-icon">⚠️</span>
+                                        <div>
+                                            <strong>Titular com dados pessoais eliminados (Art. 18, VI da LGPD).</strong>
+                                            <p>
+                                                O nome e dados de contato foram irreversivelmente anonimizados.
+                                                @if (_selectedCustomer.AnonymizedAtUtc.HasValue)
+                                                {
+                                                    <span>Operação registrada em @_selectedCustomer.AnonymizedAtUtc.Value.ToBrazilTime().ToString("dd/MM/yyyy 'às' HH:mm").</span>
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="detail-contact-row">
+                                        <span class="detail-phone-val">📞 @_selectedCustomer.Phone</span>
+                                        @if (!string.IsNullOrWhiteSpace(_selectedCustomer.Phone))
+                                        {
+                                            <a href="https://wa.me/@GetWhatsAppLink(_selectedCustomer.Phone)"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               class="whatsapp-link"
+                                               title="Abrir WhatsApp">
+                                                <span class="wa-icon">💬</span>
+                                                <span>Conversar no WhatsApp</span>
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         </div>
 
                         <div class="detail-actions">
@@ -476,9 +478,17 @@
         await LoadCustomersAsync();
     }
 
-    private void SelectCustomer(CustomerVehicleMatchDto customer)
+    private async Task SelectCustomer(CustomerVehicleMatchDto customer)
     {
         _selectedCustomer = customer;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "if (window.innerWidth <= 900) { document.getElementById('customer-detail-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }");
+        }
+        catch
+        {
+            // Ignore in test or restricted environments
+        }
     }
 
     // Edit customer methods
