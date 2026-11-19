@@ -1717,9 +1717,13 @@
     z-index: 1000;
     background: rgba(0, 0, 0, 0.78);
     backdrop-filter: blur(8px);
-    display: grid;
-    place-items: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     padding: 20px;
+    padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     animation: fadeIn 0.2s ease-out;
 }
 @keyframes fadeIn {
@@ -1732,10 +1736,16 @@
     border: 1px solid rgba(198, 242, 119, 0.35);
     border-radius: 16px;
     width: min(580px, 100%);
+    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 32px);
+    margin: auto;
     padding: 36px 32px;
     position: relative;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
     animation: modalSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 @keyframes modalSlide {
     from { transform: translateY(16px); opacity: 0; }
@@ -1752,6 +1762,7 @@
     font-size: 26px;
     cursor: pointer;
     line-height: 1;
+    z-index: 10;
 }
 .modal-close:hover {
     color: #ffffff;
@@ -2018,4 +2029,54 @@
     .yard-stats-bar { grid-template-columns: 1fr; }
     .sim-input-row { grid-template-columns: 1fr; }
     .size-selector { grid-template-columns: repeat(2, 1fr); }
+
+    /* Modal responsive adjustments */
+    .modal-backdrop {
+        padding: 12px 8px;
+        padding: max(12px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    }
+    .modal-dialog {
+        padding: 24px 16px 20px;
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 20px);
+        border-radius: 14px;
+    }
+    .modal-header h2 {
+        font-size: 20px;
+        line-height: 1.25;
+        margin-bottom: 6px;
+    }
+    .modal-header p {
+        font-size: 12.5px;
+        margin-bottom: 14px;
+    }
+    .modal-grid {
+        gap: 10px;
+    }
+    .modal-field input, .modal-field select {
+        height: 44px;
+        font-size: 14px;
+    }
+    .modal-consent-box {
+        margin-top: 10px;
+        padding: 10px 12px;
+    }
+    .modal-actions {
+        flex-direction: column-reverse;
+        gap: 10px;
+        margin-top: 14px;
+    }
+    .modal-actions button {
+        width: 100%;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-close {
+        top: 12px;
+        right: 14px;
+        padding: 6px;
+        font-size: 28px;
+    }
 }
