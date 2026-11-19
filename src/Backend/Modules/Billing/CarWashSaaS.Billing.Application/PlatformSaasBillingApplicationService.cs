@@ -17,10 +17,17 @@ public sealed class PlatformSaasBillingApplicationService(
 
         foreach (var sub in subscriptions)
         {
-            var overviewResult = await quotaLookup.GetSubscriptionOverviewAsync(sub.TenantId, ct);
-            if (overviewResult.IsSuccess)
+            try
             {
-                resultList.Add(overviewResult.Value!);
+                var overviewResult = await quotaLookup.GetSubscriptionOverviewAsync(sub.TenantId, ct);
+                if (overviewResult.IsSuccess)
+                {
+                    resultList.Add(overviewResult.Value!);
+                }
+            }
+            catch
+            {
+                // Resiliência no backoffice: falha pontual em um tenant não derruba a listagem global
             }
         }
 

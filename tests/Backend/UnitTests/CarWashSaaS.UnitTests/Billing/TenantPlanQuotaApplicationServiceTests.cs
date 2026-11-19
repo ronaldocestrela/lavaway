@@ -421,4 +421,57 @@ public sealed class TenantPlanQuotaApplicationServiceTests
         Assert.Equal(3, overview.MaxTeamMembers);
         Assert.Equal(2, overview.MaxBoxes);
     }
+
+    [Fact]
+    public async Task GetSubscriptionOverviewAsync_WhenQuotaUsageMissing_ShouldNotPersistToRepository_AndReturnZeroUsedCounts()
+    {
+        var subRepo = new FakeSubscriptionRepository();
+        var quotaRepo = new FakeQuotaUsageRepository();
+        var planRepo = new FakePlanRepository();
+        var invoiceRepo = new FakeInvoiceRepository();
+        var tenantLookup = new FakeGlobalTenantLookup();
+
+        var basicPlan = planRepo.Plans.First(p => p.Tier == SaasPlanTier.Basic);
+        var sub = TenantSaasSubscription.CreateActive(_tenantId, basicPlan, "cus_1", "sub_1").Value!;
+        subRepo.Subscriptions[_tenantId] = sub;
+
+        // Quotas repository is empty initially
+        Assert.Empty(quotaRepo.Quotas);
+
+        var service = new TenantPlanQuotaApplicationService(subRepo, quotaRepo, planRepo, invoiceRepo, tenantLookup);
+
+        var overviewResult = await service.GetSubscriptionOverviewAsync(_tenantId);
+        Assert.True(overviewResult.IsSuccess);
+        var overview = overviewResult.Value!;
+
+        Assert.Equal(0, overview.UsedWorkOrders);
+        Assert.Equal(0, overview.UsedWhatsAppMessages);
+        // CRITICAL: Quotas repository should STILL be empty, no side-effects/writes on read
+        Assert.Empty(quotaRepo.Quotas);
+    }
+
+    [Fact]
+    public async Task ConsumeWorkOrderQuotaAsync_WhenQuotaUsageMissing_ShouldPersistQuotaUsage()
+    {
+        var subRepo = new FakeSubscriptionRepository();
+        var quotaRepo = new FakeQuotaUsageRepository();
+        var planRepo = new FakePlanRepository();
+        var invoiceRepo = new FakeInvoiceRepository();
+        var tenantLookup = new FakeGlobalTenantLookup();
+
+        var basicPlan = planRepo.Plans.First(p => p.Tier == SaasPlanTier.Basic);
+        var sub = TenantSaasSubscription.CreateActive(_tenantId, basicPlan, "cus_1", "sub_1").Value!;
+        subRepo.Subscriptions[_tenantId] = sub;
+
+        Assert.Empty(quotaRepo.Quotas);
+
+        var service = new TenantPlanQuotaApplicationService(subRepo, quotaRepo, planRepo, invoiceRepo, tenantLookup);
+
+        var consumeResult = await service.ConsumeWorkOrderQuotaAsync(_tenantId);
+        Assert.True(consumeResult.IsSuccess);
+
+        // On write/consume, quota usage must be persisted
+        Assert.Single(quotaRepo.Quotas);
+        Assert.Equal(1, quotaRepo.Quotas[_tenantId].WorkOrdersCreatedCount);
+    }
 }

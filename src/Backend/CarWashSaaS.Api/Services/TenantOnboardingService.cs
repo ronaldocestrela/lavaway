@@ -16,7 +16,8 @@ public sealed class TenantOnboardingService(
     ITokenService tokenService,
     IRefreshTokenRepository refreshTokenRepository,
     ICurrentTenantAccessor? currentTenantAccessor = null,
-    IAuditTrailService? auditTrailService = null)
+    IAuditTrailService? auditTrailService = null,
+    ITenantQuotaUsageRepository? quotaUsageRepository = null)
 {
     public async Task<Result<AuthTokenResponse>> RegisterAsync(
         RegisterTenantRequest request,
@@ -78,6 +79,20 @@ public sealed class TenantOnboardingService(
         {
             await subscriptionRepository.AddAsync(subscriptionResult.Value, ct);
             await subscriptionRepository.SaveChangesAsync(ct);
+
+            if (quotaUsageRepository is not null)
+            {
+                var quotaUsageResult = TenantQuotaUsage.CreateForCycle(
+                    tenant.Id,
+                    subscriptionResult.Value.CurrentPeriodStartUtc,
+                    subscriptionResult.Value.CurrentPeriodEndUtc);
+
+                if (quotaUsageResult.IsSuccess && quotaUsageResult.Value is not null)
+                {
+                    await quotaUsageRepository.AddAsync(quotaUsageResult.Value, ct);
+                    await quotaUsageRepository.SaveChangesAsync(ct);
+                }
+            }
         }
 
         var createUserResult = await userRepository.CreateUserAsync(

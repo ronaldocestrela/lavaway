@@ -17,7 +17,7 @@ public sealed class TenantPlanQuotaApplicationService(
             return Result<TenantQuotaStatusDto>.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
         }
 
-        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct, persistIfMissing: false);
 
         if (!subscription.IsOperationalAllowed())
         {
@@ -53,7 +53,7 @@ public sealed class TenantPlanQuotaApplicationService(
             return Result.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
         }
 
-        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct, persistIfMissing: true);
 
         if (!subscription.IsOperationalAllowed())
         {
@@ -78,7 +78,7 @@ public sealed class TenantPlanQuotaApplicationService(
             return Result<TenantQuotaStatusDto>.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
         }
 
-        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct, persistIfMissing: false);
 
         if (!subscription.IsOperationalAllowed())
         {
@@ -114,7 +114,7 @@ public sealed class TenantPlanQuotaApplicationService(
             return Result.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
         }
 
-        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct, persistIfMissing: true);
 
         if (!subscription.IsOperationalAllowed())
         {
@@ -139,7 +139,7 @@ public sealed class TenantPlanQuotaApplicationService(
             return Result<TenantSubscriptionOverviewDto>.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
         }
 
-        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+        var (subscription, plan, quotaUsage) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct, persistIfMissing: false);
         var invoices = await invoiceRepository.ListByTenantIdAsync(tenantId, ct);
         var pendingInvoice = invoices.FirstOrDefault(i => i.Status == "Pending" || i.Status == "Overdue");
 
@@ -184,7 +184,7 @@ public sealed class TenantPlanQuotaApplicationService(
             return Result<bool>.Failure(new Error("tenant.id.required", "TenantId é obrigatório.", ErrorType.Validation));
         }
 
-        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct, persistIfMissing: false);
 
         if (!subscription.IsOperationalAllowed())
         {
@@ -218,7 +218,7 @@ public sealed class TenantPlanQuotaApplicationService(
             return Result.Failure(new Error("team_member.count.invalid", "Quantidade de membros não pode ser negativa.", ErrorType.Validation));
         }
 
-        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct, persistIfMissing: false);
 
         if (!subscription.IsOperationalAllowed())
         {
@@ -257,7 +257,7 @@ public sealed class TenantPlanQuotaApplicationService(
             return Result.Failure(new Error("yard_capacity.boxes.invalid", "Quantidade de boxes deve ser maior que zero.", ErrorType.Validation));
         }
 
-        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct);
+        var (subscription, plan, _) = await EnsureSubscriptionAndQuotaAsync(tenantId, ct, persistIfMissing: false);
 
         if (!subscription.IsOperationalAllowed())
         {
@@ -286,25 +286,37 @@ public sealed class TenantPlanQuotaApplicationService(
 
     private async Task<(TenantSaasSubscription Subscription, SaasPlan Plan, TenantQuotaUsage QuotaUsage)> EnsureSubscriptionAndQuotaAsync(
         Guid tenantId,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool persistIfMissing = false)
     {
         var subscription = await subscriptionRepository.GetByTenantIdAsync(tenantId, ct);
         if (subscription is null)
         {
             subscription = TenantSaasSubscription.CreateTrial(tenantId).Value!;
-            await subscriptionRepository.AddAsync(subscription, ct);
-            await subscriptionRepository.SaveChangesAsync(ct);
+            if (persistIfMissing)
+            {
+                await subscriptionRepository.AddAsync(subscription, ct);
+                await subscriptionRepository.SaveChangesAsync(ct);
+            }
         }
 
         var plan = await planRepository.GetByTierAsync(subscription.PlanTier, ct)
-                   ?? SaasPlan.GetStandardPlans().First(p => p.Tier == subscription.PlanTier);
+                   ?? SaasPlan.GetStandardPlans().FirstOrDefault(p => p.Tier == subscription.PlanTier)
+                   ?? SaasPlan.GetStandardPlans().First();
 
         var quotaUsage = await quotaUsageRepository.GetCurrentCycleByTenantIdAsync(tenantId, ct);
         if (quotaUsage is null)
         {
-            quotaUsage = TenantQuotaUsage.CreateForCycle(tenantId, subscription.CurrentPeriodStartUtc, subscription.CurrentPeriodEndUtc).Value!;
-            await quotaUsageRepository.AddAsync(quotaUsage, ct);
-            await quotaUsageRepository.SaveChangesAsync(ct);
+            var cycleResult = TenantQuotaUsage.CreateForCycle(tenantId, subscription.CurrentPeriodStartUtc, subscription.CurrentPeriodEndUtc);
+            quotaUsage = cycleResult.IsSuccess
+                ? cycleResult.Value!
+                : TenantQuotaUsage.CreateForCycle(tenantId, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMonths(1)).Value!;
+
+            if (persistIfMissing)
+            {
+                await quotaUsageRepository.AddAsync(quotaUsage, ct);
+                await quotaUsageRepository.SaveChangesAsync(ct);
+            }
         }
 
         return (subscription, plan, quotaUsage);

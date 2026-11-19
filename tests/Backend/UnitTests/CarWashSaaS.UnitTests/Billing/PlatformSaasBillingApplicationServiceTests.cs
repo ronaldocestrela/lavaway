@@ -470,4 +470,96 @@ public sealed class PlatformSaasBillingApplicationServiceTests
         Assert.Equal(ErrorType.NotFound, result.Error!.Type);
         Assert.Equal("saas_plan.not_found", result.Error.Code);
     }
+
+    [Fact]
+    public async Task ListAllTenantSubscriptionsAsync_WhenSubscriptionsExist_ShouldReturnOverviewList()
+    {
+        // Arrange
+        var tenantId1 = Guid.NewGuid();
+        var tenantId2 = Guid.NewGuid();
+        var subRepo = new FakeSubscriptionRepository();
+        var planRepo = new FakePlanRepository();
+
+        var plan = planRepo.Plans.First(p => p.Tier == SaasPlanTier.Pro);
+        subRepo.Subscriptions[tenantId1] = TenantSaasSubscription.CreateActive(tenantId1, plan, "cus_1", "sub_1").Value!;
+        subRepo.Subscriptions[tenantId2] = TenantSaasSubscription.CreateTrial(tenantId2).Value!;
+
+        var quotaLookup = new FakeQuotaLookup(subRepo, planRepo);
+        var service = new PlatformSaasBillingApplicationService(
+            subRepo,
+            planRepo,
+            quotaLookup,
+            new FakeGlobalTenantLookup());
+
+        // Act
+        var result = await service.ListAllTenantSubscriptionsAsync();
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value!.Count);
+        Assert.Contains(result.Value, s => s.TenantId == tenantId1);
+        Assert.Contains(result.Value, s => s.TenantId == tenantId2);
+    }
+
+    private sealed class FaultyQuotaLookup(FakeSubscriptionRepository subRepo, FakePlanRepository planRepo, Guid faultyTenantId) : ITenantPlanQuotaLookup
+    {
+        public Task<Result<TenantQuotaStatusDto>> CheckWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task<Result> ConsumeWorkOrderQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task<Result<TenantQuotaStatusDto>> CheckWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task<Result> ConsumeWhatsAppQuotaAsync(Guid tenantId, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+
+        public Task<Result<TenantSubscriptionOverviewDto>> GetSubscriptionOverviewAsync(Guid tenantId, CancellationToken ct = default)
+        {
+            if (tenantId == faultyTenantId)
+            {
+                throw new InvalidOperationException("Simulated error in tenant");
+            }
+
+            var sub = subRepo.Subscriptions[tenantId];
+            var plan = planRepo.Plans.First(p => p.Tier == sub.PlanTier);
+            return Task.FromResult(Result<TenantSubscriptionOverviewDto>.Success(new TenantSubscriptionOverviewDto(
+                sub.TenantId, "Lava-Jato", sub.PlanTier, plan.Name, sub.MonthlyPrice, sub.Status,
+                sub.CurrentPeriodStartUtc, sub.CurrentPeriodEndUtc, null, null, 0, 100, 0, 100, null, null, [])));
+        }
+
+        public Task<Result<bool>> HasFeatureAsync(Guid tenantId, SaasFeature feature, CancellationToken ct = default) =>
+            Task.FromResult(Result<bool>.Success(true));
+        public Task<Result> ValidateTeamMemberLimitAsync(Guid tenantId, int currentTeamMemberCount, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+        public Task<Result> ValidateBoxesLimitAsync(Guid tenantId, int requestedBoxes, CancellationToken ct = default) =>
+            Task.FromResult(Result.Success());
+    }
+
+    [Fact]
+    public async Task ListAllTenantSubscriptionsAsync_WhenSingleTenantFails_ShouldResilientlyReturnRemainingTenants()
+    {
+        // Arrange
+        var goodTenantId = Guid.NewGuid();
+        var badTenantId = Guid.NewGuid();
+        var subRepo = new FakeSubscriptionRepository();
+        var planRepo = new FakePlanRepository();
+
+        var plan = planRepo.Plans.First(p => p.Tier == SaasPlanTier.Pro);
+        subRepo.Subscriptions[goodTenantId] = TenantSaasSubscription.CreateActive(goodTenantId, plan, "cus_1", "sub_1").Value!;
+        subRepo.Subscriptions[badTenantId] = TenantSaasSubscription.CreateActive(badTenantId, plan, "cus_2", "sub_2").Value!;
+
+        var quotaLookup = new FaultyQuotaLookup(subRepo, planRepo, badTenantId);
+        var service = new PlatformSaasBillingApplicationService(
+            subRepo,
+            planRepo,
+            quotaLookup,
+            new FakeGlobalTenantLookup());
+
+        // Act
+        var result = await service.ListAllTenantSubscriptionsAsync();
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value!);
+        Assert.Equal(goodTenantId, result.Value![0].TenantId);
+    }
 }
