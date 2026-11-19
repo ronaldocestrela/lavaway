@@ -11,11 +11,17 @@ public enum ShopPermission
 {
     ConfigureStore,
     ManageUsers,
+    ManageRoles,
     ManageWorkOrders,
     CreateWorkOrders,
     UpdateWorkOrderStatus,
     ViewCustomers,
-    ViewReports
+    ManageCustomers,
+    ManageCashier,
+    ManageServices,
+    ViewReports,
+    ManageSubscriptions,
+    ManageWhatsApp
 }
 
 public static class AuthorizationPolicyNames
@@ -26,6 +32,9 @@ public static class AuthorizationPolicyNames
     public const string CreateWorkOrders = "CreateWorkOrdersPolicy";
     public const string ViewCustomers = "ViewCustomersPolicy";
     public const string UpdateWorkOrderStatus = "UpdateWorkOrderStatusPolicy";
+    public const string ManageRoles = "ManageRolesPolicy";
+    public const string ManageCashier = "ManageCashierPolicy";
+    public const string ManageServices = "ManageServicesPolicy";
 }
 
 public static class ShopRolePermissions
@@ -38,17 +47,26 @@ public static class ShopRolePermissions
             [
                 ShopPermission.ConfigureStore,
                 ShopPermission.ManageUsers,
+                ShopPermission.ManageRoles,
                 ShopPermission.ManageWorkOrders,
                 ShopPermission.CreateWorkOrders,
                 ShopPermission.UpdateWorkOrderStatus,
                 ShopPermission.ViewCustomers,
-                ShopPermission.ViewReports
+                ShopPermission.ManageCustomers,
+                ShopPermission.ManageCashier,
+                ShopPermission.ManageServices,
+                ShopPermission.ViewReports,
+                ShopPermission.ManageSubscriptions,
+                ShopPermission.ManageWhatsApp
             ],
             ShopRole.Receptionist =>
             [
                 ShopPermission.CreateWorkOrders,
                 ShopPermission.UpdateWorkOrderStatus,
                 ShopPermission.ViewCustomers,
+                ShopPermission.ManageCustomers,
+                ShopPermission.ManageCashier,
+                ShopPermission.ManageSubscriptions,
                 ShopPermission.ViewReports
             ],
             ShopRole.Operator =>

@@ -8,4 +8,5 @@ public sealed record TeamMemberDto(
     bool IsActive,
     Guid? UserId = null,
     bool HasSystemAccess = false,
-    string? SystemRole = null);
+    string? SystemRole = null,
+    Guid? CustomRoleId = null);

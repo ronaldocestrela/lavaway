@@ -435,3 +435,169 @@
     box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
 }
 
+/* ==========================================================================
+   ESTILOS DA ABA PERFIS & PERMISSÕES
+   ========================================================================== */
+
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+    margin-top: 16px;
+}
+
+.role-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.role-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
+.role-card.is-system-card {
+    background: #fafbfc;
+    border-color: #cbd5e1;
+}
+
+.role-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.role-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.role-badge-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.role-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+}
+
+.role-kind-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.tag-system {
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+.tag-custom {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.role-user-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 3px 8px;
+    border-radius: 12px;
+}
+
+.role-desc {
+    font-size: 0.85rem;
+    color: #475569;
+    margin: 0;
+    line-height: 1.4;
+    min-height: 38px;
+}
+
+.role-permissions-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 12px;
+}
+
+.preview-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.perm-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.perm-tag {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.perm-tag-more {
+    background: #e2e8f0;
+    color: #475569;
+    font-weight: 600;
+}
+
+.role-card-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.system-protected-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-outline-danger {
+    background: transparent;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+}
+
+.btn-outline-danger:hover {
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+

@@ -28,7 +28,7 @@ public sealed class IdentityUserRepository(
         var role = ParseRole(roles);
         var isActive = user.LockoutEnd is null || user.LockoutEnd <= DateTimeOffset.UtcNow;
 
-        return new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive);
+        return new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive, user.CustomRoleId);
     }
 
     public async Task<IdentityUserSnapshot?> FindByIdAsync(Guid userId, CancellationToken ct = default)
@@ -46,7 +46,7 @@ public sealed class IdentityUserRepository(
         var role = ParseRole(roles);
         var isActive = user.LockoutEnd is null || user.LockoutEnd <= DateTimeOffset.UtcNow;
 
-        return new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive);
+        return new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive, user.CustomRoleId);
     }
 
     public async Task<bool> CheckPasswordAsync(Guid userId, string password, CancellationToken ct = default)
@@ -63,11 +63,22 @@ public sealed class IdentityUserRepository(
         return await userManager.CheckPasswordAsync(user, password);
     }
 
+    public Task<Result<IdentityUserSnapshot>> CreateUserAsync(
+        Guid tenantId,
+        string email,
+        string password,
+        ShopRole role,
+        CancellationToken ct = default)
+    {
+        return CreateUserAsync(tenantId, email, password, role, null, ct);
+    }
+
     public async Task<Result<IdentityUserSnapshot>> CreateUserAsync(
         Guid tenantId,
         string email,
         string password,
         ShopRole role,
+        Guid? customRoleId,
         CancellationToken ct = default)
     {
         var normalizedEmail = email.ToUpperInvariant();
@@ -97,7 +108,8 @@ public sealed class IdentityUserRepository(
             Email = email,
             NormalizedEmail = normalizedEmail,
             EmailConfirmed = true,
-            LockoutEnabled = true
+            LockoutEnabled = true,
+            CustomRoleId = customRoleId
         };
 
         var result = await userManager.CreateAsync(user, password);
@@ -120,7 +132,7 @@ public sealed class IdentityUserRepository(
                 ErrorType.Validation));
         }
 
-        return Result<IdentityUserSnapshot>.Success(new IdentityUserSnapshot(user.Id, user.TenantId, user.Email, role, true));
+        return Result<IdentityUserSnapshot>.Success(new IdentityUserSnapshot(user.Id, user.TenantId, user.Email, role, true, user.CustomRoleId));
     }
 
     public async Task<IReadOnlyCollection<IdentityUserSnapshot>> ListByTenantAsync(Guid tenantId, CancellationToken ct = default)
@@ -135,7 +147,7 @@ public sealed class IdentityUserRepository(
             var roles = await userManager.GetRolesAsync(user);
             var role = ParseRole(roles);
             var isActive = user.LockoutEnd is null || user.LockoutEnd <= DateTimeOffset.UtcNow;
-            list.Add(new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive));
+            list.Add(new IdentityUserSnapshot(user.Id, user.TenantId, user.Email!, role, isActive, user.CustomRoleId));
         }
 
         return list;
@@ -159,12 +171,24 @@ public sealed class IdentityUserRepository(
         return Result.Success();
     }
 
+    public Task<Result> UpdateUserAsync(
+        Guid userId,
+        string email,
+        string? newPassword,
+        ShopRole? role,
+        bool isActive,
+        CancellationToken ct = default)
+    {
+        return UpdateUserAsync(userId, email, newPassword, role, isActive, null, ct);
+    }
+
     public async Task<Result> UpdateUserAsync(
         Guid userId,
         string email,
         string? newPassword,
         ShopRole? role,
         bool isActive,
+        Guid? customRoleId,
         CancellationToken ct = default)
     {
         var user = await context.Users
@@ -196,6 +220,10 @@ public sealed class IdentityUserRepository(
 
         user.LockoutEnabled = true;
         user.LockoutEnd = isActive ? null : DateTimeOffset.MaxValue;
+        if (customRoleId.HasValue)
+        {
+            user.CustomRoleId = customRoleId.Value == Guid.Empty ? null : customRoleId;
+        }
 
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)

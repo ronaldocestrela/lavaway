@@ -386,3 +386,19 @@
     padding: 4px;
     color: #64748b;
 }
+
+.role-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.custom-role-badge {
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}

@@ -88,33 +88,59 @@
                             <div class="form-group">
                                 <label class="form-label">Perfil de Acesso no Sistema *</label>
                                 <div class="system-roles-grid">
-                                    <button type="button"
-                                            class="system-role-card @(Model.SystemRole == "Operator" ? "is-selected" : "")"
-                                            @onclick='() => Model.SystemRole = "Operator"'>
-                                        <span class="role-icon">🔧</span>
-                                        <div class="role-info">
-                                            <strong>Operador</strong>
-                                            <small>Atualização de serviços e checklist</small>
-                                        </div>
-                                    </button>
-                                    <button type="button"
-                                            class="system-role-card @(Model.SystemRole == "Receptionist" ? "is-selected" : "")"
-                                            @onclick='() => Model.SystemRole = "Receptionist"'>
-                                        <span class="role-icon">📋</span>
-                                        <div class="role-info">
-                                            <strong>Recepcionista</strong>
-                                            <small>Criação de ordens, clientes e caixa</small>
-                                        </div>
-                                    </button>
-                                    <button type="button"
-                                            class="system-role-card @(Model.SystemRole == "Administrator" ? "is-selected" : "")"
-                                            @onclick='() => Model.SystemRole = "Administrator"'>
-                                        <span class="role-icon">🛡️</span>
-                                        <div class="role-info">
-                                            <strong>Administrador</strong>
-                                            <small>Acesso total às configurações e equipe</small>
-                                        </div>
-                                    </button>
+                                    @if (AvailableRoles.Count > 0)
+                                    {
+                                        @foreach (var role in AvailableRoles)
+                                        {
+                                            var isSelected = (Model.CustomRoleId.HasValue && Model.CustomRoleId == role.Id)
+                                                || (!Model.CustomRoleId.HasValue && string.Equals(Model.SystemRole, role.Name, StringComparison.OrdinalIgnoreCase));
+                                            <button type="button"
+                                                    class="system-role-card @(isSelected ? "is-selected" : "")"
+                                                    @onclick='() => SelectSystemRole(role)'>
+                                                <span class="role-icon">@(role.Name switch { "Administrator" => "🛡️", "Receptionist" => "📋", "Operator" => "🔧", _ => "⚙️" })</span>
+                                                <div class="role-info">
+                                                    <div class="role-title-row">
+                                                        <strong>@role.Name</strong>
+                                                        @if (!role.IsSystemRole)
+                                                        {
+                                                            <span class="custom-role-badge">Personalizado</span>
+                                                        }
+                                                    </div>
+                                                    <small>@(role.Description ?? $"{role.Permissions.Count} permissões ativas")</small>
+                                                </div>
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="system-role-card @(Model.SystemRole == "Operator" ? "is-selected" : "")"
+                                                @onclick='() => SelectStandardRole("Operator")'>
+                                            <span class="role-icon">🔧</span>
+                                            <div class="role-info">
+                                                <strong>Operador</strong>
+                                                <small>Atualização de serviços e checklist</small>
+                                            </div>
+                                        </button>
+                                        <button type="button"
+                                                class="system-role-card @(Model.SystemRole == "Receptionist" ? "is-selected" : "")"
+                                                @onclick='() => SelectStandardRole("Receptionist")'>
+                                            <span class="role-icon">📋</span>
+                                            <div class="role-info">
+                                                <strong>Recepcionista</strong>
+                                                <small>Criação de ordens, clientes e caixa</small>
+                                            </div>
+                                        </button>
+                                        <button type="button"
+                                                class="system-role-card @(Model.SystemRole == "Administrator" ? "is-selected" : "")"
+                                                @onclick='() => SelectStandardRole("Administrator")'>
+                                            <span class="role-icon">🛡️</span>
+                                            <div class="role-info">
+                                                <strong>Administrador</strong>
+                                                <small>Acesso total às configurações e equipe</small>
+                                            </div>
+                                        </button>
+                                    }
                                 </div>
                             </div>
 
@@ -172,6 +198,9 @@
     public bool IsVisible { get; set; }
 
     [Parameter]
+    public IReadOnlyList<CustomRoleDto> AvailableRoles { get; set; } = [];
+
+    [Parameter]
     public TeamMemberFormModel Model { get; set; } = new();
 
     [Parameter]
@@ -221,6 +250,18 @@
                 Model.SystemRole = "Operator";
             }
         }
+    }
+
+    private void SelectSystemRole(CustomRoleDto role)
+    {
+        Model.SystemRole = role.Name;
+        Model.CustomRoleId = role.IsSystemRole ? null : role.Id;
+    }
+
+    private void SelectStandardRole(string roleName)
+    {
+        Model.SystemRole = roleName;
+        Model.CustomRoleId = null;
     }
 
     private void GenerateRandomPassword()

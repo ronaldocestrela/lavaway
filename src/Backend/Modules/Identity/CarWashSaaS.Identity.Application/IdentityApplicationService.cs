@@ -8,7 +8,8 @@ public sealed class IdentityApplicationService(
     IRefreshTokenRepository refreshTokenRepository,
     ITokenService tokenService,
     IPlatformUserRepository? platformUserRepository = null,
-    AuditTrailApplicationService? auditTrailService = null)
+    AuditTrailApplicationService? auditTrailService = null,
+    ICustomRoleRepository? customRoleRepository = null)
 {
     public async Task<Result<AuthTokenResponse>> AuthenticateAsync(
         LoginRequest request,
@@ -109,8 +110,8 @@ public sealed class IdentityApplicationService(
             return Result<AuthTokenResponse>.Failure(new Error("auth.invalid_credentials", "Invalid email or password.", ErrorType.Unauthorized));
         }
 
-        var permissions = ShopRolePermissions.GetPermissions(user.Role);
-        var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.TenantId, user.Role, permissions);
+        var (permissions, roleName) = await ResolvePermissionsAndRoleAsync(user, ct);
+        var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.TenantId, roleName, permissions);
         var refreshTokenString = tokenService.GenerateRefreshToken();
         var refreshTokenHash = tokenService.HashToken(refreshTokenString);
 
@@ -131,7 +132,7 @@ public sealed class IdentityApplicationService(
             user.Id,
             user.Email,
             user.TenantId,
-            user.Role.ToString(),
+            roleName,
             permissions.Select(p => p.ToString()).ToArray()));
     }
 
@@ -190,8 +191,8 @@ public sealed class IdentityApplicationService(
 
         await refreshTokenRepository.AddAsync(newTokenEntityResult.Value!, ct);
 
-        var permissions = ShopRolePermissions.GetPermissions(user.Role);
-        var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.TenantId, user.Role, permissions);
+        var (permissions, roleName) = await ResolvePermissionsAndRoleAsync(user, ct);
+        var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, user.TenantId, roleName, permissions);
 
         return Result<AuthTokenResponse>.Success(new AuthTokenResponse(
             accessToken.Token,
@@ -201,7 +202,7 @@ public sealed class IdentityApplicationService(
             user.Id,
             user.Email,
             user.TenantId,
-            user.Role.ToString(),
+            roleName,
             permissions.Select(p => p.ToString()).ToArray()));
     }
 
@@ -247,29 +248,26 @@ public sealed class IdentityApplicationService(
             return Result<UserSummaryDto>.Failure(new Error("user.password.invalid", "Password must have at least 6 characters.", ErrorType.Validation));
         }
 
-        if (!Enum.TryParse<ShopRole>(request.Role, true, out var role))
-        {
-            return Result<UserSummaryDto>.Failure(new Error("user.role.invalid", $"Role '{request.Role}' is invalid.", ErrorType.Validation));
-        }
+        var role = Enum.TryParse<ShopRole>(request.Role, true, out var parsedRole)
+            ? parsedRole
+            : ShopRole.Operator;
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var createResult = await userRepository.CreateUserAsync(tenantId, normalizedEmail, request.Password, role, ct);
+        var createResult = await userRepository.CreateUserAsync(tenantId, normalizedEmail, request.Password, role, request.CustomRoleId, ct);
         if (!createResult.IsSuccess)
         {
             return Result<UserSummaryDto>.Failure(createResult.Error!);
         }
 
         var createdUser = createResult.Value!;
-        var permissions = ShopRolePermissions.GetPermissions(createdUser.Role)
-            .Select(p => p.ToString())
-            .ToArray();
+        var (permissions, roleName) = await ResolvePermissionsAndRoleAsync(createdUser, ct);
 
         return Result<UserSummaryDto>.Success(new UserSummaryDto(
             createdUser.Id,
             createdUser.TenantId,
             createdUser.Email,
-            createdUser.Role.ToString(),
-            permissions));
+            roleName,
+            permissions.Select(p => p.ToString()).ToArray()));
     }
 
     public async Task<Result<IReadOnlyCollection<UserSummaryDto>>> ListUsersAsync(
@@ -282,14 +280,34 @@ public sealed class IdentityApplicationService(
         }
 
         var users = await userRepository.ListByTenantAsync(tenantId, ct);
-        var dtos = users.Select(u => new UserSummaryDto(
-            u.Id,
-            u.TenantId,
-            u.Email,
-            u.Role.ToString(),
-            ShopRolePermissions.GetPermissions(u.Role).Select(p => p.ToString()).ToArray()))
-            .ToArray();
+        var dtos = new List<UserSummaryDto>(users.Count);
+        foreach (var u in users)
+        {
+            var (permissions, roleName) = await ResolvePermissionsAndRoleAsync(u, ct);
+            dtos.Add(new UserSummaryDto(
+                u.Id,
+                u.TenantId,
+                u.Email,
+                roleName,
+                permissions.Select(p => p.ToString()).ToArray()));
+        }
 
         return Result<IReadOnlyCollection<UserSummaryDto>>.Success(dtos);
+    }
+
+    private async Task<(IReadOnlyCollection<ShopPermission> Permissions, string RoleName)> ResolvePermissionsAndRoleAsync(
+        IdentityUserSnapshot user,
+        CancellationToken ct)
+    {
+        if (customRoleRepository is not null && user.CustomRoleId.HasValue)
+        {
+            var customRole = await customRoleRepository.GetByIdAsync(user.TenantId, user.CustomRoleId.Value, ct);
+            if (customRole is not null)
+            {
+                return (customRole.Permissions, customRole.Name);
+            }
+        }
+
+        return (ShopRolePermissions.GetPermissions(user.Role), user.Role.ToString());
     }
 }

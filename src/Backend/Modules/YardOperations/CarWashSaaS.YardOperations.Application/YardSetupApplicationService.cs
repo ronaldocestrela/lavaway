@@ -193,6 +193,7 @@ public sealed class YardSetupApplicationService(
                     normalizedEmail,
                     command.Password,
                     systemRole,
+                    command.CustomRoleId,
                     ct);
 
                 if (!provisionResult.IsSuccess)
@@ -265,6 +266,7 @@ public sealed class YardSetupApplicationService(
                         command.Password,
                         systemRole,
                         member.IsActive,
+                        command.CustomRoleId,
                         ct);
 
                     if (!updateAccessResult.IsSuccess)
@@ -290,6 +292,7 @@ public sealed class YardSetupApplicationService(
                         normalizedEmail,
                         command.Password,
                         systemRole,
+                        command.CustomRoleId,
                         ct);
 
                     if (!provisionResult.IsSuccess)

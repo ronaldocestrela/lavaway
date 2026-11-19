@@ -7,11 +7,22 @@ public sealed class UserAccountProvisionerAdapter(
     IIdentityUserRepository userRepository,
     IRefreshTokenRepository? refreshTokenRepository = null) : IUserAccountProvisioner
 {
+    public Task<Result<Guid>> ProvisionUserAsync(
+        Guid tenantId,
+        string email,
+        string password,
+        string shopRole,
+        CancellationToken ct = default)
+    {
+        return ProvisionUserAsync(tenantId, email, password, shopRole, null, ct);
+    }
+
     public async Task<Result<Guid>> ProvisionUserAsync(
         Guid tenantId,
         string email,
         string password,
         string shopRole,
+        Guid? customRoleId,
         CancellationToken ct = default)
     {
         if (tenantId == Guid.Empty)
@@ -34,13 +45,25 @@ public sealed class UserAccountProvisionerAdapter(
             : ShopRole.Operator;
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
-        var createResult = await userRepository.CreateUserAsync(tenantId, normalizedEmail, password, parsedRole, ct);
+        var createResult = await userRepository.CreateUserAsync(tenantId, normalizedEmail, password, parsedRole, customRoleId, ct);
         if (!createResult.IsSuccess)
         {
             return Result<Guid>.Failure(createResult.Error!);
         }
 
         return Result<Guid>.Success(createResult.Value!.Id);
+    }
+
+    public Task<Result> UpdateUserAccessAsync(
+        Guid tenantId,
+        Guid userId,
+        string email,
+        string? newPassword,
+        string? shopRole,
+        bool isActive,
+        CancellationToken ct = default)
+    {
+        return UpdateUserAccessAsync(tenantId, userId, email, newPassword, shopRole, isActive, null, ct);
     }
 
     public async Task<Result> UpdateUserAccessAsync(
@@ -50,6 +73,7 @@ public sealed class UserAccountProvisionerAdapter(
         string? newPassword,
         string? shopRole,
         bool isActive,
+        Guid? customRoleId,
         CancellationToken ct = default)
     {
         if (tenantId == Guid.Empty || userId == Guid.Empty)
@@ -64,7 +88,7 @@ public sealed class UserAccountProvisionerAdapter(
         }
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
-        var result = await userRepository.UpdateUserAsync(userId, normalizedEmail, newPassword, parsedRole, isActive, ct);
+        var result = await userRepository.UpdateUserAsync(userId, normalizedEmail, newPassword, parsedRole, isActive, customRoleId, ct);
         if (!result.IsSuccess)
         {
             return result;

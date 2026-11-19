@@ -83,6 +83,8 @@ builder.Services.AddScoped<CurrentTenantAccessor>();
 builder.Services.AddScoped<ICurrentTenantAccessor>(services => services.GetRequiredService<CurrentTenantAccessor>());
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<ICustomRoleRepository, CustomRoleRepository>();
+builder.Services.AddScoped<CustomRoleApplicationService>();
 builder.Services.AddScoped<IIdentityUserRepository, IdentityUserRepository>();
 builder.Services.AddScoped<IUserAccountProvisioner, UserAccountProvisionerAdapter>();
 builder.Services.AddScoped<IdentityApplicationService>();
@@ -298,17 +300,64 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(AuthorizationPolicyNames.Administrator,
-        policy => policy.RequireRole(ShopRole.Administrator.ToString()));
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ConfigureStore))));
+
     options.AddPolicy(AuthorizationPolicyNames.Receptionist,
-        policy => policy.RequireRole(ShopRole.Receptionist.ToString(), ShopRole.Administrator.ToString()));
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Receptionist.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.CreateWorkOrders)) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageCashier)) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageWorkOrders))));
+
     options.AddPolicy(AuthorizationPolicyNames.Operator,
-        policy => policy.RequireRole(ShopRole.Operator.ToString(), ShopRole.Administrator.ToString()));
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Receptionist.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Operator.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.UpdateWorkOrderStatus))));
+
     options.AddPolicy(AuthorizationPolicyNames.CreateWorkOrders,
-        policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString()));
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Receptionist.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.CreateWorkOrders)) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageWorkOrders))));
+
     options.AddPolicy(AuthorizationPolicyNames.ViewCustomers,
-        policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString(), ShopRole.Operator.ToString()));
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Receptionist.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Operator.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ViewCustomers)) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageCustomers))));
+
     options.AddPolicy(AuthorizationPolicyNames.UpdateWorkOrderStatus,
-        policy => policy.RequireRole(ShopRole.Administrator.ToString(), ShopRole.Receptionist.ToString(), ShopRole.Operator.ToString()));
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Receptionist.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Operator.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.UpdateWorkOrderStatus)) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageWorkOrders))));
+
+    options.AddPolicy(AuthorizationPolicyNames.ManageRoles,
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageRoles)) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageUsers))));
+
+    options.AddPolicy(AuthorizationPolicyNames.ManageCashier,
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.IsInRole(ShopRole.Receptionist.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageCashier))));
+
+    options.AddPolicy(AuthorizationPolicyNames.ManageServices,
+        policy => policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(ShopRole.Administrator.ToString()) ||
+            ctx.User.HasClaim("permission", nameof(ShopPermission.ManageServices))));
 
     options.AddPolicy(PlatformAuthorizationPolicyNames.PlatformSuperAdmin,
         policy => policy.RequireRole(PlatformRole.SuperAdmin.ToString()));

@@ -1,0 +1,201 @@
+@using CarWashSaaS.Shared.Contracts
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop" @onclick="HandleCancel">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="role-modal-title" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">SEGURANÇA &amp; PERMISSÕES</span>
+                    <h2 id="role-modal-title">@(RoleId.HasValue ? "Editar Perfil de Acesso" : "Novo Perfil de Acesso")</h2>
+                </div>
+                <button type="button" class="close-btn" @onclick="HandleCancel" aria-label="Fechar">×</button>
+            </header>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrWhiteSpace(DisplayErrorMessage))
+                {
+                    <div class="feedback feedback-error" role="alert">
+                        <span class="feedback-symbol">!</span>
+                        <div class="feedback-text">@DisplayErrorMessage</div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="role-name" class="form-label">Nome do Perfil *</label>
+                    <input id="role-name"
+                           type="text"
+                           class="form-control"
+                           placeholder="Ex.: Supervisor de Pátio, Caixa Líder, Polidor Técnico"
+                           maxlength="100"
+                           @bind="RoleName" />
+                    <span class="form-hint">Nome único para identificar a função dentro da sua operação.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="role-desc" class="form-label">Descrição (Opcional)</label>
+                    <input id="role-desc"
+                           type="text"
+                           class="form-control"
+                           placeholder="Ex.: Acompanha fluxo de boxes, atualiza checklists e abre ordens"
+                           maxlength="500"
+                           @bind="RoleDescription" />
+                </div>
+
+                <div class="permissions-section">
+                    <div class="permissions-header">
+                        <div>
+                            <h3 class="permissions-title">Permissões de Acesso (@SelectedPermissions.Count selecionadas)</h3>
+                            <p class="permissions-subtitle">Marque os acessos e ações liberados para colaboradores com este perfil.</p>
+                        </div>
+                        <div class="permissions-global-actions">
+                            <button type="button" class="btn-link-action" @onclick="SelectAll">Marcar Todos</button>
+                            <span class="action-divider">|</span>
+                            <button type="button" class="btn-link-action" @onclick="DeselectAll">Limpar Seleção</button>
+                        </div>
+                    </div>
+
+                    @if (AvailablePermissions.Count == 0)
+                    {
+                        <div class="loading-permissions">
+                            <span class="spinner-inline"></span> Carregando catálogo de permissões...
+                        </div>
+                    }
+                    else
+                    {
+                        var grouped = AvailablePermissions.GroupBy(p => p.Category);
+                        foreach (var group in grouped)
+                        {
+                            <div class="permission-category-card">
+                                <div class="category-header">
+                                    <h4 class="category-title">@group.Key</h4>
+                                    <button type="button" class="btn-link-action" @onclick="() => ToggleGroup(group)">
+                                        @(group.All(p => SelectedPermissions.Contains(p.Code)) ? "Desmarcar Grupo" : "Marcar Grupo")
+                                    </button>
+                                </div>
+                                <div class="permission-items-grid">
+                                    @foreach (var perm in group)
+                                    {
+                                        var isChecked = SelectedPermissions.Contains(perm.Code);
+                                        <label class="permission-item @(isChecked ? "is-selected" : "")" for="perm-@perm.Code">
+                                            <input type="checkbox"
+                                                   id="perm-@perm.Code"
+                                                   checked="@isChecked"
+                                                   @onchange="(e) => TogglePermission(perm.Code, e.Value)" />
+                                            <div class="perm-info">
+                                                <span class="perm-name">@perm.Name</span>
+                                                <span class="perm-desc">@perm.Description</span>
+                                            </div>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn btn-outline" @onclick="HandleCancel" disabled="@IsBusy">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@IsBusy" id="btn-save-role">
+                    <span>@(IsBusy ? "Salvando..." : (RoleId.HasValue ? "Atualizar Perfil" : "Salvar Perfil"))</span>
+                </button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public Guid? RoleId { get; set; }
+
+    [Parameter]
+    public string RoleName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? RoleDescription { get; set; }
+
+    [Parameter]
+    public HashSet<string> SelectedPermissions { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<PermissionDefinitionDto> AvailablePermissions { get; set; } = [];
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? DisplayErrorMessage { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback<(Guid? Id, string Name, string? Description, IReadOnlyList<string> Permissions)> OnSave { get; set; }
+
+    private void TogglePermission(string code, object? isChecked)
+    {
+        if (isChecked is true)
+        {
+            SelectedPermissions.Add(code);
+        }
+        else
+        {
+            SelectedPermissions.Remove(code);
+        }
+    }
+
+    private void ToggleGroup(IEnumerable<PermissionDefinitionDto> group)
+    {
+        var groupList = group.ToList();
+        var allSelected = groupList.All(p => SelectedPermissions.Contains(p.Code));
+        if (allSelected)
+        {
+            foreach (var p in groupList)
+            {
+                SelectedPermissions.Remove(p.Code);
+            }
+        }
+        else
+        {
+            foreach (var p in groupList)
+            {
+                SelectedPermissions.Add(p.Code);
+            }
+        }
+    }
+
+    private void SelectAll()
+    {
+        foreach (var p in AvailablePermissions)
+        {
+            SelectedPermissions.Add(p.Code);
+        }
+    }
+
+    private void DeselectAll()
+    {
+        SelectedPermissions.Clear();
+    }
+
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        if (OnSave.HasDelegate)
+        {
+            await OnSave.InvokeAsync((RoleId, RoleName, RoleDescription, SelectedPermissions.ToList()));
+        }
+    }
+}

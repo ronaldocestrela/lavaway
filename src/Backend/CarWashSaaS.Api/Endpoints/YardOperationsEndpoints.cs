@@ -472,7 +472,8 @@ public static class YardOperationsEndpoints
                 request.Email,
                 request.EnableSystemAccess,
                 request.SystemRole,
-                request.Password);
+                request.Password,
+                request.CustomRoleId);
             var result = await service.CreateTeamMemberAsync(tenantId, command);
             return result.IsSuccess ? Results.Created($"/team-members/{result.Value!.Id}", ToDto(result.Value!)) : result.Error!.Type switch
             {
@@ -495,7 +496,8 @@ public static class YardOperationsEndpoints
                 request.Email,
                 request.EnableSystemAccess,
                 request.SystemRole,
-                request.Password);
+                request.Password,
+                request.CustomRoleId);
             var result = await service.UpdateTeamMemberAsync(tenantId, id, command);
             return result.IsSuccess ? Results.Ok(ToDto(result.Value!)) : result.Error!.Type switch
             {

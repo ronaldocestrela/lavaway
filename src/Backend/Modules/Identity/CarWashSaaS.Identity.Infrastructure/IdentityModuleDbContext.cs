@@ -1,9 +1,11 @@
+using System.Text.Json;
 using CarWashSaaS.Identity.Domain;
 using CarWashSaaS.Shared.Configuration;
 using CarWashSaaS.Shared.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CarWashSaaS.Identity.Infrastructure;
 
@@ -17,6 +19,7 @@ public sealed class IdentityModuleDbContext(
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PlatformUser> PlatformUsers => Set<PlatformUser>();
     public DbSet<AdministrativeAuditEvent> AdministrativeAuditEvents => Set<AdministrativeAuditEvent>();
+    public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -26,7 +29,37 @@ public sealed class IdentityModuleDbContext(
         builder.Entity<ApplicationUser>(user =>
         {
             user.Property(value => value.TenantId).IsRequired();
+            user.Property(value => value.CustomRoleId);
             user.HasIndex(value => value.TenantId);
+            user.HasIndex(value => value.CustomRoleId);
+        });
+
+        builder.Entity<CustomRole>(role =>
+        {
+            role.ToTable("CustomRoles");
+            role.HasKey(r => r.Id);
+            role.Property(r => r.TenantId).IsRequired();
+            role.Property(r => r.Name).HasMaxLength(100).IsRequired();
+            role.Property(r => r.Description).HasMaxLength(500);
+            role.Property(r => r.IsSystemRole).IsRequired();
+            role.Property(r => r.CreatedAtUtc).IsRequired();
+            role.Property(r => r.UpdatedAtUtc);
+
+            var permissionsConverter = new ValueConverter<IReadOnlyCollection<ShopPermission>, string>(
+                perms => JsonSerializer.Serialize(perms.Select(p => p.ToString()), (JsonSerializerOptions?)null),
+                json => string.IsNullOrWhiteSpace(json)
+                    ? Array.Empty<ShopPermission>()
+                    : JsonSerializer.Deserialize<List<string>>(json, (JsonSerializerOptions?)null)!
+                        .Select(Enum.Parse<ShopPermission>)
+                        .ToList());
+
+            role.Property(r => r.Permissions)
+                .HasConversion(permissionsConverter)
+                .HasColumnType("nvarchar(max)")
+                .IsRequired();
+
+            role.HasIndex(r => r.TenantId);
+            role.HasIndex(r => new { r.TenantId, r.Name }).IsUnique();
         });
 
         builder.Entity<RefreshToken>(token =>

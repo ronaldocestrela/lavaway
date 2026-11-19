@@ -6,4 +6,5 @@ namespace CarWashSaaS.Identity.Infrastructure;
 public sealed class ApplicationUser : IdentityUser<Guid>, IMustHaveTenant
 {
     public Guid TenantId { get; set; }
+    public Guid? CustomRoleId { get; set; }
 }

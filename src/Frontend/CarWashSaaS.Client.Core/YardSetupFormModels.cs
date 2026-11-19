@@ -42,6 +42,7 @@ public sealed class TeamMemberFormModel
     public Guid? UserId { get; set; }
     public bool EnableSystemAccess { get; set; }
     public string SystemRole { get; set; } = "Operator";
+    public Guid? CustomRoleId { get; set; }
     public string? Password { get; set; }
     public bool HasExistingUser => UserId.HasValue;
 
@@ -51,7 +52,8 @@ public sealed class TeamMemberFormModel
         string.IsNullOrWhiteSpace(Email) ? null : Email.Trim(),
         EnableSystemAccess,
         EnableSystemAccess ? SystemRole : null,
-        EnableSystemAccess ? Password : null);
+        EnableSystemAccess ? Password : null,
+        EnableSystemAccess ? CustomRoleId : null);
 
     public UpdateTeamMemberRequest ToUpdateRequest() => new(
         FullName.Trim(),
@@ -59,7 +61,8 @@ public sealed class TeamMemberFormModel
         string.IsNullOrWhiteSpace(Email) ? null : Email.Trim(),
         EnableSystemAccess,
         EnableSystemAccess ? SystemRole : null,
-        EnableSystemAccess && !string.IsNullOrWhiteSpace(Password) ? Password : null);
+        EnableSystemAccess && !string.IsNullOrWhiteSpace(Password) ? Password : null,
+        EnableSystemAccess ? CustomRoleId : null);
 
     public void LoadFrom(TeamMemberDto dto)
     {
@@ -71,6 +74,7 @@ public sealed class TeamMemberFormModel
         UserId = dto.UserId;
         EnableSystemAccess = dto.HasSystemAccess;
         SystemRole = dto.SystemRole ?? "Operator";
+        CustomRoleId = dto.CustomRoleId;
         Password = null;
     }
 

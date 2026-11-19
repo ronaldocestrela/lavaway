@@ -7,4 +7,6 @@ public sealed record IdentityUserSnapshot(
     Guid TenantId,
     string Email,
     ShopRole Role,
-    bool IsActive = true);
+    bool IsActive = true,
+    Guid? CustomRoleId = null,
+    string? CustomRoleName = null);

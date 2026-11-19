@@ -60,6 +60,55 @@ public sealed class TenantIsolationIntegrationTests(SqlServerFixture fixture)
     }
 
     [Fact]
+    public async Task TenantB_ShouldNotReadOrModifyTenantA_CustomRole()
+    {
+        var tenantA = await CreateTenantAsync("Role Tenant A");
+        var tenantB = await CreateTenantAsync("Role Tenant B");
+
+        var roleA = CarWashSaaS.Identity.Domain.CustomRole.Create(
+            tenantA,
+            "Supervisor Pátio",
+            "Gestão da pista",
+            [CarWashSaaS.Identity.Domain.ShopPermission.CreateWorkOrders, CarWashSaaS.Identity.Domain.ShopPermission.UpdateWorkOrderStatus]).Value!;
+
+        await using (var context = CreateIdentityContext(tenantA))
+        {
+            context.CustomRoles.Add(roleA);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var contextB = CreateIdentityContext(tenantB))
+        {
+            // Tenant B não deve ver o papel do Tenant A
+            var found = await contextB.CustomRoles.SingleOrDefaultAsync(r => r.Id == roleA.Id);
+            Assert.Null(found);
+
+            // Tenant B pode criar um papel com o mesmo nome sem conflito de unicidade
+            var roleB = CarWashSaaS.Identity.Domain.CustomRole.Create(
+                tenantB,
+                "Supervisor Pátio",
+                "Gestão do Tenant B",
+                [CarWashSaaS.Identity.Domain.ShopPermission.ViewCustomers]).Value!;
+
+            contextB.CustomRoles.Add(roleB);
+            await contextB.SaveChangesAsync();
+            Assert.Equal(tenantB, roleB.TenantId);
+
+            // Tenant B não pode alterar dados do Tenant A
+            var tampered = CarWashSaaS.Identity.Domain.CustomRole.Create(
+                tenantA,
+                "Tampered Role",
+                null,
+                [CarWashSaaS.Identity.Domain.ShopPermission.ConfigureStore]).Value!;
+            contextB.CustomRoles.Attach(tampered);
+            contextB.Entry(tampered).Property(r => r.Name).CurrentValue = "Hacked";
+            contextB.Entry(tampered).Property(r => r.Name).IsModified = true;
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => contextB.SaveChangesAsync());
+        }
+    }
+
+    [Fact]
     public async Task TenantB_ShouldNotReadOrModifyTenantA_RefreshToken()
     {
         var tenantA = await CreateTenantAsync("Token Tenant A");

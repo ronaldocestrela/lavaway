@@ -10,6 +10,7 @@
 @inject SaasBillingApiClient BillingClient
 @inject NavigationManager NavigationManager
 @inject IToastService ToastService
+@inject RoleApiClient RoleApi
 
 <PageTitle>Capacidade &amp; Equipe | Lava Aê</PageTitle>
 
@@ -37,7 +38,7 @@
                               PlanName="@PlanState.PlanName" />
         </div>
 
-        <!-- TABS DE NAVEGAÇÃO INTERNA: EQUIPE E COMISSÕES -->
+        <!-- TABS DE NAVEGAÇÃO INTERNA: EQUIPE, COMISSÕES E PERFIS -->
         <div class="tabs-nav">
             <button type="button"
                     class="tab-btn @(_activeTab == "team" ? "is-active" : "")"
@@ -48,6 +49,12 @@
                     class="tab-btn @(_activeTab == "commissions" ? "is-active" : "")"
                     @onclick='() => _activeTab = "commissions"'>
                 <span>💰 Regras de Comissão (@_commissionRules.Count)</span>
+            </button>
+            <button type="button"
+                    class="tab-btn @(_activeTab == "roles" ? "is-active" : "")"
+                    @onclick='() => _activeTab = "roles"'
+                    id="tab-roles">
+                <span>🛡️ Perfis &amp; Permissões (@_roles.Count)</span>
             </button>
         </div>
 
@@ -181,9 +188,9 @@
                 }
             </div>
         }
-        else
+        else if (_activeTab == "commissions")
         {
-            <!-- SEÇÃO 3: REGRAS DE COMISSÃO -->
+            <!-- SEÇÃO 2: REGRAS DE COMISSÃO -->
             <PlanGate IsAllowed="@(!PlanState.IsLoaded || PlanState.HasCommissions)"
                       FeatureTitle="Regras e Matriz de Comissionamento"
                       FeatureDescription="Configure percentuais automáticos de comissão por serviço e cargo, incentivando a produtividade da sua equipe sem planilhas manuais."
@@ -261,16 +268,115 @@
             </div>
             </PlanGate>
         }
+        else if (_activeTab == "roles")
+        {
+            <!-- SEÇÃO 3: PERFIS DE ACESSO & PERMISSÕES -->
+            <div class="tab-content">
+                <div class="content-header">
+                    <div>
+                        <h2>Perfis de Acesso &amp; Permissões</h2>
+                        <p>Defina as funções operacionais e os níveis de permissão concedidos a cada colaborador da sua loja.</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" @onclick="OpenCreateRoleModal" id="btn-new-role">
+                        <span class="btn-icon">+</span>
+                        <span>Novo Perfil de Acesso</span>
+                    </button>
+                </div>
+
+                @if (_roles.Count == 0)
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">🛡️</div>
+                        <h3>Nenhum perfil carregado</h3>
+                        <p>Carregue ou cadastre o primeiro perfil de acesso para a equipe.</p>
+                        <button type="button" class="btn btn-secondary" @onclick="OpenCreateRoleModal">
+                            Cadastrar Perfil
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="roles-grid">
+                        @foreach (var role in _roles)
+                        {
+                            <div class="role-card @(role.IsSystemRole ? "is-system-card" : "")" id="role-card-@role.Id">
+                                <div class="role-card-header">
+                                    <div class="role-identity">
+                                        <span class="role-badge-icon">@(role.Name switch { "Administrator" => "🛡️", "Receptionist" => "📋", "Operator" => "🔧", _ => "⚙️" })</span>
+                                        <div>
+                                            <h3 class="role-title">@role.Name</h3>
+                                            <span class="role-kind-tag @(role.IsSystemRole ? "tag-system" : "tag-custom")">
+                                                @(role.IsSystemRole ? "Padrão do Sistema" : "Personalizado")
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="role-user-count" title="Colaboradores associados a este perfil">
+                                        👥 @role.AssignedUsersCount
+                                    </div>
+                                </div>
+
+                                <p class="role-desc">@(role.Description ?? "Sem descrição informada.")</p>
+
+                                <div class="role-permissions-preview">
+                                    <span class="preview-label">Permissões (@role.Permissions.Count):</span>
+                                    <div class="perm-tags">
+                                        @foreach (var perm in role.Permissions.Take(4))
+                                        {
+                                            <span class="perm-tag">@GetPermissionFriendlyName(perm)</span>
+                                        }
+                                        @if (role.Permissions.Count > 4)
+                                        {
+                                            <span class="perm-tag perm-tag-more">+@(role.Permissions.Count - 4) mais</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="role-card-footer">
+                                    @if (role.IsSystemRole)
+                                    {
+                                        <span class="system-protected-label" title="Papéis padrão do sistema são imutáveis por segurança">
+                                            🔒 Protegido pelo sistema
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-outline btn-sm" @onclick="() => OpenEditRoleModal(role)">
+                                            ✏️ Editar
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteRoleAsync(role)">
+                                            🗑️ Excluir
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
     }
 </section>
 
 <!-- MODAL COLABORADOR -->
 <TeamMemberModal IsVisible="@_isTeamMemberModalVisible"
                  Model="@_teamMemberModel"
+                 AvailableRoles="@_roles"
                  IsBusy="@_isSavingMember"
                  ErrorMessage="@_memberErrorMessage"
                  OnSave="SaveTeamMemberAsync"
                  OnCancel="CloseTeamMemberModal" />
+
+<!-- MODAL PERFIL DE ACESSO -->
+<RoleModal IsVisible="@_isRoleModalVisible"
+           RoleId="@_editingRoleId"
+           RoleName="@_editingRoleName"
+           RoleDescription="@_editingRoleDescription"
+           SelectedPermissions="@_editingRolePermissions"
+           AvailablePermissions="@_availablePermissions"
+           IsBusy="@_isSavingRole"
+           DisplayErrorMessage="@_roleErrorMessage"
+           OnCancel="CloseRoleModal"
+           OnSave="SaveRoleAsync" />
 
 <!-- MODAL COMISSÃO -->
 <CommissionRuleModal IsVisible="@_isCommissionModalVisible"
@@ -315,6 +421,17 @@
     private bool _isSavingCommission;
     private string? _commissionErrorMessage;
 
+    // Perfis & Permissões
+    private List<CustomRoleDto> _roles = [];
+    private IReadOnlyList<PermissionDefinitionDto> _availablePermissions = [];
+    private bool _isRoleModalVisible;
+    private Guid? _editingRoleId;
+    private string _editingRoleName = string.Empty;
+    private string? _editingRoleDescription;
+    private HashSet<string> _editingRolePermissions = [];
+    private bool _isSavingRole;
+    private string? _roleErrorMessage;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
@@ -351,6 +468,18 @@
             {
                 _commissionRules = [];
                 _availableServices = [];
+            }
+
+            try
+            {
+                var roles = await RoleApi.GetRolesAsync();
+                _roles = roles.ToList();
+                _availablePermissions = await RoleApi.GetPermissionsAsync();
+            }
+            catch
+            {
+                _roles = [];
+                _availablePermissions = [];
             }
         }
         catch (Exception ex)
@@ -581,6 +710,115 @@
         {
             ToastService.ShowError(result.Error?.Description ?? "Falha ao iniciar checkout do Stripe.");
         }
+    }
+
+    private void OpenCreateRoleModal()
+    {
+        _editingRoleId = null;
+        _editingRoleName = string.Empty;
+        _editingRoleDescription = null;
+        _editingRolePermissions = [];
+        _roleErrorMessage = null;
+        _isRoleModalVisible = true;
+    }
+
+    private void OpenEditRoleModal(CustomRoleDto role)
+    {
+        _editingRoleId = role.Id;
+        _editingRoleName = role.Name;
+        _editingRoleDescription = role.Description;
+        _editingRolePermissions = new HashSet<string>(role.Permissions);
+        _roleErrorMessage = null;
+        _isRoleModalVisible = true;
+    }
+
+    private void CloseRoleModal()
+    {
+        _isRoleModalVisible = false;
+        _roleErrorMessage = null;
+    }
+
+    private async Task SaveRoleAsync((Guid? Id, string Name, string? Description, IReadOnlyList<string> Permissions) args)
+    {
+        if (string.IsNullOrWhiteSpace(args.Name))
+        {
+            _roleErrorMessage = "O nome do perfil é obrigatório.";
+            return;
+        }
+
+        if (args.Permissions.Count == 0)
+        {
+            _roleErrorMessage = "Selecione pelo menos uma permissão de acesso.";
+            return;
+        }
+
+        _isSavingRole = true;
+        _roleErrorMessage = null;
+
+        try
+        {
+            if (args.Id.HasValue)
+            {
+                var updateResult = await RoleApi.UpdateRoleAsync(args.Id.Value, new UpdateCustomRoleRequest(args.Name, args.Description, args.Permissions));
+                if (!updateResult.IsSuccess)
+                {
+                    _roleErrorMessage = updateResult.Error!.Description;
+                    return;
+                }
+
+                SetSuccessMessage($"Perfil '{args.Name}' atualizado com sucesso!");
+            }
+            else
+            {
+                var createResult = await RoleApi.CreateRoleAsync(new CreateCustomRoleRequest(args.Name, args.Description, args.Permissions));
+                if (!createResult.IsSuccess)
+                {
+                    _roleErrorMessage = createResult.Error!.Description;
+                    return;
+                }
+
+                SetSuccessMessage($"Perfil '{args.Name}' criado com sucesso!");
+            }
+
+            _isRoleModalVisible = false;
+            var reloaded = await RoleApi.GetRolesAsync();
+            _roles = reloaded.ToList();
+        }
+        catch (Exception ex)
+        {
+            _roleErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSavingRole = false;
+        }
+    }
+
+    private async Task DeleteRoleAsync(CustomRoleDto role)
+    {
+        if (role.IsSystemRole)
+        {
+            ToastService.ShowWarning("Perfis padrão do sistema não podem ser excluídos.");
+            return;
+        }
+
+        var result = await RoleApi.DeleteRoleAsync(role.Id);
+        if (result.IsSuccess)
+        {
+            SetSuccessMessage($"Perfil '{role.Name}' excluído com sucesso.");
+            var reloaded = await RoleApi.GetRolesAsync();
+            _roles = reloaded.ToList();
+        }
+        else
+        {
+            ToastService.ShowError(result.Error!.Description);
+        }
+    }
+
+    private string GetPermissionFriendlyName(string permCode)
+    {
+        var found = _availablePermissions.FirstOrDefault(p => string.Equals(p.Code, permCode, StringComparison.OrdinalIgnoreCase));
+        return found?.Name ?? permCode;
     }
 
     private static string GetInitials(string fullName)

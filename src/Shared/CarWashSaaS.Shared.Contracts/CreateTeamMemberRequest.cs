@@ -6,4 +6,5 @@ public sealed record CreateTeamMemberRequest(
     string? Email,
     bool EnableSystemAccess = false,
     string? SystemRole = null,
-    string? Password = null);
+    string? Password = null,
+    Guid? CustomRoleId = null);

@@ -37,6 +37,16 @@ public sealed class JwtTokenService : ITokenService
         ShopRole role,
         IReadOnlyCollection<ShopPermission> permissions)
     {
+        return GenerateAccessToken(userId, email, tenantId, role.ToString(), permissions);
+    }
+
+    public GeneratedToken GenerateAccessToken(
+        Guid userId,
+        string email,
+        Guid tenantId,
+        string roleName,
+        IReadOnlyCollection<ShopPermission> permissions)
+    {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expires = DateTime.UtcNow.AddMinutes(_accessTokenLifetimeMinutes);
@@ -47,8 +57,8 @@ public sealed class JwtTokenService : ITokenService
             new(JwtRegisteredClaimNames.Email, email),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("tenant_id", tenantId.ToString()),
-            new("role", role.ToString()),
-            new(ClaimTypes.Role, role.ToString())
+            new("role", roleName),
+            new(ClaimTypes.Role, roleName)
         };
 
         foreach (var permission in permissions)
