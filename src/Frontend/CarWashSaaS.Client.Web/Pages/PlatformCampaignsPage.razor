@@ -1,0 +1,276 @@
+@page "/platform/campaigns"
+@attribute [Authorize(Roles = "SuperAdmin,PlatformSupport,PlatformBillingAdmin,PlatformAuditor")]
+@using CarWashSaaS.Client.Components
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.AspNetCore.Authorization
+@inject PlatformCampaignsApiClient CampaignClient
+@inject IToastService ToastService
+
+<PageTitle>Campanhas &amp; QR Codes — Backoffice Lava Aê</PageTitle>
+
+<div class="campaigns-page-container">
+    <PageHeading Eyebrow="BACKOFFICE DA PLATAFORMA"
+                 Title="Gerador de Campanhas &amp; QR Code"
+                 Subtitle="Crie links curtos amigáveis com parâmetros UTM padronizados e emita QR Codes vetoriais para divulgação em massa.">
+        <Actions>
+            <AuthorizeView Roles="SuperAdmin,PlatformSupport">
+                <Authorized>
+                    <button type="button" class="btn-create-campaign" @onclick="OpenCreateModal" id="btn-create-campaign">
+                        <span>+ Nova Campanha</span>
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+            <button type="button" class="btn-refresh" @onclick="LoadCampaignsAsync" disabled="@_isLoading" id="btn-refresh-campaigns">
+                <span class="@(_isLoading ? "spin-icon" : "")">↻</span>
+                <span>Atualizar</span>
+            </button>
+        </Actions>
+    </PageHeading>
+
+    <!-- KPIs Executivos de Campanhas -->
+    <section class="kpi-grid" aria-label="Indicadores Globais de Campanhas">
+        <div class="kpi-card">
+            <div class="kpi-label">TOTAL DE CAMPANHAS</div>
+            <div class="kpi-value">@_campaigns.Count</div>
+            <div class="kpi-subtext">Cadastradas na plataforma</div>
+        </div>
+        <div class="kpi-card kpi-active">
+            <div class="kpi-label">CAMPANHAS ATIVAS</div>
+            <div class="kpi-value text-emerald">@_campaigns.Count(c => c.IsActive)</div>
+            <div class="kpi-subtext">Redirecionando tráfego</div>
+        </div>
+        <div class="kpi-card kpi-clicks">
+            <div class="kpi-label">TOTAL DE CLIQUES &amp; SCANS</div>
+            <div class="kpi-value text-cyan">@_campaigns.Sum(c => c.ClickCount).ToString("N0")</div>
+            <div class="kpi-subtext">Acessos via link / QR Code</div>
+        </div>
+    </section>
+
+    <!-- Filtros de Busca e Status -->
+    <section class="filters-card" aria-label="Filtros de busca">
+        <div class="filter-row">
+            <div class="filter-group search-input-group">
+                <span class="search-icon" aria-hidden="true">🔍</span>
+                <input type="text" 
+                       class="form-control search-input" 
+                       placeholder="Buscar por nome, slug ou nome da campanha..." 
+                       @bind="_searchTerm" 
+                       @bind:after="ApplyFilterAsync" />
+            </div>
+
+            <div class="filter-group">
+                <select class="form-control select-status" @bind="_selectedStatus" @bind:after="ApplyFilterAsync">
+                    <option value="">Todos os status</option>
+                    <option value="active">Apenas Ativas</option>
+                    <option value="inactive">Apenas Pausadas</option>
+                </select>
+            </div>
+        </div>
+    </section>
+
+    <!-- Listagem em Tabela Responsiva -->
+    <section class="table-card" aria-label="Tabela de campanhas">
+        @if (_isLoading)
+        {
+            <div class="table-loading">
+                <span class="spinner"></span>
+                <span>Carregando campanhas do Backoffice...</span>
+            </div>
+        }
+        else if (_campaigns.Count == 0)
+        {
+            <div class="empty-state">
+                <p>Nenhuma campanha encontrada com os critérios informados.</p>
+                <AuthorizeView Roles="SuperAdmin,PlatformSupport">
+                    <Authorized>
+                        <button type="button" class="btn-create-campaign" @onclick="OpenCreateModal">
+                            Criar a primeira campanha
+                        </button>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Campanha</th>
+                            <th>Link Curto</th>
+                            <th>Origem / Mídia (UTM)</th>
+                            <th>Cliques / Scans</th>
+                            <th>Status</th>
+                            <th>Criado em</th>
+                            <th class="text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in _campaigns)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="campaign-cell-name">
+                                        <strong class="name-text">@c.Name</strong>
+                                        <span class="dest-text" title="@c.FullTrackingUrl">Destino: @c.DestinationPath</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="slug-pill">/c/@c.Slug</span>
+                                </td>
+                                <td>
+                                    <div class="utm-tags">
+                                        <span class="badge-source">@c.UtmSource</span>
+                                        <span class="badge-medium">@c.UtmMedium</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong class="clicks-count">@c.ClickCount.ToString("N0")</strong>
+                                </td>
+                                <td>
+                                    <span class="status-indicator @(c.IsActive ? "status-active" : "status-paused")">
+                                        @(c.IsActive ? "Ativa" : "Pausada")
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="date-text">@c.CreatedAtUtc.ToBrazilTime().ToString("dd/MM/yyyy")</span>
+                                </td>
+                                <td class="actions-cell">
+                                    <button type="button" class="btn-action btn-qr" title="Visualizar e Baixar QR Code" @onclick="() => OpenQrCodeModal(c)">
+                                        QR Code
+                                    </button>
+                                    <AuthorizeView Roles="SuperAdmin,PlatformSupport">
+                                        <Authorized>
+                                            <button type="button" class="btn-action btn-edit" title="Editar Campanha" @onclick="() => OpenEditModal(c)">
+                                                Editar
+                                            </button>
+                                            <button type="button" class="btn-action @(c.IsActive ? "btn-pause" : "btn-resume")" 
+                                                    title="@(c.IsActive ? "Pausar Campanha" : "Ativar Campanha")"
+                                                    @onclick="() => ToggleCampaignStatusAsync(c)">
+                                                @(c.IsActive ? "Pausar" : "Ativar")
+                                            </button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+<!-- Modais de Criação/Edição e QR Code -->
+<CampaignEditorModal IsOpen="_isEditorModalOpen" 
+                     CampaignToEdit="_selectedCampaignToEdit" 
+                     OnSaved="HandleCampaignSaved" 
+                     OnClosed="CloseEditorModal" />
+
+<CampaignQrCodeModal IsOpen="_isQrModalOpen" 
+                     Campaign="_selectedCampaignForQr" 
+                     OnClosed="CloseQrModal" />
+
+@code {
+    private List<CampaignLinkDto> _campaigns = [];
+    private bool _isLoading = true;
+    private string _searchTerm = string.Empty;
+    private string _selectedStatus = string.Empty;
+
+    private bool _isEditorModalOpen = false;
+    private CampaignLinkDto? _selectedCampaignToEdit;
+
+    private bool _isQrModalOpen = false;
+    private CampaignLinkDto? _selectedCampaignForQr;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCampaignsAsync();
+    }
+
+    private async Task LoadCampaignsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            bool? isActiveFilter = _selectedStatus switch
+            {
+                "active" => true,
+                "inactive" => false,
+                _ => null
+            };
+
+            var result = await CampaignClient.ListAsync(_searchTerm, isActiveFilter);
+            if (result.IsSuccess)
+            {
+                _campaigns = result.Value?.ToList() ?? [];
+            }
+            else
+            {
+                ToastService.ShowError(result.Error!.Description);
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        await LoadCampaignsAsync();
+    }
+
+    private void OpenCreateModal()
+    {
+        _selectedCampaignToEdit = null;
+        _isEditorModalOpen = true;
+    }
+
+    private void OpenEditModal(CampaignLinkDto campaign)
+    {
+        _selectedCampaignToEdit = campaign;
+        _isEditorModalOpen = true;
+    }
+
+    private void CloseEditorModal()
+    {
+        _isEditorModalOpen = false;
+        _selectedCampaignToEdit = null;
+    }
+
+    private void OpenQrCodeModal(CampaignLinkDto campaign)
+    {
+        _selectedCampaignForQr = campaign;
+        _isQrModalOpen = true;
+    }
+
+    private void CloseQrModal()
+    {
+        _isQrModalOpen = false;
+        _selectedCampaignForQr = null;
+    }
+
+    private async Task HandleCampaignSaved(CampaignLinkDto saved)
+    {
+        CloseEditorModal();
+        await LoadCampaignsAsync();
+        OpenQrCodeModal(saved);
+    }
+
+    private async Task ToggleCampaignStatusAsync(CampaignLinkDto campaign)
+    {
+        var newStatus = !campaign.IsActive;
+        var result = await CampaignClient.ToggleStatusAsync(campaign.Id, newStatus);
+        if (result.IsSuccess)
+        {
+            ToastService.ShowSuccess(newStatus ? "Campanha ativada com sucesso!" : "Campanha pausada.");
+            await LoadCampaignsAsync();
+        }
+        else
+        {
+            ToastService.ShowError(result.Error!.Description);
+        }
+    }
+}

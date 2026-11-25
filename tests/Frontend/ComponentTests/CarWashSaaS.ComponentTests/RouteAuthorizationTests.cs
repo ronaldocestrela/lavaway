@@ -164,6 +164,7 @@ public sealed class RouteAuthorizationTests : BunitContext
     [InlineData(typeof(PaymentSettingsPage), "Administrator")]
     [InlineData(typeof(NewWorkOrderPage), "Administrator,Receptionist")]
     [InlineData(typeof(InspectionPage), "Administrator,Receptionist,Operator")]
+    [InlineData(typeof(PlatformCampaignsPage), "SuperAdmin,PlatformSupport,PlatformBillingAdmin,PlatformAuditor")]
     public void ProtectedPages_MustHaveAuthorizeAttributeWithProperRoles(Type pageType, string expectedRoles)
     {
         var authAttr = pageType.GetCustomAttribute<AuthorizeAttribute>();

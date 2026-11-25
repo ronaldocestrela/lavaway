@@ -13,6 +13,7 @@ public sealed class TenantsDbContext(
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<StoreProfile> StoreProfiles => Set<StoreProfile>();
+    public DbSet<CampaignLink> CampaignLinks => Set<CampaignLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +46,8 @@ public sealed class TenantsDbContext(
         storeProfile.Property(value => value.BrandPrimaryColor).HasMaxLength(7);
         storeProfile.Property(value => value.BrandSecondaryColor).HasMaxLength(7);
         storeProfile.Property(value => value.InspectionPhotoRetentionDays).IsRequired().HasDefaultValue(90);
+
+        modelBuilder.ApplyConfiguration(new CampaignLinkConfiguration());
 
         modelBuilder.ApplyTenantQueryFilters(this);
     }

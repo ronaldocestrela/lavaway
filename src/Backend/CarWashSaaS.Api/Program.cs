@@ -100,6 +100,9 @@ builder.Services.AddScoped<ITenantStoreProfileLookup>(sp => sp.GetRequiredServic
 builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 builder.Services.AddScoped<GlobalTenantApplicationService>();
 builder.Services.AddScoped<IGlobalTenantLookup>(sp => sp.GetRequiredService<GlobalTenantApplicationService>());
+builder.Services.AddScoped<ICampaignLinkRepository, CampaignLinkRepository>();
+builder.Services.AddSingleton<IQrCodeGenerator, QrCodeGeneratorService>();
+builder.Services.AddScoped<CampaignLinkApplicationService>();
 builder.Services.AddScoped<TenantImpersonationApplicationService>();
 builder.Services.AddScoped<IServiceRepository, ServiceRepository>();
 builder.Services.AddScoped<ServiceCatalogApplicationService>();
@@ -461,6 +464,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 app.MapIdentityEndpoints();
 app.MapPlatformEndpoints();
+app.MapPlatformCampaignsEndpoints();
 app.MapPlatformWhatsAppEndpoints();
 app.MapPlatformObservabilityEndpoints();
 app.MapWhatsAppEndpoints();

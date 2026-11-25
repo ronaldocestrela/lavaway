@@ -1,0 +1,138 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@using Microsoft.JSInterop
+@inject PlatformCampaignsApiClient CampaignClient
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+
+@if (IsOpen && Campaign is not null)
+{
+    <div class="modal-backdrop" @onclick="HandleBackdropClick">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="badge-tag">QR CODE &amp; LINKS DE DIVULGAÇÃO</span>
+                    <h3 class="modal-title">@Campaign.Name</h3>
+                </div>
+                <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Fechar">✕</button>
+            </header>
+
+            <div class="modal-body">
+                <div class="qr-container">
+                    @if (_isLoading)
+                    {
+                        <div class="qr-loading">
+                            <span class="spinner"></span>
+                            <span>Gerando QR Code vetorial...</span>
+                        </div>
+                    }
+                    else if (_preview is not null)
+                    {
+                        <div class="qr-box">
+                            @((MarkupString)_preview.SvgContent)
+                        </div>
+                        <span class="qr-caption">Escaneie com a câmera do smartphone para testar</span>
+                    }
+                </div>
+
+                <div class="links-section">
+                    <div class="link-item">
+                        <label>Link Curto Amigável (/c/@Campaign.Slug)</label>
+                        <div class="copy-input-group">
+                            <input type="text" readonly class="form-input readonly-input" value="@Campaign.ShortUrl" />
+                            <button type="button" class="btn-copy" @onclick='() => CopyToClipboardAsync(Campaign.ShortUrl, "Link curto")'>
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="link-item">
+                        <label>URL Completa de Destino com Parâmetros UTM</label>
+                        <div class="copy-input-group">
+                            <input type="text" readonly class="form-input readonly-input" value="@Campaign.FullTrackingUrl" />
+                            <button type="button" class="btn-copy" @onclick='() => CopyToClipboardAsync(Campaign.FullTrackingUrl, "URL completa")'>
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <h4 class="download-title">Exportar Material Gráfico</h4>
+                    <div class="download-buttons">
+                        <a href="@CampaignClient.GetQrCodeDownloadUrl(Campaign.Id, "svg")" target="_blank" class="btn-download btn-svg" download="@($"qrcode-{Campaign.Slug}.svg")">
+                            <span>Baixar SVG (Vetor para Gráfica / Impressão)</span>
+                        </a>
+                        <a href="@CampaignClient.GetQrCodeDownloadUrl(Campaign.Id, "png")" target="_blank" class="btn-download btn-png" download="@($"qrcode-{Campaign.Slug}.png")">
+                            <span>Baixar PNG (Digital / WhatsApp / Social)</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" class="btn-secondary" @onclick="CloseAsync">Fechar</button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public CampaignLinkDto? Campaign { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private CampaignQrCodePreviewDto? _preview;
+    private bool _isLoading = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && Campaign is not null)
+        {
+            _isLoading = true;
+            try
+            {
+                var result = await CampaignClient.GetQrCodePreviewAsync(Campaign.Id);
+                if (result.IsSuccess)
+                {
+                    _preview = result.Value;
+                }
+                else
+                {
+                    ToastService.ShowError(result.Error!.Description);
+                }
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+        else
+        {
+            _preview = null;
+        }
+    }
+
+    private async Task CopyToClipboardAsync(string text, string label)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            ToastService.ShowSuccess($"{label} copiado para a área de transferência!");
+        }
+        catch
+        {
+            ToastService.ShowInfo($"Selecione e copie: {text}");
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        await OnClosed.InvokeAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await CloseAsync();
+    }
+}

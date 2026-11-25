@@ -1,0 +1,225 @@
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 29, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 1rem;
+}
+
+.modal-card {
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 550px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.badge-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #10b981;
+}
+
+.modal-title {
+    margin: 0.25rem 0 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #f9fafb;
+}
+
+.btn-close {
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.qr-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.qr-box {
+    width: 220px;
+    height: 220px;
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-box :deep(svg) {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.qr-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 3rem 0;
+    color: #9ca3af;
+    font-size: 0.9rem;
+}
+
+.qr-caption {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.links-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.link-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.link-item label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #d1d5db;
+}
+
+.copy-input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.readonly-input {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    padding: 0.55rem 0.75rem;
+    color: #93c5fd;
+    font-family: monospace;
+    font-size: 0.85rem;
+    flex: 1;
+}
+
+.btn-copy {
+    background: #374151;
+    border: none;
+    color: #f9fafb;
+    padding: 0.55rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-copy:hover {
+    background: #4b5563;
+}
+
+.download-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.download-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #10b981;
+}
+
+.download-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.btn-download {
+    text-align: center;
+    text-decoration: none;
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-svg {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid #10b981;
+    color: #34d399;
+}
+
+.btn-svg:hover {
+    background: rgba(16, 185, 129, 0.3);
+}
+
+.btn-png {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid #3b82f6;
+    color: #60a5fa;
+}
+
+.btn-png:hover {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-secondary {
+    background: #374151;
+    border: none;
+    color: #e5e7eb;
+    padding: 0.55rem 1.2rem;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+@media (max-width: 500px) {
+    .download-buttons {
+        grid-template-columns: 1fr;
+    }
+}

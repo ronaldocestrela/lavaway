@@ -15,7 +15,8 @@ public enum PlatformPermission
     ManagePlatformBilling,
     ViewAuditLogs,
     ManagePlatformUsers,
-    ViewSystemMetrics
+    ViewSystemMetrics,
+    ManageCampaigns
 }
 
 public static class PlatformAuthorizationPolicyNames
@@ -40,14 +41,16 @@ public static class PlatformRolePermissions
                 PlatformPermission.ManagePlatformBilling,
                 PlatformPermission.ViewAuditLogs,
                 PlatformPermission.ManagePlatformUsers,
-                PlatformPermission.ViewSystemMetrics
+                PlatformPermission.ViewSystemMetrics,
+                PlatformPermission.ManageCampaigns
             ],
             PlatformRole.PlatformSupport =>
             [
                 PlatformPermission.ManageTenants,
                 PlatformPermission.ImpersonateTenant,
                 PlatformPermission.ViewAuditLogs,
-                PlatformPermission.ViewSystemMetrics
+                PlatformPermission.ViewSystemMetrics,
+                PlatformPermission.ManageCampaigns
             ],
             PlatformRole.PlatformBillingAdmin =>
             [

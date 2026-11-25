@@ -1,0 +1,250 @@
+@using CarWashSaaS.Client.Core
+@using CarWashSaaS.Shared.Contracts
+@inject PlatformCampaignsApiClient CampaignClient
+@inject IToastService ToastService
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleBackdropClick">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <div>
+                    <span class="badge-tag">@(IsEditing ? "EDIÇÃO DE CAMPANHA" : "NOVA CAMPANHA")</span>
+                    <h3 class="modal-title">@(IsEditing ? "Atualizar Campanha" : "Gerar Link de Campanha")</h3>
+                </div>
+                <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Fechar">✕</button>
+            </header>
+
+            <form @onsubmit="SaveAsync">
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <div class="alert-banner alert-error">
+                            <span>@_errorMessage</span>
+                        </div>
+                    }
+
+                    <div class="form-group">
+                        <label for="campaign-name">Nome da Campanha *</label>
+                        <input id="campaign-name" type="text" class="form-input" 
+                               placeholder="Ex: Black Friday 2026, Feira Automotiva SP" 
+                               @bind="_name" @bind:after="OnNameChanged" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="campaign-slug">Slug do Link Curto (/c/{slug}) *</label>
+                        <div class="slug-input-wrapper">
+                            <span class="slug-prefix">/c/</span>
+                            <input id="campaign-slug" type="text" class="form-input slug-input" 
+                                   placeholder="black-friday-2026" 
+                                   @bind="_slug" disabled="@IsEditing" required />
+                        </div>
+                        <small class="form-hint">Apenas letras minúsculas, números e hífens. Não poderá ser alterado após a criação.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="campaign-dest">Destino Interno *</label>
+                        <input id="campaign-dest" type="text" class="form-input" 
+                               placeholder="Ex: / ou /authentication/register ou /#planos" 
+                               @bind="_destinationPath" required />
+                        <div class="quick-presets">
+                            <span class="presets-label">Atalhos rápidos:</span>
+                            <button type="button" class="btn-preset" @onclick='() => _destinationPath = "/"'>Início (/)</button>
+                            <button type="button" class="btn-preset" @onclick='() => _destinationPath = "/authentication/register"'>Cadastro (/register)</button>
+                            <button type="button" class="btn-preset" @onclick='() => _destinationPath = "/#planos"'>Planos (/#planos)</button>
+                        </div>
+                    </div>
+
+                    <div class="utm-section">
+                        <h4 class="utm-title">Parâmetros UTM de Rastreamento (Google Analytics / Meta)</h4>
+                        
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="utm-source">Origem (utm_source) *</label>
+                                <input id="utm-source" type="text" class="form-input" placeholder="instagram, google, panfleto, feira" @bind="_utmSource" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="utm-medium">Mídia / Canal (utm_medium) *</label>
+                                <input id="utm-medium" type="text" class="form-input" placeholder="cpc, stories, qrcode, bio" @bind="_utmMedium" required />
+                            </div>
+                        </div>
+
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="utm-campaign">Nome UTM (utm_campaign) *</label>
+                                <input id="utm-campaign" type="text" class="form-input" placeholder="bf2026, lancamento" @bind="_utmCampaign" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="utm-term">Termo / Palavra (utm_term)</label>
+                                <input id="utm-term" type="text" class="form-input" placeholder="lavajato, estética" @bind="_utmTerm" />
+                            </div>
+                            <div class="form-group">
+                                <label for="utm-content">Conteúdo (utm_content)</label>
+                                <input id="utm-content" type="text" class="form-input" placeholder="banner_topo, card_preto" @bind="_utmContent" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (IsEditing)
+                    {
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" @bind="_isActive" />
+                                <span>Campanha Ativa para Redirecionamentos</span>
+                            </label>
+                        </div>
+                    }
+                </div>
+
+                <footer class="modal-footer">
+                    <button type="button" class="btn-secondary" @onclick="CloseAsync" disabled="@_isSaving">Cancelar</button>
+                    <button type="submit" class="btn-primary" disabled="@_isSaving">
+                        @if (_isSaving)
+                        {
+                            <span class="spinner"></span>
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>@(IsEditing ? "Atualizar Campanha" : "Gerar Link & QR Code")</span>
+                        }
+                    </button>
+                </footer>
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public CampaignLinkDto? CampaignToEdit { get; set; }
+    [Parameter] public EventCallback<CampaignLinkDto> OnSaved { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private bool IsEditing => CampaignToEdit is not null;
+    private string _name = string.Empty;
+    private string _slug = string.Empty;
+    private string _destinationPath = "/";
+    private string _utmSource = "qrcode";
+    private string _utmMedium = "offline";
+    private string _utmCampaign = string.Empty;
+    private string? _utmTerm;
+    private string? _utmContent;
+    private bool _isActive = true;
+    private bool _isSaving = false;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (CampaignToEdit is not null)
+        {
+            _name = CampaignToEdit.Name;
+            _slug = CampaignToEdit.Slug;
+            _destinationPath = CampaignToEdit.DestinationPath;
+            _utmSource = CampaignToEdit.UtmSource;
+            _utmMedium = CampaignToEdit.UtmMedium;
+            _utmCampaign = CampaignToEdit.UtmCampaign;
+            _utmTerm = CampaignToEdit.UtmTerm;
+            _utmContent = CampaignToEdit.UtmContent;
+            _isActive = CampaignToEdit.IsActive;
+        }
+        else
+        {
+            _name = string.Empty;
+            _slug = string.Empty;
+            _destinationPath = "/";
+            _utmSource = "qrcode";
+            _utmMedium = "offline";
+            _utmCampaign = string.Empty;
+            _utmTerm = null;
+            _utmContent = null;
+            _isActive = true;
+        }
+        _errorMessage = null;
+    }
+
+    private void OnNameChanged()
+    {
+        if (!IsEditing && string.IsNullOrWhiteSpace(_slug) && !string.IsNullOrWhiteSpace(_name))
+        {
+            var clean = System.Text.RegularExpressions.Regex.Replace(_name.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+            _slug = clean;
+            if (string.IsNullOrWhiteSpace(_utmCampaign))
+            {
+                _utmCampaign = clean;
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (IsEditing)
+            {
+                var updateReq = new UpdateCampaignLinkRequest(
+                    _name,
+                    _destinationPath,
+                    _utmSource,
+                    _utmMedium,
+                    _utmCampaign,
+                    _utmTerm,
+                    _utmContent,
+                    _isActive,
+                    CampaignToEdit!.ExpiresAtUtc);
+
+                var result = await CampaignClient.UpdateAsync(CampaignToEdit.Id, updateReq);
+                if (result.IsSuccess)
+                {
+                    ToastService.ShowSuccess("Campanha atualizada com sucesso!");
+                    await OnSaved.InvokeAsync(result.Value);
+                }
+                else
+                {
+                    _errorMessage = result.Error!.Description;
+                }
+            }
+            else
+            {
+                var createReq = new CreateCampaignLinkRequest(
+                    _name,
+                    _slug,
+                    _destinationPath,
+                    _utmSource,
+                    _utmMedium,
+                    _utmCampaign,
+                    _utmTerm,
+                    _utmContent,
+                    null);
+
+                var result = await CampaignClient.CreateAsync(createReq);
+                if (result.IsSuccess)
+                {
+                    ToastService.ShowSuccess("Campanha e QR Code gerados com sucesso!");
+                    await OnSaved.InvokeAsync(result.Value);
+                }
+                else
+                {
+                    _errorMessage = result.Error!.Description;
+                }
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        await OnClosed.InvokeAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await CloseAsync();
+    }
+}
