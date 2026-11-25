@@ -148,6 +148,26 @@ public sealed class PlatformCampaignsApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<Result<byte[]>> DownloadQrCodeFileBytesAsync(Guid id, string format = "svg", CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"platform/campaigns/{id}/qrcode?format={format}&download=true", ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadFromJsonAsync<Error>(cancellationToken: ct);
+                return Result<byte[]>.Failure(error ?? new Error("api.error", "Erro ao baixar arquivo do QR Code.", ErrorType.Validation));
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+            return Result<byte[]>.Success(bytes);
+        }
+        catch (Exception ex)
+        {
+            return Result<byte[]>.Failure(new Error("http.error", ex.Message, ErrorType.Validation));
+        }
+    }
+
     public string GetQrCodeDownloadUrl(Guid id, string format = "svg")
     {
         var cleanBase = (httpClient.BaseAddress?.ToString() ?? string.Empty).TrimEnd('/');

@@ -179,6 +179,10 @@
     font-size: 0.8rem;
     font-weight: 600;
     transition: all 0.2s;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-svg {

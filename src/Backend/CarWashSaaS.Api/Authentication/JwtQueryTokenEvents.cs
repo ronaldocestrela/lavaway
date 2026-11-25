@@ -11,7 +11,7 @@ public static class JwtQueryTokenEvents
         var path = context.HttpContext.Request.Path;
 
         if (!string.IsNullOrEmpty(accessToken) &&
-            (path.StartsWithSegments("/work-orders") || path.StartsWithSegments("/hubs")))
+            (path.StartsWithSegments("/work-orders") || path.StartsWithSegments("/hubs") || path.StartsWithSegments("/platform/campaigns")))
         {
             context.Token = accessToken;
         }

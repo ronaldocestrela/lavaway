@@ -60,12 +60,12 @@
                 <div class="download-section">
                     <h4 class="download-title">Exportar Material Gráfico</h4>
                     <div class="download-buttons">
-                        <a href="@CampaignClient.GetQrCodeDownloadUrl(Campaign.Id, "svg")" target="_blank" class="btn-download btn-svg" download="@($"qrcode-{Campaign.Slug}.svg")">
-                            <span>Baixar SVG (Vetor para Gráfica / Impressão)</span>
-                        </a>
-                        <a href="@CampaignClient.GetQrCodeDownloadUrl(Campaign.Id, "png")" target="_blank" class="btn-download btn-png" download="@($"qrcode-{Campaign.Slug}.png")">
-                            <span>Baixar PNG (Digital / WhatsApp / Social)</span>
-                        </a>
+                        <button type="button" class="btn-download btn-svg" @onclick='() => DownloadFileAsync("svg")' disabled="@_isDownloading">
+                            <span>@(_isDownloading && _downloadingFormat == "svg" ? "Baixando..." : "Baixar SVG (Vetor para Gráfica / Impressão)")</span>
+                        </button>
+                        <button type="button" class="btn-download btn-png" @onclick='() => DownloadFileAsync("png")' disabled="@_isDownloading">
+                            <span>@(_isDownloading && _downloadingFormat == "png" ? "Baixando..." : "Baixar PNG (Digital / WhatsApp / Social)")</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -84,6 +84,8 @@
 
     private CampaignQrCodePreviewDto? _preview;
     private bool _isLoading = false;
+    private bool _isDownloading = false;
+    private string? _downloadingFormat;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -123,6 +125,40 @@
         catch
         {
             ToastService.ShowInfo($"Selecione e copie: {text}");
+        }
+    }
+
+    private async Task DownloadFileAsync(string format)
+    {
+        if (Campaign is null || _isDownloading) return;
+
+        _isDownloading = true;
+        _downloadingFormat = format;
+        try
+        {
+            var result = await CampaignClient.DownloadQrCodeFileBytesAsync(Campaign.Id, format);
+            if (result.IsSuccess)
+            {
+                var base64 = Convert.ToBase64String(result.Value!);
+                var contentType = format == "svg" ? "image/svg+xml" : "image/png";
+                var filename = $"qrcode-{Campaign.Slug}.{format}";
+
+                await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", filename, contentType, base64);
+                ToastService.ShowSuccess($"Download do arquivo {format.ToUpperInvariant()} iniciado!");
+            }
+            else
+            {
+                ToastService.ShowError(result.Error!.Description);
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erro ao realizar download: {ex.Message}");
+        }
+        finally
+        {
+            _isDownloading = false;
+            _downloadingFormat = null;
         }
     }
 
