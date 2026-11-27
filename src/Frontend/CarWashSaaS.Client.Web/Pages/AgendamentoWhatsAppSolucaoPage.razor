@@ -1,0 +1,1265 @@
+@page "/funcionalidades/agendamento-whatsapp"
+@layout LandingLayout
+
+<PageTitle>Sistema para Lava-Jato com Agendamento Automático no WhatsApp | Lava Aê</PageTitle>
+
+<HeadContent>
+    <meta name="description" content="Sistema para lava-jato com agendamento automático no WhatsApp 24/7. Agende clientes por porte de veículo sem aplicativo, previna faltas com lembretes automáticos e lote seus boxes." />
+    <link rel="canonical" href="https://lavaae.app/funcionalidades/agendamento-whatsapp" />
+    <meta property="og:title" content="Sistema para Lava-Jato com Agendamento Automático no WhatsApp | Lava Aê" />
+    <meta property="og:description" content="Atendente virtual 24/7 via QR Code no número da sua loja. Agendamento conforme capacidade real de boxes, lembretes anti-falta automáticos e liberação imediata de horários." />
+    <meta property="og:url" content="https://lavaae.app/funcionalidades/agendamento-whatsapp" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lavaae.app/icon-512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sistema para Lava-Jato com Agendamento Automático no WhatsApp | Lava Aê" />
+    <meta name="twitter:description" content="Agendamento automático 24/7 no WhatsApp para lava-jato e estética automotiva. Elimine o 'vou ver e te aviso' e acabe com os buracos na agenda." />
+
+    <script type="application/ld+json">
+    {
+      "@@context": "https://schema.org",
+      "@@graph": [
+        {
+          "@@type": "SoftwareApplication",
+          "name": "Lava Aê - Agendamento & Atendimento WhatsApp 24/7",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web, Android, iOS (Cloud SaaS)",
+          "offers": {
+            "@@type": "Offer",
+            "price": "299.00",
+            "priceCurrency": "BRL",
+            "description": "Chatbot conversacional 24/7 incluso no plano Pro (R$ 299/mês com até 1.500 msgs e 5 boxes) e Enterprise (R$ 599/mês ilimitado). Agenda manual disponível no plano Básico."
+          },
+          "description": "Sistema de agendamento conversacional automático 24 horas no WhatsApp para lava-jatos e estética automotiva, conectado à capacidade real de boxes e sem taxa extra por mensagem dentro da cota."
+        },
+        {
+          "@@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@@type": "ListItem",
+              "position": 1,
+              "name": "Início",
+              "item": "https://lavaae.app/"
+            },
+            {
+              "@@type": "ListItem",
+              "position": 2,
+              "name": "Soluções",
+              "item": "https://lavaae.app/#recursos"
+            },
+            {
+              "@@type": "ListItem",
+              "position": 3,
+              "name": "Agendamento WhatsApp",
+              "item": "https://lavaae.app/funcionalidades/agendamento-whatsapp"
+            }
+          ]
+        },
+        {
+          "@@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@@type": "Question",
+              "name": "O cliente precisa baixar algum aplicativo para agendar uma lavagem?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "Não. O cliente conversa diretamente pelo WhatsApp oficial do seu próprio lava-jato. Ele escolhe o serviço pelo porte do veículo, seleciona o horário vago e recebe a confirmação imediata sem instalar nenhum app."
+              }
+            },
+            {
+              "@@type": "Question",
+              "name": "O que acontece quando o cliente cancela ou quer remarcar o horário?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "O próprio cliente remarca ou cancela pelo WhatsApp com comandos simples. Ao cancelar, o sistema desocupa imediatamente o box na sua grade de agendamentos, liberando a vaga para outro motorista sem intervenção manual."
+              }
+            },
+            {
+              "@@type": "Question",
+              "name": "O sistema cobra taxa por cada mensagem enviada no WhatsApp?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "Não. O Lava Aê não cobra taxas adicionais por disparo dentro da cota do seu plano. O plano Básico inclui 300 mensagens/ciclo, o plano Pro inclui 1.500 mensagens/ciclo e o Enterprise possui disparos ilimitados."
+              }
+            },
+            {
+              "@@type": "Question",
+              "name": "O robô respeita o limite de carros que minha equipe consegue lavar por hora?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "Sim. O agendamento é sincronizado em tempo real com a capacidade física configurada de boxes e o tempo de execução de cada serviço por porte (Hatch/Sedan, SUV, Picape/Van ou Moto), impedindo sobreposição e lotação excessiva."
+              }
+            },
+            {
+              "@@type": "Question",
+              "name": "Como funciona a prevenção de faltas (no-show)?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "O Lava Aê dispara lembretes automáticos no WhatsApp 24 horas e 2 horas antes do horário marcado, solicitando a confirmação do cliente e reduzindo drasticamente os buracos na pista causados por esquecimentos."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</HeadContent>
+
+<div class="solution-page">
+    <!-- TOP STICKY BAR -->
+    <header class="solution-navbar">
+        <div class="solution-container navbar-inner">
+            <a href="/" class="brand-link" aria-label="Ir para a página inicial do Lava Aê">
+                <img src="/icon-192.png" alt="Lava Aê" width="32" height="32" class="brand-logo" />
+                <span class="brand-name">Lava Aê</span>
+            </a>
+
+            <div class="navbar-actions">
+                <a href="/#planos" class="nav-link-subtle">Ver Planos</a>
+                <a href="/authentication/login" class="btn-login-ghost">Entrar</a>
+                <a href="/authentication/login" class="btn-top-cta">Testar 14 Dias Grátis</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="solution-main">
+        <!-- HERO SECTION -->
+        <section class="hero-solution">
+            <div class="solution-container">
+                <nav class="breadcrumb-trail" aria-label="Breadcrumb">
+                    <a href="/">Início</a>
+                    <span class="separator">/</span>
+                    <a href="/#recursos">Soluções</a>
+                    <span class="separator">/</span>
+                    <span class="current">Agendamento WhatsApp</span>
+                </nav>
+
+                <div class="hero-badge">
+                    <span class="badge-dot"></span>
+                    <span>ATENDIMENTO E AGENDA 24 HORAS NO WHATSAPP</span>
+                </div>
+
+                <h1 class="hero-heading">
+                    Sistema para lava-jato com agendamento automático no WhatsApp: <span class="highlight-text">boxes cheios sem você passar o dia respondendo mensagem</span>.
+                </h1>
+
+                <p class="hero-lead">
+                    Conecte o número da sua loja via QR Code. Seu cliente consulta o catálogo por porte do veículo, agenda o horário sozinho e recebe lembretes anti-falta automáticos enquanto você cuida da pista e do giro dos carros.
+                </p>
+
+                <div class="hero-cta-group">
+                    <a href="/authentication/login" class="btn-primary-action">
+                        <span>Testar Agendamento Grátis por 14 Dias</span>
+                        <span class="arrow">&rarr;</span>
+                    </a>
+                    <a href="#comparativo" class="btn-secondary-action">
+                        <span>Comparar com Atendimento Manual</span>
+                    </a>
+                </div>
+
+                <div class="hero-trust-bar">
+                    <div class="trust-item">
+                        <span class="check-icon">&#10003;</span>
+                        <span>O cliente não precisa baixar aplicativo</span>
+                    </div>
+                    <div class="trust-item">
+                        <span class="check-icon">&#10003;</span>
+                        <span>Conexão rápida com o número do seu próprio WhatsApp</span>
+                    </div>
+                    <div class="trust-item">
+                        <span class="check-icon">&#10003;</span>
+                        <span>Lembretes automáticos 24h e 2h antes</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ANSWER-FIRST BLOCK (GEO / IA OVERVIEWS) -->
+        <section class="answer-first-section">
+            <div class="solution-container">
+                <div class="answer-card">
+                    <div class="answer-badge">RESPOSTA DIRETA PARA GESTORES</div>
+                    <h2 class="answer-title">O que é e como funciona o Agendamento no WhatsApp do Lava Aê?</h2>
+                    <p class="answer-paragraph">
+                        O <strong>Agendamento no WhatsApp do Lava Aê</strong> é um atendente inteligente 24/7 conectado diretamente ao número da sua loja via QR Code. O cliente consulta preços por porte do veículo (*Hatch/Sedan, SUV, Picape/Van, Moto*), escolhe horários conforme a capacidade real de boxes, recebe lembretes anti-falta automáticos e pode remarcar sozinho, liberando a vaga no pátio sem intervenção manual.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- OPERATIONAL COMPARISON TABLE -->
+        <section class="comparison-section" id="comparativo">
+            <div class="solution-container">
+                <div class="section-header">
+                    <span class="section-tag">CONFRONTO OPERACIONAL</span>
+                    <h2 class="section-title">Responder no dedo vs. Agendamento 24h sincronizado aos boxes</h2>
+                    <p class="section-subtitle">
+                        Descubra quantos clientes você deixa de atender à noite e nos finais de semana por não ter um sistema respondendo no WhatsApp.
+                    </p>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="col-metric">Situação da Pista</th>
+                                <th scope="col" class="col-legacy">Como é no WhatsApp Manual</th>
+                                <th scope="col" class="col-lavaae">Como funciona com o Lava Aê</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="metric-name">Mensagens Fora do Expediente</td>
+                                <td class="legacy-val">Cliente manda mensagem às 21h pedindo horário para sábado de manhã; você só vê no dia seguinte e ele já agendou no concorrente.</td>
+                                <td class="lavaae-val"><strong>Atendimento 24/7 automático:</strong> o cliente escolhe o serviço, confere a grade disponível e confirma a vaga na hora.</td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Controle de Capacidade dos Boxes</td>
+                                <td class="legacy-val">Você marca 3 SUVs no mesmo horário de cabeça, a lavadora não dá conta e a fila de espera vira reclamação na porta.</td>
+                                <td class="lavaae-val"><strong>Trava real de capacidade:</strong> o sistema só libera horários de acordo com o tempo do serviço e a quantidade de boxes livres.</td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Faltas e Horários Ociosos (No-Show)</td>
+                                <td class="legacy-val">Cliente esquece que agendou, o box fica vazio por 1 hora e a equipe de lavadores fica parada gerando prejuízo.</td>
+                                <td class="lavaae-val"><strong>Lembretes anti-falta 24h e 2h antes:</strong> o cliente confirma a presença ou clica para remarcar, liberando o box para outro.</td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Preços por Porte do Veículo</td>
+                                <td class="legacy-val">Você digita tabelas de preço repetitivas dezenas de vezes ao dia pelo teclado do celular enquanto atende no caixa.</td>
+                                <td class="lavaae-val"><strong>Catálogo inteligente por porte:</strong> o cliente seleciona Hatch/Sedan, SUV, Picape ou Moto e vê os valores exatos de imediato.</td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Comandos Rápidos do Cliente</td>
+                                <td class="legacy-val">Cliente liga ou manda áudio pedindo chave Pix, saldo de fidelidade ou comprovante, exigindo parada do atendimento.</td>
+                                <td class="lavaae-val"><strong>Autoatendimento por palavras-chave:</strong> cliente digita <code>PIX</code>, <code>PAGAR</code>, <code>FIDELIDADE</code> ou <code>SELOS</code> e resolve na hora.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP BY STEP ON THE TRACK -->
+        <section class="workflow-section">
+            <div class="solution-container">
+                <div class="section-header">
+                    <span class="section-tag">PASSO A PASSO NA PRÁTICA</span>
+                    <h2 class="section-title">Como o motorista agenda sozinho em 4 passos simples</h2>
+                    <p class="section-subtitle">
+                        Sem telas difíceis, sem login demorado e sem precisar baixar aplicativo da loja de apps.
+                    </p>
+                </div>
+
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <div class="step-number">01</div>
+                        <h3 class="step-title">Mensagem no seu WhatsApp</h3>
+                        <p class="step-description">
+                            O cliente envia um "Oi" ou clica no link da sua bio do Instagram. O robô responde em segundos apresentando as opções de serviços e catálogo.
+                        </p>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">02</div>
+                        <h3 class="step-title">Escolha do Porte e Serviço</h3>
+                        <p class="step-description">
+                            O motorista informa se o carro é Hatch/Sedan, SUV, Picape/Van ou Moto e seleciona lavagem simples, detalhada, polimento ou higienização interna.
+                        </p>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">03</div>
+                        <h3 class="step-title">Seleção de Dia e Horário Real</h3>
+                        <p class="step-description">
+                            O sistema apresenta apenas os horários com boxes realmente livres. O cliente escolhe o melhor momento e o agendamento é registrado na sua grade.
+                        </p>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">04</div>
+                        <h3 class="step-title">Lembretes Automáticos Anti-Falta</h3>
+                        <p class="step-description">
+                            24 horas e 2 horas antes da lavagem, o motorista recebe aviso de confirmação. Se precisar remarcar, o box vaga na hora para outro motorista.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TECHNICAL SPECS & PLAN INCLUSION -->
+        <section class="specs-section">
+            <div class="solution-container">
+                <div class="specs-box">
+                    <div class="specs-header">
+                        <span class="specs-badge">ESPECIFICAÇÕES TÉCNICAS E PLANOS</span>
+                        <h2 class="specs-title">Tudo o que está incluído no módulo de agendamento</h2>
+                        <p class="specs-lead">
+                            Sem surpresas na fatura: a automação de WhatsApp do Lava Aê não cobra taxas extras por mensagem disparada dentro da cota do seu plano.
+                        </p>
+                    </div>
+
+                    <div class="specs-columns">
+                        <div class="spec-col">
+                            <h3 class="spec-group-title">Capacidades da Automação</h3>
+                            <ul class="spec-list">
+                                <li><strong>Conexão via QR Code:</strong> Funciona diretamente com o número de WhatsApp que você já utiliza na sua loja hoje.</li>
+                                <li><strong>Preços por Porte de Veículo:</strong> Tabela diferenciada para Hatch/Sedan, SUV, Picape/Van e Moto.</li>
+                                <li><strong>Controle de Ocupação por Boxes:</strong> Sincronização em tempo real para impedir sobrecarga de lavagem no mesmo horário.</li>
+                                <li><strong>Lembretes Anti-Falta (24h e 2h antes):</strong> Disparos automáticos solicitando confirmação de presença do motorista.</li>
+                                <li><strong>Remarcação e Cancelamento Autônomo:</strong> Liberação imediata da vaga no pátio caso o cliente não possa comparecer.</li>
+                                <li><strong>Comandos Rápidos no Chat:</strong> Suporte a consultas instantâneas de <code>PIX</code>, <code>PAGAR</code>, <code>SEGUNDA VIA</code> e <code>FIDELIDADE</code>.</li>
+                            </ul>
+                        </div>
+
+                        <div class="spec-col">
+                            <h3 class="spec-group-title">Disponibilidade nos Planos</h3>
+                            <div class="plan-availability-card">
+                                <div class="plan-row">
+                                    <span class="plan-name">Plano Básico (R$ 149/mês)</span>
+                                    <span class="plan-status-basic">Agenda Manual + Notificações OS (300 msgs)</span>
+                                </div>
+                                <div class="plan-row active">
+                                    <span class="plan-name">Plano Pro (R$ 299/mês)</span>
+                                    <span class="plan-status">Chatbot 24/7 Incluso (1.500 msgs, 5 boxes)</span>
+                                </div>
+                                <div class="plan-row active">
+                                    <span class="plan-name">Plano Enterprise (R$ 599/mês)</span>
+                                    <span class="plan-status">Chatbot 24/7 Ilimitado + Todos os Recursos</span>
+                                </div>
+                            </div>
+                            <p class="plan-note">
+                                * O chatbot de agendamento automático 24/7 e os comandos interativos estão liberados a partir do Plano Pro. No Plano Básico, a agenda de pátio opera manualmente com disparos de notificações de OS e laudo de vistoria.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ SECTION -->
+        <section class="faq-section">
+            <div class="solution-container">
+                <div class="section-header">
+                    <span class="section-tag">PERGUNTAS FREQUENTES</span>
+                    <h2 class="section-title">Dúvidas sobre o agendamento no WhatsApp</h2>
+                    <p class="section-subtitle">
+                        Respostas práticas para as principais perguntas sobre a automação de atendimento.
+                    </p>
+                </div>
+
+                <div class="faq-list">
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>O cliente precisa baixar algum aplicativo para agendar uma lavagem?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                Não. O cliente conversa diretamente pelo WhatsApp oficial do seu próprio lava-jato. Ele escolhe o serviço pelo porte do veículo, seleciona o horário vago e recebe a confirmação imediata sem instalar nenhum app.
+                            </p>
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>O que acontece quando o cliente cancela ou quer remarcar o horário?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                O próprio cliente remarca ou cancela pelo WhatsApp com comandos simples. Ao cancelar, o sistema desocupa imediatamente o box na sua grade de agendamentos, liberando a vaga para outro motorista sem intervenção manual.
+                            </p>
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>O sistema cobra taxa por cada mensagem enviada no WhatsApp?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                Não. O Lava Aê não cobra taxas adicionais por disparo dentro da cota do seu plano. O plano Básico inclui 300 mensagens/ciclo, o plano Pro inclui 1.500 mensagens/ciclo e o Enterprise possui disparos ilimitados.
+                            </p>
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>O robô respeita o limite de carros que minha equipe consegue lavar por hora?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                Sim. O agendamento é sincronizado em tempo real com a capacidade física configurada de boxes e o tempo de execução de cada serviço por porte (Hatch/Sedan, SUV, Picape/Van ou Moto), impedindo sobreposição e lotação excessiva.
+                            </p>
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>Como funciona a prevenção de faltas (no-show)?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                O Lava Aê dispara lembretes automáticos no WhatsApp 24 horas e 2 horas antes do horário marcado, solicitando a confirmação do cliente e reduzindo drasticamente os buracos na pista causados por esquecimentos.
+                            </p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- FINAL RISK-FREE CTA -->
+        <section class="final-cta-section">
+            <div class="solution-container">
+                <div class="final-cta-card">
+                    <span class="cta-mini-tag">TESTE NA SUA PISTA</span>
+                    <h2 class="final-cta-title">Coloque seu WhatsApp para agendar lavagens no piloto automático</h2>
+                    <p class="final-cta-subtitle">
+                        Conecte o número do seu lava-jato via QR Code em 2 minutos. Experimente o agendamento conversacional completo durante 14 dias sem pagar nada.
+                    </p>
+                    <div class="final-cta-actions">
+                        <a href="/authentication/login" class="btn-primary-action large">
+                            <span>Testar Agendamento Grátis por 14 Dias</span>
+                            <span class="arrow">&rarr;</span>
+                        </a>
+                        <a href="https://wa.me/5511999999999?text=Quero%20testar%20o%20agendamento%20automatico%20do%20Lava%20Ae" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-ghost">
+                            <span>Ver Demonstração no WhatsApp</span>
+                        </a>
+                    </div>
+                    <p class="final-cta-guarantee">
+                        Sem cartão de crédito para começar. Implantação guiada e suporte de pátio direto no WhatsApp.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="solution-footer">
+        <div class="solution-container footer-content">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <img src="/icon-192.png" alt="Lava Aê" width="28" height="28" />
+                    <span>Lava Aê</span>
+                </div>
+                <p class="footer-desc">
+                    O sistema operacional 100% em nuvem que conecta a pista do seu lava-jato ao WhatsApp do seu cliente.
+                </p>
+            </div>
+
+            <div class="footer-links">
+                <div class="footer-col">
+                    <h4>Soluções</h4>
+                    <a href="/funcionalidades/agendamento-whatsapp">Agendamento no WhatsApp 24/7</a>
+                    <a href="/funcionalidades/vistoria-digital">Vistoria Digital com Fotos</a>
+                    <a href="/#recursos">Controle de Pátio Kanban</a>
+                    <a href="/#planos">Checkout Pix no Caixa</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal & Privacidade</h4>
+                    <a href="/privacidade">Política de Privacidade (LGPD)</a>
+                    <a href="/termos">Termos de Uso</a>
+                    <a href="/dpo">Canal do DPO</a>
+                </div>
+            </div>
+        </div>
+        <div class="solution-container footer-bottom">
+            <p>&copy; @DateTime.UtcNow.Year Lava Aê. Todos os direitos reservados. Feito para quem vive a pista.</p>
+        </div>
+    </footer>
+</div>
+
+<style>
+    /* RESET & VARIAVEIS DA IDENTIDADE VISUAL DO LAVA AÊ */
+    :root {
+        --bg-main: #0B1514;
+        --surface-card: #122421;
+        --surface-highlight: #142A27;
+        --brand-accent: #C6F277;
+        --brand-accent-hover: #b5e85d;
+        --accent-dark: #122421;
+        --support-pine: #256B57;
+        --support-mint: #90E0B3;
+        --text-pure: #FFFFFF;
+        --text-subtle: #C9DBD3;
+        --text-muted: #7E9C92;
+        --border-subtle: rgba(37, 107, 87, 0.25);
+        --border-highlight: rgba(198, 242, 119, 0.2);
+    }
+
+    .solution-page {
+        background-color: var(--bg-main);
+        color: var(--text-subtle);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+        line-height: 1.6;
+        min-height: 100vh;
+    }
+
+    .solution-container {
+        width: 100%;
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+    }
+
+    /* TOP NAVBAR */
+    .solution-navbar {
+        background-color: rgba(11, 21, 20, 0.92);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border-subtle);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        padding: 0.85rem 0;
+    }
+
+    .navbar-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .brand-link {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        text-decoration: none;
+        color: var(--text-pure);
+        font-weight: 700;
+        font-size: 1.25rem;
+    }
+
+    .brand-logo {
+        border-radius: 6px;
+    }
+
+    .navbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .nav-link-subtle {
+        color: var(--text-subtle);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .nav-link-subtle:hover {
+        color: var(--brand-accent);
+    }
+
+    .btn-login-ghost {
+        color: var(--text-pure);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        padding: 0.45rem 0.9rem;
+        border-radius: 6px;
+        border: 1px solid var(--border-subtle);
+        transition: all 0.2s;
+    }
+
+    .btn-login-ghost:hover {
+        background-color: rgba(37, 107, 87, 0.2);
+        border-color: var(--support-mint);
+    }
+
+    .btn-top-cta {
+        background-color: var(--brand-accent);
+        color: var(--accent-dark);
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 700;
+        padding: 0.5rem 1.1rem;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .btn-top-cta:hover {
+        background-color: var(--brand-accent-hover);
+        transform: translateY(-1px);
+    }
+
+    /* BREADCRUMB */
+    .breadcrumb-trail {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+
+    .breadcrumb-trail a {
+        color: var(--text-subtle);
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .breadcrumb-trail a:hover {
+        color: var(--brand-accent);
+    }
+
+    .breadcrumb-trail .separator {
+        color: var(--border-subtle);
+    }
+
+    .breadcrumb-trail .current {
+        color: var(--support-mint);
+        font-weight: 500;
+    }
+
+    /* HERO SECTION */
+    .hero-solution {
+        padding: 3.5rem 0 2.5rem 0;
+        background: radial-gradient(circle at top center, rgba(37, 107, 87, 0.2) 0%, rgba(11, 21, 20, 0) 70%);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background-color: rgba(198, 242, 119, 0.1);
+        border: 1px solid rgba(198, 242, 119, 0.3);
+        color: var(--brand-accent);
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.35rem 0.8rem;
+        border-radius: 100px;
+        letter-spacing: 0.05em;
+        margin-bottom: 1.25rem;
+    }
+
+    .badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--brand-accent);
+    }
+
+    .hero-heading {
+        color: var(--text-pure);
+        font-size: clamp(2rem, 4vw, 3.1rem);
+        font-weight: 800;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        margin-bottom: 1.25rem;
+    }
+
+    .highlight-text {
+        color: var(--brand-accent);
+    }
+
+    .hero-lead {
+        font-size: 1.15rem;
+        max-width: 860px;
+        color: var(--text-subtle);
+        margin-bottom: 2rem;
+        line-height: 1.65;
+    }
+
+    .hero-cta-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .btn-primary-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background-color: var(--brand-accent);
+        color: var(--accent-dark);
+        font-weight: 700;
+        font-size: 1rem;
+        padding: 0.85rem 1.75rem;
+        border-radius: 8px;
+        text-decoration: none;
+        box-shadow: 0 4px 18px rgba(198, 242, 119, 0.25);
+        transition: all 0.2s;
+    }
+
+    .btn-primary-action:hover {
+        background-color: var(--brand-accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba(198, 242, 119, 0.35);
+    }
+
+    .btn-primary-action.large {
+        padding: 1.05rem 2.2rem;
+        font-size: 1.1rem;
+    }
+
+    .btn-secondary-action {
+        display: inline-flex;
+        align-items: center;
+        background-color: var(--surface-card);
+        color: var(--text-pure);
+        border: 1px solid var(--border-subtle);
+        font-weight: 600;
+        font-size: 1rem;
+        padding: 0.85rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary-action:hover {
+        background-color: var(--surface-highlight);
+        border-color: var(--support-mint);
+    }
+
+    .hero-trust-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 0.88rem;
+        color: var(--text-muted);
+    }
+
+    .trust-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .check-icon {
+        color: var(--brand-accent);
+        font-weight: bold;
+    }
+
+    /* ANSWER-FIRST BLOCK */
+    .answer-first-section {
+        padding: 2.5rem 0;
+    }
+
+    .answer-card {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-highlight);
+        border-left: 4px solid var(--brand-accent);
+        border-radius: 12px;
+        padding: 1.75rem 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .answer-badge {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: var(--brand-accent);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .answer-title {
+        color: var(--text-pure);
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-bottom: 0.85rem;
+    }
+
+    .answer-paragraph {
+        font-size: 1.05rem;
+        color: var(--text-subtle);
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    /* SECTION HEADERS */
+    .section-header {
+        text-align: center;
+        max-width: 780px;
+        margin: 0 auto 3rem auto;
+    }
+
+    .section-tag {
+        display: inline-block;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: var(--support-mint);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+        color: var(--text-pure);
+        font-size: clamp(1.8rem, 3vw, 2.4rem);
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.75rem;
+    }
+
+    .section-subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        margin: 0;
+    }
+
+    /* COMPARISON TABLE */
+    .comparison-section {
+        padding: 4rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: 12px;
+        border: 1px solid var(--border-subtle);
+        background-color: var(--surface-card);
+    }
+
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-subtle);
+        vertical-align: middle;
+    }
+
+    .comparison-table th {
+        background-color: var(--surface-highlight);
+        color: var(--text-pure);
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .col-metric { width: 25%; }
+    .col-legacy { width: 37.5%; color: #F87171; }
+    .col-lavaae { width: 37.5%; color: var(--brand-accent); }
+
+    .metric-name {
+        font-weight: 700;
+        color: var(--text-pure);
+        font-size: 0.95rem;
+    }
+
+    .legacy-val {
+        color: #D1A3A3;
+        font-size: 0.95rem;
+    }
+
+    .lavaae-val {
+        color: var(--text-pure);
+        background-color: rgba(198, 242, 119, 0.04);
+        font-size: 0.95rem;
+    }
+
+    .comparison-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* WORKFLOW GRID */
+    .workflow-section {
+        padding: 4.5rem 0;
+        background-color: rgba(18, 36, 33, 0.3);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .step-card {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        padding: 1.75rem;
+        position: relative;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .step-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--support-mint);
+    }
+
+    .step-number {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--brand-accent);
+        opacity: 0.9;
+        margin-bottom: 0.75rem;
+        line-height: 1;
+    }
+
+    .step-title {
+        color: var(--text-pure);
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+    }
+
+    .step-description {
+        font-size: 0.92rem;
+        color: var(--text-subtle);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    /* SPECS & PLAN INCLUSION */
+    .specs-section {
+        padding: 4.5rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .specs-box {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 16px;
+        padding: 2.5rem;
+    }
+
+    .specs-badge {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--brand-accent);
+        letter-spacing: 0.08em;
+    }
+
+    .specs-title {
+        color: var(--text-pure);
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0.4rem 0 0.5rem 0;
+    }
+
+    .specs-lead {
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+        max-width: 700px;
+    }
+
+    .specs-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2.5rem;
+    }
+
+    .spec-group-title {
+        color: var(--text-pure);
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .spec-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .spec-list li {
+        position: relative;
+        padding-left: 1.5rem;
+        margin-bottom: 0.9rem;
+        font-size: 0.95rem;
+        color: var(--text-subtle);
+    }
+
+    .spec-list li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: var(--brand-accent);
+        font-weight: bold;
+    }
+
+    .plan-availability-card {
+        background-color: var(--surface-highlight);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .plan-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(37, 107, 87, 0.2);
+    }
+
+    .plan-row:last-child {
+        border-bottom: none;
+    }
+
+    .plan-name {
+        color: var(--text-pure);
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .plan-status {
+        color: var(--brand-accent);
+        font-weight: 700;
+        font-size: 0.88rem;
+    }
+
+    .plan-status-basic {
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.84rem;
+    }
+
+    .plan-note {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* FAQ SECTION */
+    .faq-section {
+        padding: 4.5rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .faq-list {
+        max-width: 820px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .faq-item {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+    }
+
+    .faq-item[open] {
+        border-color: var(--support-mint);
+    }
+
+    .faq-question {
+        padding: 1.25rem 1.5rem;
+        color: var(--text-pure);
+        font-weight: 700;
+        font-size: 1.05rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+    }
+
+    .faq-question::-webkit-details-marker {
+        display: none;
+    }
+
+    .faq-toggle {
+        font-size: 1.3rem;
+        color: var(--brand-accent);
+        line-height: 1;
+    }
+
+    .faq-item[open] .faq-toggle {
+        transform: rotate(45deg);
+    }
+
+    .faq-answer {
+        padding: 0 1.5rem 1.25rem 1.5rem;
+        color: var(--text-subtle);
+        font-size: 0.95rem;
+        line-height: 1.65;
+    }
+
+    .faq-answer p {
+        margin: 0;
+    }
+
+    /* FINAL CTA */
+    .final-cta-section {
+        padding: 5rem 0;
+        background: radial-gradient(circle at bottom center, rgba(37, 107, 87, 0.25) 0%, rgba(11, 21, 20, 0) 70%);
+    }
+
+    .final-cta-card {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-highlight);
+        border-radius: 16px;
+        padding: 3.5rem 2rem;
+        text-align: center;
+        max-width: 840px;
+        margin: 0 auto;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .cta-mini-tag {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        color: var(--brand-accent);
+        margin-bottom: 0.8rem;
+    }
+
+    .final-cta-title {
+        color: var(--text-pure);
+        font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        margin-bottom: 1rem;
+        line-height: 1.25;
+    }
+
+    .final-cta-subtitle {
+        color: var(--text-subtle);
+        font-size: 1.1rem;
+        max-width: 650px;
+        margin: 0 auto 2rem auto;
+    }
+
+    .final-cta-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-whatsapp-ghost {
+        display: inline-flex;
+        align-items: center;
+        background-color: rgba(37, 107, 87, 0.2);
+        color: var(--text-pure);
+        border: 1px solid var(--support-mint);
+        font-weight: 600;
+        font-size: 1rem;
+        padding: 0.85rem 1.6rem;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-whatsapp-ghost:hover {
+        background-color: rgba(37, 107, 87, 0.4);
+        border-color: var(--brand-accent);
+    }
+
+    .final-cta-guarantee {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    /* FOOTER */
+    .solution-footer {
+        background-color: #070E0D;
+        border-top: 1px solid var(--border-subtle);
+        padding: 3.5rem 0 2rem 0;
+    }
+
+    .footer-content {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 2.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .footer-brand {
+        max-width: 360px;
+    }
+
+    .footer-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-weight: 800;
+        font-size: 1.2rem;
+        color: var(--text-pure);
+        margin-bottom: 0.75rem;
+    }
+
+    .footer-desc {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3rem;
+    }
+
+    .footer-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .footer-col h4 {
+        color: var(--text-pure);
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0 0 0.4rem 0;
+    }
+
+    .footer-col a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.88rem;
+        transition: color 0.2s;
+    }
+
+    .footer-col a:hover {
+        color: var(--brand-accent);
+    }
+
+    .footer-bottom {
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        text-align: center;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+    }
+
+    /* RESPONSIVIDADE */
+    @@media (max-width: 768px) {
+        .specs-columns {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            font-size: 0.88rem;
+        }
+
+        .col-metric { width: 35%; }
+        .col-legacy { width: 32.5%; }
+        .col-lavaae { width: 32.5%; }
+
+        .navbar-actions .nav-link-subtle {
+            display: none;
+        }
+    }
+</style>

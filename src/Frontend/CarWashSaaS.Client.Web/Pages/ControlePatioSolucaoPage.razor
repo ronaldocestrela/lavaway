@@ -1,0 +1,1267 @@
+@page "/funcionalidades/controle-de-patio"
+@layout LandingLayout
+
+<PageTitle>Controle de Pátio Kanban para Estética Automotiva | Lava Aê</PageTitle>
+
+<HeadContent>
+    <meta name="description" content="Controle de pátio Kanban para estética automotiva e lava-rápido. Acompanhe as 5 etapas da lavagem no celular, atribua operadores, controle boxes e dispare aviso de carro pronto no WhatsApp." />
+    <link rel="canonical" href="https://lavaae.app/funcionalidades/controle-de-patio" />
+    <meta property="og:title" content="Controle de Pátio Kanban para Estética Automotiva | Lava Aê" />
+    <meta property="og:description" content="Quadro visual de pátio em tempo real no celular e tablet: 5 etapas operacionais, controle de boxes, motivo de refação e notificação automática de carro pronto." />
+    <meta property="og:url" content="https://lavaae.app/funcionalidades/controle-de-patio" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lavaae.app/icon-512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Controle de Pátio Kanban para Estética Automotiva | Lava Aê" />
+    <meta name="twitter:description" content="Quadro Kanban ágil para pista de lava-jato. Saiba exatamente qual operador está em cada box e acelere o giro de veículos." />
+
+    <script type="application/ld+json">
+    {
+      "@@context": "https://schema.org",
+      "@@graph": [
+        {
+          "@@type": "SoftwareApplication",
+          "name": "Lava Aê - Controle de Pátio Kanban em Tempo Real",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web, Android, iOS (Cloud SaaS)",
+          "offers": {
+            "@@type": "Offer",
+            "price": "149.00",
+            "priceCurrency": "BRL",
+            "description": "Quadro Kanban de pátio incluso em todos os planos a partir do Básico (R$ 149/mês com até 2 boxes), Pro (R$ 299/mês até 5 boxes) e Enterprise (R$ 599/mês boxes ilimitados)."
+          },
+          "description": "Sistema de gestão visual e controle de pátio Kanban para lava-jatos e estética automotiva com 5 etapas operacionais, controle de boxes ocupados, registro de refação e aviso de carro pronto no WhatsApp."
+        },
+        {
+          "@@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@@type": "ListItem",
+              "position": 1,
+              "name": "Início",
+              "item": "https://lavaae.app/"
+            },
+            {
+              "@@type": "ListItem",
+              "position": 2,
+              "name": "Soluções",
+              "item": "https://lavaae.app/#recursos"
+            },
+            {
+              "@@type": "ListItem",
+              "position": 3,
+              "name": "Controle de Pátio",
+              "item": "https://lavaae.app/funcionalidades/controle-de-patio"
+            }
+          ]
+        },
+        {
+          "@@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@@type": "Question",
+              "name": "Consigo usar o quadro Kanban em smartphones comuns ou preciso de tablet?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "Funciona perfeitamente em ambos. A interface é 100% responsiva e foi projetada para uso em smartphones no bolso dos lavadores ou em tablets e TVs fixadas na pista de atendimento."
+              }
+            },
+            {
+              "@@type": "Question",
+              "name": "O cliente recebe aviso quando o veículo é finalizado no pátio?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "Sim. Assim que o veículo é arrastado para a coluna 'Pronto para Retirada', o Lava Aê envia automaticamente uma mensagem no WhatsApp do cliente informando que o carro está pronto para ser retirado, liberando o pátio com rapidez."
+              }
+            },
+            {
+              "@@type": "Question",
+              "name": "Como o sistema lida com carros que precisam de refação de serviço?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "Se o veículo for reprovado no controle de qualidade ou precisar voltar para a lavagem/secagem, o operador é obrigado a registrar o motivo da refação, gerando métricas de qualidade e evitando retrabalhos sem justificativa."
+              }
+            },
+            {
+              "@@type": "Question",
+              "name": "Quantos boxes simultâneos o sistema suporta gerenciar?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "O plano Básico suporta até 2 boxes simultâneos, o plano Pro atende até 5 boxes com controle por operador e o plano Enterprise oferece controle para quantidade ilimitada de boxes."
+              }
+            },
+            {
+              "@@type": "Question",
+              "name": "É possível saber qual funcionário lavou cada veículo para comissão?",
+              "acceptedAnswer": {
+                "@@type": "Answer",
+                "text": "Sim. Você pode atribuir operadores diretamente no card do Kanban. A partir do plano Pro, o sistema cruza esses dados para o cálculo automático e transparente de comissões por serviço executado."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</HeadContent>
+
+<div class="solution-page">
+    <!-- TOP STICKY BAR -->
+    <header class="solution-navbar">
+        <div class="solution-container navbar-inner">
+            <a href="/" class="brand-link" aria-label="Ir para a página inicial do Lava Aê">
+                <img src="/icon-192.png" alt="Lava Aê" width="32" height="32" class="brand-logo" />
+                <span class="brand-name">Lava Aê</span>
+            </a>
+
+            <div class="navbar-actions">
+                <a href="/#planos" class="nav-link-subtle">Ver Planos</a>
+                <a href="/authentication/login" class="btn-login-ghost">Entrar</a>
+                <a href="/authentication/login" class="btn-top-cta">Testar 14 Dias Grátis</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="solution-main">
+        <!-- HERO SECTION -->
+        <section class="hero-solution">
+            <div class="solution-container">
+                <nav class="breadcrumb-trail" aria-label="Breadcrumb">
+                    <a href="/">Início</a>
+                    <span class="separator">/</span>
+                    <a href="/#recursos">Soluções</a>
+                    <span class="separator">/</span>
+                    <span class="current">Controle de Pátio</span>
+                </nav>
+
+                <div class="hero-badge">
+                    <span class="badge-dot"></span>
+                    <span>GESTÃO VISUAL E GIRO DE PÁTIO EM TEMPO REAL</span>
+                </div>
+
+                <h1 class="hero-heading">
+                    Controle de pátio Kanban para estética automotiva: <span class="highlight-text">acabe com a gritaria na pista e acelere o giro de veículos</span>.
+                </h1>
+
+                <p class="hero-lead">
+                    Diga adeus às pranchetas rasuradas e à dúvida de qual carro lavar primeiro. Acompanhe as 5 etapas da lavagem no celular ou tablet, atribua operadores aos boxes e notifique o cliente no WhatsApp no segundo exato em que o carro fica pronto.
+                </p>
+
+                <div class="hero-cta-group">
+                    <a href="/authentication/login" class="btn-primary-action">
+                        <span>Organizar Meu Pátio Grátis por 14 Dias</span>
+                        <span class="arrow">&rarr;</span>
+                    </a>
+                    <a href="#comparativo" class="btn-secondary-action">
+                        <span>Ver Comparativo Operacional</span>
+                    </a>
+                </div>
+
+                <div class="hero-trust-bar">
+                    <div class="trust-item">
+                        <span class="check-icon">&#10003;</span>
+                        <span>Visão clara dos boxes ocupados e livres</span>
+                    </div>
+                    <div class="trust-item">
+                        <span class="check-icon">&#10003;</span>
+                        <span>Disparo automático de "Carro Pronto" no WhatsApp</span>
+                    </div>
+                    <div class="trust-item">
+                        <span class="check-icon">&#10003;</span>
+                        <span>Controle de refações e qualidade do serviço</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ANSWER-FIRST BLOCK (GEO / IA OVERVIEWS) -->
+        <section class="answer-first-section">
+            <div class="solution-container">
+                <div class="answer-card">
+                    <div class="answer-badge">RESPOSTA DIRETA PARA GESTORES</div>
+                    <h2 class="answer-title">O que é e como funciona o Controle de Pátio Kanban no Lava Aê?</h2>
+                    <p class="answer-paragraph">
+                        O <strong>Controle de Pátio Kanban do Lava Aê</strong> é um quadro operacional em tempo real acessível por celular, tablet ou monitor que organiza o fluxo de trabalho em 5 etapas: <em>Aguardando, Em lavagem, Secagem/Acabamento, Controle de qualidade e Pronto para retirada</em>. Ele atribui operadores aos boxes, monitora o tempo de permanência, exige motivo para refações e avisa automaticamente o motorista no WhatsApp assim que o serviço é concluído.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- OPERATIONAL COMPARISON TABLE -->
+        <section class="comparison-section" id="comparativo">
+            <div class="solution-container">
+                <div class="section-header">
+                    <span class="section-tag">CONFRONTO OPERACIONAL</span>
+                    <h2 class="section-title">Gritaria no pátio vs. Gestão visual em tempo real</h2>
+                    <p class="section-subtitle">
+                        Veja o contraste entre a correria desordenada da pista tradicional e a fluidez de um pátio sincronizado no Kanban digital.
+                    </p>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="col-metric">Desafio da Pista</th>
+                                <th scope="col" class="col-legacy">Operação no Grito / Prancheta</th>
+                                <th scope="col" class="col-lavaae">Controle de Pátio Lava Aê</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="metric-name">Status do Carro em Tempo Real</td>
+                                <td class="legacy-val">Você precisa parar de atender no caixa para andar até a pista e perguntar se o Civic prata já foi para a secagem.</td>
+                                <td class="lavaae-val"><strong>Visão visual instantânea:</strong> você olha no celular e vê exatamente em qual coluna e box o carro está.</td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Aviso de "Carro Pronto"</td>
+                                <td class="legacy-val">Lavador grita "tá pronto", a recepção esquece de mandar mensagem e o carro ocupa vaga no pátio por horas à toa.</td>
+                                <td class="lavaae-val"><strong>Disparo automático no WhatsApp:</strong> ao arrastar para a coluna "Pronto", o cliente recebe aviso na hora para retirar o veículo.</td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Gargalos e Tempo de Box</td>
+                                <td class="legacy-val">Carros ficam esquecidos no fundo do pátio sem que ninguém perceba quem atrasou o serviço de polimento ou lavagem.</td>
+                                <td class="lavaae-val"><strong>Cronômetro e alerta visual:</strong> cartões indicam tempo decorrido, destacando ordens atrasadas antes do cliente reclamar.</td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Controle de Refação e Qualidade</td>
+                                <td class="legacy-val">O carro volta para lavar de novo sem ninguém saber quem errou, desperdiçando água, produto e hora de trabalho.</td>
+                                <td class="lavaae-val"><strong>Registro obrigatório de motivo:</strong> reprovação na qualidade exige preenchimento do motivo, gerando histórico e correção de equipe.</td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Distribuição de Trabalho por Lavador</td>
+                                <td class="legacy-val">Lavadores escolhem carros mais fáceis e deixam os mais sujos para trás; brigas constantes por comissão.</td>
+                                <td class="lavaae-val"><strong>Atribuição nominal por operador:</strong> cada card tem o responsável definido, garantindo produção equilibrada e comissão correta.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP BY STEP ON THE TRACK -->
+        <section class="workflow-section">
+            <div class="solution-container">
+                <div class="section-header">
+                    <span class="section-tag">FLUXO DE PISTA EM 5 ETAPAS</span>
+                    <h2 class="section-title">A esteira de produção perfeita para a sua pista molhada</h2>
+                    <p class="section-subtitle">
+                        Cada veículo percorre um caminho visual claro desde o check-in até a entrega da chave.
+                    </p>
+                </div>
+
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <div class="step-number">01</div>
+                        <h3 class="step-title">Aguardando</h3>
+                        <p class="step-description">
+                            Veículo deu entrada e fez a vistoria digital. Ele aguarda liberação de box na fila ordenada por horário de chegada ou agendamento prévio.
+                        </p>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">02</div>
+                        <h3 class="step-title">Em Lavagem</h3>
+                        <p class="step-description">
+                            O carro entra no box de lavagem pesada. O operador responsável é vinculado ao cartão, dando início à contagem de tempo de serviço.
+                        </p>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">03</div>
+                        <h3 class="step-title">Secagem & Acabamento</h3>
+                        <p class="step-description">
+                            Veículo é movido para o box de secagem, aspiração interna, pretinho nos pneus, limpeza de vidros ou aplicação de ceras de proteção.
+                        </p>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">04</div>
+                        <h3 class="step-title">Controle de Qualidade</h3>
+                        <p class="step-description">
+                            Inspeção de entrega: confere cantos de portas, vidros e rodas. Se algo estiver fora do padrão, retorna com motivo obrigatório registrado.
+                        </p>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">05</div>
+                        <h3 class="step-title">Pronto para Retirada</h3>
+                        <p class="step-description">
+                            O cliente recebe automaticamente no WhatsApp: <em>"Seu veículo está pronto e cheiroso para retirada!"</em>, acelerando a liberação de vagas no pátio.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TECHNICAL SPECS & PLAN INCLUSION -->
+        <section class="specs-section">
+            <div class="solution-container">
+                <div class="specs-box">
+                    <div class="specs-header">
+                        <span class="specs-badge">ESPECIFICAÇÕES TÉCNICAS E PLANOS</span>
+                        <h2 class="specs-title">Controle de boxes dimensionado para o tamanho da sua pista</h2>
+                        <p class="specs-lead">
+                            Desde lava-rápidos com 2 boxes até grandes centros de estética automotiva com múltiplos ambientes de detalhamento.
+                        </p>
+                    </div>
+
+                    <div class="specs-columns">
+                        <div class="spec-col">
+                            <h3 class="spec-group-title">Funcionalidades do Kanban</h3>
+                            <ul class="spec-list">
+                                <li><strong>Quadro 100% Responsivo:</strong> Arraste e solte tátil pelo celular ou cliques rápidos para avanço de etapa.</li>
+                                <li><strong>Identificação Imediata:</strong> Card exibe placa, modelo do veículo, serviços contratados e operador encarregado.</li>
+                                <li><strong>Controle de Ocupação de Boxes:</strong> Visualização de quais boxes estão livres para receber o próximo veículo da fila.</li>
+                                <li><strong>Histórico de Refação com Motivo:</strong> Rastreabilidade de falhas operacionais para treinamento da equipe.</li>
+                                <li><strong>Gatilho de WhatsApp no Pronto:</strong> Disparo automático sem necessidade de digitação pelo atendente de pátio.</li>
+                                <li><strong>Totalmente Sincronizado ao Caixa:</strong> Atualização imediata do status da OS no módulo financeiro.</li>
+                            </ul>
+                        </div>
+
+                        <div class="spec-col">
+                            <h3 class="spec-group-title">Disponibilidade nos Planos</h3>
+                            <div class="plan-availability-card">
+                                <div class="plan-row active">
+                                    <span class="plan-name">Plano Básico (R$ 149/mês)</span>
+                                    <span class="plan-status">Incluso (Até 2 Boxes e 3 Usuários)</span>
+                                </div>
+                                <div class="plan-row active">
+                                    <span class="plan-name">Plano Pro (R$ 299/mês)</span>
+                                    <span class="plan-status">Incluso (Até 5 Boxes, 10 Usuários + Comissões)</span>
+                                </div>
+                                <div class="plan-row active">
+                                    <span class="plan-name">Plano Enterprise (R$ 599/mês)</span>
+                                    <span class="plan-status">Incluso (Boxes e Usuários Ilimitados)</span>
+                                </div>
+                            </div>
+                            <p class="plan-note">
+                                * O quadro Kanban está ativo em todos os planos. A atribuição de operadores cruzada com regras de comissão financeira é liberada a partir do Plano Pro.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ SECTION -->
+        <section class="faq-section">
+            <div class="solution-container">
+                <div class="section-header">
+                    <span class="section-tag">PERGUNTAS FREQUENTES</span>
+                    <h2 class="section-title">Dúvidas sobre o controle de pátio</h2>
+                    <p class="section-subtitle">
+                        Perguntas frequentes de gestores que buscam aumentar o giro de carros no pátio.
+                    </p>
+                </div>
+
+                <div class="faq-list">
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>Consigo usar o quadro Kanban em smartphones comuns ou preciso de tablet?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                Funciona perfeitamente em ambos. A interface é 100% responsiva e foi projetada para uso em smartphones no bolso dos lavadores ou em tablets e TVs fixadas na pista de atendimento.
+                            </p>
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>O cliente recebe aviso quando o veículo é finalizado no pátio?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                Sim. Assim que o veículo é arrastado para a coluna 'Pronto para Retirada', o Lava Aê envia automaticamente uma mensagem no WhatsApp do cliente informando que o carro está pronto para ser retirado, liberando o pátio com rapidez.
+                            </p>
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>Como o sistema lida com carros que precisam de refação de serviço?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                Se o veículo for reprovado no controle de qualidade ou precisar voltar para a lavagem/secagem, o operador é obrigado a registrar o motivo da refação, gerando métricas de qualidade e evitando retrabalhos sem justificativa.
+                            </p>
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>Quantos boxes simultâneos o sistema suporta gerenciar?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                O plano Básico suporta até 2 boxes simultâneos, o plano Pro atende até 5 boxes com controle por operador e o plano Enterprise oferece controle para quantidade ilimitada de boxes.
+                            </p>
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span>É possível saber qual funcionário lavou cada veículo para comissão?</span>
+                            <span class="faq-toggle">+</span>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>
+                                Sim. Você pode atribuir operadores diretamente no card do Kanban. A partir do plano Pro, o sistema cruza esses dados para o cálculo automático e transparente de comissões por serviço executado.
+                            </p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- FINAL RISK-FREE CTA -->
+        <section class="final-cta-section">
+            <div class="solution-container">
+                <div class="final-cta-card">
+                    <span class="cta-mini-tag">TRANSFORME A SUA PISTA</span>
+                    <h2 class="final-cta-title">Tenha controle total do seu pátio na palma da mão</h2>
+                    <p class="final-cta-subtitle">
+                        Elimine os atrasos, saiba o que cada operador está fazendo e acelere a entrega dos veículos. Comece agora sem gastar um centavo.
+                    </p>
+                    <div class="final-cta-actions">
+                        <a href="/authentication/login" class="btn-primary-action large">
+                            <span>Testar Controle de Pátio por 14 Dias</span>
+                            <span class="arrow">&rarr;</span>
+                        </a>
+                        <a href="https://wa.me/5511999999999?text=Quero%20conhecer%20o%20controle%20de%20patio%20Kanban%20do%20Lava%20Ae" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-ghost">
+                            <span>Falar com Especialista de Pátio</span>
+                        </a>
+                    </div>
+                    <p class="final-cta-guarantee">
+                        14 dias de teste grátis sem cartão de crédito. Configure seus boxes e comece em poucos minutos.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="solution-footer">
+        <div class="solution-container footer-content">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <img src="/icon-192.png" alt="Lava Aê" width="28" height="28" />
+                    <span>Lava Aê</span>
+                </div>
+                <p class="footer-desc">
+                    O sistema operacional 100% em nuvem que conecta a pista do seu lava-jato ao WhatsApp do seu cliente.
+                </p>
+            </div>
+
+            <div class="footer-links">
+                <div class="footer-col">
+                    <h4>Soluções</h4>
+                    <a href="/funcionalidades/controle-de-patio">Controle de Pátio Kanban</a>
+                    <a href="/funcionalidades/vistoria-digital">Vistoria Digital com Fotos</a>
+                    <a href="/funcionalidades/agendamento-whatsapp">Agendamento no WhatsApp 24/7</a>
+                    <a href="/#planos">Checkout Pix no Caixa</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal & Privacidade</h4>
+                    <a href="/privacidade">Política de Privacidade (LGPD)</a>
+                    <a href="/termos">Termos de Uso</a>
+                    <a href="/dpo">Canal do DPO</a>
+                </div>
+            </div>
+        </div>
+        <div class="solution-container footer-bottom">
+            <p>&copy; @DateTime.UtcNow.Year Lava Aê. Todos os direitos reservados. Feito para quem vive a pista.</p>
+        </div>
+    </footer>
+</div>
+
+<style>
+    /* RESET & VARIAVEIS DA IDENTIDADE VISUAL DO LAVA AÊ */
+    :root {
+        --bg-main: #0B1514;
+        --surface-card: #122421;
+        --surface-highlight: #142A27;
+        --brand-accent: #C6F277;
+        --brand-accent-hover: #b5e85d;
+        --accent-dark: #122421;
+        --support-pine: #256B57;
+        --support-mint: #90E0B3;
+        --text-pure: #FFFFFF;
+        --text-subtle: #C9DBD3;
+        --text-muted: #7E9C92;
+        --border-subtle: rgba(37, 107, 87, 0.25);
+        --border-highlight: rgba(198, 242, 119, 0.2);
+    }
+
+    .solution-page {
+        background-color: var(--bg-main);
+        color: var(--text-subtle);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+        line-height: 1.6;
+        min-height: 100vh;
+    }
+
+    .solution-container {
+        width: 100%;
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+    }
+
+    /* TOP NAVBAR */
+    .solution-navbar {
+        background-color: rgba(11, 21, 20, 0.92);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border-subtle);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        padding: 0.85rem 0;
+    }
+
+    .navbar-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .brand-link {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        text-decoration: none;
+        color: var(--text-pure);
+        font-weight: 700;
+        font-size: 1.25rem;
+    }
+
+    .brand-logo {
+        border-radius: 6px;
+    }
+
+    .navbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .nav-link-subtle {
+        color: var(--text-subtle);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .nav-link-subtle:hover {
+        color: var(--brand-accent);
+    }
+
+    .btn-login-ghost {
+        color: var(--text-pure);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        padding: 0.45rem 0.9rem;
+        border-radius: 6px;
+        border: 1px solid var(--border-subtle);
+        transition: all 0.2s;
+    }
+
+    .btn-login-ghost:hover {
+        background-color: rgba(37, 107, 87, 0.2);
+        border-color: var(--support-mint);
+    }
+
+    .btn-top-cta {
+        background-color: var(--brand-accent);
+        color: var(--accent-dark);
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 700;
+        padding: 0.5rem 1.1rem;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .btn-top-cta:hover {
+        background-color: var(--brand-accent-hover);
+        transform: translateY(-1px);
+    }
+
+    /* BREADCRUMB */
+    .breadcrumb-trail {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+
+    .breadcrumb-trail a {
+        color: var(--text-subtle);
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .breadcrumb-trail a:hover {
+        color: var(--brand-accent);
+    }
+
+    .breadcrumb-trail .separator {
+        color: var(--border-subtle);
+    }
+
+    .breadcrumb-trail .current {
+        color: var(--support-mint);
+        font-weight: 500;
+    }
+
+    /* HERO SECTION */
+    .hero-solution {
+        padding: 3.5rem 0 2.5rem 0;
+        background: radial-gradient(circle at top center, rgba(37, 107, 87, 0.2) 0%, rgba(11, 21, 20, 0) 70%);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background-color: rgba(198, 242, 119, 0.1);
+        border: 1px solid rgba(198, 242, 119, 0.3);
+        color: var(--brand-accent);
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.35rem 0.8rem;
+        border-radius: 100px;
+        letter-spacing: 0.05em;
+        margin-bottom: 1.25rem;
+    }
+
+    .badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--brand-accent);
+    }
+
+    .hero-heading {
+        color: var(--text-pure);
+        font-size: clamp(2rem, 4vw, 3.1rem);
+        font-weight: 800;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        margin-bottom: 1.25rem;
+    }
+
+    .highlight-text {
+        color: var(--brand-accent);
+    }
+
+    .hero-lead {
+        font-size: 1.15rem;
+        max-width: 860px;
+        color: var(--text-subtle);
+        margin-bottom: 2rem;
+        line-height: 1.65;
+    }
+
+    .hero-cta-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .btn-primary-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background-color: var(--brand-accent);
+        color: var(--accent-dark);
+        font-weight: 700;
+        font-size: 1rem;
+        padding: 0.85rem 1.75rem;
+        border-radius: 8px;
+        text-decoration: none;
+        box-shadow: 0 4px 18px rgba(198, 242, 119, 0.25);
+        transition: all 0.2s;
+    }
+
+    .btn-primary-action:hover {
+        background-color: var(--brand-accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba(198, 242, 119, 0.35);
+    }
+
+    .btn-primary-action.large {
+        padding: 1.05rem 2.2rem;
+        font-size: 1.1rem;
+    }
+
+    .btn-secondary-action {
+        display: inline-flex;
+        align-items: center;
+        background-color: var(--surface-card);
+        color: var(--text-pure);
+        border: 1px solid var(--border-subtle);
+        font-weight: 600;
+        font-size: 1rem;
+        padding: 0.85rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary-action:hover {
+        background-color: var(--surface-highlight);
+        border-color: var(--support-mint);
+    }
+
+    .hero-trust-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 0.88rem;
+        color: var(--text-muted);
+    }
+
+    .trust-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .check-icon {
+        color: var(--brand-accent);
+        font-weight: bold;
+    }
+
+    /* ANSWER-FIRST BLOCK */
+    .answer-first-section {
+        padding: 2.5rem 0;
+    }
+
+    .answer-card {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-highlight);
+        border-left: 4px solid var(--brand-accent);
+        border-radius: 12px;
+        padding: 1.75rem 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .answer-badge {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: var(--brand-accent);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .answer-title {
+        color: var(--text-pure);
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-bottom: 0.85rem;
+    }
+
+    .answer-paragraph {
+        font-size: 1.05rem;
+        color: var(--text-subtle);
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    /* SECTION HEADERS */
+    .section-header {
+        text-align: center;
+        max-width: 780px;
+        margin: 0 auto 3rem auto;
+    }
+
+    .section-tag {
+        display: inline-block;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: var(--support-mint);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+        color: var(--text-pure);
+        font-size: clamp(1.8rem, 3vw, 2.4rem);
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.75rem;
+    }
+
+    .section-subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        margin: 0;
+    }
+
+    /* COMPARISON TABLE */
+    .comparison-section {
+        padding: 4rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: 12px;
+        border: 1px solid var(--border-subtle);
+        background-color: var(--surface-card);
+    }
+
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-subtle);
+        vertical-align: middle;
+    }
+
+    .comparison-table th {
+        background-color: var(--surface-highlight);
+        color: var(--text-pure);
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .col-metric { width: 25%; }
+    .col-legacy { width: 37.5%; color: #F87171; }
+    .col-lavaae { width: 37.5%; color: var(--brand-accent); }
+
+    .metric-name {
+        font-weight: 700;
+        color: var(--text-pure);
+        font-size: 0.95rem;
+    }
+
+    .legacy-val {
+        color: #D1A3A3;
+        font-size: 0.95rem;
+    }
+
+    .lavaae-val {
+        color: var(--text-pure);
+        background-color: rgba(198, 242, 119, 0.04);
+        font-size: 0.95rem;
+    }
+
+    .comparison-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* WORKFLOW GRID */
+    .workflow-section {
+        padding: 4.5rem 0;
+        background-color: rgba(18, 36, 33, 0.3);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .step-card {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        padding: 1.5rem;
+        position: relative;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .step-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--support-mint);
+    }
+
+    .step-number {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: var(--brand-accent);
+        opacity: 0.9;
+        margin-bottom: 0.6rem;
+        line-height: 1;
+    }
+
+    .step-title {
+        color: var(--text-pure);
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 0.6rem;
+    }
+
+    .step-description {
+        font-size: 0.88rem;
+        color: var(--text-subtle);
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    /* SPECS & PLAN INCLUSION */
+    .specs-section {
+        padding: 4.5rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .specs-box {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 16px;
+        padding: 2.5rem;
+    }
+
+    .specs-badge {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--brand-accent);
+        letter-spacing: 0.08em;
+    }
+
+    .specs-title {
+        color: var(--text-pure);
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0.4rem 0 0.5rem 0;
+    }
+
+    .specs-lead {
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+        max-width: 700px;
+    }
+
+    .specs-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2.5rem;
+    }
+
+    .spec-group-title {
+        color: var(--text-pure);
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .spec-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .spec-list li {
+        position: relative;
+        padding-left: 1.5rem;
+        margin-bottom: 0.9rem;
+        font-size: 0.95rem;
+        color: var(--text-subtle);
+    }
+
+    .spec-list li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: var(--brand-accent);
+        font-weight: bold;
+    }
+
+    .plan-availability-card {
+        background-color: var(--surface-highlight);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .plan-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(37, 107, 87, 0.2);
+    }
+
+    .plan-row:last-child {
+        border-bottom: none;
+    }
+
+    .plan-name {
+        color: var(--text-pure);
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .plan-status {
+        color: var(--brand-accent);
+        font-weight: 700;
+        font-size: 0.88rem;
+    }
+
+    .plan-note {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* FAQ SECTION */
+    .faq-section {
+        padding: 4.5rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .faq-list {
+        max-width: 820px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .faq-item {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+    }
+
+    .faq-item[open] {
+        border-color: var(--support-mint);
+    }
+
+    .faq-question {
+        padding: 1.25rem 1.5rem;
+        color: var(--text-pure);
+        font-weight: 700;
+        font-size: 1.05rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+    }
+
+    .faq-question::-webkit-details-marker {
+        display: none;
+    }
+
+    .faq-toggle {
+        font-size: 1.3rem;
+        color: var(--brand-accent);
+        line-height: 1;
+    }
+
+    .faq-item[open] .faq-toggle {
+        transform: rotate(45deg);
+    }
+
+    .faq-answer {
+        padding: 0 1.5rem 1.25rem 1.5rem;
+        color: var(--text-subtle);
+        font-size: 0.95rem;
+        line-height: 1.65;
+    }
+
+    .faq-answer p {
+        margin: 0;
+    }
+
+    /* FINAL CTA */
+    .final-cta-section {
+        padding: 5rem 0;
+        background: radial-gradient(circle at bottom center, rgba(37, 107, 87, 0.25) 0%, rgba(11, 21, 20, 0) 70%);
+    }
+
+    .final-cta-card {
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-highlight);
+        border-radius: 16px;
+        padding: 3.5rem 2rem;
+        text-align: center;
+        max-width: 840px;
+        margin: 0 auto;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .cta-mini-tag {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        color: var(--brand-accent);
+        margin-bottom: 0.8rem;
+    }
+
+    .final-cta-title {
+        color: var(--text-pure);
+        font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        margin-bottom: 1rem;
+        line-height: 1.25;
+    }
+
+    .final-cta-subtitle {
+        color: var(--text-subtle);
+        font-size: 1.1rem;
+        max-width: 650px;
+        margin: 0 auto 2rem auto;
+    }
+
+    .final-cta-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-whatsapp-ghost {
+        display: inline-flex;
+        align-items: center;
+        background-color: rgba(37, 107, 87, 0.2);
+        color: var(--text-pure);
+        border: 1px solid var(--support-mint);
+        font-weight: 600;
+        font-size: 1rem;
+        padding: 0.85rem 1.6rem;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-whatsapp-ghost:hover {
+        background-color: rgba(37, 107, 87, 0.4);
+        border-color: var(--brand-accent);
+    }
+
+    .final-cta-guarantee {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    /* FOOTER */
+    .solution-footer {
+        background-color: #070E0D;
+        border-top: 1px solid var(--border-subtle);
+        padding: 3.5rem 0 2rem 0;
+    }
+
+    .footer-content {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 2.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .footer-brand {
+        max-width: 360px;
+    }
+
+    .footer-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-weight: 800;
+        font-size: 1.2rem;
+        color: var(--text-pure);
+        margin-bottom: 0.75rem;
+    }
+
+    .footer-desc {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3rem;
+    }
+
+    .footer-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .footer-col h4 {
+        color: var(--text-pure);
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0 0 0.4rem 0;
+    }
+
+    .footer-col a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.88rem;
+        transition: color 0.2s;
+    }
+
+    .footer-col a:hover {
+        color: var(--brand-accent);
+    }
+
+    .footer-bottom {
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        text-align: center;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+    }
+
+    /* RESPONSIVIDADE */
+    @@media (max-width: 768px) {
+        .specs-columns {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            font-size: 0.88rem;
+        }
+
+        .col-metric { width: 35%; }
+        .col-legacy { width: 32.5%; }
+        .col-lavaae { width: 32.5%; }
+
+        .navbar-actions .nav-link-subtle {
+            display: none;
+        }
+    }
+</style>
