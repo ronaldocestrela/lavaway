@@ -499,7 +499,7 @@
 </head>
 
 <body>
-    <div id="app">
+    <div id="app"><!--app-content-start-->
         <!-- Tela de Carregamento Inicial (Splash Screen Premium Lava Aê) -->
         <div class="app-loading-screen" role="status" aria-live="polite">
             <div class="loading-ambient-glow" aria-hidden="true"></div>
@@ -560,13 +560,36 @@
                 </nav>
             </div>
         </noscript>
-    </div>
+    <!--app-content-end--></div>
 
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="." class="reload">Reload</a>
-        <span class="dismiss">🗙</span>
-    </div>
+    <div id="blazor-error-ui" hidden aria-hidden="true"></div>
+    <script>
+        (function () {
+            var errorEl = document.getElementById('blazor-error-ui');
+            if (!errorEl || typeof MutationObserver === 'undefined') return;
+
+            var populateErrorUi = function () {
+                if (errorEl.style.display === 'block' || getComputedStyle(errorEl).display === 'block') {
+                    errorEl.removeAttribute('hidden');
+                    errorEl.removeAttribute('aria-hidden');
+                    if (!errorEl.hasChildNodes()) {
+                        errorEl.innerHTML = 'Ocorreu um erro inesperado na aplicação. <a href="." class="reload">Recarregar</a> <span class="dismiss" role="button" aria-label="Fechar">✕</span>';
+                        var dismissBtn = errorEl.querySelector('.dismiss');
+                        if (dismissBtn) {
+                            dismissBtn.addEventListener('click', function () {
+                                errorEl.style.display = 'none';
+                                errorEl.setAttribute('hidden', '');
+                                errorEl.setAttribute('aria-hidden', 'true');
+                            });
+                        }
+                    }
+                }
+            };
+
+            var observer = new MutationObserver(populateErrorUi);
+            observer.observe(errorEl, { attributes: true, attributeFilter: ['style'] });
+        })();
+    </script>
     <script>
         window.downloadFileFromBase64 = function (filename, contentType, base64Data) {
             try {

@@ -10,15 +10,21 @@ COPY ["src/Shared/CarWashSaaS.Shared.Contracts/CarWashSaaS.Shared.Contracts.cspr
 COPY ["src/Frontend/CarWashSaaS.Client.Core/CarWashSaaS.Client.Core.csproj", "src/Frontend/CarWashSaaS.Client.Core/"]
 COPY ["src/Frontend/CarWashSaaS.Client.Components/CarWashSaaS.Client.Components.csproj", "src/Frontend/CarWashSaaS.Client.Components/"]
 COPY ["src/Frontend/CarWashSaaS.Client.Web/CarWashSaaS.Client.Web.csproj", "src/Frontend/CarWashSaaS.Client.Web/"]
+COPY ["src/Frontend/CarWashSaaS.Client.Prerender/CarWashSaaS.Client.Prerender.csproj", "src/Frontend/CarWashSaaS.Client.Prerender/"]
 
-RUN dotnet restore "src/Frontend/CarWashSaaS.Client.Web/CarWashSaaS.Client.Web.csproj"
+RUN dotnet restore "src/Frontend/CarWashSaaS.Client.Web/CarWashSaaS.Client.Web.csproj" && \
+    dotnet restore "src/Frontend/CarWashSaaS.Client.Prerender/CarWashSaaS.Client.Prerender.csproj"
 
-# Copy full source and publish
+# Copy full source, publish WASM and prerender public SEO/GEO routes
 COPY src/ ./src/
 RUN dotnet publish "src/Frontend/CarWashSaaS.Client.Web/CarWashSaaS.Client.Web.csproj" \
     -c Release \
     -o /app/publish \
-    --no-restore
+    --no-restore && \
+    dotnet run --project "src/Frontend/CarWashSaaS.Client.Prerender/CarWashSaaS.Client.Prerender.csproj" \
+    -c Release \
+    --no-restore \
+    -- /app/publish/wwwroot
 
 # ==========================================
 # Runtime Stage - Nginx Alpine

@@ -1,7 +1,7 @@
 # Lavaway (Lava Aê) - Documentação Completa para Modelos de Linguagem e IA (llms-full.txt)
 
 > Documento completo de referência técnica, funcional e comercial da plataforma Lavaway.
-> Website: https://lavaway.com.br
+> Website: https://lavaae.app
 
 ---
 

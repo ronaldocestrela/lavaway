@@ -1,12 +1,16 @@
-# Robots.txt para Lavaway (Lava Aê)
-# https://lavaway.com.br
+# Robots.txt para Lava Aê (Lavaway)
+# https://lavaae.app
 
 User-agent: *
 Allow: /
+Allow: /privacidade
+Allow: /termos
+Allow: /dpo
 Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /sitemap.xml
 Disallow: /api/
+Disallow: /vistoria/
 Disallow: /reception
 Disallow: /yard
 Disallow: /cashier
@@ -58,4 +62,4 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
-Sitemap: https://lavaway.com.br/sitemap.xml
+Sitemap: https://lavaae.app/sitemap.xml
