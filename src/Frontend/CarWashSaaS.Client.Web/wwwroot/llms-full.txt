@@ -30,7 +30,7 @@
 
 4. **Prejuízos com Avarias e Contestações Indevidas**:
    - *Problema*: Cliente alega que um risco ou amassado aconteceu dentro do lava-jato.
-   - *Solução*: Vistoria digital obrigatória na entrada com checklist marcado na silhueta do veículo e fotos de alta resolução salvas no armazenamento seguro.
+   - *Solução*: Vistoria digital obrigatória na entrada com checklist marcado na silhueta do veículo e fotos de alta resolução salvas no armazenamento seguro em nuvem.
 
 5. **Instabilidade Financeira em Dias de Chuva**:
    - *Problema*: Faturamento despenca em semanas chuvosas.
