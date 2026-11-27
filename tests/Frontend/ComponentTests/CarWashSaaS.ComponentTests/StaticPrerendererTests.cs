@@ -24,14 +24,46 @@ public class StaticPrerendererTests
             Assert.True(count >= 5);
 
             var homeHtml = await File.ReadAllTextAsync(Path.Combine(tempRoot, "prerendered", "index.html"));
+            var decodedHomeHtml = System.Net.WebUtility.HtmlDecode(homeHtml);
+
+            // 1. Hero section
             Assert.Contains("<h1 class=\"hero-title\"", homeHtml);
             Assert.Contains("Transforme o seu lava-jato", homeHtml);
-            var decodedHomeHtml = System.Net.WebUtility.HtmlDecode(homeHtml);
-            Assert.Contains("<link rel=\"canonical\" href=\"https://lavaae.app/\" />", homeHtml);
+            Assert.Contains("O SISTEMA OPERACIONAL DA ESTÉTICA AUTOMOTIVA", decodedHomeHtml);
+            Assert.Contains("Iniciar Teste Grátis de 14 Dias", decodedHomeHtml);
+
+            // 2. Funcionalidades / Recursos section
+            Assert.Contains("RECURSOS COMPLETOS", decodedHomeHtml);
+            Assert.Contains("Tudo o que sua estética precisa em um só lugar", decodedHomeHtml);
+            Assert.Contains("Check-in Relâmpago", decodedHomeHtml);
+            Assert.Contains("Vistoria Digital Anti-Avaria", decodedHomeHtml);
+            Assert.Contains("Automação de WhatsApp", decodedHomeHtml);
+            Assert.Contains("Tabela de Preços por Porte", decodedHomeHtml);
+            Assert.Contains("Gestão de Pátio e Boxes", decodedHomeHtml);
+            Assert.Contains("Equipe e Comissões", decodedHomeHtml);
+
+            // 3. Planos e Preços section
+            Assert.Contains("PLANOS E PREÇOS", decodedHomeHtml);
+            Assert.Contains("Investimento claro, sem pegadinhas", decodedHomeHtml);
+            Assert.Contains("PLANO BÁSICO", decodedHomeHtml.ToUpperInvariant());
+            Assert.Contains("PLANO PRO", decodedHomeHtml.ToUpperInvariant());
+            Assert.Contains("PLANO ENTERPRISE", decodedHomeHtml.ToUpperInvariant());
             Assert.Contains("Equipe e usuários ilimitados", decodedHomeHtml);
             Assert.DoesNotContain("Até 0 membros na equipe", decodedHomeHtml);
+
+            // 4. FAQ section
+            Assert.Contains("PERGUNTAS FREQUENTES", decodedHomeHtml);
+            Assert.Contains("Tire suas dúvidas antes de contratar", decodedHomeHtml);
+            Assert.Contains("Preciso comprar computador ou maquininha especial para usar?", decodedHomeHtml);
+            Assert.Contains("Não! O Lava Aê funciona 100% no navegador", decodedHomeHtml);
+
+            // 5. Validar que blazor-error-ui permanece estritamente vazio e oculto no HTML inicial
+            Assert.Contains("<div id=\"blazor-error-ui\" hidden aria-hidden=\"true\"></div>", homeHtml);
+            Assert.DoesNotContain("<div id=\"blazor-error-ui\" style=\"display: block\"", homeHtml);
+            Assert.DoesNotContain("<div id=\"blazor-error-ui\">Ocorreu um erro", homeHtml);
             Assert.DoesNotContain("Iniciando aplicação...", homeHtml);
             Assert.DoesNotContain("An unhandled error has occurred.", homeHtml);
+            Assert.Contains("<link rel=\"canonical\" href=\"https://lavaae.app/\" />", homeHtml);
 
             var privacyHtml = await File.ReadAllTextAsync(Path.Combine(tempRoot, "privacidade", "index.html"));
             Assert.Contains("<h1", privacyHtml);
