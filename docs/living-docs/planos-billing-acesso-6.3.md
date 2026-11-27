@@ -68,7 +68,7 @@ sequenceDiagram
 
 | Recurso / Cota | **Básico (Basic)** | **Pro (Pro)** | **Enterprise (Enterprise)** |
 | :--- | :--- | :--- | :--- |
-| **Valor Mensal** | R$ 149,00 / mês | R$ 299,00 / mês | R$ 599,00 / mês |
+| **Valor Mensal** | R$ 77,90,00 / mês | R$ 127,00 / mês | R$ 197,00 / mês |
 | **Cota de Ordens de Serviço** | Até **150 OS** / ciclo | Até **600 OS** / ciclo | **Ilimitado** (0) |
 | **Cota de Mensagens WhatsApp**| Até **300 msgs** / ciclo | Até **1.500 msgs** / ciclo | **Ilimitado** (0) |
 | **Pátio, Kanban & Vistoria**  | Sim | Sim | Sim |

@@ -186,10 +186,10 @@ public sealed class TenantSaasSubscriptionApplicationServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(SaasPlanTier.Enterprise, result.Value!.PlanTier);
         Assert.Equal(TenantSubscriptionStatus.Active, result.Value.Status);
-        Assert.Equal(599.00m, result.Value.MonthlyPrice);
+        Assert.Equal(197.00m, result.Value.MonthlyPrice);
         Assert.Single(invoiceRepo.Invoices);
         Assert.Equal("Pending", invoiceRepo.Invoices[0].Status);
-        Assert.Equal(599.00m, invoiceRepo.Invoices[0].Amount);
+        Assert.Equal(197.00m, invoiceRepo.Invoices[0].Amount);
     }
 
     [Fact]

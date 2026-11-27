@@ -186,7 +186,7 @@ public sealed class SaasPlan
                 SaasPlanTier.Basic,
                 "Básico",
                 "Ideal para lava-jatos iniciantes com operação ágil de pátio e controle essencial.",
-                149.00m,
+                77.90m,
                 maxWorkOrdersPerCycle: 150,
                 maxWhatsAppMessagesPerCycle: 300,
                 hasCustomerSubscriptions: false,
@@ -202,7 +202,7 @@ public sealed class SaasPlan
                 SaasPlanTier.Pro,
                 "Pro",
                 "Completo para centros de estética e lava-jatos com clube de assinaturas, fidelidade e WhatsApp.",
-                299.00m,
+                127.00m,
                 maxWorkOrdersPerCycle: 600,
                 maxWhatsAppMessagesPerCycle: 1500,
                 hasCustomerSubscriptions: true,
@@ -218,7 +218,7 @@ public sealed class SaasPlan
                 SaasPlanTier.Enterprise,
                 "Enterprise",
                 "Sem limites de volume para operações corporativas, redes de filiais e alto fluxo de veículos.",
-                599.00m,
+                197.00m,
                 maxWorkOrdersPerCycle: 0, // 0 = ilimitado
                 maxWhatsAppMessagesPerCycle: 0, // 0 = ilimitado
                 hasCustomerSubscriptions: true,

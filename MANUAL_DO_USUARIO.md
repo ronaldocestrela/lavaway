@@ -339,7 +339,7 @@ Acesse **Fidelidade & Selos** (`/loyalty`):
 
 ### 7.5 Clubes de Assinatura e Créditos Recorrentes por Placa
 Acesse **Assinaturas & Clubes** (`/subscriptions`):
-1. **Planos Recorrentes:** Crie clubes mensais (ex.: *Clube VIP — 4 Lavagens Completas por Mês por R$ 149,90*).
+1. **Planos Recorrentes:** Crie clubes mensais (ex.: *Clube VIP — 4 Lavagens Completas por Mês por R$ 77,90,90*).
 2. **Vínculo por Placa:** Cadastre a assinatura associando a placa do veículo autorizado.
 3. **Consumo de Créditos:** Ao abrir ou receber uma OS com aquela placa, o sistema acusa que o veículo possui créditos ativos. O pagamento é liquidado consumindo 1 crédito da assinatura, sem cobrança avulsa.
 

@@ -20,7 +20,7 @@ Em síntese:
 
 ## 2. Matriz de Conformidade: Plano Comercial vs. Comportamento Real do Sistema
 
-| Funcionalidade / Limite | Básico (R$ 149) | Pro (R$ 299) | Enterprise (R$ 599) | Situação Real no Código |
+| Funcionalidade / Limite | Básico (R$ 77,90) | Pro (R$ 127) | Enterprise (R$ 197) | Situação Real no Código |
 | :--- | :---: | :---: | :---: | :--- |
 | **Cota Mensal de Ordens de Serviço** | Até 150 OS | Até 600 OS | Ilimitado | 🟢 **Validado:** `WorkOrderApplicationService` bloqueia ao atingir o limite. |
 | **Cota Mensal de Mensagens WhatsApp** | Até 300 msgs | Até 1.500 msgs | Ilimitado | 🟢 **Validado:** `WhatsAppMessageApplicationService` bloqueia ao atingir o limite. |

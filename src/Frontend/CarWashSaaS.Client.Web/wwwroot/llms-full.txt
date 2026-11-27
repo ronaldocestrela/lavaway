@@ -86,7 +86,7 @@
 
 | Recurso / Limite | Plano Básico | Plano Pro (Recomendado) | Plano Enterprise |
 | :--- | :--- | :--- | :--- |
-| **Valor Mensal** | R$ 149,00 / mês | R$ 299,00 / mês | R$ 599,00 / mês |
+| **Valor Mensal** | R$ 77,90 / mês | R$ 127,00 / mês | R$ 197,00 / mês |
 | **Valor no Plano Anual** | ~R$ 124,00 / mês | ~R$ 249,00 / mês | ~R$ 499,00 / mês |
 | **Veículos / OS por mês** | Até 150 veículos/OS | Até 600 veículos/OS | Ilimitado |
 | **Mensagens WhatsApp / mês** | Até 300 mensagens | Até 1.500 mensagens | Ilimitado |

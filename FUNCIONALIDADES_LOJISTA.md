@@ -98,9 +98,9 @@ A entrada da equipe é em `/login`.
 
 | Plano | Preço mensal de referência | Ordens / ciclo | Mensagens / ciclo | Fidelidade, clubes, comissões e chatbot |
 |---|---:|---:|---:|---|
-| Básico | R$ 149 | 150 | 300 | Não |
-| Pro | R$ 299 | 600 | 1.500 | Sim |
-| Enterprise | R$ 599 | Ilimitado | Ilimitado | Sim |
+| Básico | R$ 77,90 | 150 | 300 | Não |
+| Pro | R$ 127 | 600 | 1.500 | Sim |
+| Enterprise | R$ 197 | Ilimitado | Ilimitado | Sim |
 
 ---
 

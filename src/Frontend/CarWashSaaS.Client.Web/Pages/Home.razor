@@ -847,7 +847,7 @@
                         <button class="btn-primary large glow" type="button" @onclick='() => OpenContractModal("Pro")' id="final-cta-start">
                             Começar Teste Grátis de 14 Dias &rarr;
                         </button>
-                        <a class="btn-quiet-white" href="https://wa.me/5575991897068?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20mais%20sobre%20o%20Lava%20A%C3%AA" target="_blank" rel="noopener noreferrer">
+                        <a class="btn-quiet-white" href="https://wa.me/5571971897068?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20mais%20sobre%20o%20Lava%20A%C3%AA" target="_blank" rel="noopener noreferrer">
                             Falar com consultor via WhatsApp
                         </a>
                     </div>
@@ -1085,9 +1085,9 @@
 
     private static IReadOnlyList<SaasPlanDto> GetInitialFallbackPlans() =>
     [
-        new(SaasPlanTier.Basic, "Básico", "Ideal para lava-jatos iniciantes com operação ágil de pátio e controle essencial.", 149.00m, 150, 300, false, false, false, false, 3, 2, true),
-        new(SaasPlanTier.Pro, "Pro", "Completo para centros de estética e lava-jatos com clube de assinaturas, fidelidade e WhatsApp.", 299.00m, 600, 1500, true, true, true, true, 10, 5, true),
-        new(SaasPlanTier.Enterprise, "Enterprise", "Sem limites de volume para operações corporativas, redes de filiais e alto fluxo de veículos.", 599.00m, 0, 0, true, true, true, true, 0, 0, true)
+        new(SaasPlanTier.Basic, "Básico", "Ideal para lava-jatos iniciantes com operação ágil de pátio e controle essencial.", 77.90m, 150, 300, false, false, false, false, 3, 2, true),
+        new(SaasPlanTier.Pro, "Pro", "Completo para centros de estética e lava-jatos com clube de assinaturas, fidelidade e WhatsApp.", 127.00m, 600, 1500, true, true, true, true, 10, 5, true),
+        new(SaasPlanTier.Enterprise, "Enterprise", "Sem limites de volume para operações corporativas, redes de filiais e alto fluxo de veículos.", 197.00m, 0, 0, true, true, true, true, 0, 0, true)
     ];
 
     private void ToggleMobileMenu() => _isMobileMenuOpen = !_isMobileMenuOpen;
@@ -1123,7 +1123,7 @@
 
     private int GetRoiMultiplier()
     {
-        var planCost = 149m;
+        var planCost = 77.90m;
         var extra = GetExtraRevenueMonthly();
         return (int)Math.Max(1, Math.Round(extra / planCost));
     }

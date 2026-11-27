@@ -293,9 +293,9 @@ São os planos mensais que a loja vende aos seus clientes, diferentes da mensali
 
 | Plano | Preço mensal de referência | Ordens / ciclo | Mensagens / ciclo | Equipe | Boxes | Fidelidade, clubes, comissões e chatbot |
 |---|---:|---:|---:|---:|---:|---|
-| Básico | R$ 149 | 150 | 300 | 3 | 2 | Não |
-| Pro | R$ 299 | 600 | 1.500 | 10 | 5 | Sim |
-| Enterprise | R$ 599 | Ilimitado | Ilimitado | Ilimitado | Ilimitado | Sim |
+| Básico | R$ 77,90 | 150 | 300 | 3 | 2 | Não |
+| Pro | R$ 127 | 600 | 1.500 | 10 | 5 | Sim |
+| Enterprise | R$ 197 | Ilimitado | Ilimitado | Ilimitado | Ilimitado | Sim |
 
 O valor zero nas cotas do Enterprise significa sem limite. A landing page oferece teste de 14 dias na contratação.
 

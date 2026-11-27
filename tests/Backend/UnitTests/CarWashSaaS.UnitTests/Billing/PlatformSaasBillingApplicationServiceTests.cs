@@ -335,7 +335,7 @@ public sealed class PlatformSaasBillingApplicationServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(SaasPlanTier.Enterprise, result.Value!.PlanTier);
         Assert.Equal("Enterprise", result.Value.PlanName);
-        Assert.Equal(599.00m, result.Value.MonthlyPrice);
+        Assert.Equal(197.00m, result.Value.MonthlyPrice);
 
         // Verifica sincronização com o gateway
         Assert.Equal("sub_123", gatewayProvider.ChangedSubscriptionId);
@@ -346,7 +346,7 @@ public sealed class PlatformSaasBillingApplicationServiceTests
         var inRepo = await subRepo.GetByTenantIdAsync(tenantId);
         Assert.NotNull(inRepo);
         Assert.Equal(SaasPlanTier.Enterprise, inRepo.PlanTier);
-        Assert.Equal(599.00m, inRepo.MonthlyPrice);
+        Assert.Equal(197.00m, inRepo.MonthlyPrice);
     }
 
     [Fact]

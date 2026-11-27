@@ -34,7 +34,7 @@ public sealed class TenantSaasSubscriptionDomainTests
         Assert.True(activateResult.IsSuccess);
         Assert.Equal(TenantSubscriptionStatus.Active, trialSub.Status);
         Assert.Equal(SaasPlanTier.Basic, trialSub.PlanTier);
-        Assert.Equal(149.00m, trialSub.MonthlyPrice);
+        Assert.Equal(77.90m, trialSub.MonthlyPrice);
         Assert.Equal("sub_123", trialSub.GatewaySubscriptionId);
         Assert.Null(trialSub.GracePeriodEndsAtUtc);
         Assert.True(trialSub.IsOperationalAllowed());
@@ -110,6 +110,6 @@ public sealed class TenantSaasSubscriptionDomainTests
 
         Assert.True(changeResult.IsSuccess);
         Assert.Equal(SaasPlanTier.Enterprise, sub.PlanTier);
-        Assert.Equal(599.00m, sub.MonthlyPrice);
+        Assert.Equal(197.00m, sub.MonthlyPrice);
     }
 }
