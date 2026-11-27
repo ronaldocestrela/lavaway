@@ -166,6 +166,12 @@ builder.Services.AddScoped<SubscriptionApplicationService>();
 builder.Services.AddScoped<ISubscriptionLookup>(sp => sp.GetRequiredService<SubscriptionApplicationService>());
 builder.Services.AddScoped<ISubscriptionUsageService>(sp => sp.GetRequiredService<SubscriptionApplicationService>());
 
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("WebFrontend", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddSingleton<PublicLandingPageService>();
 builder.Services.AddScoped<ISaasPlanRepository, SaasPlanRepository>();
 builder.Services.AddScoped<ITenantSaasSubscriptionRepository, TenantSaasSubscriptionRepository>();
 builder.Services.AddScoped<ITenantQuotaUsageRepository, TenantQuotaUsageRepository>();
@@ -474,6 +480,7 @@ app.MapSchedulingEndpoints();
 app.MapAfterSalesEndpoints();
 app.MapBillingEndpoints();
 app.MapSaasBillingEndpoints();
+app.MapPublicSeoEndpoints();
 app.MapCashierEndpoints();
 app.MapLoyaltyEndpoints();
 app.MapSubscriptionEndpoints();

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using CarWashSaaS.Api.Services;
 using CarWashSaaS.Billing.Application;
 using CarWashSaaS.Billing.Infrastructure;
 using CarWashSaaS.Identity.Application;
@@ -312,10 +313,16 @@ public static class SaasBillingEndpoints
             SaasPlanTier tier,
             UpdateSaasPlanRequest request,
             PlatformSaasBillingApplicationService service,
+            PublicLandingPageService publicLandingService,
             CancellationToken ct) =>
         {
             var result = await service.UpdatePlanAsync(tier, request, ct);
-            return result.IsSuccess ? Results.Ok(result.Value) : MapErrorToResult(result.Error!);
+            if (result.IsSuccess)
+            {
+                publicLandingService.InvalidateCache();
+                return Results.Ok(result.Value);
+            }
+            return MapErrorToResult(result.Error!);
         });
 
         // 3. Portal do Lojista (Tenant) - Visão da Própria Assinatura, Cotas e Faturas

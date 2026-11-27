@@ -681,7 +681,7 @@
                     </div>
                 </div>
 
-                <div class="pricing-grid">
+                <!--pricing-section-start--><div class="pricing-grid">
                     @foreach (var plan in _plans)
                     {
                         var isPopular = plan.Tier == SaasPlanTier.Pro;
@@ -723,7 +723,7 @@
                                 </li>
                                 <li>
                                     <span>&#10003;</span>
-                                    <strong>@(plan.MaxTeamMembers >= 999 ? "Equipe e usuários ilimitados" : $"Até {plan.MaxTeamMembers} membros na equipe")</strong>
+                                    <strong>@(plan.MaxTeamMembers <= 0 || plan.MaxTeamMembers >= 999 ? "Equipe e usuários ilimitados" : $"Até {plan.MaxTeamMembers} membros na equipe")</strong>
                                 </li>
                                 <li>
                                     <span>&#10003;</span>
@@ -752,7 +752,7 @@
                             </ul>
                         </div>
                     }
-                </div>
+                </div><!--pricing-section-end-->
             </div>
         </section>
 
@@ -895,10 +895,10 @@
 
                     <div class="fcol">
                         <h4>CONTRATAÇÃO</h4>
-                        @foreach (var plan in _plans)
+                        <!--footer-plans-start-->@foreach (var plan in _plans)
                         {
                             <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal(plan.Tier)'>Plano @plan.Name</button>
-                        }
+                        }<!--footer-plans-end-->
                         <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer">Suporte Comercial</a>
                     </div>
                 </div>
@@ -1087,7 +1087,7 @@
     [
         new(SaasPlanTier.Basic, "Básico", "Ideal para lava-jatos iniciantes com operação ágil de pátio e controle essencial.", 149.00m, 150, 300, false, false, false, false, 3, 2, true),
         new(SaasPlanTier.Pro, "Pro", "Completo para centros de estética e lava-jatos com clube de assinaturas, fidelidade e WhatsApp.", 299.00m, 600, 1500, true, true, true, true, 10, 5, true),
-        new(SaasPlanTier.Enterprise, "Enterprise", "Sem limites de volume para operações corporativas, redes de filiais e alto fluxo de veículos.", 599.00m, 0, 0, true, true, true, true, 999, 0, true)
+        new(SaasPlanTier.Enterprise, "Enterprise", "Sem limites de volume para operações corporativas, redes de filiais e alto fluxo de veículos.", 599.00m, 0, 0, true, true, true, true, 0, 0, true)
     ];
 
     private void ToggleMobileMenu() => _isMobileMenuOpen = !_isMobileMenuOpen;

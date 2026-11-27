@@ -26,7 +26,10 @@ public class StaticPrerendererTests
             var homeHtml = await File.ReadAllTextAsync(Path.Combine(tempRoot, "prerendered", "index.html"));
             Assert.Contains("<h1 class=\"hero-title\"", homeHtml);
             Assert.Contains("Transforme o seu lava-jato", homeHtml);
+            var decodedHomeHtml = System.Net.WebUtility.HtmlDecode(homeHtml);
             Assert.Contains("<link rel=\"canonical\" href=\"https://lavaae.app/\" />", homeHtml);
+            Assert.Contains("Equipe e usuários ilimitados", decodedHomeHtml);
+            Assert.DoesNotContain("Até 0 membros na equipe", decodedHomeHtml);
             Assert.DoesNotContain("Iniciando aplicação...", homeHtml);
             Assert.DoesNotContain("An unhandled error has occurred.", homeHtml);
 
