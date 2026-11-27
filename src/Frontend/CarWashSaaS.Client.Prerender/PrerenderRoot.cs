@@ -1,7 +1,7 @@
+using CarWashSaaS.Client.Web.Layout;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
-using CarWashSaaS.Client.Web.Layout;
 
 namespace CarWashSaaS.Client.Prerender;
 
