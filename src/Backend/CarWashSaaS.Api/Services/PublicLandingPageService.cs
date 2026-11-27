@@ -129,6 +129,9 @@ public sealed partial class PublicLandingPageService
             var osLabel = plan.MaxWorkOrdersPerCycle <= 0
                 ? "ordens de serviço ilimitadas"
                 : $"até {plan.MaxWorkOrdersPerCycle} veículos/OS por mês";
+            var waLabel = plan.MaxWhatsAppMessagesPerCycle <= 0
+                ? "WhatsApp ilimitado"
+                : $"até {plan.MaxWhatsAppMessagesPerCycle} msgs WhatsApp/mês";
             var usersLabel = plan.MaxTeamMembers <= 0 || plan.MaxTeamMembers >= 999
                 ? "usuários ilimitados"
                 : $"{plan.MaxTeamMembers} usuários cadastrados";
@@ -138,7 +141,7 @@ public sealed partial class PublicLandingPageService
 
             sb.AppendLine($"- **Plano {plan.Name} (R$ {price} / mês{popularTag})**:");
             sb.AppendLine($"  - {plan.Description}");
-            sb.AppendLine($"  - Capacidade: {osLabel}, {usersLabel} e {boxesLabel}.");
+            sb.AppendLine($"  - Capacidade: {osLabel}, {waLabel}, {usersLabel} e {boxesLabel}.");
             sb.AppendLine();
         }
 

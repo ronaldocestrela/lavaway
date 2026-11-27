@@ -61,6 +61,7 @@ public class PublicLandingPageServiceTests
 
         Assert.Contains("349,00", result);
         Assert.Contains("Plano atualizado", result);
+        Assert.Contains("2000 msgs WhatsApp/mês", result);
         Assert.Contains("## Contato e Acesso", result);
         Assert.DoesNotContain("149,00", result);
     }
