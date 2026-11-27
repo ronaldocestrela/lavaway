@@ -426,6 +426,7 @@ if (shouldSeed)
 
 app.UseHttpsRedirection();
 app.UseCors("Client");
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseMiddleware<TenantResolverMiddleware>();
 app.UseAuthorization();
