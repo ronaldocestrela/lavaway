@@ -36,12 +36,97 @@
             </button>
 
             <nav class="nav-links @(_isMobileMenuOpen ? "open" : "")" aria-label="Navegação institucional">
-                <a href="#recursos" @onclick="CloseMobileMenu">Recursos</a>
-                <a href="#demonstracao" @onclick="CloseMobileMenu">Como Funciona</a>
-                <a href="#whatsapp" @onclick="CloseMobileMenu">WhatsApp</a>
-                <a href="#roi" @onclick="CloseMobileMenu">Calculadora ROI</a>
-                <a href="#planos" @onclick="CloseMobileMenu">Planos</a>
-                <a href="#faq" @onclick="CloseMobileMenu">Dúvidas</a>
+                <div class="nav-dropdown @(_isSolutionsDropdownOpen ? "open" : "")">
+                    <button class="nav-dropdown-btn" type="button" @onclick="ToggleSolutionsDropdown" aria-expanded="@_isSolutionsDropdownOpen" aria-haspopup="true">
+                        <span>Soluções</span>
+                        <span class="dropdown-chevron @(_isSolutionsDropdownOpen ? "rotated" : "")">&#9662;</span>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="dropdown-group">
+                            <span class="dropdown-group-title">Operação & Pátio</span>
+                            <a href="/funcionalidades/ordem-de-servico" @onclick="CloseAllMenus">
+                                <span class="menu-icon">⚡</span>
+                                <div>
+                                    <strong>Ordem de Serviço</strong>
+                                    <small>Check-in em 35s e emissão rápida</small>
+                                </div>
+                            </a>
+                            <a href="/funcionalidades/vistoria-digital" @onclick="CloseAllMenus">
+                                <span class="menu-icon">📸</span>
+                                <div>
+                                    <strong>Vistoria Digital</strong>
+                                    <small>Fotos e laudo contra avarias prévias</small>
+                                </div>
+                            </a>
+                            <a href="/funcionalidades/controle-de-patio" @onclick="CloseAllMenus">
+                                <span class="menu-icon">🅿️</span>
+                                <div>
+                                    <strong>Controle de Pátio Kanban</strong>
+                                    <small>Gestão de boxes e fluxo em tempo real</small>
+                                </div>
+                            </a>
+                            <a href="/funcionalidades/catalogo-de-servicos" @onclick="CloseAllMenus">
+                                <span class="menu-icon">🏷️</span>
+                                <div>
+                                    <strong>Tabela por Porte</strong>
+                                    <small>Hatch, SUV, Picape e Moto</small>
+                                </div>
+                            </a>
+                            <a href="/funcionalidades/antes-e-depois" @onclick="CloseAllMenus">
+                                <span class="menu-icon">✨</span>
+                                <div>
+                                    <strong>Antes e Depois</strong>
+                                    <small>Comparativo de estética no WhatsApp</small>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="dropdown-group">
+                            <span class="dropdown-group-title">Atendimento, Pós-Venda & Finanças</span>
+                            <a href="/funcionalidades/agendamento-whatsapp" @onclick="CloseAllMenus">
+                                <span class="menu-icon">💬</span>
+                                <div>
+                                    <strong>Agendamento WhatsApp 24/7</strong>
+                                    <small>Atendente virtual e lembrete anti-falta</small>
+                                </div>
+                            </a>
+                            <a href="/funcionalidades/pos-venda-e-fidelidade" @onclick="CloseAllMenus">
+                                <span class="menu-icon">⭐</span>
+                                <div>
+                                    <strong>Clube & Fidelidade</strong>
+                                    <small>Assinatura por placa e selos digitais</small>
+                                </div>
+                            </a>
+                            <a href="/funcionalidades/pesquisa-satisfacao" @onclick="CloseAllMenus">
+                                <span class="menu-icon">📊</span>
+                                <div>
+                                    <strong>Pesquisa NPS</strong>
+                                    <small>Avaliação automática após entrega</small>
+                                </div>
+                            </a>
+                            <a href="/funcionalidades/pix-e-financeiro" @onclick="CloseAllMenus">
+                                <span class="menu-icon">💰</span>
+                                <div>
+                                    <strong>Checkout Pix & Caixa</strong>
+                                    <small>Baixa instantânea e blindagem de golpe</small>
+                                </div>
+                            </a>
+                            <a href="/funcionalidades/comissao-equipe" @onclick="CloseAllMenus">
+                                <span class="menu-icon">👥</span>
+                                <div>
+                                    <strong>Comissões da Equipe</strong>
+                                    <small>Fechamento automático por operador</small>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="#recursos" @onclick="CloseAllMenus">Recursos</a>
+                <a href="#demonstracao" @onclick="CloseAllMenus">Como Funciona</a>
+                <a href="#whatsapp" @onclick="CloseAllMenus">WhatsApp</a>
+                <a href="#roi" @onclick="CloseAllMenus">Calculadora ROI</a>
+                <a href="#planos" @onclick="CloseAllMenus">Planos</a>
+                <a href="#faq" @onclick="CloseAllMenus">Dúvidas</a>
             </nav>
 
             <div class="nav-actions">
@@ -444,6 +529,9 @@
                             <li>Autocompletar de clientes frequentes</li>
                             <li>Vínculo de múltiplos veículos por dono</li>
                         </ul>
+                        <div class="feature-footer-action">
+                            <a href="/funcionalidades/ordem-de-servico" class="feature-action-link">Ver Ordem de Serviço completa &rarr;</a>
+                        </div>
                     </article>
 
                     <article class="feature-box">
@@ -455,6 +543,9 @@
                             <li>Armazenamento seguro em nuvem</li>
                             <li>Comprovante com termo de aceite</li>
                         </ul>
+                        <div class="feature-footer-action">
+                            <a href="/funcionalidades/vistoria-digital" class="feature-action-link">Ver Laudo de Vistoria Digital &rarr;</a>
+                        </div>
                     </article>
 
                     <article class="feature-box">
@@ -466,6 +557,9 @@
                             <li>Pareamento via QR Code em 30s</li>
                             <li>Link público com sua logomarca</li>
                         </ul>
+                        <div class="feature-footer-action">
+                            <a href="/funcionalidades/agendamento-whatsapp" class="feature-action-link">Ver Agendamento & WhatsApp 24/7 &rarr;</a>
+                        </div>
                     </article>
 
                     <article class="feature-box">
@@ -477,6 +571,9 @@
                             <li>Previsão de entrega precisa</li>
                             <li>Elimina cobranças divergentes</li>
                         </ul>
+                        <div class="feature-footer-action">
+                            <a href="/funcionalidades/catalogo-de-servicos" class="feature-action-link">Ver Tabela por Porte de Veículo &rarr;</a>
+                        </div>
                     </article>
 
                     <article class="feature-box">
@@ -488,6 +585,9 @@
                             <li>Alertas de tempo excedido</li>
                             <li>Visualização clara por status</li>
                         </ul>
+                        <div class="feature-footer-action">
+                            <a href="/funcionalidades/controle-de-patio" class="feature-action-link">Ver Controle de Pátio Kanban &rarr;</a>
+                        </div>
                     </article>
 
                     <article class="feature-box">
@@ -499,7 +599,55 @@
                             <li>Extrato de comissão individual</li>
                             <li>Fechamento com 1 clique</li>
                         </ul>
+                        <div class="feature-footer-action">
+                            <a href="/funcionalidades/comissao-equipe" class="feature-action-link">Ver Comissões e Produtividade &rarr;</a>
+                        </div>
                     </article>
+                </div>
+
+                <!-- MORE SPECIALIZED SOLUTIONS STRIP -->
+                <div class="extra-solutions-card">
+                    <div class="extra-solutions-header">
+                        <div>
+                            <span class="extra-badge">ESPECIALIDADES DO SISTEMA</span>
+                            <h3>Mais soluções desenvolvidas para acelerar o seu negócio</h3>
+                        </div>
+                        <p>Conheça os módulos avançados inclusos nos planos para estética automotiva e lava-jatos de alta demanda.</p>
+                    </div>
+                    <div class="extra-solutions-grid">
+                        <a href="/funcionalidades/pos-venda-e-fidelidade" class="extra-sol-item">
+                            <span class="extra-icon">⭐</span>
+                            <div>
+                                <strong>Clubes de Assinatura & Fidelidade</strong>
+                                <span>Receita recorrente garantida e cartões de selo no WhatsApp</span>
+                            </div>
+                            <span class="extra-arrow">&rarr;</span>
+                        </a>
+                        <a href="/funcionalidades/pix-e-financeiro" class="extra-sol-item">
+                            <span class="extra-icon">💰</span>
+                            <div>
+                                <strong>Checkout Pix & Caixa Blindado</strong>
+                                <span>Gere cobranças dinâmicas com baixa automática sem conferência manual</span>
+                            </div>
+                            <span class="extra-arrow">&rarr;</span>
+                        </a>
+                        <a href="/funcionalidades/antes-e-depois" class="extra-sol-item">
+                            <span class="extra-icon">✨</span>
+                            <div>
+                                <strong>Galeria de Antes e Depois</strong>
+                                <span>Comparativo fotográfico de serviços para valorizar polimentos e vitrificações</span>
+                            </div>
+                            <span class="extra-arrow">&rarr;</span>
+                        </a>
+                        <a href="/funcionalidades/pesquisa-satisfacao" class="extra-sol-item">
+                            <span class="extra-icon">📊</span>
+                            <div>
+                                <strong>Pesquisa de Satisfação NPS</strong>
+                                <span>Avaliações disparadas no WhatsApp após a entrega para blindar a nota no Google</span>
+                            </div>
+                            <span class="extra-arrow">&rarr;</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </section>
@@ -877,24 +1025,28 @@
 
                 <div class="footer-cols">
                     <div class="fcol">
-                        <h4>PRODUTO</h4>
-                        <a href="#recursos">Check-in Expresso</a>
-                        <a href="#recursos">Vistoria Digital</a>
-                        <a href="#whatsapp">WhatsApp Automático</a>
-                        <a href="#recursos">Tabela por Porte</a>
-                        <a href="#recursos">Controle de Comissões</a>
+                        <h4>SOLUÇÕES DE PÁTIO</h4>
+                        <a href="/funcionalidades/ordem-de-servico">Ordem de Serviço</a>
+                        <a href="/funcionalidades/vistoria-digital">Vistoria Digital com Fotos</a>
+                        <a href="/funcionalidades/controle-de-patio">Controle de Pátio Kanban</a>
+                        <a href="/funcionalidades/catalogo-de-servicos">Tabela de Preços por Porte</a>
+                        <a href="/funcionalidades/comissao-equipe">Cálculo de Comissões</a>
                     </div>
 
                     <div class="fcol">
-                        <h4>ACESSO</h4>
+                        <h4>RELACIONAMENTO & FINANCEIRO</h4>
+                        <a href="/funcionalidades/agendamento-whatsapp">Agendamento WhatsApp 24/7</a>
+                        <a href="/funcionalidades/pos-venda-e-fidelidade">Clubes & Fidelidade Digital</a>
+                        <a href="/funcionalidades/pix-e-financeiro">Checkout Pix & Caixa</a>
+                        <a href="/funcionalidades/antes-e-depois">Fotos de Antes e Depois</a>
+                        <a href="/funcionalidades/pesquisa-satisfacao">Pesquisa de Satisfação NPS</a>
+                    </div>
+
+                    <div class="fcol">
+                        <h4>ACESSO & CONTRATAÇÃO</h4>
                         <a href="authentication/login">Login do Estabelecimento</a>
                         <a href="reception">Recepção de Atendimento</a>
-                        <a href="settings/profile">Configuração da Loja</a>
                         <a href="settings/whatsapp">Pareamento WhatsApp</a>
-                    </div>
-
-                    <div class="fcol">
-                        <h4>CONTRATAÇÃO</h4>
                         <!--footer-plans-start-->@foreach (var plan in _plans)
                         {
                             <button class="footer-link-btn" type="button" @onclick='() => OpenContractModal(plan.Tier)'>Plano @plan.Name</button>
@@ -1038,6 +1190,7 @@
 
 @code {
     private bool _isMobileMenuOpen;
+    private bool _isSolutionsDropdownOpen;
     private string _activeDemoTab = "whatsapp";
     private string _selectedDemoSize = "SUV";
     private bool _isAnnualBilling = true;
@@ -1091,7 +1244,19 @@
     ];
 
     private void ToggleMobileMenu() => _isMobileMenuOpen = !_isMobileMenuOpen;
-    private void CloseMobileMenu() => _isMobileMenuOpen = false;
+    private void CloseMobileMenu()
+    {
+        _isMobileMenuOpen = false;
+        _isSolutionsDropdownOpen = false;
+    }
+
+    private void ToggleSolutionsDropdown() => _isSolutionsDropdownOpen = !_isSolutionsDropdownOpen;
+
+    private void CloseAllMenus()
+    {
+        _isMobileMenuOpen = false;
+        _isSolutionsDropdownOpen = false;
+    }
 
     private void SetDemoTab(string tab) => _activeDemoTab = tab;
 
